@@ -180,7 +180,7 @@ def get_solar_data(lat, lon):
         data = r.json()
         totals  = data["outputs"]["totals"]["fixed"]
         monthly = data["outputs"]["monthly"]["fixed"]
-        tilt    = data["inputs"]["mounting_system"]["fixed"]["slope"].get("optimal", "—")
+        tilt    = data["inputs"]["mounting_system"]["fixed"]["slope"].get("value", "—")
 
         months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
         monthly_ghi = [
@@ -304,17 +304,21 @@ def site_capacity(area_ha, land_use="Standard", mount_type="Fixed Tilt"):
     return mw, mwh
 
 
-def overall_verdict(slope_lbl, solar_lbl):
+def overall_verdict(slope_lbl, solar_lbl, land_use="Standard", mount_type="Fixed Tilt"):
     reds    = sum(1 for l in [slope_lbl, solar_lbl] if "❌" in l)
     yellows = sum(1 for l in [slope_lbl, solar_lbl] if "⚠️" in l)
+    if land_use == "Agri-PV":
+        label = f"Agri-PV {mount_type}"
+    else:
+        label = mount_type
     if reds >= 1:
         return "❌ NOT RECOMMENDED",        "One or more critical issues identified. High risk to project viability."
     elif yellows >= 2:
         return "⚠️ PROCEED WITH CAUTION",   "Multiple moderate concerns. Detailed study recommended before committing."
     elif yellows == 1:
-        return "⚠️ CONDITIONAL GO",         "Site shows promise but has considerations to address in detailed design."
+        return "⚠️ CONDITIONAL GO",         f"Site shows promise but has considerations to address in detailed {label} design."
     else:
-        return "✅ RECOMMENDED FOR STUDY",  "Strong Agri-PV potential. Proceed to detailed feasibility study."
+        return "✅ RECOMMENDED FOR STUDY",  f"Strong {label} potential. Proceed to detailed feasibility study."
 
 
 def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
@@ -441,7 +445,7 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
 
 # ── Step 1: Project Type Selection ──────────────────────────────────────────
 st.markdown("### Step 1 — Project Type")
-st.caption("SiteIQ covers **ground-mounted Freifläche** only (no rooftop, DACH, floating or carport).")
+st.caption("Designed for Ground Mount Solar Projects")
 
 pt_col1, pt_col2 = st.columns(2)
 
@@ -463,7 +467,7 @@ with pt_col2:
         help="Tracker systems require flatter terrain (≤6% slope) and more N-S row spacing."
     )
     if mount_type == "Single-Axis Tracker":
-        st.warning("⚠️ Tracker: max recommended slope ≤ 6% · Higher CAPEX, higher yield")
+        st.warning("⚠️ Tracker: max recommended slope ± 8° · Higher CAPEX, higher yield")
     else:
         st.info("ℹ️ Fixed Tilt: max recommended slope ≤ 10% · Lower CAPEX")
 
@@ -567,7 +571,7 @@ with right:
         g_lbl, _, g_detail = assess_solar(solar["annual_ghi"]       if solar["success"]   else 0)
         country, eeg_status, eeg_note = assess_eeg(lat, lon, _land_use)
         cap_mw, cap_mwh = site_capacity(area_ha, _land_use, _mount_type)
-        verdict, verdict_txt = overall_verdict(s_lbl, g_lbl)
+        verdict, verdict_txt = overall_verdict(s_lbl, g_lbl, _land_use, _mount_type)
 
         # ── Project type badge ──
         badge_color = "#1a5c2e" if _land_use == "Agri-PV" else "#1565c0"
