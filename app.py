@@ -231,15 +231,26 @@ def get_terrain_data(lat, lon, radius_km=0.5):
     return {"success": False, "error": "Insufficient data"}
 
 
-def assess_slope(pct):
-    if pct <= 5:
-        return "✅ Excellent", "green",  f"{pct}% — Ideal for Agri-PV trackers and fixed-tilt"
-    elif pct <= 10:
-        return "⚠️ Acceptable", "yellow", f"{pct}% — Feasible; higher earthworks cost expected"
-    elif pct <= 15:
-        return "⚠️ Challenging", "yellow", f"{pct}% — Significant earthworks required"
-    else:
-        return "❌ Critical", "red",    f"{pct}% — Too steep; likely not viable for Agri-PV"
+def assess_slope(pct, mount_type="Fixed Tilt"):
+    """Slope limits differ: trackers need flatter terrain than fixed tilt."""
+    if mount_type == "Single-Axis Tracker":
+        if pct <= 3:
+            return "✅ Excellent", "green",  f"{pct}% — Ideal for single-axis tracker"
+        elif pct <= 6:
+            return "⚠️ Acceptable", "yellow", f"{pct}% — Feasible for tracker; grading may be needed"
+        elif pct <= 10:
+            return "⚠️ Challenging", "yellow", f"{pct}% — Steep for trackers; significant grading required"
+        else:
+            return "❌ Critical", "red",    f"{pct}% — Too steep for single-axis tracker systems"
+    else:  # Fixed Tilt
+        if pct <= 5:
+            return "✅ Excellent", "green",  f"{pct}% — Ideal for fixed-tilt ground mount"
+        elif pct <= 10:
+            return "⚠️ Acceptable", "yellow", f"{pct}% — Feasible; some earthworks expected"
+        elif pct <= 15:
+            return "⚠️ Challenging", "yellow", f"{pct}% — Significant earthworks required"
+        else:
+            return "❌ Critical", "red",    f"{pct}% — Too steep; likely not viable"
 
 
 def assess_solar(ghi):
@@ -253,21 +264,41 @@ def assess_solar(ghi):
         return "❌ Poor",      "red",    f"{ghi} kWh/m²/yr — Low resource; financial risk"
 
 
-def assess_eeg(lat, lon):
+def assess_eeg(lat, lon, land_use="Standard"):
     in_de = 47.3 <= lat <= 55.1 and  5.9 <= lon <= 15.1
     in_at = 46.4 <= lat <= 49.0 and  9.5 <= lon <= 17.2
     in_ch = 45.8 <= lat <= 47.8 and  5.9 <= lon <= 10.5
-    if in_de:
-        return "🇩🇪 Germany",     "✅ EEG 2023 Agri-PV bonus likely applicable", "Verify agricultural land class (§37 EEG)"
-    elif in_at:
-        return "🇦🇹 Austria",     "⚠️ Check OeMAG Agri-PV provisions",          "Austrian Renewable Energy Act applies"
-    elif in_ch:
-        return "🇨🇭 Switzerland", "⚠️ Check KEV/Pronovo Agri-PV rules",          "Swiss Energy Act provisions apply"
+    if land_use == "Agri-PV":
+        if in_de:
+            return "🇩🇪 Germany",     "✅ EEG 2023 Agri-PV bonus likely applicable", "Verify agricultural land class (§37 EEG 2023) + DIN SPEC 91434"
+        elif in_at:
+            return "🇦🇹 Austria",     "⚠️ Check OeMAG Agri-PV provisions",          "Austrian Renewable Energy Expansion Act (EAG)"
+        elif in_ch:
+            return "🇨🇭 Switzerland", "⚠️ Check KEV/Pronovo Agri-PV rules",          "Swiss Energy Act + cantonal agricultural provisions"
+        else:
+            return "🌍 Outside DACH", "ℹ️ Check local Agri-PV regulations",          "No EEG — verify local dual-use land rules"
+    else:  # Standard
+        if in_de:
+            return "🇩🇪 Germany",     "✅ EEG 2023 standard Freifläche applicable",  "Eligible for EEG feed-in tariff (§38 EEG 2023)"
+        elif in_at:
+            return "🇦🇹 Austria",     "⚠️ Check OeMAG Freifläche provisions",        "Austrian Renewable Energy Expansion Act (EAG)"
+        elif in_ch:
+            return "🇨🇭 Switzerland", "⚠️ Check KEV/Pronovo Freifläche rules",       "Swiss Energy Act (EnG) provisions apply"
+        else:
+            return "🌍 Outside DACH", "ℹ️ Check local feed-in regulations",           "No EEG — verify local PV incentive scheme"
+
+
+def site_capacity(area_ha, land_use="Standard", mount_type="Fixed Tilt"):
+    """Capacity density varies by system type.
+    Standard Fixed Tilt: ~0.40 MW/ha
+    Standard Tracker:    ~0.35 MW/ha (more N-S row spacing)
+    Agri-PV Fixed Tilt:  ~0.20 MW/ha (elevated, wide spacing for crops)
+    Agri-PV Tracker:     ~0.18 MW/ha (elevated tracker + crop clearance)
+    """
+    if land_use == "Agri-PV":
+        density = 0.18 if mount_type == "Single-Axis Tracker" else 0.20
     else:
-        return "🌍 Outside DACH", "❌ EEG not applicable",                        "Check local regulations"
-
-
-def site_capacity(area_ha, density=0.35):
+        density = 0.35 if mount_type == "Single-Axis Tracker" else 0.40
     mw  = round(area_ha * density, 2)
     mwh = round(mw * 1000, 0)
     return mw, mwh
@@ -289,7 +320,8 @@ def overall_verdict(slope_lbl, solar_lbl):
 def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
               country, eeg_status, eeg_note,
               slope_lbl, solar_lbl, verdict, verdict_txt,
-              cap_mw, cap_mwh):
+              cap_mw, cap_mwh,
+              land_use="Standard", mount_type="Fixed Tilt"):
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4,
                             rightMargin=2*cm, leftMargin=2*cm,
@@ -309,11 +341,13 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
 
     # Site info
     site_rows = [
-        ["Site Name",   site_name or "—"],
-        ["Coordinates", f"{lat:.5f}°N, {lon:.5f}°E"],
-        ["Site Area",   f"{area_ha} ha"],
-        ["Country",     country],
-        ["Report Date", datetime.now().strftime("%d.%m.%Y")],
+        ["Site Name",      site_name or "—"],
+        ["Coordinates",    f"{lat:.5f}°N, {lon:.5f}°E"],
+        ["Site Area",      f"{area_ha} ha"],
+        ["Country",        country],
+        ["Land Use Type",  land_use],
+        ["Mounting System",mount_type],
+        ["Report Date",    datetime.now().strftime("%d.%m.%Y")],
     ]
     t = Table(site_rows, colWidths=[5*cm, 12*cm])
     t.setStyle(TableStyle([
@@ -404,6 +438,42 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
 
 
 # ─── UI Layout ────────────────────────────────────────────────────────────────
+
+# ── Step 1: Project Type Selection ──────────────────────────────────────────
+st.markdown("### Step 1 — Project Type")
+st.caption("SiteIQ covers **ground-mounted Freifläche** only (no rooftop, DACH, floating or carport).")
+
+pt_col1, pt_col2 = st.columns(2)
+
+with pt_col1:
+    land_use = st.radio(
+        "**Land Use**",
+        ["Standard Freifläche", "Agri-PV (Doppelnutzung)"],
+        help="Standard = conventional ground-mount. Agri-PV = dual use with agriculture (elevated / bifacial)."
+    )
+    if land_use == "Agri-PV (Doppelnutzung)":
+        st.success("✅ EEG 2023 Agri-PV bonus eligible · DIN SPEC 91434 applies")
+    else:
+        st.info("ℹ️ Standard EEG Freifläche tariff · No dual-use requirements")
+
+with pt_col2:
+    mount_type = st.radio(
+        "**Mounting System**",
+        ["Fixed Tilt", "Single-Axis Tracker"],
+        help="Tracker systems require flatter terrain (≤6% slope) and more N-S row spacing."
+    )
+    if mount_type == "Single-Axis Tracker":
+        st.warning("⚠️ Tracker: max recommended slope ≤ 6% · Higher CAPEX, higher yield")
+    else:
+        st.info("ℹ️ Fixed Tilt: max recommended slope ≤ 10% · Lower CAPEX")
+
+# Normalise land_use key for logic
+_land_use  = "Agri-PV" if "Agri-PV" in land_use else "Standard"
+_mount_type = mount_type  # "Fixed Tilt" or "Single-Axis Tracker"
+
+st.divider()
+st.markdown("### Step 2 — Site Location")
+
 left, right = st.columns([1, 2])
 
 with left:
@@ -493,11 +563,20 @@ with right:
             terrain = get_terrain_data(lat, lon)
 
         # ── Assessments ──
-        s_lbl, _, s_detail = assess_slope(terrain["max_slope_pct"] if terrain["success"] else 0)
+        s_lbl, _, s_detail = assess_slope(terrain["max_slope_pct"] if terrain["success"] else 0, _mount_type)
         g_lbl, _, g_detail = assess_solar(solar["annual_ghi"]       if solar["success"]   else 0)
-        country, eeg_status, eeg_note = assess_eeg(lat, lon)
-        cap_mw, cap_mwh = site_capacity(area_ha)
+        country, eeg_status, eeg_note = assess_eeg(lat, lon, _land_use)
+        cap_mw, cap_mwh = site_capacity(area_ha, _land_use, _mount_type)
         verdict, verdict_txt = overall_verdict(s_lbl, g_lbl)
+
+        # ── Project type badge ──
+        badge_color = "#1a5c2e" if _land_use == "Agri-PV" else "#1565c0"
+        st.markdown(
+            f'<span style="background:{badge_color};color:white;padding:3px 10px;border-radius:4px;font-size:0.8rem;">'
+            f'{land_use} · {mount_type}</span>',
+            unsafe_allow_html=True
+        )
+        st.markdown("")
 
         # ── Verdict banner ──
         if "✅" in verdict:
@@ -555,7 +634,8 @@ with right:
             country=country, eeg_status=eeg_status, eeg_note=eeg_note,
             slope_lbl=s_lbl, solar_lbl=g_lbl,
             verdict=verdict, verdict_txt=verdict_txt,
-            cap_mw=cap_mw, cap_mwh=cap_mwh
+            cap_mw=cap_mw, cap_mwh=cap_mwh,
+            land_use=_land_use, mount_type=_mount_type
         )
         st.download_button(
             label="⬇️  Download PDF Report",
