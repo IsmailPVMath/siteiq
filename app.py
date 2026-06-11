@@ -38,7 +38,7 @@ st.markdown("""
   <span style="font-size:0.85rem; color:#888; margin-left:0.5rem; align-self:flex-end; padding-bottom:0.4rem;">by PVMath</span>
 </div>
 """, unsafe_allow_html=True)
-st.markdown('<p class="sub-header">Solar & Agri-PV Site Intelligence Platform</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-header">Solar Site Intelligence Platform</p>', unsafe_allow_html=True)
 st.divider()
 
 # ─── Helper Functions ─────────────────────────────────────────────────────────
@@ -61,14 +61,19 @@ def geocode_address(address):
 
 
 def parse_google_maps_url(url):
-    """Extract lat/lon from a Google Maps URL."""
-    patterns = [
+    """Extract lat/lon from a Google Maps URL or plain coordinate paste."""
+    url = url.strip()
+    # Plain coordinates pasted from Google Maps right-click: "17.1401, 78.4802"
+    plain = re.match(r'^(-?\d{1,3}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)$', url)
+    if plain:
+        return float(plain.group(1)), float(plain.group(2))
+    # URL patterns
+    for pattern in [
         r'@(-?\d+\.?\d+),(-?\d+\.?\d+)',
         r'q=(-?\d+\.?\d+),(-?\d+\.?\d+)',
         r'll=(-?\d+\.?\d+),(-?\d+\.?\d+)',
         r'place/[^/]+/@(-?\d+\.?\d+),(-?\d+\.?\d+)',
-    ]
-    for pattern in patterns:
+    ]:
         match = re.search(pattern, url)
         if match:
             return float(match.group(1)), float(match.group(2))
@@ -753,8 +758,8 @@ with left:
         lon = st.number_input("Longitude", value=12.1521, format="%.5f")
 
     elif method == "🔗 Google Maps Link":
-        st.caption("Right-click any point in Google Maps → coordinates appear at top of menu → click to copy.")
-        maps_url = st.text_input("Paste Google Maps link", placeholder="https://www.google.com/maps/@48.1351,11.5820,15z")
+        st.caption("Paste a Google Maps URL **or** right-click any point in Google Maps → click the coordinates at the top → paste here.")
+        maps_url = st.text_input("Paste Google Maps link or coordinates", placeholder="17.1401, 78.4802  or  https://maps.google.com/...")
         if maps_url:
             lat, lon = parse_google_maps_url(maps_url)
             if lat and lon:
@@ -901,18 +906,53 @@ with right:
 
     else:
         st.markdown("""
-        ### Welcome to SiteIQ 🌱
-
-        Enter a site location on the left and click **Run Site Screening** to get:
-
-        - ☀️ **Solar resource** — annual GHI, monthly breakdown, optimal tilt
-        - ⛰️ **Terrain & slope** — max slope %, elevation analysis
-        - 📋 **Regulatory check** — local incentive scheme & authority contacts
-        - 🌊 **Flood risk** — elevation-based assessment with local portal links
-        - ⚡ **Capacity estimate** — MWp & annual MWh based on system type
-        - 📄 **PDF report** — one-click download, ready for client meetings
-
-        ---
-        *Data: PVGIS (JRC) · OpenTopoData · OpenStreetMap*
-        *SiteIQ by PVMath — Module 1 of 5 | pvmath.com*
         """)
+        st.markdown("""
+<div style="margin-top:0.5rem;">
+  <p style="color:#aaa; font-size:0.95rem; margin-bottom:1.2rem;">
+    Enter a site location on the left and click <strong>Run Site Screening</strong> to get:
+  </p>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+
+    <div style="background:linear-gradient(135deg,#1a3a2a,#0f2a1e); border:1px solid #2a6040; border-radius:10px; padding:1rem;">
+      <div style="font-size:1.4rem; margin-bottom:0.4rem;">◈</div>
+      <div style="color:#4caf82; font-weight:700; font-size:0.9rem;">SOLAR RESOURCE</div>
+      <div style="color:#ccc; font-size:0.78rem; margin-top:0.3rem;">Annual GHI · Monthly irradiation breakdown · Optimal tilt angle</div>
+    </div>
+
+    <div style="background:linear-gradient(135deg,#1a2a3a,#0f1e2a); border:1px solid #2a4060; border-radius:10px; padding:1rem;">
+      <div style="font-size:1.4rem; margin-bottom:0.4rem;">◉</div>
+      <div style="color:#5b9bd5; font-weight:700; font-size:0.9rem;">TERRAIN &amp; SLOPE</div>
+      <div style="color:#ccc; font-size:0.78rem; margin-top:0.3rem;">Max slope % · Centre elevation · Fixed tilt &amp; tracker suitability</div>
+    </div>
+
+    <div style="background:linear-gradient(135deg,#2a1a3a,#1e0f2a); border:1px solid #5a3a80; border-radius:10px; padding:1rem;">
+      <div style="font-size:1.4rem; margin-bottom:0.4rem;">◈</div>
+      <div style="color:#a87fd4; font-weight:700; font-size:0.9rem;">REGULATORY CHECK</div>
+      <div style="color:#ccc; font-size:0.78rem; margin-top:0.3rem;">Country-specific incentives · Grid authority · Permitting contacts</div>
+    </div>
+
+    <div style="background:linear-gradient(135deg,#1a2a3a,#0a1828); border:1px solid #1a4a6a; border-radius:10px; padding:1rem;">
+      <div style="font-size:1.4rem; margin-bottom:0.4rem;">◉</div>
+      <div style="color:#4ab0d4; font-weight:700; font-size:0.9rem;">FLOOD RISK</div>
+      <div style="color:#ccc; font-size:0.78rem; margin-top:0.3rem;">Elevation-based assessment · Local flood portal links</div>
+    </div>
+
+    <div style="background:linear-gradient(135deg,#2a2a1a,#1e1e0f); border:1px solid #5a5a20; border-radius:10px; padding:1rem;">
+      <div style="font-size:1.4rem; margin-bottom:0.4rem;">◈</div>
+      <div style="color:#d4c44a; font-weight:700; font-size:0.9rem;">CAPACITY ESTIMATE</div>
+      <div style="color:#ccc; font-size:0.78rem; margin-top:0.3rem;">MWp &amp; annual MWh · Density by system type</div>
+    </div>
+
+    <div style="background:linear-gradient(135deg,#2a1a1a,#1e0f0f); border:1px solid #6a2a2a; border-radius:10px; padding:1rem;">
+      <div style="font-size:1.4rem; margin-bottom:0.4rem;">◉</div>
+      <div style="color:#d47a4a; font-weight:700; font-size:0.9rem;">PDF REPORT</div>
+      <div style="color:#ccc; font-size:0.78rem; margin-top:0.3rem;">One-click download · Professional format · Client-ready</div>
+    </div>
+
+  </div>
+  <p style="color:#555; font-size:0.72rem; margin-top:1.2rem;">
+    Data: PVGIS (JRC) · OpenTopoData · OpenStreetMap &nbsp;|&nbsp; SiteIQ by PVMath — Module 1 of 5 · pvmath.com
+  </p>
+</div>
+""", unsafe_allow_html=True)
