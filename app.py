@@ -3,6 +3,9 @@ import requests
 import pandas as pd
 import math
 import io
+import re
+import zipfile
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -53,6 +56,109 @@ def geocode_address(address):
     except Exception:
         pass
     return None, None, None
+
+
+def parse_google_maps_url(url):
+    """Extract lat/lon from a Google Maps URL."""
+    patterns = [
+        r'@(-?\d+\.?\d+),(-?\d+\.?\d+)',
+        r'q=(-?\d+\.?\d+),(-?\d+\.?\d+)',
+        r'll=(-?\d+\.?\d+),(-?\d+\.?\d+)',
+        r'place/[^/]+/@(-?\d+\.?\d+),(-?\d+\.?\d+)',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return float(match.group(1)), float(match.group(2))
+    return None, None
+
+
+def polygon_area_ha(coords):
+    """Shoelace formula — returns area in hectares given list of (lat, lon)."""
+    if len(coords) < 3:
+        return 0.0
+    # Convert to approximate metres using mean lat
+    mean_lat = sum(c[0] for c in coords) / len(coords)
+    lat_m  = 111320.0
+    lon_m  = 111320.0 * math.cos(math.radians(mean_lat))
+    pts = [(c[1] * lon_m, c[0] * lat_m) for c in coords]
+    n = len(pts)
+    area = abs(sum(pts[i][0] * pts[(i+1) % n][1] -
+                   pts[(i+1) % n][0] * pts[i][1] for i in range(n))) / 2.0
+    return round(area / 10000, 2)  # m² → ha
+
+
+def parse_kml_bytes(data: bytes):
+    """Parse KML bytes → (center_lat, center_lon, area_ha)."""
+    try:
+        root = ET.fromstring(data)
+        ns = {'k': 'http://www.opengis.net/kml/2.2'}
+        # Try with namespace first, then without
+        coords_el = root.find('.//{http://www.opengis.net/kml/2.2}coordinates')
+        if coords_el is None:
+            coords_el = root.find('.//coordinates')
+        if coords_el is None:
+            return None, None, None
+        coords = []
+        for token in coords_el.text.strip().split():
+            parts = token.split(',')
+            if len(parts) >= 2:
+                coords.append((float(parts[1]), float(parts[0])))  # (lat, lon)
+        if not coords:
+            return None, None, None
+        clat = sum(c[0] for c in coords) / len(coords)
+        clon = sum(c[1] for c in coords) / len(coords)
+        area = polygon_area_ha(coords)
+        return clat, clon, area
+    except Exception:
+        return None, None, None
+
+
+def parse_kmz_bytes(data: bytes):
+    """Unzip KMZ and parse the inner KML."""
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as z:
+            kml_name = next((n for n in z.namelist() if n.endswith('.kml')), None)
+            if kml_name:
+                return parse_kml_bytes(z.read(kml_name))
+    except Exception:
+        pass
+    return None, None, None
+
+
+def get_flood_risk(lat, lon, elevation):
+    """Estimate flood risk using elevation + country-specific portal links."""
+    # Country detection
+    in_de = 47.3 <= lat <= 55.1 and  5.9 <= lon <= 15.1
+    in_at = 46.4 <= lat <= 49.0 and  9.5 <= lon <= 17.2
+    in_ch = 45.8 <= lat <= 47.8 and  5.9 <= lon <= 10.5
+
+    if in_de:
+        portal = "https://www.hochwasserportal.de"
+        portal_name = "Hochwasserportal Deutschland"
+    elif in_at:
+        portal = "https://www.hora.gv.at"
+        portal_name = "HORA — Hochwasserrisikozonierung Austria"
+    elif in_ch:
+        portal = "https://map.geo.admin.ch/?layers=ch.bafu.hydrologische-daten_pegel"
+        portal_name = "Geo Admin — Schweiz Hochwasser"
+    else:
+        portal = "https://www.globalfloodmonitor.org"
+        portal_name = "Global Flood Monitor"
+
+    # Elevation-based preliminary risk
+    if elevation is None:
+        return "⚠️ Unknown", "Elevation data unavailable — manual check required", portal, portal_name
+    elif elevation < 10:
+        risk, detail = "🔴 High Risk", f"Elevation {elevation}m — Very low-lying terrain, high flood exposure likely"
+    elif elevation < 50:
+        risk, detail = "🟠 Moderate Risk", f"Elevation {elevation}m — Low terrain, check official flood maps"
+    elif elevation < 200:
+        risk, detail = "🟡 Low-Moderate Risk", f"Elevation {elevation}m — Moderate terrain, verify local watercourse proximity"
+    else:
+        risk, detail = "🟢 Low Risk", f"Elevation {elevation}m — Elevated terrain, flood risk likely low"
+
+    return risk, detail, portal, portal_name
 
 
 def get_solar_data(lat, lon):
@@ -300,19 +406,54 @@ left, right = st.columns([1, 2])
 
 with left:
     st.subheader("📍 Site Input")
-    method = st.radio("Input method", ["Address / Location Name", "Coordinates (Lat / Lon)"])
+    method = st.radio("Input method", [
+        "Address / Location Name",
+        "Coordinates (Lat / Lon)",
+        "Google Maps Link",
+        "Upload KML / KMZ File"
+    ])
+
+    address = None
+    lat = lon = None
+    kml_area = None
 
     if method == "Address / Location Name":
-        address  = st.text_input("Address or location", placeholder="e.g. Landshut, Bavaria, Germany")
-        lat = lon = None
-    else:
-        address = None
+        address = st.text_input("Address or location", placeholder="e.g. Landshut, Bavaria, Germany")
+
+    elif method == "Coordinates (Lat / Lon)":
         lat = st.number_input("Latitude",  value=48.5665, format="%.5f")
         lon = st.number_input("Longitude", value=12.1521, format="%.5f")
 
+    elif method == "Google Maps Link":
+        maps_url = st.text_input("Paste Google Maps link", placeholder="https://www.google.com/maps/@48.1351,11.5820,15z")
+        if maps_url:
+            lat, lon = parse_google_maps_url(maps_url)
+            if lat and lon:
+                st.success(f"📌 Extracted: {lat:.5f}°N, {lon:.5f}°E")
+            else:
+                st.warning("Could not extract coordinates. Try right-clicking a point in Google Maps → copy coordinates.")
+
+    elif method == "Upload KML / KMZ File":
+        uploaded = st.file_uploader("Upload site boundary file", type=["kml", "kmz"])
+        if uploaded:
+            data = uploaded.read()
+            if uploaded.name.endswith(".kmz"):
+                lat, lon, kml_area = parse_kmz_bytes(data)
+            else:
+                lat, lon, kml_area = parse_kml_bytes(data)
+            if lat and lon:
+                st.success(f"📌 Centroid: {lat:.5f}°N, {lon:.5f}°E  |  Area: {kml_area} ha")
+            else:
+                st.error("Could not read coordinates from file. Ensure it contains polygon geometry.")
+
     site_name = st.text_input("Site name / reference", placeholder="e.g. Site-Bavaria-2024-01")
-    area_ha   = st.number_input("Site area (hectares)", min_value=0.1, value=10.0, step=0.5)
-    go        = st.button("🔍 Run Site Screening", type="primary", use_container_width=True)
+
+    if kml_area:
+        area_ha = st.number_input("Site area (hectares)", min_value=0.1, value=float(kml_area), step=0.5)
+    else:
+        area_ha = st.number_input("Site area (hectares)", min_value=0.1, value=10.0, step=0.5)
+
+    go = st.button("🔍 Run Site Screening", type="primary", use_container_width=True)
 
 with right:
     if go:
@@ -372,8 +513,15 @@ with right:
             (st.success if "✅" in s_lbl else st.warning if "⚠️" in s_lbl else st.error)(s_detail)
 
             st.markdown("**🌊 Flood Risk**")
-            st.warning("Manual check required → [Hochwasserportal](https://www.hochwasserportal.de/)  \n"
-                       "_Automated flood-risk API coming in Module 2_")
+            flood_risk, flood_detail, flood_portal, flood_portal_name = get_flood_risk(
+                lat, lon, terrain.get("center_elev") if terrain["success"] else None
+            )
+            if "🔴" in flood_risk:
+                st.error(f"**{flood_risk}**  \n{flood_detail}  \n[Check {flood_portal_name} ↗]({flood_portal})")
+            elif "🟠" in flood_risk or "🟡" in flood_risk:
+                st.warning(f"**{flood_risk}**  \n{flood_detail}  \n[Check {flood_portal_name} ↗]({flood_portal})")
+            else:
+                st.success(f"**{flood_risk}**  \n{flood_detail}  \n[Verify at {flood_portal_name} ↗]({flood_portal})")
 
         # ── Monthly chart ──
         if solar["success"] and solar.get("monthly"):
