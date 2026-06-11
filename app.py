@@ -49,7 +49,7 @@ def geocode_address(address):
         r = requests.get(
             "https://nominatim.openstreetmap.org/search",
             params={"q": address, "format": "json", "limit": 1},
-            headers={"User-Agent": "SolarScout/1.0"},
+            headers={"User-Agent": "SiteIQ/1.0 (pvmath.com; contact@pvmath.com)"},
             timeout=10
         )
         data = r.json()
@@ -906,9 +906,10 @@ with right:
         Enter a site location on the left and click **Run Site Screening** to get:
 
         - ☀️ **Solar resource** — annual GHI, monthly breakdown, optimal tilt
-        - ⛰️ **Terrain & slope** — max slope %, elevation (EU-DEM 25 m data)
-        - 🇩🇪 **EEG eligibility** — Agri-PV bonus applicability check
-        - ⚡ **Capacity estimate** — MWp & annual MWh at Agri-PV density
+        - ⛰️ **Terrain & slope** — max slope %, elevation analysis
+        - 📋 **Regulatory check** — local incentive scheme & authority contacts
+        - 🌊 **Flood risk** — elevation-based assessment with local portal links
+        - ⚡ **Capacity estimate** — MWp & annual MWh based on system type
         - 📄 **PDF report** — one-click download, ready for client meetings
 
         ---
