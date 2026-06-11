@@ -764,7 +764,7 @@ with right:
         st.download_button(
             label="⬇️  Download PDF Report",
             data=pdf,
-            file_name=f"SiteIQ_{(site_name or 'report').replace(' ','_')}_{datetime.now().strftime('%Y%m%d')}.pdf",
+            file_name=f"SiteIQ_{(project_name or 'report').replace(' ','_')}_{datetime.now().strftime('%Y%m%d')}.pdf",
             mime="application/pdf",
             type="primary",
             use_container_width=True
