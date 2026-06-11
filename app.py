@@ -199,7 +199,8 @@ def get_solar_data(lat, lon):
 
 
 def get_terrain_data(lat, lon, radius_km=0.5):
-    """Sample 5 elevation points to estimate terrain slope."""
+    """Sample 5 elevation points to estimate terrain slope.
+    Uses EU-DEM 25m for Europe, SRTM 30m globally elsewhere."""
     delta = radius_km / 111.0
     points = [
         (lat,         lon),
@@ -209,9 +210,12 @@ def get_terrain_data(lat, lon, radius_km=0.5):
         (lat,         lon - delta),
     ]
     locations = "|".join(f"{p[0]},{p[1]}" for p in points)
+    # EU-DEM covers Europe only; use SRTM30m for everything else
+    in_europe = 34 <= lat <= 72 and -25 <= lon <= 45
+    dataset   = "eudem25m" if in_europe else "srtm30m"
     try:
         r = requests.get(
-            "https://api.opentopodata.org/v1/eudem25m",
+            f"https://api.opentopodata.org/v1/{dataset}",
             params={"locations": locations},
             timeout=15
         )
@@ -264,28 +268,74 @@ def assess_solar(ghi):
         return "❌ Poor",      "red",    f"{ghi} kWh/m²/yr — Low resource; financial risk"
 
 
-def assess_eeg(lat, lon, land_use="Standard"):
-    in_de = 47.3 <= lat <= 55.1 and  5.9 <= lon <= 15.1
-    in_at = 46.4 <= lat <= 49.0 and  9.5 <= lon <= 17.2
-    in_ch = 45.8 <= lat <= 47.8 and  5.9 <= lon <= 10.5
-    if land_use == "Agri-PV":
-        if in_de:
-            return "🇩🇪 Germany",     "✅ EEG 2023 Agri-PV bonus likely applicable", "Verify agricultural land class (§37 EEG 2023) + DIN SPEC 91434"
-        elif in_at:
-            return "🇦🇹 Austria",     "⚠️ Check OeMAG Agri-PV provisions",          "Austrian Renewable Energy Expansion Act (EAG)"
-        elif in_ch:
-            return "🇨🇭 Switzerland", "⚠️ Check KEV/Pronovo Agri-PV rules",          "Swiss Energy Act + cantonal agricultural provisions"
-        else:
-            return "🌍 Outside DACH", "ℹ️ Check local Agri-PV regulations",          "No EEG — verify local dual-use land rules"
-    else:  # Standard
-        if in_de:
-            return "🇩🇪 Germany",     "✅ EEG 2023 standard Freifläche applicable",  "Eligible for EEG feed-in tariff (§38 EEG 2023)"
-        elif in_at:
-            return "🇦🇹 Austria",     "⚠️ Check OeMAG Freifläche provisions",        "Austrian Renewable Energy Expansion Act (EAG)"
-        elif in_ch:
-            return "🇨🇭 Switzerland", "⚠️ Check KEV/Pronovo Freifläche rules",       "Swiss Energy Act (EnG) provisions apply"
-        else:
-            return "🌍 Outside DACH", "ℹ️ Check local feed-in regulations",           "No EEG — verify local PV incentive scheme"
+def assess_eeg(lat, lon, land_use="Standard", project_country=""):
+    """Country-aware regulatory check. Uses project_country text first, lat/lon as fallback."""
+    c = project_country.lower().strip()
+    agri = land_use == "Agri-PV"
+
+    # Detect country — text input takes priority over lat/lon bounding box
+    in_de = any(x in c for x in ["germany","deutschland","german"]) or \
+            (not c and 47.3 <= lat <= 55.1 and 5.9 <= lon <= 15.1)
+    in_at = any(x in c for x in ["austria","österreich","oesterreich"]) or \
+            (not c and 46.4 <= lat <= 49.0 and 9.5 <= lon <= 17.2)
+    in_ch = any(x in c for x in ["switzerland","schweiz","suisse","svizzera"]) or \
+            (not c and 45.8 <= lat <= 47.8 and 5.9 <= lon <= 10.5)
+    in_it = any(x in c for x in ["italy","italia","italie"])
+    in_es = any(x in c for x in ["spain","españa","espana","spanish"])
+    in_fr = any(x in c for x in ["france","frankreich","frankrijk","french"])
+    in_pl = any(x in c for x in ["poland","polska"])
+    in_nl = any(x in c for x in ["netherlands","nederland","holland"])
+    in_us = any(x in c for x in ["usa","united states","america","us"])
+    in_in = any(x in c for x in ["india","bharat","indian"])
+    in_au = any(x in c for x in ["australia","australian"])
+    in_uk = any(x in c for x in ["uk","united kingdom","england","britain"])
+    in_jp = any(x in c for x in ["japan","japanese"])
+    in_br = any(x in c for x in ["brazil","brasil","brazilian"])
+    in_za = any(x in c for x in ["south africa","southafrica"])
+
+    if in_de:
+        if agri:
+            return "Germany", "EEG 2023 Agri-PV bonus eligible", "Register at Bundesnetzagentur — DIN SPEC 91434 compliance required"
+        return "Germany", "EEG 2023 standard Freifläche tariff", "Register at Bundesnetzagentur (Marktstammdatenregister)"
+    elif in_at:
+        if agri:
+            return "Austria", "Agri-PV eligible under EAG", "OeMAG feed-in tariff — contact Energie-Control Austria"
+        return "Austria", "EAG feed-in tariff applicable", "OeMAG registration — Energie-Control Austria"
+    elif in_ch:
+        return "Switzerland", "KEV / Einmalvergütung (EVS) applicable", "Register via Pronovo — Swiss Energy Act (EnG)"
+    elif in_it:
+        if agri:
+            return "Italy", "Agri-PV eligible under FER Decreto", "GSE registration — dual-use agricultural permit required at Comune"
+        return "Italy", "FER Decreto / incentive applicable", "GSE (Gestore dei Servizi Energetici) registration required"
+    elif in_es:
+        return "Spain", "RESA auction / OMIE market access", "No fixed FIT — competitive auction via CNMC / REE"
+    elif in_fr:
+        if agri:
+            return "France", "Agri-PV CRE auction applicable", "CRE appel d'offres — dual-use zone agricole permit required"
+        return "France", "CRE auction applicable (> 500 kWp)", "CRE (Commission de Regulation de l'Energie) registration"
+    elif in_pl:
+        return "Poland", "RES auction system (URE)", "Competitive bidding — Urzad Regulacji Energetyki (URE)"
+    elif in_nl:
+        return "Netherlands", "SDE++ subsidy applicable", "RVO registration — grid congestion check critical (Liander/Stedin/Enexis)"
+    elif in_us:
+        return "United States", "ITC 30% + IRA bonus credits applicable", "County zoning permit + utility interconnection agreement required"
+    elif in_in:
+        if agri:
+            return "India", "PM-KUSUM / MNRE Agri-PV scheme applicable", "SECI or state DISCOM tender — contact MNRE for Agri-PV guidelines"
+        return "India", "MNRE / SECI auction or state DISCOM PPA", "CERC framework — contact state DISCOM for grid connectivity"
+    elif in_au:
+        return "Australia", "LGC (Large-scale Generation Certificates) — RET scheme", "AEMO registration — check state-level planning rules"
+    elif in_uk:
+        return "United Kingdom", "CfD (Contracts for Difference) auction applicable", "Ofgem / National Grid ESO — grid connection offer required"
+    elif in_jp:
+        return "Japan", "FIT / FIP (Feed-in Premium) scheme applicable", "METI registration — contact local power utility (TEPCO, Kansai etc.)"
+    elif in_br:
+        return "Brazil", "ANEEL auction / net metering (GD) applicable", "ANEEL registration — contact local DISCOM (CEMIG, COPEL, CPFL etc.)"
+    elif in_za:
+        return "South Africa", "REIPPPP auction or wheeling agreement", "NERSA registration — contact Eskom or municipality DSO"
+    else:
+        name = project_country.title() if project_country else "Location"
+        return name, "Check local renewable energy incentive scheme", "Contact national energy regulatory authority for grid connection"
 
 
 def site_capacity(area_ha, land_use="Standard", mount_type="Fixed Tilt"):
@@ -748,7 +798,7 @@ with right:
         # ── Assessments ──
         s_lbl, _, s_detail = assess_slope(terrain["max_slope_pct"] if terrain["success"] else 0, _mount_type)
         g_lbl, _, g_detail = assess_solar(solar["annual_ghi"]       if solar["success"]   else 0)
-        country, eeg_status, eeg_note = assess_eeg(lat, lon, _land_use)
+        country, eeg_status, eeg_note = assess_eeg(lat, lon, _land_use, project_country_input)
         cap_mw, cap_mwh = site_capacity(area_ha, _land_use, _mount_type)
         verdict, verdict_txt = overall_verdict(s_lbl, g_lbl, _land_use, _mount_type)
 
