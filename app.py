@@ -524,6 +524,36 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
     story.append(mt)
     story.append(Spacer(1, 0.5*cm))
 
+    # Rating legend
+    story.append(Paragraph("RATING SCALE",
+        ParagraphStyle("H2", parent=styles["Heading2"], fontSize=12, textColor=GREEN)))
+    legend_rows = [
+        ["Rating", "Meaning", "Action"],
+        ["✅ Excellent / Good",    "Parameter is within ideal range for this project type",    "Proceed — no major concerns"],
+        ["⚠️ Acceptable",         "Parameter is within feasible range but has constraints",    "Proceed with attention to this factor"],
+        ["⚠️ Challenging",        "Parameter is near the limit — significant effort required", "Detailed study mandatory before commitment"],
+        ["❌ Critical",           "Parameter exceeds viable threshold for this system type",   "High risk — reconsider site or system type"],
+        ["🟢 Low flood risk",     "Elevated terrain — flood exposure likely low",              "Verify at local flood map portal"],
+        ["🟡 Low-Moderate risk",  "Moderate terrain — watercourse proximity check needed",     "Cross-check with official flood maps"],
+        ["🟠 Moderate risk",      "Low-lying terrain — flood exposure possible",               "Manual flood risk check required"],
+        ["🔴 High flood risk",    "Very low elevation — high flood exposure likely",           "Do not proceed without official flood zone study"],
+    ]
+    lt = Table(legend_rows, colWidths=[4.5*cm, 8*cm, 4.5*cm])
+    lt.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0),(-1,0),  GREEN),
+        ("TEXTCOLOR",     (0,0),(-1,0),  colors.white),
+        ("FONTNAME",      (0,0),(-1,0),  "Helvetica-Bold"),
+        ("FONTSIZE",      (0,0),(-1,-1), 8),
+        ("GRID",          (0,0),(-1,-1), 0.5, colors.lightgrey),
+        ("ROWBACKGROUNDS",(0,1),(-1,-1), [colors.white, LGRAY]),
+        ("TOPPADDING",    (0,0),(-1,-1), 5),
+        ("BOTTOMPADDING", (0,0),(-1,-1), 5),
+        ("LEFTPADDING",   (0,0),(-1,-1), 5),
+        ("VALIGN",        (0,0),(-1,-1), "TOP"),
+    ]))
+    story.append(lt)
+    story.append(Spacer(1, 0.5*cm))
+
     # Next steps
     story.append(Paragraph("RECOMMENDED NEXT STEPS",
         ParagraphStyle("H2", parent=styles["Heading2"], fontSize=12, textColor=GREEN)))
@@ -741,6 +771,22 @@ with right:
                 st.warning(f"**{flood_risk}**  \n{flood_detail}  \n[Check {flood_portal_name} ↗]({flood_portal})")
             else:
                 st.success(f"**{flood_risk}**  \n{flood_detail}  \n[Verify at {flood_portal_name} ↗]({flood_portal})")
+
+        # ── Rating legend ──
+        st.divider()
+        with st.expander("📖 Rating Scale — what do the colours mean?"):
+            st.markdown("""
+| Rating | Meaning | Action |
+|--------|---------|--------|
+| ✅ Excellent / Good | Parameter is within ideal range | Proceed — no major concerns |
+| ⚠️ Acceptable | Feasible but has constraints | Proceed with attention to this factor |
+| ⚠️ Challenging | Near the limit — significant effort needed | Detailed study mandatory |
+| ❌ Critical | Exceeds viable threshold | High risk — reconsider site or system type |
+| 🟢 Low flood risk | Elevated terrain, flood exposure likely low | Verify at local portal |
+| 🟡 Low-Moderate risk | Moderate terrain, check watercourse proximity | Cross-check official flood maps |
+| 🟠 Moderate risk | Low-lying terrain, flood exposure possible | Manual flood check required |
+| 🔴 High flood risk | Very low elevation, high flood exposure | Official flood zone study required |
+""")
 
         # ── Monthly chart ──
         if solar["success"] and solar.get("monthly"):
