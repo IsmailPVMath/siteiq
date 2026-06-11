@@ -7,6 +7,8 @@ import re
 import zipfile
 import xml.etree.ElementTree as ET
 from datetime import datetime
+import folium
+from streamlit_folium import st_folium
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -407,33 +409,55 @@ left, right = st.columns([1, 2])
 with left:
     st.subheader("📍 Site Input")
     method = st.radio("Input method", [
-        "Address / Location Name",
-        "Coordinates (Lat / Lon)",
-        "Google Maps Link",
-        "Upload KML / KMZ File"
+        "🗺️ Click on Map",
+        "📐 Coordinates (Lat / Lon)",
+        "🔗 Google Maps Link",
+        "📁 Upload KML / KMZ File"
     ])
 
-    address = None
     lat = lon = None
     kml_area = None
 
-    if method == "Address / Location Name":
-        address = st.text_input("Address or location", placeholder="e.g. Landshut, Bavaria, Germany")
+    if method == "🗺️ Click on Map":
+        st.caption("Click anywhere on the map to set the site location.")
+        default_lat = st.session_state.get("map_lat", 48.5)
+        default_lon = st.session_state.get("map_lon", 10.5)
+        m = folium.Map(location=[default_lat, default_lon], zoom_start=5,
+                       tiles="OpenStreetMap")
+        # Show existing marker if already clicked
+        if "map_lat" in st.session_state:
+            folium.Marker(
+                [st.session_state["map_lat"], st.session_state["map_lon"]],
+                tooltip="Selected site",
+                icon=folium.Icon(color="green", icon="leaf")
+            ).add_to(m)
+        map_result = st_folium(m, width=None, height=320, returned_objects=["last_clicked"])
+        if map_result and map_result.get("last_clicked"):
+            st.session_state["map_lat"] = map_result["last_clicked"]["lat"]
+            st.session_state["map_lon"] = map_result["last_clicked"]["lng"]
+        if "map_lat" in st.session_state:
+            lat = st.session_state["map_lat"]
+            lon = st.session_state["map_lon"]
+            st.success(f"📌 Selected: {lat:.5f}°N, {lon:.5f}°E")
+        else:
+            st.info("👆 Click on the map to select a site location.")
 
-    elif method == "Coordinates (Lat / Lon)":
+    elif method == "📐 Coordinates (Lat / Lon)":
         lat = st.number_input("Latitude",  value=48.5665, format="%.5f")
         lon = st.number_input("Longitude", value=12.1521, format="%.5f")
 
-    elif method == "Google Maps Link":
+    elif method == "🔗 Google Maps Link":
+        st.caption("Right-click any point in Google Maps → 'Copy coordinates', or paste the page URL.")
         maps_url = st.text_input("Paste Google Maps link", placeholder="https://www.google.com/maps/@48.1351,11.5820,15z")
         if maps_url:
             lat, lon = parse_google_maps_url(maps_url)
             if lat and lon:
                 st.success(f"📌 Extracted: {lat:.5f}°N, {lon:.5f}°E")
             else:
-                st.warning("Could not extract coordinates. Try right-clicking a point in Google Maps → copy coordinates.")
+                st.warning("Could not extract coordinates.  \nTip: In Google Maps, right-click a point → the coordinates appear at the top of the menu — click them to copy, then paste here.")
 
-    elif method == "Upload KML / KMZ File":
+    elif method == "📁 Upload KML / KMZ File":
+        st.caption("Export your site boundary from Google Earth, PVcase, or any GIS tool.")
         uploaded = st.file_uploader("Upload site boundary file", type=["kml", "kmz"])
         if uploaded:
             data = uploaded.read()
@@ -457,17 +481,10 @@ with left:
 
 with right:
     if go:
-        # ── Geocode if needed ──
-        if method == "Address / Location Name":
-            if not address:
-                st.error("Please enter an address.")
-                st.stop()
-            with st.spinner("Locating address…"):
-                lat, lon, display = geocode_address(address)
-            if lat is None:
-                st.error("Could not find this location. Try coordinates instead.")
-                st.stop()
-            st.info(f"📌 {display}")
+        # ── Validate location ──
+        if lat is None or lon is None:
+            st.error("Please select a site location using one of the input methods on the left.")
+            st.stop()
 
         # ── Fetch data ──
         with st.spinner("Fetching solar resource data from EU PVGIS…"):
