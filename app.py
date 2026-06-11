@@ -905,54 +905,29 @@ with right:
         )
 
     else:
-        st.markdown("""
-        """)
-        st.markdown("""
-<div style="margin-top:0.5rem;">
-  <p style="color:#aaa; font-size:0.95rem; margin-bottom:1.2rem;">
-    Enter a site location on the left and click <strong>Run Site Screening</strong> to get:
-  </p>
-  <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
-
-    <div style="background:linear-gradient(135deg,#1a3a2a,#0f2a1e); border:1px solid #2a6040; border-radius:10px; padding:1rem;">
-      <div style="font-size:1.4rem; margin-bottom:0.4rem;">◈</div>
-      <div style="color:#4caf82; font-weight:700; font-size:0.9rem;">SOLAR RESOURCE</div>
-      <div style="color:#ccc; font-size:0.78rem; margin-top:0.3rem;">Annual GHI · Monthly irradiation breakdown · Optimal tilt angle</div>
-    </div>
-
-    <div style="background:linear-gradient(135deg,#1a2a3a,#0f1e2a); border:1px solid #2a4060; border-radius:10px; padding:1rem;">
-      <div style="font-size:1.4rem; margin-bottom:0.4rem;">◉</div>
-      <div style="color:#5b9bd5; font-weight:700; font-size:0.9rem;">TERRAIN &amp; SLOPE</div>
-      <div style="color:#ccc; font-size:0.78rem; margin-top:0.3rem;">Max slope % · Centre elevation · Fixed tilt &amp; tracker suitability</div>
-    </div>
-
-    <div style="background:linear-gradient(135deg,#2a1a3a,#1e0f2a); border:1px solid #5a3a80; border-radius:10px; padding:1rem;">
-      <div style="font-size:1.4rem; margin-bottom:0.4rem;">◈</div>
-      <div style="color:#a87fd4; font-weight:700; font-size:0.9rem;">REGULATORY CHECK</div>
-      <div style="color:#ccc; font-size:0.78rem; margin-top:0.3rem;">Country-specific incentives · Grid authority · Permitting contacts</div>
-    </div>
-
-    <div style="background:linear-gradient(135deg,#1a2a3a,#0a1828); border:1px solid #1a4a6a; border-radius:10px; padding:1rem;">
-      <div style="font-size:1.4rem; margin-bottom:0.4rem;">◉</div>
-      <div style="color:#4ab0d4; font-weight:700; font-size:0.9rem;">FLOOD RISK</div>
-      <div style="color:#ccc; font-size:0.78rem; margin-top:0.3rem;">Elevation-based assessment · Local flood portal links</div>
-    </div>
-
-    <div style="background:linear-gradient(135deg,#2a2a1a,#1e1e0f); border:1px solid #5a5a20; border-radius:10px; padding:1rem;">
-      <div style="font-size:1.4rem; margin-bottom:0.4rem;">◈</div>
-      <div style="color:#d4c44a; font-weight:700; font-size:0.9rem;">CAPACITY ESTIMATE</div>
-      <div style="color:#ccc; font-size:0.78rem; margin-top:0.3rem;">MWp &amp; annual MWh · Density by system type</div>
-    </div>
-
-    <div style="background:linear-gradient(135deg,#2a1a1a,#1e0f0f); border:1px solid #6a2a2a; border-radius:10px; padding:1rem;">
-      <div style="font-size:1.4rem; margin-bottom:0.4rem;">◉</div>
-      <div style="color:#d47a4a; font-weight:700; font-size:0.9rem;">PDF REPORT</div>
-      <div style="color:#ccc; font-size:0.78rem; margin-top:0.3rem;">One-click download · Professional format · Client-ready</div>
-    </div>
-
-  </div>
-  <p style="color:#555; font-size:0.72rem; margin-top:1.2rem;">
-    Data: PVGIS (JRC) · OpenTopoData · OpenStreetMap &nbsp;|&nbsp; SiteIQ by PVMath — Module 1 of 5 · pvmath.com
-  </p>
-</div>
-""", unsafe_allow_html=True)
+        st.caption("Enter a site location on the left and click **Run Site Screening** to get:")
+        wc1, wc2 = st.columns(2)
+        _cards = [
+            (wc1, "#1a3a2a", "#0f2a1e", "#2a6040", "#4caf82",
+             "SOLAR RESOURCE", "Annual GHI · Monthly irradiation · Optimal tilt angle"),
+            (wc2, "#1a2a3a", "#0f1e2a", "#2a4060", "#5b9bd5",
+             "TERRAIN & SLOPE", "Max slope % · Centre elevation · Tracker suitability"),
+            (wc1, "#2a1a3a", "#1e0f2a", "#5a3a80", "#a87fd4",
+             "REGULATORY CHECK", "Country-specific incentives · Grid authority · Permitting contacts"),
+            (wc2, "#1a2a3a", "#0a1828", "#1a4a6a", "#4ab0d4",
+             "FLOOD RISK", "Elevation-based assessment · Local flood portal links"),
+            (wc1, "#2a2a1a", "#1e1e0f", "#5a5a20", "#d4c44a",
+             "CAPACITY ESTIMATE", "MWp & annual MWh · Density by system type"),
+            (wc2, "#2a1a1a", "#1e0f0f", "#6a2a2a", "#d47a4a",
+             "PDF REPORT", "One-click download · Professional format · Client-ready"),
+        ]
+        for _col, _bg1, _bg2, _bd, _tc, _title, _desc in _cards:
+            _col.markdown(
+                f'<div style="background:linear-gradient(135deg,{_bg1},{_bg2});'
+                f'border:1px solid {_bd};border-radius:10px;padding:1rem;margin-bottom:0.75rem;">'
+                f'<div style="color:{_tc};font-weight:700;font-size:0.9rem;">{_title}</div>'
+                f'<div style="color:#ccc;font-size:0.78rem;margin-top:0.3rem;">{_desc}</div>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+        st.caption("Data: PVGIS (JRC) · OpenTopoData · OpenStreetMap  |  SiteIQ by PVMath — Module 1 of 5 · pvmath.com")
