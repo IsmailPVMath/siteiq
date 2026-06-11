@@ -24,16 +24,54 @@ st.set_page_config(
 
 # ─── Styling ──────────────────────────────────────────────────────────────────
 st.markdown("""
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
     .main-header { font-size: 2.2rem; font-weight: 700; color: #1a5c2e; }
     .sub-header  { font-size: 1rem; color: #666; margin-bottom: 1.5rem; }
     footer { visibility: hidden; }
+    .metric-card {
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 10px;
+        padding: 1rem 1.2rem;
+        margin-bottom: 0.5rem;
+    }
+    .metric-card .mc-icon {
+        font-size: 1.1rem;
+        margin-bottom: 0.35rem;
+    }
+    .metric-card .mc-label {
+        font-size: 0.75rem;
+        color: #888;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+    .metric-card .mc-value {
+        font-size: 1.7rem;
+        font-weight: 700;
+        line-height: 1.1;
+        margin-top: 0.15rem;
+    }
+    .section-hdr {
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown("""
 <div style="display:flex; align-items:center; gap:0.6rem;">
-  <span style="font-size:2.2rem;">🌱</span>
+  <span style="width:36px;height:36px;background:linear-gradient(135deg,#1a5c2e,#2ecc71);border-radius:8px;
+               display:inline-flex;align-items:center;justify-content:center;">
+    <i class="fa-solid fa-solar-panel" style="color:#fff;font-size:1rem;"></i>
+  </span>
   <span class="main-header" style="margin:0;">SiteIQ</span>
   <span style="font-size:0.85rem; color:#888; margin-left:0.5rem; align-self:flex-end; padding-bottom:0.4rem;">by PVMath</span>
 </div>
@@ -829,27 +867,38 @@ with right:
 
         # ── Top metrics ──
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("☀️ Annual GHI",    f"{solar.get('annual_ghi','—')} kWh/m²")
-        c2.metric("⛰️ Max Slope",     f"{terrain.get('max_slope_pct','—')}%")
-        c3.metric("⚡ Est. Capacity",  f"{cap_mw} MWp")
-        c4.metric("📐 Optimal Tilt",  f"{solar.get('optimal_tilt','—')}°")
+        _metrics = [
+            (c1, "fa-sun",            "#f5a623", "Annual GHI",   f"{solar.get('annual_ghi','—')} kWh/m²"),
+            (c2, "fa-mountain",       "#5b9bd5", "Max Slope",    f"{terrain.get('max_slope_pct','—')}%"),
+            (c3, "fa-bolt",           "#2ecc71", "Est. Capacity",f"{cap_mw} MWp"),
+            (c4, "fa-ruler-combined", "#a87fd4", "Optimal Tilt", f"{solar.get('optimal_tilt','—')}°"),
+        ]
+        for _mc, _icon, _ic, _lbl, _val in _metrics:
+            _mc.markdown(
+                f'<div class="metric-card">'
+                f'<div class="mc-icon"><i class="fa-solid {_icon}" style="color:{_ic};"></i></div>'
+                f'<div class="mc-label">{_lbl}</div>'
+                f'<div class="mc-value">{_val}</div>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
 
         st.divider()
 
         # ── Detail columns ──
         d1, d2 = st.columns(2)
         with d1:
-            st.markdown("**☀️ Solar Resource**")
+            st.markdown('<div class="section-hdr"><i class="fa-solid fa-sun" style="color:#f5a623;"></i> Solar Resource</div>', unsafe_allow_html=True)
             (st.success if "✅" in g_lbl else st.warning if "⚠️" in g_lbl else st.error)(g_detail)
 
-            st.markdown("**📋 Regulatory**")
+            st.markdown('<div class="section-hdr" style="margin-top:0.8rem;"><i class="fa-solid fa-scale-balanced" style="color:#a87fd4;"></i> Regulatory</div>', unsafe_allow_html=True)
             st.info(f"{country}  \n{eeg_status}  \n_{eeg_note}_")
 
         with d2:
-            st.markdown("**⛰️ Terrain & Slope**")
+            st.markdown('<div class="section-hdr"><i class="fa-solid fa-mountain" style="color:#5b9bd5;"></i> Terrain & Slope</div>', unsafe_allow_html=True)
             (st.success if "✅" in s_lbl else st.warning if "⚠️" in s_lbl else st.error)(s_detail)
 
-            st.markdown("**🌊 Flood Risk**")
+            st.markdown('<div class="section-hdr" style="margin-top:0.8rem;"><i class="fa-solid fa-water" style="color:#4ab0d4;"></i> Flood Risk</div>', unsafe_allow_html=True)
             flood_risk, flood_detail, flood_portal, flood_portal_name = get_flood_risk(
                 lat, lon, terrain.get("center_elev") if terrain["success"] else None
             )
@@ -862,7 +911,7 @@ with right:
 
         # ── Rating legend ──
         st.divider()
-        with st.expander("📖 Rating Scale — what do the colours mean?"):
+        with st.expander("Rating Scale — what do the colours mean?"):
             st.markdown("""
 | Rating | Meaning | Action |
 |--------|---------|--------|
@@ -879,7 +928,7 @@ with right:
         # ── Monthly chart ──
         if solar["success"] and solar.get("monthly"):
             st.divider()
-            st.markdown("**📊 Monthly Solar Irradiation (kWh/m²)**")
+            st.markdown('<div class="section-hdr"><i class="fa-solid fa-chart-bar" style="color:#f5a623;"></i> Monthly Solar Irradiation (kWh/m²)</div>', unsafe_allow_html=True)
             st.bar_chart(pd.DataFrame(solar["monthly"]).set_index("Month"))
 
         # ── PDF export ──
