@@ -358,23 +358,26 @@ def get_next_steps(project_country, land_use="Standard"):
             "Planning permission: Comune / Regione — check Piano Regolatore Generale (PRG)",
             "Incentives: GSE (Gestore dei Servizi Energetici) — Conto Energia / FER Decreto",
             "Environmental impact: VIA procedure required for projects > 1 MWp",
-            "Land use: verify agricultural zoning (zona agricola E) at Comune level",
+            "Land use: verify zoning classification at local Comune / Regione" if not agri else
+            "Land use: verify zona agricola E classification — Agri-PV requires dual-use permit at Comune",
         ]
     elif any(x in c for x in ["spain", "españa", "espana"]):
         steps = [
             "Grid connection: contact REE or local DSO (Endesa, Iberdrola, Naturgy)",
-            "Planning: Ayuntamiento licence + Comunidad Autónoma environmental permit",
-            "Incentives: RETA / OMIE market access — no fixed FIT, competitive auctions (RESA)",
-            "Environmental: EIA (Evaluación de Impacto Ambiental) for projects > 50 MWp",
-            "Land use: verify suelo rústico / no urbanizable classification",
+            "Planning: Ayuntamiento licence + Comunidad Autonoma environmental permit",
+            "Incentives: OMIE market access — no fixed FIT, competitive auctions (RESA scheme)",
+            "Environmental: EIA (Evaluacion de Impacto Ambiental) for projects > 50 MWp",
+            "Land use: verify suelo rustico / no urbanizable classification at Ayuntamiento" if not agri else
+            "Land use: Agri-PV — verify suelo agricola classification + dual-use planning consent",
         ]
     elif any(x in c for x in ["france", "frankreich", "frankrijk"]):
         steps = [
             "Grid connection: contact Enedis or local DSO — TURPE tariff applies",
             "Planning: Permis de construire from Mairie — check PLU (Plan Local d'Urbanisme)",
             "Incentives: CRE auction (Appel d'Offres) for projects > 500 kWp",
-            "Environmental: Étude d'impact required for large-scale projects",
-            "Land use: verify zone agricole (A) or zone naturelle (N) in PLU",
+            "Environmental: Etude d'impact required for large-scale projects",
+            "Land use: verify zoning classification in PLU with local Mairie" if not agri else
+            "Land use: Agri-PV — verify zone agricole (A) in PLU — dual-use decree applies",
         ]
     elif any(x in c for x in ["poland", "polska"]):
         steps = [
@@ -382,7 +385,8 @@ def get_next_steps(project_country, land_use="Standard"):
             "Planning: local spatial development plan (MPZP) — check with Gmina",
             "Incentives: RES auctions (URE) — competitive bidding system",
             "Environmental: EIA required for projects > 1 MWp",
-            "Land use: verify agricultural land class (Class I–III requires special permit)",
+            "Land use: verify zoning classification with local Gmina" if not agri else
+            "Land use: agricultural land class I-III requires special permit for Agri-PV in Poland",
         ]
     elif any(x in c for x in ["netherlands", "nederland", "holland"]):
         steps = [
@@ -390,7 +394,8 @@ def get_next_steps(project_country, land_use="Standard"):
             "Planning: Omgevingsvergunning from Gemeente — check bestemmingsplan",
             "Incentives: SDE++ subsidy (Stimulering Duurzame Energieproductie) via RVO",
             "Environmental: MER (milieueffectrapportage) for large projects",
-            "Land use: verify agricultural bestemming — provincial approval may be needed",
+            "Land use: verify bestemming in bestemmingsplan — provincial approval may be needed" if not agri else
+            "Land use: Agri-PV — verify agrarisch bestemming — provincial approval required",
         ]
     elif any(x in c for x in ["usa", "united states", "america"]):
         steps = [
@@ -398,7 +403,8 @@ def get_next_steps(project_country, land_use="Standard"):
             "Planning: county zoning permit + conditional use permit (CUP)",
             "Incentives: ITC (Investment Tax Credit) 30% + IRA bonus credits",
             "Environmental: NEPA review if federal land — state-level EIA otherwise",
-            "Land use: verify agricultural zoning — check with county assessor",
+            "Land use: verify zoning classification with county assessor" if not agri else
+            "Land use: Agri-PV — verify agricultural zoning and dual-use approval with county",
         ]
     elif any(x in c for x in ["india", "bharat"]):
         steps = [
@@ -414,7 +420,8 @@ def get_next_steps(project_country, land_use="Standard"):
             "Planning: development application (DA) to local council",
             "Incentives: LGC (Large-scale Generation Certificates) under RET scheme",
             "Environmental: state-level EIA / EIS process",
-            "Land use: verify zoning — rural or primary production zone check",
+            "Land use: verify zoning classification — rural or primary production zone" if not agri else
+            "Land use: Agri-PV — verify primary production zone + dual-use planning with council",
         ]
     else:
         steps = [
@@ -422,10 +429,10 @@ def get_next_steps(project_country, land_use="Standard"):
             f"Planning permission: local municipality / regional planning authority in {project_country}",
             "Environmental impact assessment: check national threshold requirements for solar",
             "Feed-in tariff / incentive scheme: contact national energy regulatory authority",
-            "Land use: verify zoning and agricultural land classification locally",
+            "Land use: verify zoning and land classification with local authority",
         ]
         if agri:
-            steps.append("Agri-PV dual-use: verify national / regional agricultural land regulations")
+            steps.append("Agri-PV dual-use: verify national / regional agricultural dual-use regulations")
 
     return [f"{i+1}. {s}" for i, s in enumerate(steps)]
 
@@ -446,7 +453,7 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
     story  = []
 
     # Header
-    story.append(Paragraph("🌱 SiteIQ by PVMath",
+    story.append(Paragraph("SiteIQ by PVMath",
         ParagraphStyle("T", parent=styles["Heading1"], fontSize=22, textColor=GREEN, spaceAfter=4)))
     story.append(Paragraph("Site Screening Report",
         ParagraphStyle("S", parent=styles["Normal"], fontSize=11, textColor=colors.grey)))
@@ -506,7 +513,7 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
         ["Optimal Tilt",       f"{solar.get('optimal_tilt','—')}°",           "—"],
         ["Max Terrain Slope",  f"{terrain.get('max_slope_pct','—')}%",        slope_lbl.split("—")[0].strip()],
         ["Elevation (centre)", f"{terrain.get('center_elev','—')} m asl",     "—"],
-        ["Est. Capacity",      f"{cap_mw} MWp",                               "~0.35 MW/ha Agri-PV density"],
+        ["Est. Capacity",      f"{cap_mw} MWp",                               f"Density basis: {0.18 if land_use=='Agri-PV' and mount_type=='Single-Axis Tracker' else 0.20 if land_use=='Agri-PV' else 0.35 if mount_type=='Single-Axis Tracker' else 0.40} MW/ha"],
         ["Est. Annual Output", f"{cap_mwh:,.0f} MWh/yr",                      "Indicative only"],
         ["EEG Status",         eeg_status,                                    eeg_note],
     ]
@@ -527,29 +534,52 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
     # Rating legend
     story.append(Paragraph("RATING SCALE",
         ParagraphStyle("H2", parent=styles["Heading2"], fontSize=12, textColor=GREEN)))
+
+    C_GREEN  = colors.HexColor("#1a5c2e")
+    C_LGREEN = colors.HexColor("#e8f5e9")
+    C_YELLOW = colors.HexColor("#f9a825")
+    C_LYELLOW= colors.HexColor("#fff9e6")
+    C_ORANGE = colors.HexColor("#e65100")
+    C_LORANG = colors.HexColor("#fff3e0")
+    C_RED    = colors.HexColor("#c62828")
+    C_LRED   = colors.HexColor("#ffebee")
+
+    # Use Paragraph for every cell so text wraps within column width
+    def lp(text, color=colors.black, bold=False, size=8):
+        fn = "Helvetica-Bold" if bold else "Helvetica"
+        return Paragraph(text, ParagraphStyle("lp", parent=styles["Normal"],
+                         fontSize=size, fontName=fn, textColor=color,
+                         leading=10, spaceAfter=0))
+
     legend_rows = [
-        ["Rating", "Meaning", "Action"],
-        ["✅ Excellent / Good",    "Parameter is within ideal range for this project type",    "Proceed — no major concerns"],
-        ["⚠️ Acceptable",         "Parameter is within feasible range but has constraints",    "Proceed with attention to this factor"],
-        ["⚠️ Challenging",        "Parameter is near the limit — significant effort required", "Detailed study mandatory before commitment"],
-        ["❌ Critical",           "Parameter exceeds viable threshold for this system type",   "High risk — reconsider site or system type"],
-        ["🟢 Low flood risk",     "Elevated terrain — flood exposure likely low",              "Verify at local flood map portal"],
-        ["🟡 Low-Moderate risk",  "Moderate terrain — watercourse proximity check needed",     "Cross-check with official flood maps"],
-        ["🟠 Moderate risk",      "Low-lying terrain — flood exposure possible",               "Manual flood risk check required"],
-        ["🔴 High flood risk",    "Very low elevation — high flood exposure likely",           "Do not proceed without official flood zone study"],
+        [lp("Rating", colors.white, bold=True), lp("Meaning", colors.white, bold=True), lp("Action", colors.white, bold=True)],
+        [lp("EXCELLENT / GOOD", C_GREEN,  bold=True), lp("Parameter is within ideal range for this project type"),    lp("Proceed — no major concerns")],
+        [lp("ACCEPTABLE",       C_YELLOW, bold=True), lp("Feasible range but with constraints"),                      lp("Proceed — monitor this factor")],
+        [lp("CHALLENGING",      C_ORANGE, bold=True), lp("Near the feasibility limit — significant effort required"), lp("Detailed study mandatory before commitment")],
+        [lp("CRITICAL",         C_RED,    bold=True), lp("Exceeds viable threshold for this system type"),            lp("High risk — reconsider site or system")],
+        [lp("LOW FLOOD RISK",   C_GREEN,  bold=True), lp("Elevated terrain — flood exposure likely low"),             lp("Verify at local flood portal")],
+        [lp("LOW-MOD FLOOD",    C_YELLOW, bold=True), lp("Moderate terrain — watercourse proximity check needed"),    lp("Cross-check official flood maps")],
+        [lp("MODERATE FLOOD",   C_ORANGE, bold=True), lp("Low-lying terrain — flood exposure possible"),              lp("Manual flood risk check required")],
+        [lp("HIGH FLOOD RISK",  C_RED,    bold=True), lp("Very low elevation — high flood exposure likely"),          lp("Flood zone study required before proceeding")],
     ]
-    lt = Table(legend_rows, colWidths=[4.5*cm, 8*cm, 4.5*cm])
+    lt = Table(legend_rows, colWidths=[4*cm, 8.5*cm, 4.5*cm])
     lt.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0),(-1,0),  GREEN),
-        ("TEXTCOLOR",     (0,0),(-1,0),  colors.white),
-        ("FONTNAME",      (0,0),(-1,0),  "Helvetica-Bold"),
-        ("FONTSIZE",      (0,0),(-1,-1), 8),
-        ("GRID",          (0,0),(-1,-1), 0.5, colors.lightgrey),
+        ("BACKGROUND",    (0,0), (-1,0),  GREEN),
+        ("GRID",          (0,0), (-1,-1), 0.5, colors.lightgrey),
+        ("TOPPADDING",    (0,0), (-1,-1), 6),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 6),
+        ("LEFTPADDING",   (0,0), (-1,-1), 6),
+        ("RIGHTPADDING",  (0,0), (-1,-1), 4),
+        ("VALIGN",        (0,0), (-1,-1), "TOP"),
         ("ROWBACKGROUNDS",(0,1),(-1,-1), [colors.white, LGRAY]),
-        ("TOPPADDING",    (0,0),(-1,-1), 5),
-        ("BOTTOMPADDING", (0,0),(-1,-1), 5),
-        ("LEFTPADDING",   (0,0),(-1,-1), 5),
-        ("VALIGN",        (0,0),(-1,-1), "TOP"),
+        ("BACKGROUND", (0,1), (0,1), C_LGREEN),
+        ("BACKGROUND", (0,2), (0,2), C_LYELLOW),
+        ("BACKGROUND", (0,3), (0,3), C_LYELLOW),
+        ("BACKGROUND", (0,4), (0,4), C_LRED),
+        ("BACKGROUND", (0,5), (0,5), C_LGREEN),
+        ("BACKGROUND", (0,6), (0,6), C_LYELLOW),
+        ("BACKGROUND", (0,7), (0,7), C_LORANG),
+        ("BACKGROUND", (0,8), (0,8), C_LRED),
     ]))
     story.append(lt)
     story.append(Spacer(1, 0.5*cm))
@@ -565,7 +595,7 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
     story.append(HRFlowable(width="100%", thickness=1, color=colors.lightgrey))
     story.append(Spacer(1, 0.2*cm))
     story.append(Paragraph(
-        "Generated by SiteIQ — Agri-PV Intelligence Platform by PVMath | For professional use only. "
+        "Generated by SiteIQ — Solar Site Intelligence Platform by PVMath | For professional use only. "
         "Data sources: EU PVGIS, OpenTopoData (EU-DEM 25m), OpenStreetMap.",
         ParagraphStyle("Ft", parent=styles["Normal"], fontSize=7, textColor=colors.grey)
     ))
