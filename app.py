@@ -38,7 +38,7 @@ st.markdown("""
   <span style="font-size:0.85rem; color:#888; margin-left:0.5rem; align-self:flex-end; padding-bottom:0.4rem;">by PVMath</span>
 </div>
 """, unsafe_allow_html=True)
-st.markdown('<p class="sub-header">Solar & Agri-PV Site Intelligence Platform — Worldwide</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-header">Solar & Agri-PV Site Intelligence Platform</p>', unsafe_allow_html=True)
 st.divider()
 
 # ─── Helper Functions ─────────────────────────────────────────────────────────
