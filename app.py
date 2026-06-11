@@ -321,11 +321,121 @@ def overall_verdict(slope_lbl, solar_lbl, land_use="Standard", mount_type="Fixed
         return "✅ RECOMMENDED FOR STUDY",  f"Strong {label} potential. Proceed to detailed feasibility study."
 
 
+def get_next_steps(project_country, land_use="Standard"):
+    """Return country-appropriate next steps for the PDF."""
+    c = project_country.lower().strip()
+    agri = land_use == "Agri-PV"
+
+    if any(x in c for x in ["germany", "deutschland", "de"]):
+        steps = [
+            "Verify land classification (Nutzungsart) with local Katasteramt",
+            "Grid connection: contact local DSO (e.g. Bayernwerk, E.ON, Netze BW)",
+            "Planning permission: consult local Bauamt / Gemeindeverwaltung",
+            "EEG 2023 feed-in tariff: register via Bundesnetzagentur (Marktstammdatenregister)",
+            "Flood risk: www.hochwasserportal.de — verify HQ100 flood zone",
+        ]
+        if agri:
+            steps.append("Agronomic study required for DIN SPEC 91434 Agri-PV compliance")
+    elif any(x in c for x in ["austria", "österreich", "oesterreich"]):
+        steps = [
+            "Land use: check Flächenwidmungsplan with local Gemeinde",
+            "Grid connection: contact local DSO (e.g. Wien Energie, Netz Niederösterreich)",
+            "Incentives: OeMAG feed-in tariff under EAG (Erneuerbaren-Ausbau-Gesetz)",
+            "Planning: Baubehörde approval required — check cantonal / Landesrecht",
+            "Flood risk: www.hora.gv.at — check HW100 flood zones",
+        ]
+    elif any(x in c for x in ["switzerland", "schweiz", "suisse", "svizzera"]):
+        steps = [
+            "Land use: verify Nutzungszone with local Gemeinde / Kanton",
+            "Grid connection: contact local DSO (e.g. BKW, EKZ, Romande Énergie)",
+            "Incentives: Pronovo KEV / Einmalvergütung (EVS) registration",
+            "Planning: Baubewilligung from Gemeinde — Raumplanungsgesetz applies",
+            "Flood risk: map.geo.admin.ch — check Hochwassergefahrenkarte",
+        ]
+    elif any(x in c for x in ["italy", "italia", "italie"]):
+        steps = [
+            "Grid connection: contact local DSO (Enel Distribuzione, A2A, ACEA)",
+            "Planning permission: Comune / Regione — check Piano Regolatore Generale (PRG)",
+            "Incentives: GSE (Gestore dei Servizi Energetici) — Conto Energia / FER Decreto",
+            "Environmental impact: VIA procedure required for projects > 1 MWp",
+            "Land use: verify agricultural zoning (zona agricola E) at Comune level",
+        ]
+    elif any(x in c for x in ["spain", "españa", "espana"]):
+        steps = [
+            "Grid connection: contact REE or local DSO (Endesa, Iberdrola, Naturgy)",
+            "Planning: Ayuntamiento licence + Comunidad Autónoma environmental permit",
+            "Incentives: RETA / OMIE market access — no fixed FIT, competitive auctions (RESA)",
+            "Environmental: EIA (Evaluación de Impacto Ambiental) for projects > 50 MWp",
+            "Land use: verify suelo rústico / no urbanizable classification",
+        ]
+    elif any(x in c for x in ["france", "frankreich", "frankrijk"]):
+        steps = [
+            "Grid connection: contact Enedis or local DSO — TURPE tariff applies",
+            "Planning: Permis de construire from Mairie — check PLU (Plan Local d'Urbanisme)",
+            "Incentives: CRE auction (Appel d'Offres) for projects > 500 kWp",
+            "Environmental: Étude d'impact required for large-scale projects",
+            "Land use: verify zone agricole (A) or zone naturelle (N) in PLU",
+        ]
+    elif any(x in c for x in ["poland", "polska"]):
+        steps = [
+            "Grid connection: contact local DSO (Tauron, Energa, Enea, PGE)",
+            "Planning: local spatial development plan (MPZP) — check with Gmina",
+            "Incentives: RES auctions (URE) — competitive bidding system",
+            "Environmental: EIA required for projects > 1 MWp",
+            "Land use: verify agricultural land class (Class I–III requires special permit)",
+        ]
+    elif any(x in c for x in ["netherlands", "nederland", "holland"]):
+        steps = [
+            "Grid connection: contact Liander, Stedin, or Enexis — grid congestion check critical",
+            "Planning: Omgevingsvergunning from Gemeente — check bestemmingsplan",
+            "Incentives: SDE++ subsidy (Stimulering Duurzame Energieproductie) via RVO",
+            "Environmental: MER (milieueffectrapportage) for large projects",
+            "Land use: verify agricultural bestemming — provincial approval may be needed",
+        ]
+    elif any(x in c for x in ["usa", "united states", "america"]):
+        steps = [
+            "Grid connection: contact local utility / ISO (PJM, CAISO, MISO, ERCOT etc.)",
+            "Planning: county zoning permit + conditional use permit (CUP)",
+            "Incentives: ITC (Investment Tax Credit) 30% + IRA bonus credits",
+            "Environmental: NEPA review if federal land — state-level EIA otherwise",
+            "Land use: verify agricultural zoning — check with county assessor",
+        ]
+    elif any(x in c for x in ["india", "bharat"]):
+        steps = [
+            "Grid connection: DISCOM connectivity — ISTS or SISTS depending on scale",
+            "Incentives: MNRE tender / SECI auction or state DISCOM PPA",
+            "Planning: state-level approval — check with relevant DISCOM / SLDC",
+            "Land use: land acquisition / lease from state government or private owner",
+            "Environmental: EIA notification — Category A/B project classification",
+        ]
+    elif any(x in c for x in ["australia", "oz"]):
+        steps = [
+            "Grid connection: AEMO registration — check network access rules per state",
+            "Planning: development application (DA) to local council",
+            "Incentives: LGC (Large-scale Generation Certificates) under RET scheme",
+            "Environmental: state-level EIA / EIS process",
+            "Land use: verify zoning — rural or primary production zone check",
+        ]
+    else:
+        steps = [
+            f"Grid connection: contact the national grid operator / local DSO in {project_country}",
+            f"Planning permission: local municipality / regional planning authority in {project_country}",
+            "Environmental impact assessment: check national threshold requirements for solar",
+            "Feed-in tariff / incentive scheme: contact national energy regulatory authority",
+            "Land use: verify zoning and agricultural land classification locally",
+        ]
+        if agri:
+            steps.append("Agri-PV dual-use: verify national / regional agricultural land regulations")
+
+    return [f"{i+1}. {s}" for i, s in enumerate(steps)]
+
+
 def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
               country, eeg_status, eeg_note,
               slope_lbl, solar_lbl, verdict, verdict_txt,
               cap_mw, cap_mwh,
-              land_use="Standard", mount_type="Fixed Tilt"):
+              land_use="Standard", mount_type="Fixed Tilt",
+              project_country=""):
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4,
                             rightMargin=2*cm, leftMargin=2*cm,
@@ -338,17 +448,17 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
     # Header
     story.append(Paragraph("🌱 SiteIQ by PVMath",
         ParagraphStyle("T", parent=styles["Heading1"], fontSize=22, textColor=GREEN, spaceAfter=4)))
-    story.append(Paragraph("Agri-PV Site Screening Report",
+    story.append(Paragraph("Site Screening Report",
         ParagraphStyle("S", parent=styles["Normal"], fontSize=11, textColor=colors.grey)))
     story.append(HRFlowable(width="100%", thickness=2, color=GREEN))
     story.append(Spacer(1, 0.4*cm))
 
     # Site info
     site_rows = [
-        ["Site Name",      site_name or "—"],
+        ["Project Name",   site_name or "—"],
+        ["Country",        project_country or country],
         ["Coordinates",    f"{lat:.5f}°N, {lon:.5f}°E"],
         ["Site Area",      f"{area_ha} ha"],
-        ["Country",        country],
         ["Land Use Type",  land_use],
         ["Mounting System",mount_type],
         ["Report Date",    datetime.now().strftime("%d.%m.%Y")],
@@ -417,13 +527,7 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
     # Next steps
     story.append(Paragraph("RECOMMENDED NEXT STEPS",
         ParagraphStyle("H2", parent=styles["Heading2"], fontSize=12, textColor=GREEN)))
-    for step in [
-        "1. Verify agricultural land classification with local Katasteramt",
-        "2. Manual flood risk check: www.hochwasserportal.de",
-        "3. Assess grid connection capacity with local DSO",
-        "4. Commission agronomic study for DIN SPEC 91434 compliance",
-        "5. Pre-consultation with local Bauamt / planning authority",
-    ]:
+    for step in get_next_steps(project_country or country, land_use):
         story.append(Paragraph(step, styles["Normal"]))
         story.append(Spacer(1, 0.2*cm))
 
@@ -443,45 +547,50 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
 
 # ─── UI Layout ────────────────────────────────────────────────────────────────
 
-# ── Step 1: Project Type Selection ──────────────────────────────────────────
-st.markdown("### Step 1 — Project Type")
-st.caption("Designed for Ground Mount Solar Projects")
+# ── Project Details ──────────────────────────────────────────────────────────
+pd_col1, pd_col2 = st.columns(2)
+with pd_col1:
+    project_name = st.text_input("Project Name", placeholder="e.g. Bavaria North – Site A")
+with pd_col2:
+    project_country_input = st.text_input("Project located in (Country)", placeholder="e.g. Italy, Germany, Spain…")
 
+st.divider()
+
+# ── Project Type ─────────────────────────────────────────────────────────────
+st.caption("Designed for Ground Mount Solar Projects")
 pt_col1, pt_col2 = st.columns(2)
 
 with pt_col1:
     land_use = st.radio(
         "**Land Use**",
-        ["Standard Freifläche", "Agri-PV (Doppelnutzung)"],
+        ["Standard", "Agri-PV (Dual Use)"],
         help="Standard = conventional ground-mount. Agri-PV = dual use with agriculture (elevated / bifacial)."
     )
-    if land_use == "Agri-PV (Doppelnutzung)":
-        st.success("✅ EEG 2023 Agri-PV bonus eligible · DIN SPEC 91434 applies")
+    if land_use == "Agri-PV (Dual Use)":
+        st.success("✅ Agri-PV dual-use · Local agricultural regulations apply")
     else:
-        st.info("ℹ️ Standard EEG Freifläche tariff · No dual-use requirements")
+        st.info("ℹ️ Standard ground-mount · No dual-use requirements")
 
 with pt_col2:
     mount_type = st.radio(
         "**Mounting System**",
         ["Fixed Tilt", "Single-Axis Tracker"],
-        help="Tracker systems require flatter terrain (≤6% slope) and more N-S row spacing."
+        help="Tracker systems require flatter terrain and more N-S row spacing."
     )
     if mount_type == "Single-Axis Tracker":
         st.warning("⚠️ Tracker: max recommended slope ± 8° · Higher CAPEX, higher yield")
     else:
         st.info("ℹ️ Fixed Tilt: max recommended slope ≤ 10% · Lower CAPEX")
 
-# Normalise land_use key for logic
-_land_use  = "Agri-PV" if "Agri-PV" in land_use else "Standard"
-_mount_type = mount_type  # "Fixed Tilt" or "Single-Axis Tracker"
+_land_use   = "Agri-PV" if "Agri-PV" in land_use else "Standard"
+_mount_type = mount_type
 
 st.divider()
-st.markdown("### Step 2 — Site Location")
 
 left, right = st.columns([1, 2])
 
 with left:
-    st.subheader("📍 Site Input")
+    st.subheader("📍 Site Location")
     method = st.radio("Input method", [
         "🗺️ Click on Map",
         "📐 Coordinates (Lat / Lon)",
@@ -493,12 +602,20 @@ with left:
     kml_area = None
 
     if method == "🗺️ Click on Map":
-        st.caption("Click anywhere on the map to set the site location.")
-        default_lat = st.session_state.get("map_lat", 48.5)
-        default_lon = st.session_state.get("map_lon", 10.5)
-        m = folium.Map(location=[default_lat, default_lon], zoom_start=5,
-                       tiles="OpenStreetMap")
-        # Show existing marker if already clicked
+        # Search bar to jump the map
+        search_q = st.text_input("🔍 Search city / region", placeholder="e.g. Tuscany, Italy")
+        if search_q:
+            with st.spinner("Searching…"):
+                slat, slon, _ = geocode_address(search_q)
+            if slat:
+                st.session_state["map_center"] = [slat, slon]
+                st.session_state["map_zoom"]   = 10
+            else:
+                st.warning("Location not found — try a different name.")
+
+        center = st.session_state.get("map_center", [30.0, 10.0])
+        zoom   = st.session_state.get("map_zoom", 2)
+        m = folium.Map(location=center, zoom_start=zoom, tiles="OpenStreetMap")
         if "map_lat" in st.session_state:
             folium.Marker(
                 [st.session_state["map_lat"], st.session_state["map_lon"]],
@@ -507,28 +624,30 @@ with left:
             ).add_to(m)
         map_result = st_folium(m, width=None, height=320, returned_objects=["last_clicked"])
         if map_result and map_result.get("last_clicked"):
-            st.session_state["map_lat"] = map_result["last_clicked"]["lat"]
-            st.session_state["map_lon"] = map_result["last_clicked"]["lng"]
+            st.session_state["map_lat"]    = map_result["last_clicked"]["lat"]
+            st.session_state["map_lon"]    = map_result["last_clicked"]["lng"]
+            st.session_state["map_center"] = [map_result["last_clicked"]["lat"],
+                                               map_result["last_clicked"]["lng"]]
         if "map_lat" in st.session_state:
             lat = st.session_state["map_lat"]
             lon = st.session_state["map_lon"]
             st.success(f"📌 Selected: {lat:.5f}°N, {lon:.5f}°E")
         else:
-            st.info("👆 Click on the map to select a site location.")
+            st.info("👆 Search a location above, then click the map to pin your site.")
 
     elif method == "📐 Coordinates (Lat / Lon)":
         lat = st.number_input("Latitude",  value=48.5665, format="%.5f")
         lon = st.number_input("Longitude", value=12.1521, format="%.5f")
 
     elif method == "🔗 Google Maps Link":
-        st.caption("Right-click any point in Google Maps → 'Copy coordinates', or paste the page URL.")
+        st.caption("Right-click any point in Google Maps → coordinates appear at top of menu → click to copy.")
         maps_url = st.text_input("Paste Google Maps link", placeholder="https://www.google.com/maps/@48.1351,11.5820,15z")
         if maps_url:
             lat, lon = parse_google_maps_url(maps_url)
             if lat and lon:
                 st.success(f"📌 Extracted: {lat:.5f}°N, {lon:.5f}°E")
             else:
-                st.warning("Could not extract coordinates.  \nTip: In Google Maps, right-click a point → the coordinates appear at the top of the menu — click them to copy, then paste here.")
+                st.warning("Could not extract coordinates — try right-clicking a point in Google Maps and copying the coordinates directly.")
 
     elif method == "📁 Upload KML / KMZ File":
         st.caption("Export your site boundary from Google Earth, PVcase, or any GIS tool.")
@@ -544,12 +663,12 @@ with left:
             else:
                 st.error("Could not read coordinates from file. Ensure it contains polygon geometry.")
 
-    site_name = st.text_input("Site name / reference", placeholder="e.g. Site-Bavaria-2024-01")
-
+    # Site area — auto from KML, otherwise default 10 ha (editable)
     if kml_area:
-        area_ha = st.number_input("Site area (hectares)", min_value=0.1, value=float(kml_area), step=0.5)
+        area_ha = st.number_input("Site area (ha) — from file", min_value=0.1, value=float(kml_area), step=0.5)
     else:
-        area_ha = st.number_input("Site area (hectares)", min_value=0.1, value=10.0, step=0.5)
+        area_ha = st.number_input("Site area (ha)", min_value=0.1, value=10.0, step=0.5,
+                                   help="Default 10 ha. Adjust for capacity estimate.")
 
     go = st.button("🔍 Run Site Screening", type="primary", use_container_width=True)
 
@@ -605,7 +724,7 @@ with right:
             st.markdown("**☀️ Solar Resource**")
             (st.success if "✅" in g_lbl else st.warning if "⚠️" in g_lbl else st.error)(g_detail)
 
-            st.markdown("**🇪🇺 EEG / Regulatory**")
+            st.markdown("**📋 Regulatory**")
             st.info(f"{country}  \n{eeg_status}  \n_{eeg_note}_")
 
         with d2:
@@ -632,14 +751,15 @@ with right:
         # ── PDF export ──
         st.divider()
         pdf = build_pdf(
-            site_name=site_name or f"Site_{lat:.3f}_{lon:.3f}",
+            site_name=project_name or f"Project_{lat:.3f}_{lon:.3f}",
             lat=lat, lon=lon, area_ha=area_ha,
             solar=solar, terrain=terrain,
             country=country, eeg_status=eeg_status, eeg_note=eeg_note,
             slope_lbl=s_lbl, solar_lbl=g_lbl,
             verdict=verdict, verdict_txt=verdict_txt,
             cap_mw=cap_mw, cap_mwh=cap_mwh,
-            land_use=_land_use, mount_type=_mount_type
+            land_use=_land_use, mount_type=_mount_type,
+            project_country=project_country_input
         )
         st.download_button(
             label="⬇️  Download PDF Report",
