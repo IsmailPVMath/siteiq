@@ -14,13 +14,71 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
 from reportlab.lib.units import cm
+import streamlit_authenticator as stauth
+import yaml
+from yaml.loader import SafeLoader
 
 # ─── Page Config ─────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="SiteIQ – Agri-PV Screening",
+    page_title="SiteIQ – Solar Site Intelligence",
     page_icon="🌱",
     layout="wide"
 )
+
+# ─── Authentication ───────────────────────────────────────────────────────────
+_config = {
+    "credentials": {
+        "usernames": {
+            "pvmath_admin": {
+                "name": "PVMath Admin",
+                "email": "ismailpasha747@gmail.com",
+                "password": stauth.Hasher(["PVMath@2025!"]).generate()[0],
+            },
+        }
+    },
+    "cookie": {
+        "name": "siteiq_auth",
+        "key": "siteiq_secret_key_pvmath_2025",
+        "expiry_days": 7,
+    },
+    "preauthorized": {"emails": []}
+}
+
+authenticator = stauth.Authenticate(
+    _config["credentials"],
+    _config["cookie"]["name"],
+    _config["cookie"]["key"],
+    _config["cookie"]["expiry_days"],
+)
+
+authenticator.login(location="main")
+
+if st.session_state.get("authentication_status") is False:
+    st.error("Username or password incorrect.")
+    st.stop()
+elif st.session_state.get("authentication_status") is None:
+    st.markdown("""
+    <div style="text-align:center; padding: 2rem 0 0.5rem;">
+      <div style="display:inline-flex;align-items:center;gap:0.6rem;margin-bottom:0.5rem;">
+        <span style="width:40px;height:40px;background:linear-gradient(135deg,#1a5c2e,#2ecc71);
+                     border-radius:10px;display:inline-flex;align-items:center;justify-content:center;">
+          <span style="color:#fff;font-size:1.2rem;">&#9788;</span>
+        </span>
+        <span style="font-size:1.8rem;font-weight:800;color:#1a5c2e;">SiteIQ</span>
+        <span style="font-size:0.85rem;color:#888;">by PVMath</span>
+      </div>
+      <p style="color:#666;font-size:0.9rem;">Solar Site Intelligence Platform — enter your credentials to continue.</p>
+      <p style="color:#aaa;font-size:0.78rem;margin-top:0.5rem;">
+        Need access? Contact <a href="mailto:contact@pvmath.de">contact@pvmath.de</a>
+      </p>
+    </div>
+    """, unsafe_allow_html=True)
+    st.stop()
+
+# ── Logout button (top right) ──
+with st.sidebar:
+    st.markdown(f"**{st.session_state.get('name', 'User')}**")
+    authenticator.logout("Log out", location="sidebar")
 
 # ─── Styling ──────────────────────────────────────────────────────────────────
 st.markdown("""
