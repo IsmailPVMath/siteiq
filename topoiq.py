@@ -10,7 +10,6 @@ import zipfile
 import json
 from PIL import Image
 import folium
-from folium.plugins import Draw
 from streamlit_folium import st_folium
 from datetime import datetime
 
@@ -610,96 +609,103 @@ with left:
         center = st.session_state.get("topo_center", [30.0, 10.0])
         zoom   = st.session_state.get("topo_zoom", 3)
 
+        # Initialise vertex list in session
+        if "topo_vertices" not in st.session_state:
+            st.session_state["topo_vertices"] = []
+
+        verts = st.session_state["topo_vertices"]
+
+        # ── Instruction bar ─────────────────────────────────────────────────
+        n = len(verts)
+        if n == 0:
+            tip = "Click anywhere on the map to place your first vertex."
+        elif n == 1:
+            tip = "Click to place the next vertex. Keep clicking for each corner."
+        elif n == 2:
+            tip = f"{n} vertices placed — keep clicking corners."
+        else:
+            tip = f"{n} vertices placed — click more corners, then press <strong>Close Polygon</strong> below."
+
         st.markdown(
-            '<div style="background:rgba(255,193,7,0.08);border:1px solid rgba(255,193,7,0.35);'
-            'border-radius:8px;padding:0.6rem 0.9rem;font-size:0.82rem;color:#ccc;margin-bottom:0.5rem;">'
-            '<i class="fa-solid fa-pen-to-square" style="color:#ffc107;margin-right:0.4rem;"></i>'
-            '<strong>How to draw:</strong>&nbsp; '
-            '① Click the <strong>polygon tool</strong> (pentagon) or <strong>polyline tool</strong> (line) on the left toolbar &nbsp;'
-            '② Click each corner of your site boundary &nbsp;'
-            '③ To close polygon — hover the first point until it glows, then click it. '
-            'Or <strong>double-click</strong> the last point. '
-            'Polyline will auto-close into a boundary automatically.'
-            '</div>',
+            f'<div style="background:rgba(255,193,7,0.08);border:1px solid rgba(255,193,7,0.35);'
+            f'border-radius:8px;padding:0.5rem 0.9rem;font-size:0.82rem;color:#ccc;margin-bottom:0.4rem;">'
+            f'<i class="fa-solid fa-computer-mouse" style="color:#ffc107;margin-right:0.4rem;"></i>'
+            f'{tip}</div>',
             unsafe_allow_html=True
         )
 
+        # ── Build map ───────────────────────────────────────────────────────
         m = folium.Map(location=center, zoom_start=zoom,
                        tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
                        attr="Google Satellite")
 
-        Draw(
-            export=True,
-            draw_options={
-                "polygon": {
-                    "allowIntersection": False,
-                    "showArea": True,
-                    "shapeOptions": {
-                        "color": "#ffeb3b",        # bright yellow — visible on any satellite bg
-                        "weight": 4,
-                        "opacity": 1.0,
-                        "fillColor": "#ffeb3b",
-                        "fillOpacity": 0.12,
-                    },
-                    "icon": {                       # enlarge snap target on first vertex
-                        "className": "leaflet-div-icon",
-                        "iconSize": [12, 12],
-                    },
-                },
-                "polyline": {
-                    "shapeOptions": {
-                        "color": "#ffeb3b",
-                        "weight": 4,
-                        "opacity": 1.0,
-                    }
-                },
-                "rectangle": False,
-                "circle": False,
-                "marker": False,
-                "circlemarker": False,
-            },
-            edit_options={"edit": True}
-        ).add_to(m)
+        # Draw existing vertices and connecting lines
+        if len(verts) >= 2:
+            # Line through all placed vertices
+            folium.PolyLine(
+                locations=[(v[1], v[0]) for v in verts],
+                color="#ffeb3b", weight=4, opacity=1.0
+            ).add_to(m)
+        if len(verts) >= 3:
+            # Closing preview line from last → first (dashed)
+            folium.PolyLine(
+                locations=[(verts[-1][1], verts[-1][0]), (verts[0][1], verts[0][0])],
+                color="#ffeb3b", weight=2, opacity=0.5, dash_array="8 6"
+            ).add_to(m)
 
-        # Inject JS to widen the snap tolerance so first-point closing is easy
-        m.get_root().html.add_child(folium.Element("""
-        <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Wait for Leaflet.Draw to initialise, then raise snap tolerance
-            setTimeout(function() {
-                if (window.L && L.Draw && L.Draw.Polygon) {
-                    L.Draw.Polygon.prototype.options.touchIcon = new L.DivIcon({
-                        className: 'leaflet-div-icon leaflet-editing-icon',
-                        iconSize: new L.Point(16, 16)
-                    });
-                }
-            }, 800);
-        });
-        </script>
-        """))
+        # Vertex markers
+        for i, v in enumerate(verts):
+            color = "#ff5722" if i == 0 else "#ffeb3b"   # first point = orange
+            folium.CircleMarker(
+                location=[v[1], v[0]],
+                radius=6,
+                color=color,
+                fill=True,
+                fill_color=color,
+                fill_opacity=1.0,
+                tooltip=f"Vertex {i+1}" + (" (start)" if i == 0 else ""),
+            ).add_to(m)
 
-        map_data = st_folium(m, width=None, height=420,
-                             returned_objects=["all_drawings"])
+        map_data = st_folium(m, width=None, height=430,
+                             returned_objects=["last_clicked"])
 
-        if map_data and map_data.get("all_drawings"):
-            for feat in map_data["all_drawings"]:
-                geom = feat.get("geometry", {})
-                if geom.get("type") == "Polygon":
-                    polygon_coords = [(c[0], c[1]) for c in geom["coordinates"][0]]
-                    break
-                elif geom.get("type") == "LineString":
-                    # Auto-close a drawn polyline into a polygon
-                    pts = [(c[0], c[1]) for c in geom["coordinates"]]
-                    if len(pts) >= 3:
-                        if pts[0] != pts[-1]:
-                            pts.append(pts[0])
-                        polygon_coords = pts
-                    break
+        # ── Capture each map click as a new vertex ──────────────────────────
+        if map_data and map_data.get("last_clicked"):
+            lc = map_data["last_clicked"]
+            new_pt = (round(lc["lng"], 7), round(lc["lat"], 7))
+            # Ignore if same as last (Streamlit re-runs on widget interaction)
+            if not verts or verts[-1] != new_pt:
+                st.session_state["topo_vertices"].append(new_pt)
+                st.rerun()
+
+        # ── Controls ────────────────────────────────────────────────────────
+        btn_cols = st.columns([2, 1, 1])
+        with btn_cols[0]:
+            if len(verts) >= 3:
+                if st.button("✅  Close Polygon & Use", use_container_width=True, type="primary"):
+                    closed = verts + [verts[0]]
+                    st.session_state["topo_polygon_final"] = closed
+                    st.session_state["topo_vertices"] = []
+                    st.rerun()
+        with btn_cols[1]:
+            if verts:
+                if st.button("↩ Undo", use_container_width=True):
+                    st.session_state["topo_vertices"].pop()
+                    st.rerun()
+        with btn_cols[2]:
+            if verts:
+                if st.button("🗑 Clear", use_container_width=True):
+                    st.session_state["topo_vertices"] = []
+                    st.session_state.pop("topo_polygon_final", None)
+                    st.rerun()
+
+        # Pick up finalized polygon
+        polygon_coords = st.session_state.get("topo_polygon_final", None)
 
         if polygon_coords:
-            st.success(f"Site boundary captured — {len(polygon_coords)-1} vertices")
-        else:
-            st.caption("Draw your site boundary on the map above to enable analysis.")
+            st.success(f"✅ Site boundary ready — {len(polygon_coords)-1} vertices")
+        elif not verts:
+            st.caption("Click on the map to start placing vertices.")
 
     # ── Upload KML / KMZ / DXF ──
     else:
