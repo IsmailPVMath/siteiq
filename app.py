@@ -8,7 +8,7 @@ import zipfile
 import xml.etree.ElementTree as ET
 from datetime import datetime
 import folium
-from supabase_auth import (
+from pvmath_auth import (
     render_auth_page, show_user_header, show_paywall,
     increment_usage, is_over_limit, remaining, FREE_LIMIT, STRIPE_LINK, PRICE_LABEL
 )
