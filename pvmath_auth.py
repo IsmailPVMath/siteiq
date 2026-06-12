@@ -60,6 +60,17 @@ def sign_out():
         st.session_state.pop(key, None)
 
 
+# ── Admin check ───────────────────────────────────────────────
+def is_admin(user_id: str) -> bool:
+    """Returns True if the user has the admin flag set in profiles."""
+    try:
+        sb = get_supabase()
+        res = sb.table("profiles").select("is_admin").eq("id", user_id).execute()
+        return res.data[0]["is_admin"] if res.data else False
+    except Exception:
+        return False
+
+
 # ── Usage tracking ────────────────────────────────────────────
 def get_usage(user_id: str, app: str) -> int:
     try:
@@ -71,6 +82,7 @@ def get_usage(user_id: str, app: str) -> int:
 
 
 def increment_usage(user_id: str, app: str) -> int:
+    """Increments usage counter. Admins are tracked but never blocked."""
     try:
         sb = get_supabase()
         current = get_usage(user_id, app)
@@ -85,10 +97,16 @@ def increment_usage(user_id: str, app: str) -> int:
 
 
 def is_over_limit(user_id: str, app: str) -> bool:
+    """Admins are never over the limit."""
+    if is_admin(user_id):
+        return False
     return get_usage(user_id, app) >= FREE_LIMIT
 
 
 def remaining(user_id: str, app: str) -> int:
+    """Admins see unlimited (999) remaining."""
+    if is_admin(user_id):
+        return 999
     return max(0, FREE_LIMIT - get_usage(user_id, app))
 
 
@@ -109,76 +127,134 @@ def render_auth_page(app_name: str = "PVMath"):
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-    html, body, [class*="css"] { font-family: 'Inter', sans-serif !important; }
-
-    .auth-wrap {
-        max-width: 420px; margin: 4rem auto 0; padding: 0 1rem;
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif !important;
+        background-color: #f7faf8 !important;
     }
+
+    /* Hide Streamlit chrome on auth page */
+    #MainMenu { visibility: hidden; }
+    footer { visibility: hidden; }
+    header { visibility: hidden; }
+    [data-testid="stToolbar"] { display: none; }
+
+    /* Full page centering */
+    .block-container {
+        padding-top: 0 !important;
+        max-width: 100% !important;
+    }
+
+    /* Auth page background */
+    .auth-page-bg {
+        min-height: 100vh;
+        background: linear-gradient(160deg, #f0f7f2 0%, #ffffff 60%, #e8f5ee 100%);
+        display: flex; align-items: center; justify-content: center;
+        padding: 2rem 1rem;
+    }
+
+    /* Logo */
     .auth-logo {
-        display: flex; align-items: center; gap: 0.6rem;
-        justify-content: center; margin-bottom: 2rem;
+        display: flex; align-items: center; gap: 0.7rem;
+        justify-content: center; margin-bottom: 0.5rem;
     }
     .auth-logo-mark {
-        width: 38px; height: 38px; border-radius: 9px;
+        width: 42px; height: 42px; border-radius: 10px;
         background: linear-gradient(135deg, #145f34, #1d9e52);
         display: flex; align-items: center; justify-content: center;
-        color: #fff; font-weight: 800; font-size: 1.1rem;
+        color: #fff; font-weight: 800; font-size: 1.2rem;
+        box-shadow: 0 4px 12px rgba(29,158,82,.3);
     }
     .auth-logo-text {
-        font-size: 1.4rem; font-weight: 800; color: #1a2e1a; letter-spacing: -0.03em;
+        font-size: 1.6rem; font-weight: 800; color: #1a2e1a;
+        letter-spacing: -0.04em;
     }
+    .auth-logo-sub {
+        font-size: 0.8rem; color: #5a7a5a; text-align: center;
+        margin-bottom: 2rem; font-weight: 500; letter-spacing: 0.02em;
+    }
+
+    /* Card */
     .auth-card {
-        background: #fff; border: 1.5px solid #d4e0d4; border-radius: 14px;
-        padding: 2rem 2rem 1.5rem; box-shadow: 0 4px 24px rgba(0,0,0,.06);
+        background: #fff; border: 1.5px solid #d4e8d8; border-radius: 16px;
+        padding: 2rem 2rem 1.8rem;
+        box-shadow: 0 8px 40px rgba(29,158,82,.08), 0 2px 8px rgba(0,0,0,.04);
     }
     .auth-title {
-        font-size: 1.15rem; font-weight: 800; color: #1a2e1a;
-        letter-spacing: -0.02em; margin-bottom: 0.3rem;
+        font-size: 1.1rem; font-weight: 800; color: #1a2e1a;
+        letter-spacing: -0.02em; margin-bottom: 0.25rem;
     }
     .auth-sub {
-        font-size: 0.82rem; color: #5a7a5a; margin-bottom: 1.5rem; line-height: 1.5;
-    }
-    .auth-divider {
-        height: 1px; background: #d4e0d4; margin: 1.5rem 0;
+        font-size: 0.82rem; color: #5a7a5a; margin-bottom: 1.4rem; line-height: 1.5;
     }
     .free-badge {
-        background: #e8f5ee; border: 1px solid rgba(29,158,82,.25);
-        color: #145f34; font-size: 0.75rem; font-weight: 700;
-        padding: 0.5rem 1rem; border-radius: 9px; margin-bottom: 1.5rem;
-        line-height: 1.5;
+        background: #e8f5ee; border: 1px solid rgba(29,158,82,.3);
+        color: #145f34; font-size: 0.78rem; font-weight: 700;
+        padding: 0.55rem 1rem; border-radius: 9px; margin-bottom: 1.4rem;
+        line-height: 1.5; letter-spacing: 0.01em;
     }
+
+    /* Buttons */
     .stButton > button {
         background: linear-gradient(135deg, #1d9e52, #145f34) !important;
         color: #fff !important; border: none !important;
         border-radius: 9px !important; font-weight: 700 !important;
-        font-size: 0.9rem !important; padding: 0.7rem 1rem !important;
-        width: 100% !important; transition: box-shadow .2s !important;
+        font-size: 0.92rem !important; padding: 0.72rem 1rem !important;
+        width: 100% !important; transition: all .2s !important;
+        letter-spacing: 0.01em !important;
+        box-shadow: 0 2px 8px rgba(29,158,82,.2) !important;
     }
     .stButton > button:hover {
-        box-shadow: 0 6px 20px rgba(29,158,82,.35) !important;
+        box-shadow: 0 6px 20px rgba(29,158,82,.4) !important;
+        transform: translateY(-1px) !important;
     }
+
+    /* Inputs */
     .stTextInput > div > input {
-        border: 1.5px solid #d4e0d4 !important; border-radius: 9px !important;
+        background: #f7faf8 !important;
+        border: 1.5px solid #c8dece !important; border-radius: 9px !important;
         font-family: 'Inter', sans-serif !important; font-size: 0.88rem !important;
-        padding: 0.6rem 0.9rem !important;
+        color: #1a2e1a !important;
     }
     .stTextInput > div > input:focus {
-        border-color: #1d9e52 !important; box-shadow: 0 0 0 3px rgba(29,158,82,.1) !important;
+        border-color: #1d9e52 !important;
+        box-shadow: 0 0 0 3px rgba(29,158,82,.12) !important;
+        background: #fff !important;
     }
+
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0.5rem; border-bottom: 2px solid #e0ece4;
+    }
+    .stTabs [data-baseweb="tab"] {
+        font-weight: 600 !important; color: #5a7a5a !important;
+        font-size: 0.88rem !important;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #145f34 !important;
+        border-bottom-color: #1d9e52 !important;
+    }
+
+    /* Footer link */
+    .auth-footer {
+        text-align: center; margin-top: 1.5rem;
+        font-size: 0.75rem; color: #5a7a5a;
+    }
+    .auth-footer a { color: #1d9e52; text-decoration: none; font-weight: 600; }
     </style>
     """, unsafe_allow_html=True)
 
-    # ── Header ────────────────────────────────────────────────
-    st.markdown("""
-    <div class="auth-wrap">
+    # ── Logo + tagline ─────────────────────────────────────────
+    st.markdown(f"""
+    <div style="text-align:center;margin-top:2.5rem;margin-bottom:0.5rem;">
       <div class="auth-logo">
         <div class="auth-logo-mark">P</div>
         <span class="auth-logo-text">PVMath</span>
       </div>
+      <div class="auth-logo-sub">Solar Intelligence Platform &nbsp;·&nbsp; {app_name}</div>
     </div>
     """, unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2, col3 = st.columns([1, 1.6, 1])
     with col2:
 
         tab_login, tab_register = st.tabs(["Log In", "Create Account"])
@@ -239,6 +315,14 @@ def render_auth_page(app_name: str = "PVMath"):
                         st.warning("📬 Please confirm your email first. Check your inbox for the confirmation link, then try again.")
                     else:
                         st.error("Incorrect email or password.")
+
+        st.markdown("""
+        <div class="auth-footer">
+          <a href="https://pvmath.com" target="_blank">pvmath.com</a>
+          &nbsp;·&nbsp; Solar Site Intelligence
+          &nbsp;·&nbsp; <a href="mailto:contact@pvmath.de">contact@pvmath.de</a>
+        </div>
+        """, unsafe_allow_html=True)
 
     return False
 
