@@ -32,7 +32,7 @@ _config = {
             "pvmath_admin": {
                 "name": "PVMath Admin",
                 "email": "ismailpasha747@gmail.com",
-                "password": stauth.Hasher(["PVMath@2025!"]).generate()[0],
+                "password": "$2b$12$.Pyf7tLHOu4s5er9qD4tG.plqYmScubjHW.AUTvaPj2fYtQVngQUS",
             },
         }
     },
