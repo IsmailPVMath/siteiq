@@ -8,3 +8,8 @@ streamlit-folium
 streamlit-authenticator==0.3.2
 PyYAML
 bcrypt
+numpy
+scipy
+ezdxf
+shapely
+matplotlib
