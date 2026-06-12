@@ -35,6 +35,205 @@ try:
 except ImportError:
     HAS_SHAPELY = False
 
+def generate_pdf_report(
+    fname, lat_c, lon_c, area_ha, grid_spacing,
+    z_min, z_max, z_range, mean_slope, max_slope,
+    pct_over5, pct_over10,
+    elev_img_buf, slope_img_buf,
+    verdict_label, verdict_detail
+):
+    """Generate a professional PDF terrain report using ReportLab."""
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib import colors
+        from reportlab.lib.units import mm
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                         Table, TableStyle, Image as RLImage,
+                                         HRFlowable)
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    except ImportError:
+        return None
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            topMargin=15*mm, bottomMargin=15*mm,
+                            leftMargin=18*mm, rightMargin=18*mm)
+
+    W, _ = A4
+    usable = W - 36*mm
+
+    styles = getSampleStyleSheet()
+    DARK_BLUE = colors.HexColor("#0d2137")
+    MID_BLUE  = colors.HexColor("#1565c0")
+    GREEN     = colors.HexColor("#1b5e20")
+    ORANGE    = colors.HexColor("#f57c00")
+    RED_C     = colors.HexColor("#c62828")
+    LIGHT_BG  = colors.HexColor("#f0f4f8")
+
+    title_style = ParagraphStyle("title", fontName="Helvetica-Bold",
+                                  fontSize=20, textColor=colors.white,
+                                  alignment=TA_CENTER, spaceAfter=2)
+    sub_style   = ParagraphStyle("sub", fontName="Helvetica",
+                                  fontSize=9, textColor=colors.HexColor("#b0c4de"),
+                                  alignment=TA_CENTER)
+    hdr_style   = ParagraphStyle("hdr", fontName="Helvetica-Bold",
+                                  fontSize=11, textColor=MID_BLUE,
+                                  spaceBefore=6, spaceAfter=3)
+    body_style  = ParagraphStyle("body", fontName="Helvetica",
+                                  fontSize=9, textColor=colors.HexColor("#333333"),
+                                  leading=13)
+
+    story = []
+
+    # ── Header banner ──────────────────────────────────────────────────────
+    header_data = [[
+        Paragraph("TopoIQ Terrain Report", title_style),
+        Paragraph("by PVMath · pvmath.com", sub_style),
+    ]]
+    header_tbl = Table([[Paragraph("TopoIQ — Terrain Intelligence Report", title_style)],
+                         [Paragraph(f"by PVMath · pvmath.com · Generated {datetime.now().strftime('%d %b %Y')}", sub_style)]],
+                        colWidths=[usable])
+    header_tbl.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,-1), DARK_BLUE),
+        ("TOPPADDING",    (0,0), (-1,-1), 10),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 10),
+        ("LEFTPADDING",   (0,0), (-1,-1), 12),
+        ("ROUNDEDCORNERS", [6]),
+    ]))
+    story.append(header_tbl)
+    story.append(Spacer(1, 6*mm))
+
+    # ── Project info ───────────────────────────────────────────────────────
+    story.append(Paragraph("Project Summary", hdr_style))
+    info_data = [
+        ["Site Reference",  fname],
+        ["Coordinates",     f"Lat {lat_c:.5f}°,  Lon {lon_c:.5f}°"],
+        ["Site Area",       f"~{area_ha:.1f} ha  ({area_ha*10000:,.0f} m²)"],
+        ["Grid Resolution", f"{grid_spacing} m"],
+        ["DEM Source",      "Copernicus GLO-30 via AWS Terrain Tiles (ESA/EC 2021)"],
+        ["Analysis Date",   datetime.now().strftime("%d %B %Y")],
+    ]
+    info_tbl = Table(info_data, colWidths=[45*mm, usable-45*mm])
+    info_tbl.setStyle(TableStyle([
+        ("FONTNAME",      (0,0), (0,-1), "Helvetica-Bold"),
+        ("FONTNAME",      (1,0), (1,-1), "Helvetica"),
+        ("FONTSIZE",      (0,0), (-1,-1), 9),
+        ("TEXTCOLOR",     (0,0), (0,-1), DARK_BLUE),
+        ("TEXTCOLOR",     (1,0), (1,-1), colors.HexColor("#222")),
+        ("BACKGROUND",    (0,0), (-1,-1), LIGHT_BG),
+        ("ROWBACKGROUNDS",(0,0), (-1,-1), [colors.white, LIGHT_BG]),
+        ("GRID",          (0,0), (-1,-1), 0.3, colors.HexColor("#cccccc")),
+        ("TOPPADDING",    (0,0), (-1,-1), 4),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+        ("LEFTPADDING",   (0,0), (-1,-1), 7),
+    ]))
+    story.append(info_tbl)
+    story.append(Spacer(1, 5*mm))
+
+    # ── Terrain metrics ────────────────────────────────────────────────────
+    story.append(Paragraph("Terrain Metrics", hdr_style))
+    metrics_data = [
+        ["Parameter", "Value", "Notes"],
+        ["Min Elevation",       f"{z_min:.1f} m",        "Lowest point in site boundary"],
+        ["Max Elevation",       f"{z_max:.1f} m",        "Highest point in site boundary"],
+        ["Elevation Range",     f"{z_range:.1f} m",      "Total relief across site"],
+        ["Mean Slope",          f"{mean_slope:.2f}%",    "Average terrain gradient"],
+        ["Max Slope",           f"{max_slope:.1f}%",     "Steepest point in site"],
+        ["Area > 5% slope",     f"{pct_over5:.1f}%",    "Fraction requiring slope analysis"],
+        ["Area > 10% slope",    f"{pct_over10:.1f}%",   "Fraction with challenging grade"],
+    ]
+    m_tbl = Table(metrics_data, colWidths=[55*mm, 30*mm, usable-85*mm])
+    m_tbl.setStyle(TableStyle([
+        ("FONTNAME",      (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTNAME",      (0,1), (-1,-1), "Helvetica"),
+        ("FONTSIZE",      (0,0), (-1,-1), 9),
+        ("BACKGROUND",    (0,0), (-1,0), MID_BLUE),
+        ("TEXTCOLOR",     (0,0), (-1,0), colors.white),
+        ("ROWBACKGROUNDS",(0,1), (-1,-1), [colors.white, LIGHT_BG]),
+        ("GRID",          (0,0), (-1,-1), 0.3, colors.HexColor("#cccccc")),
+        ("TOPPADDING",    (0,0), (-1,-1), 4),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+        ("LEFTPADDING",   (0,0), (-1,-1), 7),
+        ("ALIGN",         (1,1), (1,-1), "CENTER"),
+    ]))
+    story.append(m_tbl)
+    story.append(Spacer(1, 5*mm))
+
+    # ── Verdict ────────────────────────────────────────────────────────────
+    story.append(Paragraph("Engineering Verdict", hdr_style))
+    if "Excellent" in verdict_label:
+        vcolor = GREEN
+    elif "Good" in verdict_label:
+        vcolor = colors.HexColor("#2e7d32")
+    elif "Moderate" in verdict_label:
+        vcolor = ORANGE
+    else:
+        vcolor = RED_C
+
+    verdict_data = [[Paragraph(f"<b>{verdict_label}</b>", ParagraphStyle(
+        "verd", fontName="Helvetica-Bold", fontSize=11,
+        textColor=colors.white, alignment=TA_CENTER))],
+        [Paragraph(verdict_detail, ParagraphStyle(
+        "verd2", fontName="Helvetica", fontSize=9,
+        textColor=colors.white, alignment=TA_CENTER))]]
+    v_tbl = Table(verdict_data, colWidths=[usable])
+    v_tbl.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0), (-1,-1), vcolor),
+        ("TOPPADDING",    (0,0), (-1,-1), 7),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 7),
+        ("LEFTPADDING",   (0,0), (-1,-1), 10),
+        ("ROUNDEDCORNERS", [5]),
+    ]))
+    story.append(v_tbl)
+    story.append(Spacer(1, 5*mm))
+
+    # ── Visual maps ────────────────────────────────────────────────────────
+    story.append(Paragraph("Visual Maps", hdr_style))
+    img_w = (usable - 6*mm) / 2
+
+    imgs = []
+    for buf_img in [elev_img_buf, slope_img_buf]:
+        if buf_img:
+            buf_img.seek(0)
+            imgs.append(RLImage(buf_img, width=img_w, height=img_w * 0.82))
+        else:
+            imgs.append(Spacer(img_w, img_w * 0.82))
+
+    img_tbl = Table([imgs], colWidths=[img_w, img_w], hAlign="CENTER")
+    img_tbl.setStyle(TableStyle([
+        ("LEFTPADDING",  (0,0), (-1,-1), 0),
+        ("RIGHTPADDING", (0,0), (-1,-1), 3),
+        ("TOPPADDING",   (0,0), (-1,-1), 0),
+        ("BOTTOMPADDING",(0,0), (-1,-1), 0),
+    ]))
+    story.append(img_tbl)
+    story.append(Spacer(1, 5*mm))
+
+    # ── Data source ────────────────────────────────────────────────────────
+    story.append(HRFlowable(width="100%", thickness=0.5,
+                             color=colors.HexColor("#cccccc")))
+    story.append(Spacer(1, 2*mm))
+    story.append(Paragraph(
+        "<b>Data Source:</b> Copernicus DEM GLO-30 (ESA/EC 2021) delivered via AWS Terrain Tiles "
+        "(Terrarium format, ~30m native resolution, resampled to specified grid). "
+        "Accuracy: ±1–3m RMSE typical. Vegetation/building bias possible in forested or built-up areas. "
+        "Recommended for preliminary site assessment. Field survey (LiDAR/GNSS) required for detailed design.",
+        ParagraphStyle("footer", fontName="Helvetica", fontSize=7.5,
+                       textColor=colors.HexColor("#666"), leading=11)
+    ))
+    story.append(Spacer(1, 2*mm))
+    story.append(Paragraph(
+        "Generated by TopoIQ · PVMath (pvmath.com) · contact@pvmath.de",
+        ParagraphStyle("footer2", fontName="Helvetica-Oblique", fontSize=7,
+                       textColor=colors.HexColor("#999"), alignment=TA_CENTER)
+    ))
+
+    doc.build(story)
+    buf.seek(0)
+    return buf.getvalue()
+
+
 def _normalize_for_display(Z):
     """Convert elevation grid to RGB heatmap image."""
     import matplotlib
@@ -808,13 +1007,21 @@ with right:
         pct_over10 = float((s_valid > 10).sum() / len(s_valid) * 100)
 
         if mean_slope <= 3:
-            st.success(f"**Excellent terrain** — Mean slope {mean_slope:.1f}%. Ideal for both fixed tilt and tracker.")
+            verdict_label  = "Excellent Terrain"
+            verdict_detail = f"Mean slope {mean_slope:.1f}%. Ideal for both fixed tilt and single-axis tracker."
+            st.success(f"**{verdict_label}** — {verdict_detail}")
         elif mean_slope <= 6:
-            st.success(f"**Good terrain** — Mean slope {mean_slope:.1f}%. Suitable for fixed tilt; tracker feasible.")
+            verdict_label  = "Good Terrain"
+            verdict_detail = f"Mean slope {mean_slope:.1f}%. Suitable for fixed tilt; single-axis tracker feasible with grading."
+            st.success(f"**{verdict_label}** — {verdict_detail}")
         elif mean_slope <= 10:
-            st.warning(f"**Moderate terrain** — Mean slope {mean_slope:.1f}%. Fixed tilt preferred; tracker design needs care.")
+            verdict_label  = "Moderate Terrain"
+            verdict_detail = f"Mean slope {mean_slope:.1f}%. Fixed tilt preferred; tracker design needs careful civil study."
+            st.warning(f"**{verdict_label}** — {verdict_detail}")
         else:
-            st.error(f"**Challenging terrain** — Mean slope {mean_slope:.1f}%. Detailed civil study required.")
+            verdict_label  = "Challenging Terrain"
+            verdict_detail = f"Mean slope {mean_slope:.1f}%. Significant grading required. Detailed civil study essential."
+            st.error(f"**{verdict_label}** — {verdict_detail}")
 
         st.caption(f"Area: ~{area_ha:.1f} ha  ·  {len(z_valid):,} grid points at {grid_spacing}m  ·  "
                    f"{pct_over5:.0f}% of site >5% slope  ·  {pct_over10:.0f}% >10% slope")
@@ -846,10 +1053,10 @@ with right:
             for spine in ax.spines.values():
                 spine.set_edgecolor("#333")
             plt.tight_layout(pad=0.5)
-            buf = io.BytesIO()
-            fig.savefig(buf, format="png", dpi=150, bbox_inches="tight", facecolor="#0e1117")
-            buf.seek(0); plt.close(fig)
-            st.image(buf, use_container_width=True)
+            pdf_elev_buf = io.BytesIO()
+            fig.savefig(pdf_elev_buf, format="png", dpi=150, bbox_inches="tight", facecolor="#0e1117")
+            pdf_elev_buf.seek(0); plt.close(fig)
+            st.image(pdf_elev_buf, use_container_width=True)
 
         # ── Slope map ──
         with map_col2:
@@ -860,9 +1067,25 @@ with right:
                 fig2, ax2 = plt.subplots(figsize=(6, 5))
                 fig2.patch.set_facecolor("#0e1117")
                 ax2.set_facecolor("#0e1117")
-                # Green=flat, yellow=moderate, red=steep
+                # Solar-engineering slope colormap
+                # <2.5% dark green (excellent), 2.5-3% green (good),
+                # 3-5% yellow-green, 5-10% orange, >10% red (problematic)
+                _slope_colors = [
+                    (0.000, "#1b5e20"),   # 0%   – deep green
+                    (0.167, "#388e3c"),   # 2.5% – dark green
+                    (0.200, "#66bb6a"),   # 3%   – medium green
+                    (0.333, "#d4e157"),   # 5%   – yellow-green
+                    (0.500, "#ffa726"),   # 7.5% – orange
+                    (0.667, "#f44336"),   # 10%  – red
+                    (1.000, "#7f0000"),   # 15%  – deep red
+                ]
                 cmap_slope = mcolors.LinearSegmentedColormap.from_list(
-                    "slope", ["#2ecc71", "#f1c40f", "#e74c3c", "#8e44ad"], N=256
+                    "solar_slope", [c for _, c in _slope_colors], N=512
+                )
+                # Apply break points
+                cmap_slope = mcolors.LinearSegmentedColormap.from_list(
+                    "solar_slope",
+                    [(pos, col) for pos, col in _slope_colors], N=512
                 )
                 im2 = ax2.imshow(Sm, cmap=cmap_slope, vmin=0, vmax=15,
                                  interpolation="bilinear", aspect="auto")
@@ -876,17 +1099,45 @@ with right:
                 for spine in ax2.spines.values():
                     spine.set_edgecolor("#333")
                 plt.tight_layout(pad=0.5)
-                buf2 = io.BytesIO()
-                fig2.savefig(buf2, format="png", dpi=150, bbox_inches="tight", facecolor="#0e1117")
-                buf2.seek(0); plt.close(fig2)
-                st.image(buf2, use_container_width=True)
+                pdf_slope_buf = io.BytesIO()
+                fig2.savefig(pdf_slope_buf, format="png", dpi=150, bbox_inches="tight", facecolor="#0e1117")
+                pdf_slope_buf.seek(0); plt.close(fig2)
+                st.image(pdf_slope_buf, use_container_width=True)
             else:
+                pdf_slope_buf = None
                 st.info("Install scipy for slope map.")
 
         # ── Exports ──
         st.divider()
         st.markdown('<div class="section-hdr"><i class="fa-solid fa-download" style="color:#1565c0;"></i> Download Outputs</div>', unsafe_allow_html=True)
         fname = f"TopoIQ_{lat_c:.3f}_{lon_c:.3f}_{grid_spacing}m"
+
+        # PDF report (full width, prominent)
+        with st.spinner("Generating PDF report…"):
+            pdf_slope_buf_for_pdf = pdf_slope_buf if HAS_SCIPY else None
+            pdf_bytes = generate_pdf_report(
+                fname=fname, lat_c=lat_c, lon_c=lon_c,
+                area_ha=area_ha, grid_spacing=grid_spacing,
+                z_min=float(z_valid.min()), z_max=float(z_valid.max()),
+                z_range=float(z_valid.max()-z_valid.min()),
+                mean_slope=mean_slope, max_slope=float(s_valid.max()),
+                pct_over5=pct_over5, pct_over10=pct_over10,
+                elev_img_buf=pdf_elev_buf,
+                slope_img_buf=pdf_slope_buf_for_pdf,
+                verdict_label=verdict_label,
+                verdict_detail=verdict_detail,
+            )
+        if pdf_bytes:
+            st.download_button(
+                "📄 Download Terrain Report (PDF)",
+                pdf_bytes,
+                file_name=f"{fname}_report.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+                type="primary",
+                help="Full terrain report with maps, metrics and engineering verdict"
+            )
+            st.divider()
 
         ex1, ex2, ex3, ex4 = st.columns(4)
 

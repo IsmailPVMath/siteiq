@@ -813,41 +813,89 @@ with left:
     kml_area = None
 
     if method == "🗺️ Click on Map":
-        # Search bar to jump the map
-        search_q = st.text_input("🔍 Search city / region", placeholder="e.g. Houston, Texas or Rajasthan, India")
-        if search_q and search_q != st.session_state.get("last_map_search", ""):
-            with st.spinner("Searching…"):
-                slat, slon, _ = geocode_address(search_q)
-            if slat:
-                st.session_state["map_center"]     = [slat, slon]
-                st.session_state["map_zoom"]       = 10
-                st.session_state["last_map_search"] = search_q
-                st.rerun()
-            else:
-                st.session_state["last_map_search"] = search_q
-                st.warning("Location not found — try adding the country name, e.g. 'Houston, USA'.")
+        # ── Navigation tabs ─────────────────────────────────────────────
+        nav1, nav2 = st.tabs(["🔍 Search by Name", "📍 Enter Coordinates"])
 
+        with nav1:
+            search_q = st.text_input("Place name", placeholder="e.g. Houston Texas or Rajasthan India",
+                                     label_visibility="collapsed")
+            if search_q and search_q != st.session_state.get("last_map_search", ""):
+                with st.spinner("Searching…"):
+                    slat, slon, _ = geocode_address(search_q)
+                if slat:
+                    st.session_state["map_center"]      = [slat, slon]
+                    st.session_state["map_zoom"]        = 13
+                    st.session_state["last_map_search"] = search_q
+                    st.rerun()
+                else:
+                    st.session_state["last_map_search"] = search_q
+                    st.warning("Location not found — try adding the country name.")
+
+        with nav2:
+            _c1, _c2 = st.columns(2)
+            with _c1:
+                _lat_in = st.text_input("Latitude",  placeholder="e.g. 26.8467", key="siq_clat")
+            with _c2:
+                _lon_in = st.text_input("Longitude", placeholder="e.g. 80.9462", key="siq_clon")
+            _coord_key = f"{_lat_in}|{_lon_in}"
+            if _lat_in and _lon_in and _coord_key != st.session_state.get("siq_last_coord", ""):
+                try:
+                    _lf, _lnf = float(_lat_in.strip()), float(_lon_in.strip())
+                    if -90 <= _lf <= 90 and -180 <= _lnf <= 180:
+                        st.session_state["map_center"]    = [_lf, _lnf]
+                        st.session_state["map_zoom"]      = 15
+                        st.session_state["map_lat"]       = _lf
+                        st.session_state["map_lon"]       = _lnf
+                        st.session_state["siq_last_coord"] = _coord_key
+                        st.rerun()
+                except ValueError:
+                    pass
+            _paste = st.text_input("Or paste  lat, lon", placeholder="26.8467, 80.9462",
+                                   key="siq_paste")
+            if _paste and _paste != st.session_state.get("siq_last_paste", ""):
+                try:
+                    _p = _paste.replace(";", ",").split(",")
+                    _lf, _lnf = float(_p[0].strip()), float(_p[1].strip())
+                    if -90 <= _lf <= 90 and -180 <= _lnf <= 180:
+                        st.session_state["map_center"]   = [_lf, _lnf]
+                        st.session_state["map_zoom"]     = 15
+                        st.session_state["map_lat"]      = _lf
+                        st.session_state["map_lon"]      = _lnf
+                        st.session_state["siq_last_paste"] = _paste
+                        st.rerun()
+                except Exception:
+                    pass
+
+        # ── Satellite map with marker ────────────────────────────────────
         center = st.session_state.get("map_center", [30.0, 10.0])
-        zoom   = st.session_state.get("map_zoom", 2)
-        m = folium.Map(location=center, zoom_start=zoom, tiles="OpenStreetMap")
+        zoom   = st.session_state.get("map_zoom", 3)
+        m = folium.Map(location=center, zoom_start=zoom,
+                       tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+                       attr="Google Satellite")
         if "map_lat" in st.session_state:
             folium.Marker(
                 [st.session_state["map_lat"], st.session_state["map_lon"]],
                 tooltip="Selected site",
-                icon=folium.Icon(color="green", icon="leaf")
+                icon=folium.Icon(color="green", icon="star")
             ).add_to(m)
-        map_result = st_folium(m, width=None, height=320, returned_objects=["last_clicked"])
+
+        st.caption("Click anywhere on the map to drop a pin on your site.")
+        map_result = st_folium(m, width=None, height=340, returned_objects=["last_clicked"])
+
         if map_result and map_result.get("last_clicked"):
-            st.session_state["map_lat"]    = map_result["last_clicked"]["lat"]
-            st.session_state["map_lon"]    = map_result["last_clicked"]["lng"]
-            st.session_state["map_center"] = [map_result["last_clicked"]["lat"],
-                                               map_result["last_clicked"]["lng"]]
+            _lc = map_result["last_clicked"]
+            st.session_state["map_lat"]    = _lc["lat"]
+            st.session_state["map_lon"]    = _lc["lng"]
+            st.session_state["map_center"] = [_lc["lat"], _lc["lng"]]
+            st.session_state["map_zoom"]   = zoom
+            st.rerun()
+
         if "map_lat" in st.session_state:
             lat = st.session_state["map_lat"]
             lon = st.session_state["map_lon"]
-            st.success(f"📌 Selected: {lat:.5f}°N, {lon:.5f}°E")
+            st.success(f"📌 {lat:.5f}°N, {lon:.5f}°E")
         else:
-            st.info("👆 Search a location above, then click the map to pin your site.")
+            st.info("Search a location or click the map to pin your site.")
 
     elif method == "📐 Coordinates (Lat / Lon)":
         lat = st.number_input("Latitude",  value=48.5665, format="%.5f")
