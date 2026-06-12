@@ -5,9 +5,7 @@ reportlab
 pillow
 folium
 streamlit-folium
-streamlit-authenticator==0.3.2
-PyYAML
-bcrypt
+supabase
 numpy
 scipy
 ezdxf

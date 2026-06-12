@@ -13,7 +13,10 @@ import folium
 from folium.plugins import Draw
 from streamlit_folium import st_folium
 from datetime import datetime
-from usage_tracker import get_usage, increment_usage, is_over_limit, remaining, FREE_LIMIT, STRIPE_LINK, PRICE_LABEL
+from supabase_auth import (
+    render_auth_page, show_user_header, show_paywall,
+    increment_usage, is_over_limit, remaining, FREE_LIMIT, STRIPE_LINK, PRICE_LABEL
+)
 
 # ── optional heavy deps — graceful fallback ──────────────────────────────────
 try:
@@ -261,6 +264,12 @@ st.set_page_config(
     page_icon="⛰",
     layout="wide"
 )
+
+# ─── Auth gate (Supabase) ─────────────────────────────────────────────────────
+if not render_auth_page("TopoIQ"):
+    st.stop()
+
+show_user_header("TopoIQ")
 
 st.markdown("""
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -1066,7 +1075,7 @@ with left:
     contour_minor = sc2.selectbox("Minor contour (m)", [0.5, 0.25, 1.0], index=0)
     contour_major = st.selectbox("Major contour (m)", [1.0, 2.0, 5.0], index=0)
 
-    _topo_user = st.session_state.get("username", "guest")
+    _topo_user = st.session_state.get("pvm_user_id", "guest")
     _topo_left = remaining(_topo_user, "topoiq")
 
     if is_over_limit(_topo_user, "topoiq"):
@@ -1107,7 +1116,7 @@ with left:
 # ─── Results ──────────────────────────────────────────────────────────────────
 with right:
     if run and polygon_coords:
-        increment_usage(st.session_state.get("username", "guest"), "topoiq")
+        increment_usage(st.session_state.get("pvm_user_id", "guest"), "topoiq")
         lons_p = [c[0] for c in polygon_coords]
         lats_p = [c[1] for c in polygon_coords]
         south, north = min(lats_p) - 0.001, max(lats_p) + 0.001

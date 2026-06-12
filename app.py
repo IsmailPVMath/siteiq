@@ -8,16 +8,16 @@ import zipfile
 import xml.etree.ElementTree as ET
 from datetime import datetime
 import folium
-from usage_tracker import get_usage, increment_usage, is_over_limit, remaining, FREE_LIMIT, STRIPE_LINK, PRICE_LABEL
+from supabase_auth import (
+    render_auth_page, show_user_header, show_paywall,
+    increment_usage, is_over_limit, remaining, FREE_LIMIT, STRIPE_LINK, PRICE_LABEL
+)
 from streamlit_folium import st_folium
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
 from reportlab.lib.units import cm
-import streamlit_authenticator as stauth
-import yaml
-from yaml.loader import SafeLoader
 
 # ─── Page Config ─────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -26,61 +26,14 @@ st.set_page_config(
     layout="wide"
 )
 
-# ─── Authentication ───────────────────────────────────────────────────────────
-_config = {
-    "credentials": {
-        "usernames": {
-            "pvmath_admin": {
-                "name": "PVMath Admin",
-                "email": "ismailpasha747@gmail.com",
-                "password": "$2b$12$.Pyf7tLHOu4s5er9qD4tG.plqYmScubjHW.AUTvaPj2fYtQVngQUS",
-            },
-        }
-    },
-    "cookie": {
-        "name": "siteiq_auth",
-        "key": "siteiq_secret_key_pvmath_2025",
-        "expiry_days": 7,
-    },
-    "preauthorized": {"emails": []}
-}
-
-authenticator = stauth.Authenticate(
-    _config["credentials"],
-    _config["cookie"]["name"],
-    _config["cookie"]["key"],
-    _config["cookie"]["expiry_days"],
-)
-
-authenticator.login(location="main")
-
-if st.session_state.get("authentication_status") is False:
-    st.error("Username or password incorrect.")
-    st.stop()
-elif st.session_state.get("authentication_status") is None:
-    st.markdown("""
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <div style="text-align:center; padding: 3rem 0 1rem; font-family:'Inter',sans-serif;">
-      <div style="display:inline-flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
-        <span style="width:44px;height:44px;background:linear-gradient(135deg,#1a5c2e,#1d9e52);
-                     border-radius:12px;display:inline-flex;align-items:center;justify-content:center;">
-          <span style="color:#fff;font-size:1.4rem;">☀</span>
-        </span>
-        <span style="font-size:2rem;font-weight:800;color:#1a5c2e;letter-spacing:-0.02em;">SiteIQ</span>
-        <span style="font-size:0.85rem;color:#999;font-weight:500;">by PVMath</span>
-      </div>
-      <p style="color:#5a7a5a;font-size:0.92rem;margin:0 0 0.5rem;">Solar Site Intelligence Platform</p>
-      <p style="color:#aaa;font-size:0.78rem;">
-        Need access? <a href="mailto:contact@pvmath.de" style="color:#1d9e52;text-decoration:none;font-weight:600;">contact@pvmath.de</a>
-      </p>
-    </div>
-    """, unsafe_allow_html=True)
+# ─── Auth gate (Supabase) ─────────────────────────────────────────────────────
+if not render_auth_page("SiteIQ"):
     st.stop()
 
-# ── Logout button (top right) ──
-with st.sidebar:
-    st.markdown(f"**{st.session_state.get('name', 'User')}**")
-    authenticator.logout("Log out", location="sidebar")
+show_user_header("SiteIQ")
+
+# ── User ID (replaces old username-based tracker) ──
+_username = st.session_state.get("pvm_user_id", "guest")
 
 # ─── Styling ──────────────────────────────────────────────────────────────────
 st.markdown("""
@@ -983,9 +936,8 @@ with left:
         area_ha = st.number_input("Site area (ha)", min_value=0.1, value=10.0, step=0.5,
                                    help="Default 10 ha. Adjust for capacity estimate.")
 
-    _username = st.session_state.get("username", "guest")
-    _used     = get_usage(_username, "siteiq")
-    _left     = remaining(_username, "siteiq")
+    _used = is_over_limit(_username, "siteiq")
+    _left = remaining(_username, "siteiq")
 
     if is_over_limit(_username, "siteiq"):
         # ── PAYWALL ──────────────────────────────────────────────────────────
@@ -1018,7 +970,7 @@ with left:
         go = st.button("🔍 Run Site Screening", type="primary", use_container_width=True)
 
 with right:
-    if not is_over_limit(st.session_state.get("username", "guest"), "siteiq") and go:
+    if not is_over_limit(_username, "siteiq") and go:
         # ── Validate location ──
         if lat is None or lon is None:
             st.error("Please select a site location using one of the input methods on the left.")
@@ -1032,7 +984,7 @@ with right:
         st.session_state["siteiq_area_ha"]      = area_ha
 
         # ── Increment usage ──
-        increment_usage(st.session_state.get("username", "guest"), "siteiq")
+        increment_usage(_username, "siteiq")
 
         # ── Fetch data ──
         with st.spinner("Fetching solar resource data from EU PVGIS…"):
