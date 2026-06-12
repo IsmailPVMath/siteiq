@@ -10,6 +10,7 @@ import zipfile
 import json
 from PIL import Image
 import folium
+from folium.plugins import Draw
 from streamlit_folium import st_folium
 from datetime import datetime
 
@@ -33,6 +34,23 @@ try:
     HAS_SHAPELY = True
 except ImportError:
     HAS_SHAPELY = False
+
+def _normalize_for_display(Z):
+    """Convert elevation grid to RGB heatmap image."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.cm as cm
+    Zm = np.ma.masked_invalid(Z)
+    if Zm.count() == 0:
+        return np.zeros((100, 100, 3), dtype=np.uint8)
+    norm = (Zm - Zm.min()) / max(Zm.max() - Zm.min(), 1e-6)
+    rgba = cm.RdYlBu_r(norm.filled(0))
+    rgb = (rgba[:, :, :3] * 255).astype(np.uint8)
+    mask = Zm.mask if np.ma.is_masked(Zm) else np.zeros_like(Z, dtype=bool)
+    if isinstance(mask, np.ndarray):
+        rgb[mask] = [30, 30, 30]
+    return rgb
+
 
 # ─── Page config ─────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -609,103 +627,65 @@ with left:
         center = st.session_state.get("topo_center", [30.0, 10.0])
         zoom   = st.session_state.get("topo_zoom", 3)
 
-        # Initialise vertex list in session
-        if "topo_vertices" not in st.session_state:
-            st.session_state["topo_vertices"] = []
-
-        verts = st.session_state["topo_vertices"]
-
-        # ── Instruction bar ─────────────────────────────────────────────────
-        n = len(verts)
-        if n == 0:
-            tip = "Click anywhere on the map to place your first vertex."
-        elif n == 1:
-            tip = "Click to place the next vertex. Keep clicking for each corner."
-        elif n == 2:
-            tip = f"{n} vertices placed — keep clicking corners."
-        else:
-            tip = f"{n} vertices placed — click more corners, then press <strong>Close Polygon</strong> below."
-
         st.markdown(
-            f'<div style="background:rgba(255,193,7,0.08);border:1px solid rgba(255,193,7,0.35);'
-            f'border-radius:8px;padding:0.5rem 0.9rem;font-size:0.82rem;color:#ccc;margin-bottom:0.4rem;">'
-            f'<i class="fa-solid fa-computer-mouse" style="color:#ffc107;margin-right:0.4rem;"></i>'
-            f'{tip}</div>',
+            '<div style="background:rgba(255,193,7,0.08);border:1px solid rgba(255,193,7,0.35);'
+            'border-radius:8px;padding:0.5rem 0.9rem;font-size:0.82rem;color:#ddd;margin-bottom:0.4rem;">'
+            '<i class="fa-solid fa-pen-to-square" style="color:#ffc107;margin-right:0.5rem;"></i>'
+            '<strong>How to draw:</strong> &nbsp;'
+            'Click the <strong>polyline tool</strong> (line icon, top of left toolbar). '
+            'Then click each corner of your site — as many points as needed. '
+            'When done, <strong>double-click</strong> the last point to finish. '
+            'The boundary auto-closes into a polygon.'
+            '</div>',
             unsafe_allow_html=True
         )
 
-        # ── Build map ───────────────────────────────────────────────────────
         m = folium.Map(location=center, zoom_start=zoom,
                        tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
                        attr="Google Satellite")
 
-        # Draw existing vertices and connecting lines
-        if len(verts) >= 2:
-            # Line through all placed vertices
-            folium.PolyLine(
-                locations=[(v[1], v[0]) for v in verts],
-                color="#ffeb3b", weight=4, opacity=1.0
-            ).add_to(m)
-        if len(verts) >= 3:
-            # Closing preview line from last → first (dashed)
-            folium.PolyLine(
-                locations=[(verts[-1][1], verts[-1][0]), (verts[0][1], verts[0][0])],
-                color="#ffeb3b", weight=2, opacity=0.5, dash_array="8 6"
-            ).add_to(m)
-
-        # Vertex markers
-        for i, v in enumerate(verts):
-            color = "#ff5722" if i == 0 else "#ffeb3b"   # first point = orange
-            folium.CircleMarker(
-                location=[v[1], v[0]],
-                radius=6,
-                color=color,
-                fill=True,
-                fill_color=color,
-                fill_opacity=1.0,
-                tooltip=f"Vertex {i+1}" + (" (start)" if i == 0 else ""),
-            ).add_to(m)
+        Draw(
+            export=False,
+            draw_options={
+                "polyline": {
+                    "shapeOptions": {
+                        "color": "#ffeb3b",
+                        "weight": 5,
+                        "opacity": 1.0,
+                    },
+                    "metric": True,
+                },
+                "polygon": False,
+                "rectangle": False,
+                "circle": False,
+                "marker": False,
+                "circlemarker": False,
+            },
+            edit_options={"edit": False, "remove": True}
+        ).add_to(m)
 
         map_data = st_folium(m, width=None, height=430,
-                             returned_objects=["last_clicked"])
+                             returned_objects=["all_drawings"])
 
-        # ── Capture each map click as a new vertex ──────────────────────────
-        if map_data and map_data.get("last_clicked"):
-            lc = map_data["last_clicked"]
-            new_pt = (round(lc["lng"], 7), round(lc["lat"], 7))
-            # Ignore if same as last (Streamlit re-runs on widget interaction)
-            if not verts or verts[-1] != new_pt:
-                st.session_state["topo_vertices"].append(new_pt)
-                st.rerun()
-
-        # ── Controls ────────────────────────────────────────────────────────
-        btn_cols = st.columns([2, 1, 1])
-        with btn_cols[0]:
-            if len(verts) >= 3:
-                if st.button("✅  Close Polygon & Use", use_container_width=True, type="primary"):
-                    closed = verts + [verts[0]]
-                    st.session_state["topo_polygon_final"] = closed
-                    st.session_state["topo_vertices"] = []
-                    st.rerun()
-        with btn_cols[1]:
-            if verts:
-                if st.button("↩ Undo", use_container_width=True):
-                    st.session_state["topo_vertices"].pop()
-                    st.rerun()
-        with btn_cols[2]:
-            if verts:
-                if st.button("🗑 Clear", use_container_width=True):
-                    st.session_state["topo_vertices"] = []
-                    st.session_state.pop("topo_polygon_final", None)
-                    st.rerun()
-
-        # Pick up finalized polygon
-        polygon_coords = st.session_state.get("topo_polygon_final", None)
+        polygon_coords = None
+        if map_data and map_data.get("all_drawings"):
+            for feat in map_data["all_drawings"]:
+                geom = feat.get("geometry", {})
+                if geom.get("type") == "LineString":
+                    pts = [(c[0], c[1]) for c in geom["coordinates"]]
+                    if len(pts) >= 3:
+                        if pts[0] != pts[-1]:
+                            pts.append(pts[0])  # auto-close
+                        polygon_coords = pts
+                        break
+                elif geom.get("type") == "Polygon":
+                    polygon_coords = [(c[0], c[1]) for c in geom["coordinates"][0]]
+                    break
 
         if polygon_coords:
-            st.success(f"✅ Site boundary ready — {len(polygon_coords)-1} vertices")
-        elif not verts:
-            st.caption("Click on the map to start placing vertices.")
+            st.success(f"✅ Site boundary captured — {len(polygon_coords)-1} vertices")
+        else:
+            st.caption("Draw your site boundary on the map above to enable analysis.")
 
     # ── Upload KML / KMZ / DXF ──
     else:
@@ -947,20 +927,3 @@ with right:
             )
 
 
-def _normalize_for_display(Z):
-    """Convert elevation grid to RGB heatmap image."""
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    import matplotlib.cm as cm
-
-    Zm = np.ma.masked_invalid(Z)
-    if Zm.count() == 0:
-        return np.zeros((100, 100, 3), dtype=np.uint8)
-    norm = (Zm - Zm.min()) / max(Zm.max() - Zm.min(), 1e-6)
-    rgba = cm.RdYlBu_r(norm.filled(0))
-    rgb = (rgba[:, :, :3] * 255).astype(np.uint8)
-    mask = Zm.mask if np.ma.is_masked(Zm) else np.zeros_like(Z, dtype=bool)
-    if isinstance(mask, np.ndarray):
-        rgb[mask] = [30, 30, 30]
-    return rgb
