@@ -632,11 +632,9 @@ with left:
             'border-radius:8px;padding:0.5rem 0.9rem;font-size:0.82rem;color:#ddd;margin-bottom:0.4rem;">'
             '<i class="fa-solid fa-pen-to-square" style="color:#ffc107;margin-right:0.5rem;"></i>'
             '<strong>How to draw:</strong> &nbsp;'
-            '① Pick a tool from the left toolbar: '
-            '<strong>Polyline</strong> (line icon) — click corners freely, click <strong>[Finish]</strong> when done; &nbsp;'
-            '<strong>Polygon</strong> (pentagon icon) — shows the closing line live as you draw, click <strong>[Finish]</strong> or double-click to close. '
-            '② Click each corner of your site. '
-            '③ Hit <strong>[Finish]</strong> in the toolbar — no need to snap back to the first point.'
+            '① Click the <strong>polygon tool</strong> (pentagon icon) in the left toolbar. &nbsp;'
+            '② Click each corner of your site boundary — all 4 sides show live as you go. &nbsp;'
+            '③ Click <strong>[Finish]</strong> in the toolbar when done — all lines including the closing one will appear.'
             '</div>',
             unsafe_allow_html=True
         )
@@ -650,10 +648,7 @@ with left:
         Draw(
             export=False,
             draw_options={
-                "polyline": {
-                    "shapeOptions": _style,
-                    "metric": True,
-                },
+                "polyline": False,
                 "polygon": {
                     "allowIntersection": False,
                     "showArea": True,
