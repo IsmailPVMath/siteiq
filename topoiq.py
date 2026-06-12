@@ -367,30 +367,149 @@ def export_dxf(X, Y, Z, lat_c, lon_c, minor_int=0.5, major_int=1.0):
 
 # ─── KML/KMZ parser ───────────────────────────────────────────────────────────
 
-def parse_boundary_file(uploaded):
-    """Extract polygon coordinates from KML or KMZ file."""
-    import xml.etree.ElementTree as ET2
-    ns = {"kml": "http://www.opengis.net/kml/2.2"}
-    raw = uploaded.read()
-    if uploaded.name.lower().endswith(".kmz"):
-        with zipfile.ZipFile(io.BytesIO(raw)) as z:
-            kml_name = next(n for n in z.namelist() if n.endswith(".kml"))
-            raw = z.read(kml_name)
-    try:
-        root2 = ET2.fromstring(raw)
-    except Exception:
-        return None
-    coords_el = root2.find(".//{http://www.opengis.net/kml/2.2}coordinates")
-    if coords_el is None:
-        coords_el = root2.find(".//coordinates")
-    if coords_el is None or not coords_el.text:
-        return None
+def _parse_kml_coords(text):
+    """Parse KML coordinate string into list of (lon, lat) tuples."""
     pairs = []
-    for tok in coords_el.text.strip().split():
+    for tok in text.strip().split():
         parts = tok.split(",")
         if len(parts) >= 2:
-            pairs.append((float(parts[0]), float(parts[1])))
-    return pairs if len(pairs) >= 3 else None
+            try:
+                pairs.append((float(parts[0]), float(parts[1])))
+            except ValueError:
+                pass
+    return pairs
+
+
+def parse_kml_all_polygons(raw_bytes):
+    """
+    Parse KML/KMZ bytes and return a dict of {name: [(lon,lat),...]}
+    for every Polygon and closed LineString/LinearRing found.
+    Ignores Point placemarks (pile markers etc).
+    """
+    import xml.etree.ElementTree as ET2
+    NS = "http://www.opengis.net/kml/2.2"
+
+    try:
+        root2 = ET2.fromstring(raw_bytes)
+    except Exception:
+        return {}
+
+    results = {}
+
+    def coords_from_el(el):
+        c = el.find(f"{{{NS}}}coordinates")
+        if c is None:
+            c = el.find("coordinates")
+        return _parse_kml_coords(c.text) if (c is not None and c.text) else []
+
+    # Walk all Placemarks
+    for pm in root2.iter(f"{{{NS}}}Placemark"):
+        name_el = pm.find(f"{{{NS}}}name")
+        name = name_el.text.strip() if (name_el is not None and name_el.text) else "Unnamed"
+
+        # Polygon — outerBoundaryIs/LinearRing/coordinates
+        for poly_el in pm.iter(f"{{{NS}}}Polygon"):
+            outer = poly_el.find(f".//{{{NS}}}outerBoundaryIs/{{{NS}}}LinearRing")
+            if outer is not None:
+                pts = coords_from_el(outer)
+            else:
+                pts = coords_from_el(poly_el)
+            if len(pts) >= 3:
+                key = f"Polygon: {name}" if name not in results else f"Polygon: {name}_{len(results)}"
+                results[key] = pts
+
+        # LinearRing (standalone)
+        for lr in pm.iter(f"{{{NS}}}LinearRing"):
+            # skip if already inside a Polygon handled above
+            if pm.find(f".//{{{NS}}}Polygon") is not None:
+                continue
+            pts = coords_from_el(lr)
+            if len(pts) >= 3:
+                key = f"Ring: {name}" if name not in results else f"Ring: {name}_{len(results)}"
+                results[key] = pts
+
+        # LineString — only if it looks closed (first ≈ last point)
+        for ls in pm.iter(f"{{{NS}}}LineString"):
+            pts = coords_from_el(ls)
+            if len(pts) >= 3:
+                first, last = pts[0], pts[-1]
+                dist = math.sqrt((first[0]-last[0])**2 + (first[1]-last[1])**2)
+                if dist < 0.001:   # ~100m threshold — treat as closed
+                    key = f"Line: {name}" if name not in results else f"Line: {name}_{len(results)}"
+                    results[key] = pts
+
+    # Fallback: no namespace
+    if not results:
+        for pm in root2.iter("Placemark"):
+            name_el = pm.find("name")
+            name = name_el.text.strip() if (name_el is not None and name_el.text) else "Unnamed"
+            for poly_el in pm.iter("Polygon"):
+                outer = poly_el.find(".//outerBoundaryIs/LinearRing")
+                c_el = outer.find("coordinates") if outer is not None else poly_el.find("coordinates")
+                if c_el is not None and c_el.text:
+                    pts = _parse_kml_coords(c_el.text)
+                    if len(pts) >= 3:
+                        results[f"Polygon: {name}"] = pts
+
+    return results
+
+
+def parse_dxf_polygons(raw_bytes):
+    """
+    Extract closed polylines/lwpolylines from a DXF file.
+    Returns dict of {layer_entity_label: [(x, y), ...]}
+    """
+    if not HAS_EZDXF:
+        return {}
+    try:
+        doc = ezdxf.read(io.StringIO(raw_bytes.decode("utf-8", errors="ignore")))
+    except Exception:
+        try:
+            doc = ezdxf.read(io.StringIO(raw_bytes.decode("latin-1", errors="ignore")))
+        except Exception:
+            return {}
+
+    results = {}
+    msp = doc.modelspace()
+    idx = 0
+    for ent in msp:
+        pts = None
+        if ent.dxftype() == "LWPOLYLINE":
+            if ent.is_closed or ent.dxf.flags & 1:
+                pts = [(p[0], p[1]) for p in ent.get_points()]
+        elif ent.dxftype() == "POLYLINE":
+            verts = list(ent.vertices)
+            if len(verts) >= 3:
+                pts = [(v.dxf.location.x, v.dxf.location.y) for v in verts]
+        elif ent.dxftype() in ("SPLINE", "ELLIPSE"):
+            pass  # skip for now
+
+        if pts and len(pts) >= 3:
+            layer = ent.dxf.layer if hasattr(ent.dxf, "layer") else "0"
+            key = f"Layer {layer} #{idx}"
+            results[key] = pts
+            idx += 1
+
+    return results
+
+
+def load_boundary_file(uploaded):
+    """
+    Read file, detect type, return raw bytes and file extension.
+    """
+    raw = uploaded.read()
+    name = uploaded.name.lower()
+    if name.endswith(".kmz"):
+        with zipfile.ZipFile(io.BytesIO(raw)) as z:
+            kml_name = next((n for n in z.namelist() if n.endswith(".kml")), None)
+            if kml_name:
+                raw = z.read(kml_name)
+        return raw, "kml"
+    elif name.endswith(".kml"):
+        return raw, "kml"
+    elif name.endswith(".dxf"):
+        return raw, "dxf"
+    return raw, "unknown"
 
 
 # ─── Main UI ─────────────────────────────────────────────────────────────────
@@ -402,7 +521,7 @@ with left:
 
     input_method = st.radio("Input method", [
         "✏️ Draw on Map",
-        "📁 Upload KML / KMZ",
+        "📁 Upload KML / KMZ / DXF",
     ], horizontal=True)
 
     polygon_coords = None
@@ -461,14 +580,33 @@ with left:
 
         st.caption("Draw a polygon or rectangle around your PV site. Use satellite imagery to trace the exact boundary.")
 
-    # ── Upload KML/KMZ ──
+    # ── Upload KML / KMZ / DXF ──
     else:
-        f = st.file_uploader("Upload KML or KMZ boundary file", type=["kml", "kmz"])
+        f = st.file_uploader("Upload boundary file", type=["kml", "kmz", "dxf"],
+                             help="KML / KMZ from Google Earth · DXF from Civil 3D / AutoCAD")
         if f:
-            polygon_coords = parse_boundary_file(f)
-            if polygon_coords:
+            raw, ftype = load_boundary_file(f)
+
+            if ftype == "kml":
+                all_polys = parse_kml_all_polygons(raw)
+            elif ftype == "dxf":
+                all_polys = parse_dxf_polygons(raw)
+            else:
+                all_polys = {}
+
+            if not all_polys:
+                st.error("No closed polygon found in file. Check the file contains a site boundary polyline or polygon.")
+            elif len(all_polys) == 1:
+                polygon_coords = list(all_polys.values())[0]
                 st.success(f"Boundary loaded — {len(polygon_coords)} vertices")
-                # Preview on map
+            else:
+                # Multiple polygons found — let user pick
+                st.info(f"Found {len(all_polys)} polygons/boundaries in file. Select the site boundary:")
+                chosen = st.selectbox("Select boundary", list(all_polys.keys()))
+                polygon_coords = all_polys[chosen]
+                st.success(f"Selected: **{chosen}** — {len(polygon_coords)} vertices")
+
+            if polygon_coords:
                 lons = [c[0] for c in polygon_coords]
                 lats = [c[1] for c in polygon_coords]
                 m2 = folium.Map(location=[np.mean(lats), np.mean(lons)],
@@ -477,11 +615,9 @@ with left:
                                 attr="Google Satellite")
                 folium.Polygon(
                     locations=[(c[1], c[0]) for c in polygon_coords],
-                    color="#42a5f5", fill=True, fill_opacity=0.2, weight=2
+                    color="#42a5f5", fill=True, fill_opacity=0.25, weight=2
                 ).add_to(m2)
                 st_folium(m2, width=None, height=300, returned_objects=[])
-            else:
-                st.error("Could not read polygon from file — check it contains a polygon/boundary.")
 
     # ── Settings ──
     st.markdown('<div class="section-hdr" style="margin-top:1rem;"><i class="fa-solid fa-sliders" style="color:#1565c0;"></i> Settings</div>', unsafe_allow_html=True)
