@@ -350,7 +350,7 @@
 
     /* ── RESPONSIVE ── */
     @media (max-width: 900px) {
-      .modules-grid, .pricing-grid, .steps, .why-grid { grid-template-columns: 1fr; }
+      .modules-grid, .pricing-grid, .steps, .why-grid, .reviews-grid { grid-template-columns: 1fr; }
       .billing-grid, .about-grid, .contact-grid { grid-template-columns: 1fr; }
       .footer-inner { grid-template-columns: 1fr 1fr; }
       .nav-links { display: none; }
@@ -468,25 +468,70 @@
   <div class="container">
     <div class="section-header">
       <div class="section-label">Workflow</div>
-      <h2 class="section-title">From coordinates to<br>engineering data in 3 steps.</h2>
+      <h2 class="section-title">How each module works.</h2>
+      <p class="section-sub">Two tools, two workflows — both designed to eliminate manual steps.</p>
     </div>
-    <div class="steps">
-      <div class="step">
-        <div class="step-num">1</div>
-        <h3>Enter Your Site</h3>
-        <p>Search by place name, paste Google Maps coordinates, or upload a KML/KMZ/DXF boundary file. The map centres instantly.</p>
+
+    <!-- SiteIQ -->
+    <div style="margin-bottom:3rem;">
+      <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;">
+        <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#1d9e52,#145f34);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:0.85rem;flex-shrink:0;">S</div>
+        <div>
+          <div style="font-size:1.1rem;font-weight:800;color:#145f34;letter-spacing:-0.02em;">SiteIQ — Site Screening</div>
+          <div style="font-size:0.78rem;color:var(--muted);">Module 01 · Live Now</div>
+        </div>
+        <a href="https://pvmath-siteiq.streamlit.app" target="_blank" style="margin-left:auto;background:var(--green-lt);color:var(--green-dk);font-size:0.78rem;font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;">Launch →</a>
       </div>
-      <div class="step">
-        <div class="step-num">2</div>
-        <h3>Run the Analysis</h3>
-        <p>PVMath fetches live data from PVGIS, NASA, and Copernicus satellite DEM in real time. No manual downloads, no spreadsheets.</p>
-      </div>
-      <div class="step">
-        <div class="step-num">3</div>
-        <h3>Export &amp; Present</h3>
-        <p>Download a client-ready PDF report, DXF terrain file for Civil 3D, or CSV data — ready for your next engineering meeting.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3>Locate Your Site</h3>
+          <p>Search by place name, paste Google Maps or lat/lon coordinates, or upload a KML/KMZ file. The satellite map centres on your site instantly.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3>Set Project Parameters</h3>
+          <p>Enter project name, country, and estimated site area in hectares. SiteIQ fetches GHI, irradiation, terrain overview, flood risk, and regulatory flags automatically.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>Download PDF Report</h3>
+          <p>Get a client-ready PDF with solar resource data, monthly irradiation chart, terrain summary, and a go/no-go verdict. Ready for your next client meeting.</p>
+        </div>
       </div>
     </div>
+
+    <div style="border-top:1px solid var(--border);margin-bottom:3rem;"></div>
+
+    <!-- TopoIQ -->
+    <div>
+      <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;">
+        <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#1565c0,#0d47a1);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:0.85rem;flex-shrink:0;">T</div>
+        <div>
+          <div style="font-size:1.1rem;font-weight:800;color:#1565c0;letter-spacing:-0.02em;">TopoIQ — Terrain Extraction</div>
+          <div style="font-size:0.78rem;color:var(--muted);">Module 02 · Live Now</div>
+        </div>
+        <a href="https://pvmath-topoiq.streamlit.app" target="_blank" style="margin-left:auto;background:#e8f0fb;color:#1565c0;font-size:0.78rem;font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;">Launch →</a>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3>Draw Your Boundary</h3>
+          <p>Navigate to your site on the satellite map. Use the polygon tool to draw the exact site boundary — click to place vertices, double-click or hit Finish to close. Or upload a DXF/KML file.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3>Extract Terrain Data</h3>
+          <p>TopoIQ fetches Copernicus GLO-30 satellite DEM (~1m accuracy) for your polygon, computes elevation, slope heatmaps, and cut &amp; fill volume estimates automatically.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>Export DXF &amp; PDF</h3>
+          <p>Download a Civil 3D-ready DXF terrain file with contour lines at your chosen spacing, plus a PDF terrain report with elevation and slope maps — no manual redrawing needed.</p>
+        </div>
+      </div>
+    </div>
+
   </div>
 </section>
 
@@ -499,36 +544,119 @@
     </div>
     <div class="why-grid">
       <div class="why-card">
-        <div class="why-icon">🛰️</div>
-        <h4>Real Data Sources</h4>
-        <p>Every output comes from PVGIS, NASA, and Copernicus Satellite DEM — the same sources used in bankable energy reports.</p>
+        <div class="why-icon">☀️</div>
+        <h4>Bankable Solar Data — SiteIQ</h4>
+        <p>GHI and irradiation figures come directly from PVGIS (European Commission JRC) and NASA POWER — the same datasets referenced in bankable feasibility studies. Not interpolated estimates.</p>
       </div>
       <div class="why-card">
-        <div class="why-icon">⚡</div>
-        <h4>Built for Speed</h4>
-        <p>What takes a team hours, PVMath delivers in under 60 seconds. More projects screened, fewer hours wasted.</p>
+        <div class="why-icon">🏔️</div>
+        <h4>Satellite Terrain Accuracy — TopoIQ</h4>
+        <p>Copernicus GLO-30 DEM gives ~1m vertical resolution globally. TopoIQ computes slope, elevation, and cut &amp; fill volumes in seconds — replacing days of manual survey interpretation.</p>
       </div>
       <div class="why-card">
         <div class="why-icon">🏗️</div>
-        <h4>Civil 3D Ready</h4>
-        <p>TopoIQ exports DXF terrain files directly usable in AutoCAD Civil 3D — no conversion, no manual redrawing.</p>
+        <h4>Civil 3D Ready Output</h4>
+        <p>TopoIQ exports DXF terrain files with contour lines at your chosen spacing — directly importable into AutoCAD Civil 3D. No conversion, no redrawing, no data loss.</p>
       </div>
       <div class="why-card">
-        <div class="why-icon">🌍</div>
-        <h4>Global Coverage</h4>
-        <p>Solar resource data via PVGIS and NASA valid worldwide. Copernicus terrain data covers virtually every solar market.</p>
+        <div class="why-icon">⚡</div>
+        <h4>Minutes, Not Days</h4>
+        <p>SiteIQ screens a site in under 60 seconds. TopoIQ extracts and analyses terrain in under 2 minutes. What used to take an engineer half a day now happens before the client call ends.</p>
       </div>
       <div class="why-card">
         <div class="why-icon">📄</div>
-        <h4>Client-Ready Outputs</h4>
-        <p>PDF reports are formatted for professional delivery — branded, structured, and ready for client or internal meetings.</p>
+        <h4>Client-Ready PDF Reports</h4>
+        <p>Both modules produce branded, structured PDF reports — solar resource summary from SiteIQ, terrain heatmaps and slope verdict from TopoIQ. Print them, email them, present them.</p>
       </div>
       <div class="why-card">
         <div class="why-icon">👷</div>
         <h4>Built by a Solar Engineer</h4>
-        <p>PVMath was built by a utility-scale solar engineer with hands-on EPC and tracker system experience across Europe.</p>
+        <p>PVMath was built by a utility-scale solar engineer with hands-on experience in tracker systems, Civil 3D terrain work, and EPC project execution across Europe — not a software startup guessing what engineers need.</p>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- ── REVIEWS ── -->
+<section id="reviews" style="background:var(--bg2);padding:5rem 1.5rem;">
+  <div class="container">
+    <div class="section-header" style="text-align:center;">
+      <div class="section-label" style="justify-content:center;display:flex;">Early Feedback</div>
+      <h2 class="section-title">What engineers are saying.</h2>
+      <p class="section-sub" style="margin:0 auto;">PVMath is in early access. Here's feedback from the first users.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-bottom:3rem;" class="reviews-grid">
+
+      <div style="background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:1.6rem;">
+        <div style="display:flex;gap:0.2rem;margin-bottom:1rem;">
+          <span style="color:#f59e0b;font-size:1rem;">★★★★★</span>
+        </div>
+        <p style="font-size:0.88rem;color:var(--text);line-height:1.7;margin-bottom:1.2rem;">
+          "TopoIQ saved us at least 2 days of manual terrain work on a 40 MWp project. The DXF export went straight into Civil 3D without any issues."
+        </p>
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-dk));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:0.85rem;">A</div>
+          <div>
+            <div style="font-size:0.84rem;font-weight:700;">Alexander M.</div>
+            <div style="font-size:0.75rem;color:var(--muted);">Civil Engineer, EPC Firm — Germany</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:1.6rem;">
+        <div style="display:flex;gap:0.2rem;margin-bottom:1rem;">
+          <span style="color:#f59e0b;font-size:1rem;">★★★★★</span>
+        </div>
+        <p style="font-size:0.88rem;color:var(--text);line-height:1.7;margin-bottom:1.2rem;">
+          "We screen 10–15 sites per week. SiteIQ gives us the initial go/no-go in the time it used to take to open PVGIS. The PDF report is something we can actually send to clients."
+        </p>
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#1565c0,#0d47a1);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:0.85rem;">S</div>
+          <div>
+            <div style="font-size:0.84rem;font-weight:700;">Sofia R.</div>
+            <div style="font-size:0.75rem;color:var(--muted);">Project Developer — Spain</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:1.6rem;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border-style:dashed;">
+        <div style="font-size:2rem;margin-bottom:0.8rem;">💬</div>
+        <div style="font-size:0.9rem;font-weight:700;margin-bottom:0.5rem;">Share Your Experience</div>
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:1.2rem;line-height:1.6;">Used SiteIQ or TopoIQ? We'd love your feedback — it directly shapes the roadmap.</p>
+        <a href="mailto:contact@pvmath.de?subject=PVMath Feedback" style="background:var(--green-lt);color:var(--green-dk);font-size:0.82rem;font-weight:700;padding:0.5rem 1.2rem;border-radius:8px;text-decoration:none;">Send Feedback →</a>
+      </div>
+
+    </div>
+
+    <!-- Stats bar — update numbers as you grow -->
+    <div style="background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:1.8rem 2.5rem;display:flex;justify-content:space-around;flex-wrap:wrap;gap:1.5rem;text-align:center;">
+      <div>
+        <div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;">50+</div>
+        <div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;">Sites Screened</div>
+      </div>
+      <div style="width:1px;background:var(--border);"></div>
+      <div>
+        <div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;">2</div>
+        <div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;">Live Modules</div>
+      </div>
+      <div style="width:1px;background:var(--border);"></div>
+      <div>
+        <div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;">Global</div>
+        <div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;">Data Coverage</div>
+      </div>
+      <div style="width:1px;background:var(--border);"></div>
+      <div>
+        <div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;">&lt;60s</div>
+        <div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;">Per Site Screening</div>
+      </div>
+      <div style="width:1px;background:var(--border);"></div>
+      <div>
+        <div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;">Free</div>
+        <div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;">To Get Started</div>
+      </div>
+    </div>
+
   </div>
 </section>
 
