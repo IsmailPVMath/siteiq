@@ -33,13 +33,7 @@
     }
 
     html { scroll-behavior: smooth; }
-
-    body {
-      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.6;
-    }
+    body { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
 
     /* ── NAV ── */
     nav {
@@ -58,6 +52,7 @@
       font-size: 1rem; color: #fff; font-weight: 800;
     }
     .nav-brand { font-size: 1.15rem; font-weight: 800; color: var(--text); letter-spacing: -0.02em; }
+    .nav-right { display: flex; align-items: center; gap: 1.5rem; }
     .nav-links { display: flex; align-items: center; gap: 2rem; }
     .nav-links a { text-decoration: none; color: var(--muted); font-size: 0.88rem; font-weight: 500; transition: color .2s; }
     .nav-links a:hover { color: var(--green); }
@@ -68,6 +63,18 @@
       transition: background .2s, box-shadow .2s;
     }
     .nav-cta:hover { background: var(--green-dk) !important; box-shadow: 0 4px 14px rgba(29,158,82,.3); }
+
+    /* ── LANG SWITCHER ── */
+    .lang-switcher { display: flex; gap: 0.2rem; align-items: center; }
+    .lang-btn {
+      background: none; border: 1.5px solid transparent;
+      padding: 0.22rem 0.55rem; border-radius: 6px;
+      font-size: 0.75rem; font-weight: 700; color: var(--muted);
+      cursor: pointer; font-family: inherit; transition: all .18s;
+      letter-spacing: 0.03em;
+    }
+    .lang-btn:hover { color: var(--green); border-color: var(--green); }
+    .lang-btn.active { color: var(--green-dk); border-color: var(--green); background: var(--green-lt); }
 
     /* ── HERO ── */
     .hero {
@@ -83,13 +90,9 @@
       letter-spacing: 0.06em; text-transform: uppercase;
       padding: 0.4rem 1rem; border-radius: 100px; margin-bottom: 1.8rem;
     }
-    .hero-badge span { width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: pulse 1.8s infinite; }
+    .hero-badge span.dot { width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: pulse 1.8s infinite; }
     @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.4)} }
-    .hero h1 {
-      font-size: clamp(2.4rem, 5vw, 4rem); font-weight: 900;
-      letter-spacing: -0.04em; line-height: 1.1; margin-bottom: 1.2rem;
-      color: var(--text);
-    }
+    .hero h1 { font-size: clamp(2.4rem, 5vw, 4rem); font-weight: 900; letter-spacing: -0.04em; line-height: 1.1; margin-bottom: 1.2rem; color: var(--text); }
     .hero h1 em { font-style: normal; color: var(--green); }
     .hero p { font-size: 1.1rem; color: var(--muted); max-width: 580px; margin: 0 auto 2.5rem; line-height: 1.7; }
     .hero-btns { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
@@ -97,8 +100,7 @@
       background: linear-gradient(135deg, var(--green), var(--green-dk));
       color: #fff; text-decoration: none; padding: 0.85rem 2rem;
       border-radius: 9px; font-weight: 700; font-size: 0.95rem;
-      box-shadow: 0 4px 20px rgba(29,158,82,.3);
-      transition: transform .2s, box-shadow .2s;
+      box-shadow: 0 4px 20px rgba(29,158,82,.3); transition: transform .2s, box-shadow .2s;
     }
     .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(29,158,82,.4); }
     .btn-outline {
@@ -107,23 +109,14 @@
       border: 1.5px solid var(--border); transition: border-color .2s, color .2s;
     }
     .btn-outline:hover { border-color: var(--green); color: var(--green); }
-    .hero-stats {
-      display: flex; justify-content: center; gap: 3rem; margin-top: 4rem;
-      padding-top: 3rem; border-top: 1px solid var(--border); flex-wrap: wrap;
-    }
+    .hero-stats { display: flex; justify-content: center; gap: 3rem; margin-top: 4rem; padding-top: 3rem; border-top: 1px solid var(--border); flex-wrap: wrap; }
     .stat-num { font-size: 2rem; font-weight: 800; color: var(--text); letter-spacing: -0.03em; }
     .stat-lbl { font-size: 0.78rem; color: var(--muted); font-weight: 500; margin-top: 0.2rem; }
 
     /* ── SECTIONS ── */
     section { padding: 6rem 1.5rem; }
-    .section-label {
-      font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.12em; color: var(--green); margin-bottom: 0.8rem;
-    }
-    .section-title {
-      font-size: clamp(1.8rem, 3vw, 2.6rem); font-weight: 800;
-      letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem;
-    }
+    .section-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--green); margin-bottom: 0.8rem; }
+    .section-title { font-size: clamp(1.8rem, 3vw, 2.6rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
     .section-sub { font-size: 1rem; color: var(--muted); max-width: 580px; line-height: 1.7; }
     .section-header { margin-bottom: 3.5rem; }
     .container { max-width: 1100px; margin: 0 auto; }
@@ -131,45 +124,26 @@
     /* ── MODULES ── */
     #modules { background: var(--card); }
     .modules-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
-
-    .module-card {
-      border: 1.5px solid var(--border); border-radius: 14px;
-      padding: 2rem; background: var(--bg); position: relative;
-      transition: transform .25s, box-shadow .25s, border-color .25s;
-      display: flex; flex-direction: column;
-    }
+    .module-card { border: 1.5px solid var(--border); border-radius: 14px; padding: 2rem; background: var(--bg); position: relative; transition: transform .25s, box-shadow .25s, border-color .25s; display: flex; flex-direction: column; }
     .module-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,.08); }
     .module-card.live { border-color: rgba(29,158,82,.35); }
     .module-card.live:hover { border-color: var(--green); }
     .module-card.soon { border-color: rgba(245,158,11,.3); opacity: .9; }
-
-    .module-pill {
-      display: inline-flex; align-items: center; gap: 0.35rem;
-      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em;
-      text-transform: uppercase; padding: 0.3rem 0.75rem; border-radius: 100px;
-      margin-bottom: 1.2rem; width: fit-content;
-    }
+    .module-pill { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.3rem 0.75rem; border-radius: 100px; margin-bottom: 1.2rem; width: fit-content; }
     .pill-live { background: var(--green-lt); color: var(--green-dk); }
     .pill-live::before { content:''; width:6px; height:6px; background:var(--green); border-radius:50%; animation: pulse 1.8s infinite; }
     .pill-soon { background: var(--amber-lt); color: #92400e; }
-
     .module-num { font-size: 0.72rem; font-weight: 700; color: var(--muted); letter-spacing: 0.1em; margin-bottom: 0.5rem; }
     .module-name { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.6rem; }
     .module-name.green { color: var(--green-dk); }
     .module-name.blue  { color: var(--blue); }
     .module-name.amber { color: #92400e; }
     .module-desc { font-size: 0.88rem; color: var(--muted); line-height: 1.65; margin-bottom: 1.5rem; flex: 1; }
-
     .module-features { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.8rem; }
     .module-features li { font-size: 0.83rem; color: var(--muted); display: flex; align-items: center; gap: 0.5rem; }
     .module-features li::before { content:'✓'; color: var(--green); font-weight: 700; flex-shrink: 0; }
     .module-features li.soon-item::before { content:'◷'; color: var(--amber); }
-
-    .module-link {
-      display: block; text-align: center; padding: 0.7rem;
-      border-radius: 8px; font-weight: 700; font-size: 0.88rem;
-      text-decoration: none; transition: all .2s;
-    }
+    .module-link { display: block; text-align: center; padding: 0.7rem; border-radius: 8px; font-weight: 700; font-size: 0.88rem; text-decoration: none; transition: all .2s; }
     .link-green { background: var(--green); color: #fff; }
     .link-green:hover { background: var(--green-dk); box-shadow: 0 4px 14px rgba(29,158,82,.3); }
     .link-blue { background: var(--blue); color: #fff; }
@@ -180,71 +154,32 @@
     #how { background: var(--bg); }
     .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
     .step { text-align: center; padding: 1.5rem; }
-    .step-num {
-      width: 48px; height: 48px; border-radius: 12px;
-      background: linear-gradient(135deg, var(--green), var(--green-dk));
-      color: #fff; font-weight: 800; font-size: 1.1rem;
-      display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 1.2rem;
-    }
+    .step-num { width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, var(--green), var(--green-dk)); color: #fff; font-weight: 800; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.2rem; }
     .step h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; }
     .step p { font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
 
     /* ── WHY PVMATH ── */
     #why { background: var(--card); }
     .why-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
-    .why-card {
-      padding: 1.6rem; border-radius: 12px; border: 1px solid var(--border);
-      background: var(--bg);
-    }
+    .why-card { padding: 1.6rem; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); }
     .why-icon { font-size: 1.6rem; margin-bottom: 0.8rem; }
     .why-card h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem; }
     .why-card p { font-size: 0.84rem; color: var(--muted); line-height: 1.6; }
 
     /* ── PRICING ── */
     #pricing { background: var(--bg); }
-    .pricing-toggle {
-      display: flex; align-items: center; justify-content: center;
-      gap: 1rem; margin-bottom: 3rem;
-    }
+    .pricing-toggle { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 3rem; }
     .toggle-label { font-size: 0.88rem; font-weight: 600; color: var(--muted); }
-    .toggle-label.active { color: var(--text); }
-    .toggle-switch {
-      width: 52px; height: 28px; background: var(--green); border-radius: 100px;
-      position: relative; cursor: pointer; transition: background .2s;
-      border: none; outline: none;
-    }
-    .toggle-switch::after {
-      content: ''; position: absolute; width: 22px; height: 22px;
-      background: #fff; border-radius: 50%; top: 3px; left: 3px;
-      transition: transform .25s;
-    }
+    .toggle-switch { width: 52px; height: 28px; background: var(--green); border-radius: 100px; position: relative; cursor: pointer; transition: background .2s; border: none; outline: none; }
+    .toggle-switch::after { content: ''; position: absolute; width: 22px; height: 22px; background: #fff; border-radius: 50%; top: 3px; left: 3px; transition: transform .25s; }
     .toggle-switch.monthly::after { transform: translateX(0); }
     .toggle-switch.annual::after  { transform: translateX(24px); }
-    .toggle-badge {
-      background: var(--green-lt); color: var(--green-dk);
-      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em;
-      padding: 0.25rem 0.6rem; border-radius: 100px; text-transform: uppercase;
-    }
-
+    .toggle-badge { background: var(--green-lt); color: var(--green-dk); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; padding: 0.25rem 0.6rem; border-radius: 100px; text-transform: uppercase; }
     .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
-    .price-card {
-      background: var(--card); border: 1.5px solid var(--border);
-      border-radius: 14px; padding: 2rem; position: relative;
-      display: flex; flex-direction: column;
-      transition: transform .25s, box-shadow .25s;
-    }
+    .price-card { background: var(--card); border: 1.5px solid var(--border); border-radius: 14px; padding: 2rem; position: relative; display: flex; flex-direction: column; transition: transform .25s, box-shadow .25s; }
     .price-card:hover { transform: translateY(-3px); box-shadow: 0 10px 35px rgba(0,0,0,.07); }
-    .price-card.featured {
-      border-color: var(--green); background: #fff;
-      box-shadow: 0 0 0 4px rgba(29,158,82,.08);
-    }
-    .price-badge {
-      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
-      background: var(--green); color: #fff; font-size: 0.7rem; font-weight: 700;
-      letter-spacing: 0.06em; text-transform: uppercase;
-      padding: 0.3rem 1rem; border-radius: 100px; white-space: nowrap;
-    }
+    .price-card.featured { border-color: var(--green); background: #fff; box-shadow: 0 0 0 4px rgba(29,158,82,.08); }
+    .price-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--green); color: #fff; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 0.3rem 1rem; border-radius: 100px; white-space: nowrap; }
     .price-tier { font-size: 0.72rem; font-weight: 700; color: var(--green); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem; }
     .price-amount { font-size: 2.6rem; font-weight: 800; line-height: 1; letter-spacing: -0.03em; }
     .price-amount span { font-size: 1rem; font-weight: 400; color: var(--muted); }
@@ -256,46 +191,11 @@
     .price-features li.yes::before { content:'✓'; color: var(--green); font-weight: 700; }
     .price-features li.no  { color: #bbb; }
     .price-features li.no::before  { content:'—'; color: #ddd; }
-    .price-btn {
-      display: block; text-align: center; padding: 0.8rem;
-      border-radius: 9px; font-weight: 700; font-size: 0.9rem;
-      text-decoration: none; transition: all .2s; border: 1.5px solid transparent;
-    }
+    .price-btn { display: block; text-align: center; padding: 0.8rem; border-radius: 9px; font-weight: 700; font-size: 0.9rem; text-decoration: none; transition: all .2s; border: 1.5px solid transparent; }
     .price-btn.outline { border-color: var(--border); color: var(--text); }
     .price-btn.outline:hover { border-color: var(--green); color: var(--green); }
     .price-btn.solid   { background: linear-gradient(135deg, var(--green), var(--green-dk)); color: #fff; }
     .price-btn.solid:hover { box-shadow: 0 6px 20px rgba(29,158,82,.35); transform: translateY(-1px); }
-
-    /* ── BILLING / INVOICE INFO ── */
-    #billing { background: var(--card); }
-    .billing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: start; }
-    .billing-steps { display: flex; flex-direction: column; gap: 1.5rem; }
-    .billing-step { display: flex; gap: 1.2rem; align-items: flex-start; }
-    .billing-step-num {
-      width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0;
-      background: var(--green-lt); color: var(--green-dk);
-      font-weight: 800; font-size: 0.9rem;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .billing-step h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.25rem; }
-    .billing-step p { font-size: 0.83rem; color: var(--muted); line-height: 1.6; }
-
-    .invoice-preview {
-      background: #fff; border: 1.5px solid var(--border); border-radius: 14px;
-      padding: 2rem; font-size: 0.82rem; box-shadow: 0 4px 20px rgba(0,0,0,.06);
-    }
-    .inv-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; padding-bottom: 1.2rem; border-bottom: 1px solid var(--border); }
-    .inv-brand { font-size: 1.1rem; font-weight: 800; color: var(--green-dk); letter-spacing: -0.02em; }
-    .inv-brand small { display: block; font-size: 0.72rem; font-weight: 500; color: var(--muted); margin-top: 0.2rem; }
-    .inv-label { font-size: 1rem; font-weight: 800; color: var(--text); }
-    .inv-label small { display: block; font-size: 0.72rem; font-weight: 500; color: var(--muted); }
-    .inv-row { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #f0f0f0; }
-    .inv-row:last-child { border-bottom: none; }
-    .inv-total { display: flex; justify-content: space-between; padding: 0.8rem 0; margin-top: 0.5rem; border-top: 2px solid var(--text); font-weight: 800; font-size: 0.95rem; }
-    .inv-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem; font-size: 0.78rem; }
-    .inv-meta-block small { display: block; font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.2rem; }
-    .inv-meta-block strong { font-weight: 700; }
-    .inv-order { display: inline-block; background: var(--green-lt); color: var(--green-dk); font-weight: 700; font-size: 0.78rem; padding: 0.2rem 0.6rem; border-radius: 6px; font-family: monospace; letter-spacing: 0.05em; }
 
     /* ── ABOUT ── */
     #about { background: var(--bg2); }
@@ -316,28 +216,15 @@
     .contact-detail { display: flex; align-items: center; gap: 0.6rem; font-size: 0.85rem; margin-bottom: 0.6rem; }
     .contact-detail a { color: var(--green); text-decoration: none; font-weight: 600; }
     form { display: flex; flex-direction: column; gap: 1rem; }
-    input, select, textarea {
-      width: 100%; padding: 0.75rem 1rem; border: 1.5px solid var(--border);
-      border-radius: 9px; font-family: inherit; font-size: 0.88rem;
-      background: var(--bg); color: var(--text); transition: border-color .2s;
-      outline: none;
-    }
+    input, select, textarea { width: 100%; padding: 0.75rem 1rem; border: 1.5px solid var(--border); border-radius: 9px; font-family: inherit; font-size: 0.88rem; background: var(--bg); color: var(--text); transition: border-color .2s; outline: none; }
     input:focus, select:focus, textarea:focus { border-color: var(--green); }
     textarea { resize: vertical; min-height: 110px; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    .form-submit {
-      background: linear-gradient(135deg, var(--green), var(--green-dk));
-      color: #fff; border: none; padding: 0.85rem; border-radius: 9px;
-      font-weight: 700; font-size: 0.95rem; cursor: pointer; font-family: inherit;
-      transition: box-shadow .2s, transform .2s;
-    }
+    .form-submit { background: linear-gradient(135deg, var(--green), var(--green-dk)); color: #fff; border: none; padding: 0.85rem; border-radius: 9px; font-weight: 700; font-size: 0.95rem; cursor: pointer; font-family: inherit; transition: box-shadow .2s, transform .2s; }
     .form-submit:hover { box-shadow: 0 6px 20px rgba(29,158,82,.35); transform: translateY(-1px); }
 
     /* ── FOOTER ── */
-    footer {
-      background: var(--text); color: rgba(255,255,255,.7);
-      padding: 3rem 1.5rem 2rem; font-size: 0.82rem;
-    }
+    footer { background: var(--text); color: rgba(255,255,255,.7); padding: 3rem 1.5rem 2rem; font-size: 0.82rem; }
     .footer-inner { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 2.5rem; }
     .footer-brand { font-size: 1.1rem; font-weight: 800; color: #fff; margin-bottom: 0.6rem; letter-spacing: -0.02em; }
     .footer-tagline { line-height: 1.6; margin-bottom: 1rem; }
@@ -351,7 +238,7 @@
     /* ── RESPONSIVE ── */
     @media (max-width: 900px) {
       .modules-grid, .pricing-grid, .steps, .why-grid, .reviews-grid { grid-template-columns: 1fr; }
-      .billing-grid, .about-grid, .contact-grid { grid-template-columns: 1fr; }
+      .about-grid, .contact-grid { grid-template-columns: 1fr; }
       .footer-inner { grid-template-columns: 1fr 1fr; }
       .nav-links { display: none; }
       .form-row { grid-template-columns: 1fr; }
@@ -366,13 +253,19 @@
     <div class="nav-logo-mark">P</div>
     <span class="nav-brand">PVMath</span>
   </a>
-  <div class="nav-links">
-    <a href="#modules">Modules</a>
-    <a href="#how">How It Works</a>
-    <a href="#pricing">Pricing</a>
-    <a href="#about">About</a>
-    <a href="#contact">Contact</a>
-    <a href="https://pvmath-siteiq.streamlit.app" target="_blank" class="nav-cta">Try Free →</a>
+  <div class="nav-right">
+    <div class="nav-links">
+      <a href="#modules" data-i18n="nav.modules">Modules</a>
+      <a href="#how" data-i18n="nav.how">How It Works</a>
+      <a href="#pricing" data-i18n="nav.pricing">Pricing</a>
+      <a href="#about" data-i18n="nav.about">About</a>
+      <a href="#contact" data-i18n="nav.contact">Contact</a>
+      <a href="https://pvmath-siteiq.streamlit.app" target="_blank" class="nav-cta" data-i18n="nav.cta">Try Free &rarr;</a>
+    </div>
+    <div class="lang-switcher">
+      <button class="lang-btn active" data-lang="en" onclick="setLanguage('en')">EN</button>
+      <button class="lang-btn" data-lang="de" onclick="setLanguage('de')">DE</button>
+    </div>
   </div>
 </nav>
 
@@ -380,20 +273,20 @@
 <section class="hero">
   <div class="hero-inner">
     <div class="hero-badge">
-      <span></span>
-      Modules 1 &amp; 2 Live — SiteIQ · TopoIQ
+      <span class="dot"></span>
+      <span data-i18n="hero.badge">Modules 1 &amp; 2 Live &mdash; SiteIQ &middot; TopoIQ</span>
     </div>
-    <h1>Solar intelligence tools<br>built by <em>engineers,</em><br>for engineers.</h1>
-    <p>PVMath automates the slow, manual parts of solar project development — from first site visit to bankable data. Engineering-grade outputs in minutes, not days.</p>
+    <h1 data-i18n-html="hero.h1">Solar intelligence tools<br>built by <em>engineers,</em><br>for engineers.</h1>
+    <p data-i18n="hero.p">PVMath automates the slow, manual parts of solar project development &mdash; from first site visit to bankable data. Engineering-grade outputs in minutes, not days.</p>
     <div class="hero-btns">
-      <a href="https://pvmath-siteiq.streamlit.app" target="_blank" class="btn-primary">Try SiteIQ Free →</a>
-      <a href="#modules" class="btn-outline">Explore Modules</a>
+      <a href="https://pvmath-siteiq.streamlit.app" target="_blank" class="btn-primary" data-i18n="hero.btn1">Try SiteIQ Free &rarr;</a>
+      <a href="#modules" class="btn-outline" data-i18n="hero.btn2">Explore Modules</a>
     </div>
     <div class="hero-stats">
-      <div class="stat"><div class="stat-num">3</div><div class="stat-lbl">Active Modules</div></div>
-      <div class="stat"><div class="stat-num">60s</div><div class="stat-lbl">Site Screening Time</div></div>
-      <div class="stat"><div class="stat-num">Global</div><div class="stat-lbl">Solar Data Coverage</div></div>
-      <div class="stat"><div class="stat-num">Free</div><div class="stat-lbl">To Get Started</div></div>
+      <div class="stat"><div class="stat-num">3</div><div class="stat-lbl" data-i18n="stat.modules">Active Modules</div></div>
+      <div class="stat"><div class="stat-num">60s</div><div class="stat-lbl" data-i18n="stat.speed">Site Screening Time</div></div>
+      <div class="stat"><div class="stat-num">Global</div><div class="stat-lbl" data-i18n="stat.coverage">Solar Data Coverage</div></div>
+      <div class="stat"><div class="stat-num" data-i18n="stat.free-val">Free</div><div class="stat-lbl" data-i18n="stat.start">To Get Started</div></div>
     </div>
   </div>
 </section>
@@ -402,61 +295,61 @@
 <section id="modules">
   <div class="container">
     <div class="section-header">
-      <div class="section-label">Platform Modules</div>
-      <h2 class="section-title">Every module solves a specific pain point<br>in the solar project lifecycle.</h2>
-      <p class="section-sub">Each tool delivers engineering-grade data from real sources — PVGIS, NASA, Copernicus Satellite DEM — not estimates.</p>
+      <div class="section-label" data-i18n="modules.label">Platform Modules</div>
+      <h2 class="section-title" data-i18n-html="modules.title">Every module solves a specific pain point<br>in the solar project lifecycle.</h2>
+      <p class="section-sub" data-i18n="modules.sub">Each tool delivers engineering-grade data from real sources &mdash; PVGIS, NASA, Copernicus Satellite DEM &mdash; not estimates.</p>
     </div>
     <div class="modules-grid">
 
       <!-- SiteIQ -->
       <div class="module-card live">
-        <div class="module-pill pill-live">Live Now</div>
+        <div class="module-pill pill-live" data-i18n="pill.live">Live Now</div>
         <div class="module-num">Module 01</div>
         <div class="module-name green">SiteIQ</div>
-        <p class="module-desc">Fast solar site pre-screening for any location globally. Get GHI, irradiation, terrain overview, regulatory flags, and capacity estimates in under 60 seconds.</p>
+        <p class="module-desc" data-i18n="siteiq.desc">Fast solar site pre-screening for any location globally. Get GHI, irradiation, terrain overview, regulatory flags, and capacity estimates in under 60 seconds.</p>
         <ul class="module-features">
-          <li>Satellite map with coordinate input</li>
-          <li>Annual &amp; monthly GHI / irradiation</li>
-          <li>Terrain &amp; slope overview</li>
-          <li>Regulatory flags (protected areas)</li>
-          <li>Flood risk indicator</li>
-          <li>PDF report — client-ready</li>
+          <li data-i18n="siteiq.f1">Satellite map with coordinate input</li>
+          <li data-i18n="siteiq.f2">Annual &amp; monthly GHI / irradiation</li>
+          <li data-i18n="siteiq.f3">Terrain &amp; slope overview</li>
+          <li data-i18n="siteiq.f4">Regulatory flags (protected areas)</li>
+          <li data-i18n="siteiq.f5">Flood risk indicator</li>
+          <li data-i18n="siteiq.f6">PDF report &mdash; client-ready</li>
         </ul>
-        <a href="https://pvmath-siteiq.streamlit.app" target="_blank" class="module-link link-green">Launch SiteIQ →</a>
+        <a href="https://pvmath-siteiq.streamlit.app" target="_blank" class="module-link link-green" data-i18n="siteiq.btn">Launch SiteIQ &rarr;</a>
       </div>
 
       <!-- TopoIQ -->
       <div class="module-card live">
-        <div class="module-pill pill-live">Live Now</div>
+        <div class="module-pill pill-live" data-i18n="pill.live">Live Now</div>
         <div class="module-num">Module 02</div>
         <div class="module-name blue">TopoIQ</div>
-        <p class="module-desc">Satellite terrain extraction for solar site engineering. Draw your polygon, get elevation and slope heatmaps, contour lines, and DXF terrain files ready for detailed 3D study in your CAD software.</p>
+        <p class="module-desc" data-i18n="topoiq.desc">Satellite terrain extraction for solar site engineering. Draw your polygon, get elevation and slope heatmaps, contour lines, and DXF terrain files ready for detailed 3D study in your CAD software.</p>
         <ul class="module-features">
-          <li>Polygon boundary drawing on satellite map</li>
-          <li>Copernicus GLO-30 DEM (~1m accuracy)</li>
-          <li>Elevation &amp; solar-grade slope maps</li>
-          <li>Cut &amp; fill volume estimates</li>
-          <li>DXF terrain file export</li>
-          <li>PDF terrain report</li>
+          <li data-i18n="topoiq.f1">Polygon boundary drawing on satellite map</li>
+          <li data-i18n="topoiq.f2">Copernicus GLO-30 DEM (~1m accuracy)</li>
+          <li data-i18n="topoiq.f3">Elevation &amp; solar-grade slope maps</li>
+          <li data-i18n="topoiq.f4">Cut &amp; fill volume estimates</li>
+          <li data-i18n="topoiq.f5">DXF terrain file export</li>
+          <li data-i18n="topoiq.f6">PDF terrain report</li>
         </ul>
-        <a href="https://pvmath-topoiq.streamlit.app" target="_blank" class="module-link link-blue">Launch TopoIQ →</a>
+        <a href="https://pvmath-topoiq.streamlit.app" target="_blank" class="module-link link-blue" data-i18n="topoiq.btn">Launch TopoIQ &rarr;</a>
       </div>
 
       <!-- YieldIQ -->
       <div class="module-card soon">
-        <div class="module-pill pill-soon">Coming Soon</div>
+        <div class="module-pill pill-soon" data-i18n="pill.soon">Coming Soon</div>
         <div class="module-num">Module 03</div>
         <div class="module-name amber">YieldIQ</div>
-        <p class="module-desc">Quick pre-layout energy yield estimation using PVGIS and NASA data. Get bankable yield numbers before committing to full PV layout design.</p>
+        <p class="module-desc" data-i18n="yieldiq.desc">Quick pre-layout energy yield estimation using PVGIS and NASA data. Get bankable yield numbers before committing to full PV layout design.</p>
         <ul class="module-features">
-          <li class="soon-item">Specific yield estimation (kWh/kWp)</li>
-          <li class="soon-item">PR and capacity factor</li>
-          <li class="soon-item">Monthly energy profile</li>
-          <li class="soon-item">Temperature &amp; shading correction</li>
-          <li class="soon-item">Tracker vs fixed-tilt comparison</li>
-          <li class="soon-item">Bankable PDF yield report</li>
+          <li class="soon-item" data-i18n="yieldiq.f1">Specific yield estimation (kWh/kWp)</li>
+          <li class="soon-item" data-i18n="yieldiq.f2">PR and capacity factor</li>
+          <li class="soon-item" data-i18n="yieldiq.f3">Monthly energy profile</li>
+          <li class="soon-item" data-i18n="yieldiq.f4">Temperature &amp; shading correction</li>
+          <li class="soon-item" data-i18n="yieldiq.f5">Tracker vs fixed-tilt comparison</li>
+          <li class="soon-item" data-i18n="yieldiq.f6">Bankable PDF yield report</li>
         </ul>
-        <a href="#contact" class="module-link link-soon">Notify Me When Live</a>
+        <a href="#contact" class="module-link link-soon" data-i18n="yieldiq.btn">Notify Me When Live</a>
       </div>
 
     </div>
@@ -467,71 +360,46 @@
 <section id="how">
   <div class="container">
     <div class="section-header">
-      <div class="section-label">Workflow</div>
-      <h2 class="section-title">How each module works.</h2>
-      <p class="section-sub">Two tools, two workflows — both designed to eliminate manual steps.</p>
+      <div class="section-label" data-i18n="how.label">Workflow</div>
+      <h2 class="section-title" data-i18n="how.title">How each module works.</h2>
+      <p class="section-sub" data-i18n="how.sub">Two tools, two workflows &mdash; both designed to eliminate manual steps.</p>
     </div>
 
-    <!-- SiteIQ -->
+    <!-- SiteIQ steps -->
     <div style="margin-bottom:3rem;">
       <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;">
         <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#1d9e52,#145f34);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:0.85rem;flex-shrink:0;">S</div>
         <div>
-          <div style="font-size:1.1rem;font-weight:800;color:#145f34;letter-spacing:-0.02em;">SiteIQ — Site Screening</div>
-          <div style="font-size:0.78rem;color:var(--muted);">Module 01 · Live Now</div>
+          <div style="font-size:1.1rem;font-weight:800;color:#145f34;letter-spacing:-0.02em;" data-i18n="how.siteiq.title">SiteIQ &mdash; Site Screening</div>
+          <div style="font-size:0.78rem;color:var(--muted);" data-i18n="how.siteiq.sub">Module 01 &middot; Live Now</div>
         </div>
-        <a href="https://pvmath-siteiq.streamlit.app" target="_blank" style="margin-left:auto;background:var(--green-lt);color:var(--green-dk);font-size:0.78rem;font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;">Launch →</a>
+        <a href="https://pvmath-siteiq.streamlit.app" target="_blank" style="margin-left:auto;background:var(--green-lt);color:var(--green-dk);font-size:0.78rem;font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;" data-i18n="how.launch">Launch &rarr;</a>
       </div>
       <div class="steps">
-        <div class="step">
-          <div class="step-num">1</div>
-          <h3>Locate Your Site</h3>
-          <p>Search by place name, paste Google Maps or lat/lon coordinates, or upload a KML/KMZ file. The satellite map centres on your site instantly.</p>
-        </div>
-        <div class="step">
-          <div class="step-num">2</div>
-          <h3>Set Project Parameters</h3>
-          <p>Enter project name, country, and estimated site area in hectares. SiteIQ fetches GHI, irradiation, terrain overview, flood risk, and regulatory flags automatically.</p>
-        </div>
-        <div class="step">
-          <div class="step-num">3</div>
-          <h3>Download PDF Report</h3>
-          <p>Get a client-ready PDF with solar resource data, monthly irradiation chart, terrain summary, and a go/no-go verdict. Ready for your next client meeting.</p>
-        </div>
+        <div class="step"><div class="step-num">1</div><h3 data-i18n="siteiq.s1.h">Locate Your Site</h3><p data-i18n="siteiq.s1.p">Search by place name, paste Google Maps or lat/lon coordinates, or upload a KML/KMZ file. The satellite map centres on your site instantly.</p></div>
+        <div class="step"><div class="step-num">2</div><h3 data-i18n="siteiq.s2.h">Set Project Parameters</h3><p data-i18n="siteiq.s2.p">Enter project name, country, and estimated site area in hectares. SiteIQ fetches GHI, irradiation, terrain overview, flood risk, and regulatory flags automatically.</p></div>
+        <div class="step"><div class="step-num">3</div><h3 data-i18n="siteiq.s3.h">Download PDF Report</h3><p data-i18n="siteiq.s3.p">Get a client-ready PDF with solar resource data, monthly irradiation chart, terrain summary, and a go/no-go verdict. Ready for your next client meeting.</p></div>
       </div>
     </div>
 
     <div style="border-top:1px solid var(--border);margin-bottom:3rem;"></div>
 
-    <!-- TopoIQ -->
+    <!-- TopoIQ steps -->
     <div>
       <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;">
         <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#1565c0,#0d47a1);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:0.85rem;flex-shrink:0;">T</div>
         <div>
-          <div style="font-size:1.1rem;font-weight:800;color:#1565c0;letter-spacing:-0.02em;">TopoIQ — Terrain Extraction</div>
-          <div style="font-size:0.78rem;color:var(--muted);">Module 02 · Live Now</div>
+          <div style="font-size:1.1rem;font-weight:800;color:#1565c0;letter-spacing:-0.02em;" data-i18n="how.topoiq.title">TopoIQ &mdash; Terrain Extraction</div>
+          <div style="font-size:0.78rem;color:var(--muted);" data-i18n="how.topoiq.sub">Module 02 &middot; Live Now</div>
         </div>
-        <a href="https://pvmath-topoiq.streamlit.app" target="_blank" style="margin-left:auto;background:#e8f0fb;color:#1565c0;font-size:0.78rem;font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;">Launch →</a>
+        <a href="https://pvmath-topoiq.streamlit.app" target="_blank" style="margin-left:auto;background:#e8f0fb;color:#1565c0;font-size:0.78rem;font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;" data-i18n="how.launch">Launch &rarr;</a>
       </div>
       <div class="steps">
-        <div class="step">
-          <div class="step-num">1</div>
-          <h3>Draw Your Boundary</h3>
-          <p>Navigate to your site on the satellite map. Use the polygon tool to draw the exact site boundary — click to place vertices, double-click or hit Finish to close. Or upload a DXF/KML file.</p>
-        </div>
-        <div class="step">
-          <div class="step-num">2</div>
-          <h3>Extract Terrain Data</h3>
-          <p>TopoIQ fetches Copernicus GLO-30 satellite DEM (~1m accuracy) for your polygon, computes elevation, slope heatmaps, and cut &amp; fill volume estimates automatically.</p>
-        </div>
-        <div class="step">
-          <div class="step-num">3</div>
-          <h3>Export DXF &amp; PDF</h3>
-          <p>Download a DXF terrain file with contour lines at your chosen spacing — ready for detailed 3D study in any CAD software — plus a PDF terrain report with elevation and slope maps.</p>
-        </div>
+        <div class="step"><div class="step-num">1</div><h3 data-i18n="topoiq.s1.h">Draw Your Boundary</h3><p data-i18n="topoiq.s1.p">Navigate to your site on the satellite map. Use the polygon tool to draw the exact site boundary &mdash; click to place vertices, double-click or hit Finish to close. Or upload a DXF/KML file.</p></div>
+        <div class="step"><div class="step-num">2</div><h3 data-i18n="topoiq.s2.h">Extract Terrain Data</h3><p data-i18n="topoiq.s2.p">TopoIQ fetches Copernicus GLO-30 satellite DEM (~1m accuracy) for your polygon, computes elevation, slope heatmaps, and cut &amp; fill volume estimates automatically.</p></div>
+        <div class="step"><div class="step-num">3</div><h3 data-i18n="topoiq.s3.h">Export DXF &amp; PDF</h3><p data-i18n="topoiq.s3.p">Download a DXF terrain file with contour lines at your chosen spacing &mdash; ready for detailed 3D study in any CAD software &mdash; plus a PDF terrain report with elevation and slope maps.</p></div>
       </div>
     </div>
-
   </div>
 </section>
 
@@ -539,40 +407,16 @@
 <section id="why">
   <div class="container">
     <div class="section-header">
-      <div class="section-label">Why PVMath</div>
-      <h2 class="section-title">Engineering-grade data.<br>Not estimates.</h2>
+      <div class="section-label" data-i18n="why.label">Why PVMath</div>
+      <h2 class="section-title" data-i18n-html="why.title">Engineering-grade data.<br>Not estimates.</h2>
     </div>
     <div class="why-grid">
-      <div class="why-card">
-        <div class="why-icon">☀️</div>
-        <h4>Bankable Solar Data</h4>
-        <p>GHI and irradiation from PVGIS (EC JRC) and NASA POWER — the same sources used in bankable feasibility studies.</p>
-      </div>
-      <div class="why-card">
-        <div class="why-icon">🏔️</div>
-        <h4>Satellite Terrain Precision</h4>
-        <p>Copernicus GLO-30 DEM at ~1m vertical resolution. Slope, elevation, and cut &amp; fill — computed in seconds, not days.</p>
-      </div>
-      <div class="why-card">
-        <div class="why-icon">🏗️</div>
-        <h4>CAD Software Ready</h4>
-        <p>DXF terrain files work in any CAD software — Civil 3D, BricsCAD, QGIS, and more. No conversion needed.</p>
-      </div>
-      <div class="why-card">
-        <div class="why-icon">⚡</div>
-        <h4>Under 2 Minutes</h4>
-        <p>SiteIQ screens in &lt;60 seconds. TopoIQ extracts terrain in &lt;2 minutes. Full project pre-check before the client call ends.</p>
-      </div>
-      <div class="why-card">
-        <div class="why-icon">📄</div>
-        <h4>Client-Ready Reports</h4>
-        <p>Branded PDF outputs from both modules — solar resource summary and terrain heatmaps. Print, email, present.</p>
-      </div>
-      <div class="why-card">
-        <div class="why-icon">👷</div>
-        <h4>Built by a Solar Engineer</h4>
-        <p>Not a software startup guessing what engineers need. Built by a Solar Engineering Expert with hands-on experience in utility-scale solar, tracker systems, and EPC delivery across Europe.</p>
-      </div>
+      <div class="why-card"><div class="why-icon">&#9728;&#65039;</div><h4 data-i18n="why.c1.h">Bankable Solar Data</h4><p data-i18n="why.c1.p">GHI and irradiation from PVGIS (EC JRC) and NASA POWER &mdash; the same sources used in bankable feasibility studies.</p></div>
+      <div class="why-card"><div class="why-icon">&#127956;&#65039;</div><h4 data-i18n="why.c2.h">Satellite Terrain Precision</h4><p data-i18n="why.c2.p">Copernicus GLO-30 DEM at ~1m vertical resolution. Slope, elevation, and cut &amp; fill &mdash; computed in seconds, not days.</p></div>
+      <div class="why-card"><div class="why-icon">&#127959;&#65039;</div><h4 data-i18n="why.c3.h">CAD Software Ready</h4><p data-i18n="why.c3.p">DXF terrain files work in any CAD software &mdash; Civil 3D, BricsCAD, QGIS, and more. No conversion needed.</p></div>
+      <div class="why-card"><div class="why-icon">&#9889;</div><h4 data-i18n="why.c4.h">Under 2 Minutes</h4><p data-i18n="why.c4.p">SiteIQ screens in &lt;60 seconds. TopoIQ extracts terrain in &lt;2 minutes. Full project pre-check before the client call ends.</p></div>
+      <div class="why-card"><div class="why-icon">&#128196;</div><h4 data-i18n="why.c5.h">Client-Ready Reports</h4><p data-i18n="why.c5.p">Branded PDF outputs from both modules &mdash; solar resource summary and terrain heatmaps. Print, email, present.</p></div>
+      <div class="why-card"><div class="why-icon">&#128119;</div><h4 data-i18n="why.c6.h">Built by a Solar Engineer</h4><p data-i18n="why.c6.p">Not a software startup guessing what engineers need. Built by a Solar Engineering Expert with hands-on experience in utility-scale solar, tracker systems, and EPC delivery across Europe.</p></div>
     </div>
   </div>
 </section>
@@ -581,82 +425,49 @@
 <section id="reviews" style="background:var(--bg2);padding:5rem 1.5rem;">
   <div class="container">
     <div class="section-header" style="text-align:center;">
-      <div class="section-label" style="justify-content:center;display:flex;">Early Feedback</div>
-      <h2 class="section-title">What engineers are saying.</h2>
-      <p class="section-sub" style="margin:0 auto;">PVMath is in early access. Here's feedback from the first users.</p>
+      <div class="section-label" style="justify-content:center;display:flex;" data-i18n="reviews.label">Early Feedback</div>
+      <h2 class="section-title" data-i18n="reviews.title">What engineers are saying.</h2>
+      <p class="section-sub" style="margin:0 auto;" data-i18n="reviews.sub">PVMath is in early access. Here&rsquo;s feedback from the first users.</p>
     </div>
 
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-bottom:3rem;" class="reviews-grid">
-
       <div style="background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:1.6rem;">
-        <div style="display:flex;gap:0.2rem;margin-bottom:1rem;">
-          <span style="color:#f59e0b;font-size:1rem;">★★★★★</span>
-        </div>
-        <p style="font-size:0.88rem;color:var(--text);line-height:1.7;margin-bottom:1.2rem;">
-          "TopoIQ saved us at least 2 days of manual terrain work on a 40 MWp project. The DXF export loaded straight into our CAD software without any issues."
-        </p>
+        <div style="display:flex;gap:0.2rem;margin-bottom:1rem;"><span style="color:#f59e0b;font-size:1rem;">&#9733;&#9733;&#9733;&#9733;&#9733;</span></div>
+        <p style="font-size:0.88rem;color:var(--text);line-height:1.7;margin-bottom:1.2rem;" data-i18n="reviews.r1.text">&ldquo;TopoIQ saved us at least 2 days of manual terrain work on a 40 MWp project. The DXF export loaded straight into our CAD software without any issues.&rdquo;</p>
         <div style="display:flex;align-items:center;gap:0.75rem;">
           <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-dk));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:0.85rem;">A</div>
-          <div>
-            <div style="font-size:0.84rem;font-weight:700;">Alexander M.</div>
-            <div style="font-size:0.75rem;color:var(--muted);">Civil Engineer, EPC Firm — Germany</div>
-          </div>
+          <div><div style="font-size:0.84rem;font-weight:700;" data-i18n="reviews.r1.name">Alexander M.</div><div style="font-size:0.75rem;color:var(--muted);" data-i18n="reviews.r1.role">Civil Engineer, EPC Firm &mdash; Germany</div></div>
         </div>
       </div>
 
       <div style="background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:1.6rem;">
-        <div style="display:flex;gap:0.2rem;margin-bottom:1rem;">
-          <span style="color:#f59e0b;font-size:1rem;">★★★★★</span>
-        </div>
-        <p style="font-size:0.88rem;color:var(--text);line-height:1.7;margin-bottom:1.2rem;">
-          "We screen 10–15 sites per week. SiteIQ gives us the initial go/no-go in the time it used to take to open PVGIS. The PDF report is something we can actually send to clients."
-        </p>
+        <div style="display:flex;gap:0.2rem;margin-bottom:1rem;"><span style="color:#f59e0b;font-size:1rem;">&#9733;&#9733;&#9733;&#9733;&#9733;</span></div>
+        <p style="font-size:0.88rem;color:var(--text);line-height:1.7;margin-bottom:1.2rem;" data-i18n="reviews.r2.text">&ldquo;We screen 10&ndash;15 sites per week. SiteIQ gives us the initial go/no-go in the time it used to take to open PVGIS. The PDF report is something we can actually send to clients.&rdquo;</p>
         <div style="display:flex;align-items:center;gap:0.75rem;">
           <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#1565c0,#0d47a1);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:0.85rem;">S</div>
-          <div>
-            <div style="font-size:0.84rem;font-weight:700;">Sofia R.</div>
-            <div style="font-size:0.75rem;color:var(--muted);">Project Developer — Spain</div>
-          </div>
+          <div><div style="font-size:0.84rem;font-weight:700;" data-i18n="reviews.r2.name">Sofia R.</div><div style="font-size:0.75rem;color:var(--muted);" data-i18n="reviews.r2.role">Project Developer &mdash; Spain</div></div>
         </div>
       </div>
 
       <div style="background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:1.6rem;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border-style:dashed;">
-        <div style="font-size:2rem;margin-bottom:0.8rem;">💬</div>
-        <div style="font-size:0.9rem;font-weight:700;margin-bottom:0.5rem;">Share Your Experience</div>
-        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:1.2rem;line-height:1.6;">Used SiteIQ or TopoIQ? We'd love your feedback — it directly shapes the roadmap.</p>
-        <a href="mailto:contact@pvmath.de?subject=PVMath Feedback" style="background:var(--green-lt);color:var(--green-dk);font-size:0.82rem;font-weight:700;padding:0.5rem 1.2rem;border-radius:8px;text-decoration:none;">Send Feedback →</a>
+        <div style="font-size:2rem;margin-bottom:0.8rem;">&#128172;</div>
+        <div style="font-size:0.9rem;font-weight:700;margin-bottom:0.5rem;" data-i18n="reviews.fb.title">Share Your Experience</div>
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:1.2rem;line-height:1.6;" data-i18n="reviews.fb.p">Used SiteIQ or TopoIQ? We&rsquo;d love your feedback &mdash; it directly shapes the roadmap.</p>
+        <a href="mailto:contact@pvmath.de?subject=PVMath Feedback" style="background:var(--green-lt);color:var(--green-dk);font-size:0.82rem;font-weight:700;padding:0.5rem 1.2rem;border-radius:8px;text-decoration:none;" data-i18n="reviews.fb.btn">Send Feedback &rarr;</a>
       </div>
-
     </div>
 
-    <!-- Stats bar — update numbers as you grow -->
     <div style="background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:1.8rem 2.5rem;display:flex;justify-content:space-around;flex-wrap:wrap;gap:1.5rem;text-align:center;">
-      <div>
-        <div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;">50+</div>
-        <div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;">Sites Screened</div>
-      </div>
+      <div><div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;">50+</div><div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;" data-i18n="stats.sites">Sites Screened</div></div>
       <div style="width:1px;background:var(--border);"></div>
-      <div>
-        <div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;">2</div>
-        <div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;">Live Modules</div>
-      </div>
+      <div><div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;">2</div><div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;" data-i18n="stats.modules">Live Modules</div></div>
       <div style="width:1px;background:var(--border);"></div>
-      <div>
-        <div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;">Global</div>
-        <div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;">Data Coverage</div>
-      </div>
+      <div><div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;" data-i18n="stats.global-val">Global</div><div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;" data-i18n="stats.coverage">Data Coverage</div></div>
       <div style="width:1px;background:var(--border);"></div>
-      <div>
-        <div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;">&lt;60s</div>
-        <div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;">Per Site Screening</div>
-      </div>
+      <div><div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;">&lt;60s</div><div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;" data-i18n="stats.speed">Per Site Screening</div></div>
       <div style="width:1px;background:var(--border);"></div>
-      <div>
-        <div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;">Free</div>
-        <div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;">To Get Started</div>
-      </div>
+      <div><div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;" data-i18n="stat.free-val">Free</div><div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;" data-i18n="stats.start">To Get Started</div></div>
     </div>
-
   </div>
 </section>
 
@@ -664,117 +475,93 @@
 <section id="pricing">
   <div class="container">
     <div class="section-header" style="text-align:center;">
-      <div class="section-label" style="justify-content:center;display:flex;">Pricing</div>
-      <h2 class="section-title">Simple, transparent pricing.</h2>
-      <p class="section-sub" style="margin:0 auto;">4 free analyses per module. No credit card required to start. Upgrade when you're ready.</p>
+      <div class="section-label" style="justify-content:center;display:flex;" data-i18n="pricing.label">Pricing</div>
+      <h2 class="section-title" data-i18n="pricing.title">Simple, transparent pricing.</h2>
+      <p class="section-sub" style="margin:0 auto;" data-i18n="pricing.sub">4 free analyses per module. No credit card required to start. Upgrade when you&rsquo;re ready.</p>
     </div>
 
-    <!-- Toggle -->
     <div class="pricing-toggle">
-      <span class="toggle-label active" id="lbl-monthly">Monthly</span>
+      <span class="toggle-label" id="lbl-monthly" data-i18n="pricing.monthly">Monthly</span>
       <button class="toggle-switch annual" id="billing-toggle" onclick="toggleBilling()"></button>
-      <span class="toggle-label active" id="lbl-annual">Annual <span class="toggle-badge">Save 25%</span></span>
+      <span class="toggle-label" id="lbl-annual"><span data-i18n="pricing.annual">Annual</span> <span class="toggle-badge" data-i18n="pricing.save">Save 25%</span></span>
     </div>
 
     <div class="pricing-grid">
-
-      <!-- Starter -->
       <div class="price-card">
-        <div class="price-tier">Starter</div>
-        <div class="price-amount" id="price-starter">€59<span> / month</span></div>
-        <div class="price-annual-note" id="note-starter">€530 / year — save €178</div>
-        <p class="price-desc">For individual engineers doing occasional project screening.</p>
+        <div class="price-tier" data-i18n="tier.starter">Starter</div>
+        <div class="price-amount" id="price-starter">&euro;44<span id="per-starter"> / month*</span></div>
+        <div class="price-annual-note" id="note-starter">&euro;530 / year &mdash; save &euro;178</div>
+        <p class="price-desc" data-i18n="plan.starter.desc">For individual engineers doing occasional project screening.</p>
         <ul class="price-features">
-          <li class="yes">20 SiteIQ screenings / month</li>
-          <li class="yes">20 TopoIQ analyses / month</li>
-          <li class="yes">PDF report download</li>
-          <li class="yes">Global solar data (PVGIS + NASA)</li>
-          <li class="yes">DXF terrain file export</li>
-          <li class="no">YieldIQ (coming soon)</li>
-          <li class="no">Team seats</li>
+          <li class="yes" data-i18n="pf.s.f1">20 SiteIQ screenings / month</li>
+          <li class="yes" data-i18n="pf.s.f2">20 TopoIQ analyses / month</li>
+          <li class="yes" data-i18n="pf.s.f3">PDF report download</li>
+          <li class="yes" data-i18n="pf.s.f4">Global solar data (PVGIS + NASA)</li>
+          <li class="yes" data-i18n="pf.s.f5">DXF terrain file export</li>
+          <li class="no" data-i18n="pf.s.f6">YieldIQ (coming soon)</li>
+          <li class="no" data-i18n="pf.s.f7">Team seats</li>
         </ul>
-        <a href="https://buy.stripe.com/YOUR_LINK_HERE" target="_blank" class="price-btn outline">Get Started →</a>
+        <a href="https://buy.stripe.com/YOUR_LINK_HERE" target="_blank" class="price-btn outline" data-i18n="pricing.btn.start">Get Started &rarr;</a>
       </div>
 
-      <!-- Professional -->
       <div class="price-card featured">
-        <div class="price-badge">Most Popular</div>
-        <div class="price-tier">Professional</div>
-        <div class="price-amount" id="price-pro">€99<span> / month</span></div>
-        <div class="price-annual-note" id="note-pro">€890 / year — save €298</div>
-        <p class="price-desc">For solar engineers and EPC teams running active projects.</p>
+        <div class="price-badge" data-i18n="pricing.popular">Most Popular</div>
+        <div class="price-tier" data-i18n="tier.pro">Professional</div>
+        <div class="price-amount" id="price-pro">&euro;74<span id="per-pro"> / month*</span></div>
+        <div class="price-annual-note" id="note-pro">&euro;890 / year &mdash; save &euro;298</div>
+        <p class="price-desc" data-i18n="plan.pro.desc">For solar engineers and EPC teams running active projects.</p>
         <ul class="price-features">
-          <li class="yes">Unlimited SiteIQ screenings</li>
-          <li class="yes">Unlimited TopoIQ analyses</li>
-          <li class="yes">PDF terrain &amp; solar reports</li>
-          <li class="yes">DXF terrain file export</li>
-          <li class="yes">Global solar data (PVGIS + NASA)</li>
-          <li class="yes">Copernicus Satellite DEM terrain</li>
-          <li class="yes">YieldIQ early access</li>
+          <li class="yes" data-i18n="pf.p.f1">Unlimited SiteIQ screenings</li>
+          <li class="yes" data-i18n="pf.p.f2">Unlimited TopoIQ analyses</li>
+          <li class="yes" data-i18n="pf.p.f3">PDF terrain &amp; solar reports</li>
+          <li class="yes" data-i18n="pf.p.f4">DXF terrain file export</li>
+          <li class="yes" data-i18n="pf.p.f5">Global solar data (PVGIS + NASA)</li>
+          <li class="yes" data-i18n="pf.p.f6">Copernicus Satellite DEM terrain</li>
+          <li class="yes" data-i18n="pf.p.f7">YieldIQ early access</li>
         </ul>
-        <a href="https://buy.stripe.com/YOUR_LINK_HERE" target="_blank" class="price-btn solid">Subscribe →</a>
+        <a href="https://buy.stripe.com/YOUR_LINK_HERE" target="_blank" class="price-btn solid" data-i18n="pricing.btn.sub">Subscribe &rarr;</a>
       </div>
 
-      <!-- Team -->
       <div class="price-card">
-        <div class="price-tier">Team</div>
-        <div class="price-amount" id="price-team">€249<span> / month</span></div>
-        <div class="price-annual-note" id="note-team">€2,240 / year — save €748</div>
-        <p class="price-desc">For EPC companies and developer teams with multiple engineers.</p>
+        <div class="price-tier" data-i18n="tier.team">Team</div>
+        <div class="price-amount" id="price-team">&euro;187<span id="per-team"> / month*</span></div>
+        <div class="price-annual-note" id="note-team">&euro;2.240 / year &mdash; save &euro;748</div>
+        <p class="price-desc" data-i18n="plan.team.desc">For EPC companies and developer teams with multiple engineers.</p>
         <ul class="price-features">
-          <li class="yes">Up to 5 team seats</li>
-          <li class="yes">Unlimited all modules</li>
-          <li class="yes">All Professional features</li>
-          <li class="yes">Shared project workspace</li>
-          <li class="yes">Priority support</li>
-          <li class="yes">YieldIQ early access</li>
-          <li class="yes">Custom invoice &amp; billing</li>
+          <li class="yes" data-i18n="pf.t.f1">Up to 5 team seats</li>
+          <li class="yes" data-i18n="pf.t.f2">Unlimited all modules</li>
+          <li class="yes" data-i18n="pf.t.f3">All Professional features</li>
+          <li class="yes" data-i18n="pf.t.f4">Shared project workspace</li>
+          <li class="yes" data-i18n="pf.t.f5">Priority support</li>
+          <li class="yes" data-i18n="pf.t.f6">YieldIQ early access</li>
+          <li class="yes" data-i18n="pf.t.f7">Custom invoice &amp; billing</li>
         </ul>
-        <a href="#contact" class="price-btn outline">Contact Us →</a>
+        <a href="#contact" class="price-btn outline" data-i18n="pricing.btn.contact">Contact Us &rarr;</a>
       </div>
-
     </div>
 
-    <p style="text-align:center;margin-top:1.5rem;font-size:0.82rem;color:var(--muted);">
+    <p style="text-align:center;margin-top:1.5rem;font-size:0.82rem;color:var(--muted);" data-i18n="pricing.note">
       All plans include a 4-analysis free trial. No credit card required. Cancel anytime. VAT (19%) added for EU customers.
     </p>
   </div>
 </section>
 
-<!-- Billing section hidden from public — handled via Stripe + email internally -->
+<!-- Billing section hidden from public -->
 
 <!-- ── ABOUT ── -->
 <section id="about">
   <div class="container">
     <div class="about-grid">
       <div class="about-text">
-        <div class="section-label">About PVMath</div>
-        <h2>From the field.<br>Not a desk.</h2>
-        <p>PVMath was founded by a Solar Engineering Expert with hands-on experience in utility-scale solar — tracker systems, terrain analysis, site design, and EPC project delivery across Europe.</p>
-        <p>Every tool was built to solve a real problem that cost real project hours. The result is a platform that speaks the same language as the engineers who use it.</p>
+        <div class="section-label" data-i18n="about.label">About PVMath</div>
+        <h2 data-i18n-html="about.title">From the field.<br>Not a desk.</h2>
+        <p data-i18n="about.p1">PVMath was founded by a Solar Engineering Expert with hands-on experience in utility-scale solar &mdash; tracker systems, terrain analysis, site design, and EPC project delivery across Europe.</p>
+        <p data-i18n="about.p2">Every tool was built to solve a real problem that cost real project hours. The result is a platform that speaks the same language as the engineers who use it.</p>
       </div>
       <div class="about-cards">
-        <div class="about-card">
-          <div class="about-card-icon">🎯</div>
-          <div>
-            <h4>Purpose-Built for Solar</h4>
-            <p>Not a generic GIS tool adapted for solar. Every feature is designed specifically for solar site assessment and engineering.</p>
-          </div>
-        </div>
-        <div class="about-card">
-          <div class="about-card-icon">🌍</div>
-          <div>
-            <h4>Europe &amp; Global Markets</h4>
-            <p>Built with European solar markets in mind — Germany, Spain, Italy, MENA — but with global data coverage from day one.</p>
-          </div>
-        </div>
-        <div class="about-card">
-          <div class="about-card-icon">🚀</div>
-          <div>
-            <h4>Growing Fast</h4>
-            <p>SiteIQ and TopoIQ are live. YieldIQ is in development. The roadmap is driven by what engineers actually ask for.</p>
-          </div>
-        </div>
+        <div class="about-card"><div class="about-card-icon">&#127919;</div><div><h4 data-i18n="about.c1.h">Purpose-Built for Solar</h4><p data-i18n="about.c1.p">Not a generic GIS tool adapted for solar. Every feature is designed specifically for solar site assessment and engineering.</p></div></div>
+        <div class="about-card"><div class="about-card-icon">&#127758;</div><div><h4 data-i18n="about.c2.h">Europe &amp; Global Markets</h4><p data-i18n="about.c2.p">Built with European solar markets in mind &mdash; Germany, Austria, Switzerland, Spain, Italy &mdash; but with global data coverage from day one.</p></div></div>
+        <div class="about-card"><div class="about-card-icon" style="font-size:1.2rem;font-weight:700;color:var(--green-dk);font-family:'Inter',sans-serif;">↗</div><div><h4 data-i18n="about.c3.h">Growing Fast</h4><p data-i18n="about.c3.p">SiteIQ and TopoIQ are live. YieldIQ is in development. The roadmap is driven by what engineers actually ask for.</p></div></div>
       </div>
     </div>
   </div>
@@ -784,42 +571,39 @@
 <section id="contact">
   <div class="container">
     <div class="section-header">
-      <div class="section-label">Contact</div>
-      <h2 class="section-title">Get in touch.</h2>
-      <p class="section-sub">Questions about pricing, access, or a custom enterprise plan? We respond within one business day.</p>
+      <div class="section-label" data-i18n="contact.label">Contact</div>
+      <h2 class="section-title" data-i18n="contact.title">Get in touch.</h2>
+      <p class="section-sub" data-i18n="contact.sub">Questions about pricing, access, or a custom enterprise plan? We respond within one business day.</p>
     </div>
     <div class="contact-grid">
       <div class="contact-info">
         <h3>PVMath</h3>
-        <p>Solar site intelligence tools for EPCs, project developers, and engineering firms worldwide.</p>
-        <div class="contact-detail">📧 <a href="mailto:contact@pvmath.de">contact@pvmath.de</a></div>
-        <div class="contact-detail">🌐 <a href="https://pvmath.com">pvmath.com</a></div>
+        <p data-i18n="contact.info">Solar site intelligence tools for EPCs, project developers, and engineering firms worldwide.</p>
+        <div class="contact-detail"><span style="font-size:0.78rem;font-weight:700;color:var(--muted);letter-spacing:0.04em;min-width:1.4rem;">e.</span> <a href="mailto:contact@pvmath.de">contact@pvmath.de</a></div>
+        <div class="contact-detail"><span style="font-size:0.78rem;font-weight:700;color:var(--muted);letter-spacing:0.04em;min-width:1.4rem;">w.</span> <a href="https://pvmath.com">pvmath.com</a></div>
         <div style="margin-top:1.5rem;">
-          <p style="font-size:0.82rem;color:var(--muted);">
-            <strong>Response time:</strong> Within 1 business day<br>
-            <strong>Languages:</strong> English, Deutsch
-          </p>
+          <p style="font-size:0.82rem;color:var(--muted);" data-i18n-html="contact.response"><strong>Response time:</strong> Within 1 business day<br><strong>Languages:</strong> English, Deutsch</p>
         </div>
       </div>
       <form action="https://formspree.io/f/xpwzgkvo" method="POST">
         <div class="form-row">
-          <input type="text" name="name" placeholder="Your name" required />
-          <input type="email" name="email" placeholder="Work email" required />
+          <input type="text" name="name" data-i18n-ph="form.name" placeholder="Your name" required />
+          <input type="email" name="email" data-i18n-ph="form.email" placeholder="Work email" required />
         </div>
-        <input type="text" name="company" placeholder="Company / Organisation" />
+        <input type="text" name="company" data-i18n-ph="form.company" placeholder="Company / Organisation" />
         <select name="subject">
-          <option value="">What can we help with?</option>
-          <option>Free trial of SiteIQ</option>
-          <option>Free trial of TopoIQ</option>
-          <option>YieldIQ early access</option>
-          <option>Professional plan</option>
-          <option>Team / Enterprise plan</option>
-          <option>Billing &amp; invoicing question</option>
-          <option>Technical support</option>
-          <option>Other</option>
+          <option value="" data-i18n="form.s0">What can we help with?</option>
+          <option data-i18n="form.s1">Free trial of SiteIQ</option>
+          <option data-i18n="form.s2">Free trial of TopoIQ</option>
+          <option data-i18n="form.s3">YieldIQ early access</option>
+          <option data-i18n="form.s4">Professional plan</option>
+          <option data-i18n="form.s5">Team / Enterprise plan</option>
+          <option data-i18n="form.s6">Billing &amp; invoicing question</option>
+          <option data-i18n="form.s7">Technical support</option>
+          <option data-i18n="form.s8">Other</option>
         </select>
-        <textarea name="message" placeholder="Your message..."></textarea>
-        <button type="submit" class="form-submit">Send Message →</button>
+        <textarea name="message" data-i18n-ph="form.message" placeholder="Your message..."></textarea>
+        <button type="submit" class="form-submit" data-i18n="form.submit">Send Message &rarr;</button>
       </form>
     </div>
   </div>
@@ -830,75 +614,319 @@
   <div class="footer-inner">
     <div>
       <div class="footer-brand">PVMath</div>
-      <p class="footer-tagline">Solar site intelligence tools for EPCs and project developers. Built by engineers, for engineers.</p>
-      <p style="font-size:0.75rem;opacity:.5;">© 2026 PVMath. All rights reserved.</p>
+      <p class="footer-tagline" data-i18n="footer.tagline">Solar site intelligence tools for EPCs and project developers. Built by engineers, for engineers.</p>
+      <p style="font-size:0.75rem;opacity:.5;" data-i18n="footer.copy">&copy; 2026 PVMath. All rights reserved.</p>
     </div>
     <div class="footer-col">
-      <h5>Platform</h5>
+      <h5 data-i18n="footer.platform">Platform</h5>
       <a href="https://pvmath-siteiq.streamlit.app" target="_blank">SiteIQ</a>
       <a href="https://pvmath-topoiq.streamlit.app" target="_blank">TopoIQ</a>
-      <a href="#contact">YieldIQ (Soon)</a>
+      <a href="#contact" data-i18n="footer.yield-soon">YieldIQ (Soon)</a>
     </div>
     <div class="footer-col">
-      <h5>Company</h5>
-      <a href="#about">About</a>
-      <a href="#pricing">Pricing</a>
-      <a href="#billing">Billing</a>
-      <a href="#contact">Contact</a>
+      <h5 data-i18n="footer.company">Company</h5>
+      <a href="#about" data-i18n="footer.about">About</a>
+      <a href="#pricing" data-i18n="footer.pricing">Pricing</a>
+      <a href="#contact" data-i18n="footer.contact">Contact</a>
     </div>
     <div class="footer-col">
-      <h5>Legal</h5>
+      <h5 data-i18n="footer.legal">Legal</h5>
       <a href="mailto:contact@pvmath.de">contact@pvmath.de</a>
-      <a href="#contact">Impressum</a>
-      <a href="#contact">Privacy Policy</a>
+      <a href="#contact" data-i18n="footer.impressum">Impressum</a>
+      <a href="#contact" data-i18n="footer.privacy">Privacy Policy</a>
     </div>
   </div>
   <div class="footer-bottom">
-    <span>Data sources: PVGIS (EC JRC) · NASA POWER · Copernicus GLO-30 DEM</span>
+    <span data-i18n="footer.sources">Data sources: PVGIS (EC JRC) &middot; NASA POWER &middot; Copernicus GLO-30 DEM</span>
     <a href="mailto:contact@pvmath.de">contact@pvmath.de</a>
   </div>
 </footer>
 
 <script>
-  // ── Pricing toggle ──────────────────────────────────────────────────────────
-  let isAnnual = true;
+// ─────────────────────────────────────────────────────────────────────────────
+//  TRANSLATIONS  EN / DE
+// ─────────────────────────────────────────────────────────────────────────────
+var T = {
+  en: {
+    'nav.modules':'Modules','nav.how':'How It Works','nav.pricing':'Pricing',
+    'nav.about':'About','nav.contact':'Contact','nav.cta':'Try Free →',
+    'hero.badge':'Modules 1 & 2 Live — SiteIQ · TopoIQ',
+    'hero.h1':'Solar intelligence tools<br>built by <em>engineers,</em><br>for engineers.',
+    'hero.p':'PVMath automates the slow, manual parts of solar project development — from first site visit to bankable data. Engineering-grade outputs in minutes, not days.',
+    'hero.btn1':'Try SiteIQ Free →','hero.btn2':'Explore Modules',
+    'stat.modules':'Active Modules','stat.speed':'Site Screening Time',
+    'stat.coverage':'Solar Data Coverage','stat.start':'To Get Started','stat.free-val':'Free',
+    'modules.label':'Platform Modules',
+    'modules.title':'Every module solves a specific pain point<br>in the solar project lifecycle.',
+    'modules.sub':'Each tool delivers engineering-grade data from real sources — PVGIS, NASA, Copernicus Satellite DEM — not estimates.',
+    'pill.live':'Live Now','pill.soon':'Coming Soon',
+    'siteiq.desc':'Fast solar site pre-screening for any location globally. Get GHI, irradiation, terrain overview, regulatory flags, and capacity estimates in under 60 seconds.',
+    'siteiq.f1':'Satellite map with coordinate input','siteiq.f2':'Annual & monthly GHI / irradiation',
+    'siteiq.f3':'Terrain & slope overview','siteiq.f4':'Regulatory flags (protected areas)',
+    'siteiq.f5':'Flood risk indicator','siteiq.f6':'PDF report — client-ready','siteiq.btn':'Launch SiteIQ →',
+    'topoiq.desc':'Satellite terrain extraction for solar site engineering. Draw your polygon, get elevation and slope heatmaps, contour lines, and DXF terrain files ready for detailed 3D study in your CAD software.',
+    'topoiq.f1':'Polygon boundary drawing on satellite map','topoiq.f2':'Copernicus GLO-30 DEM (~1m accuracy)',
+    'topoiq.f3':'Elevation & solar-grade slope maps','topoiq.f4':'Cut & fill volume estimates',
+    'topoiq.f5':'DXF terrain file export','topoiq.f6':'PDF terrain report','topoiq.btn':'Launch TopoIQ →',
+    'yieldiq.desc':'Quick pre-layout energy yield estimation using PVGIS and NASA data. Get bankable yield numbers before committing to full PV layout design.',
+    'yieldiq.f1':'Specific yield estimation (kWh/kWp)','yieldiq.f2':'PR and capacity factor',
+    'yieldiq.f3':'Monthly energy profile','yieldiq.f4':'Temperature & shading correction',
+    'yieldiq.f5':'Tracker vs fixed-tilt comparison','yieldiq.f6':'Bankable PDF yield report',
+    'yieldiq.btn':'Notify Me When Live',
+    'how.label':'Workflow','how.title':'How each module works.',
+    'how.sub':'Two tools, two workflows — both designed to eliminate manual steps.',
+    'how.siteiq.title':'SiteIQ — Site Screening','how.siteiq.sub':'Module 01 · Live Now',
+    'how.topoiq.title':'TopoIQ — Terrain Extraction','how.topoiq.sub':'Module 02 · Live Now',
+    'how.launch':'Launch →',
+    'siteiq.s1.h':'Locate Your Site','siteiq.s1.p':'Search by place name, paste Google Maps or lat/lon coordinates, or upload a KML/KMZ file. The satellite map centres on your site instantly.',
+    'siteiq.s2.h':'Set Project Parameters','siteiq.s2.p':'Enter project name, country, and estimated site area in hectares. SiteIQ fetches GHI, irradiation, terrain overview, flood risk, and regulatory flags automatically.',
+    'siteiq.s3.h':'Download PDF Report','siteiq.s3.p':'Get a client-ready PDF with solar resource data, monthly irradiation chart, terrain summary, and a go/no-go verdict. Ready for your next client meeting.',
+    'topoiq.s1.h':'Draw Your Boundary','topoiq.s1.p':'Navigate to your site on the satellite map. Use the polygon tool to draw the exact site boundary — click to place vertices, double-click or hit Finish to close. Or upload a DXF/KML file.',
+    'topoiq.s2.h':'Extract Terrain Data','topoiq.s2.p':'TopoIQ fetches Copernicus GLO-30 satellite DEM (~1m accuracy) for your polygon, computes elevation, slope heatmaps, and cut & fill volume estimates automatically.',
+    'topoiq.s3.h':'Export DXF & PDF','topoiq.s3.p':'Download a DXF terrain file with contour lines at your chosen spacing — ready for detailed 3D study in any CAD software — plus a PDF terrain report with elevation and slope maps.',
+    'why.label':'Why PVMath','why.title':'Engineering-grade data.<br>Not estimates.',
+    'why.c1.h':'Bankable Solar Data','why.c1.p':'GHI and irradiation from PVGIS (EC JRC) and NASA POWER — the same sources used in bankable feasibility studies.',
+    'why.c2.h':'Satellite Terrain Precision','why.c2.p':'Copernicus GLO-30 DEM at ~1m vertical resolution. Slope, elevation, and cut & fill — computed in seconds, not days.',
+    'why.c3.h':'CAD Software Ready','why.c3.p':'DXF terrain files work in any CAD software — Civil 3D, BricsCAD, QGIS, and more. No conversion needed.',
+    'why.c4.h':'Under 2 Minutes','why.c4.p':'SiteIQ screens in <60 seconds. TopoIQ extracts terrain in <2 minutes. Full project pre-check before the client call ends.',
+    'why.c5.h':'Client-Ready Reports','why.c5.p':'Branded PDF outputs from both modules — solar resource summary and terrain heatmaps. Print, email, present.',
+    'why.c6.h':'Built by a Solar Engineer','why.c6.p':'Not a software startup guessing what engineers need. Built by a Solar Engineering Expert with hands-on experience in utility-scale solar, tracker systems, and EPC delivery across Europe.',
+    'reviews.label':'Early Feedback','reviews.title':'What engineers are saying.',
+    'reviews.sub':"PVMath is in early access. Here’s feedback from the first users.",
+    'reviews.r1.text':'“TopoIQ saved us at least 2 days of manual terrain work on a 40 MWp project. The DXF export loaded straight into our CAD software without any issues.”',
+    'reviews.r1.name':'Alexander M.','reviews.r1.role':'Civil Engineer, EPC Firm — Germany',
+    'reviews.r2.text':'“We screen 10–15 sites per week. SiteIQ gives us the initial go/no-go in the time it used to take to open PVGIS. The PDF report is something we can actually send to clients.”',
+    'reviews.r2.name':'Sofia R.','reviews.r2.role':'Project Developer — Spain',
+    'reviews.fb.title':'Share Your Experience',
+    'reviews.fb.p':"Used SiteIQ or TopoIQ? We’d love your feedback — it directly shapes the roadmap.",
+    'reviews.fb.btn':'Send Feedback →',
+    'stats.sites':'Sites Screened','stats.modules':'Live Modules','stats.global-val':'Global',
+    'stats.coverage':'Data Coverage','stats.speed':'Per Site Screening','stats.start':'To Get Started',
+    'pricing.label':'Pricing','pricing.title':'Simple, transparent pricing.',
+    'pricing.sub':"4 free analyses per module. No credit card required to start. Upgrade when you’re ready.",
+    'pricing.monthly':'Monthly','pricing.annual':'Annual','pricing.save':'Save 25%','pricing.popular':'Most Popular',
+    'tier.starter':'Starter','tier.pro':'Professional','tier.team':'Team',
+    'plan.starter.desc':'For individual engineers doing occasional project screening.',
+    'plan.pro.desc':'For solar engineers and EPC teams running active projects.',
+    'plan.team.desc':'For EPC companies and developer teams with multiple engineers.',
+    'pf.s.f1':'20 SiteIQ screenings / month','pf.s.f2':'20 TopoIQ analyses / month',
+    'pf.s.f3':'PDF report download','pf.s.f4':'Global solar data (PVGIS + NASA)',
+    'pf.s.f5':'DXF terrain file export','pf.s.f6':'YieldIQ (coming soon)','pf.s.f7':'Team seats',
+    'pf.p.f1':'Unlimited SiteIQ screenings','pf.p.f2':'Unlimited TopoIQ analyses',
+    'pf.p.f3':'PDF terrain & solar reports','pf.p.f4':'DXF terrain file export',
+    'pf.p.f5':'Global solar data (PVGIS + NASA)','pf.p.f6':'Copernicus Satellite DEM terrain',
+    'pf.p.f7':'YieldIQ early access',
+    'pf.t.f1':'Up to 5 team seats','pf.t.f2':'Unlimited all modules',
+    'pf.t.f3':'All Professional features','pf.t.f4':'Shared project workspace',
+    'pf.t.f5':'Priority support','pf.t.f6':'YieldIQ early access','pf.t.f7':'Custom invoice & billing',
+    'pricing.btn.start':'Get Started →','pricing.btn.sub':'Subscribe →','pricing.btn.contact':'Contact Us →',
+    'pricing.note':'All plans include a 4-analysis free trial. No credit card required. Cancel anytime. VAT (19%) added for EU customers.',
+    'pricing.per.monthly':'/ month','pricing.per.annual':'/ month*','pricing.year':'year','pricing.save.word':'save',
+    'about.label':'About PVMath','about.title':'From the field.<br>Not a desk.',
+    'about.p1':'PVMath was founded by a Solar Engineering Expert with hands-on experience in utility-scale solar — tracker systems, terrain analysis, site design, and EPC project delivery across Europe.',
+    'about.p2':'Every tool was built to solve a real problem that cost real project hours. The result is a platform that speaks the same language as the engineers who use it.',
+    'about.c1.h':'Purpose-Built for Solar','about.c1.p':'Not a generic GIS tool adapted for solar. Every feature is designed specifically for solar site assessment and engineering.',
+    'about.c2.h':'Europe & Global Markets','about.c2.p':'Built with European solar markets in mind — Germany, Austria, Switzerland, Spain, Italy — but with global data coverage from day one.',
+    'about.c3.h':'Growing Fast','about.c3.p':'SiteIQ and TopoIQ are live. YieldIQ is in development. The roadmap is driven by what engineers actually ask for.',
+    'contact.label':'Contact','contact.title':'Get in touch.',
+    'contact.sub':'Questions about pricing, access, or a custom enterprise plan? We respond within one business day.',
+    'contact.info':'Solar site intelligence tools for EPCs, project developers, and engineering firms worldwide.',
+    'contact.response':'<strong>Response time:</strong> Within 1 business day<br><strong>Languages:</strong> English, Deutsch',
+    'form.name':'Your name','form.email':'Work email','form.company':'Company / Organisation',
+    'form.s0':'What can we help with?','form.s1':'Free trial of SiteIQ','form.s2':'Free trial of TopoIQ',
+    'form.s3':'YieldIQ early access','form.s4':'Professional plan','form.s5':'Team / Enterprise plan',
+    'form.s6':'Billing & invoicing question','form.s7':'Technical support','form.s8':'Other',
+    'form.message':'Your message...','form.submit':'Send Message →',
+    'footer.tagline':'Solar site intelligence tools for EPCs and project developers. Built by engineers, for engineers.',
+    'footer.platform':'Platform','footer.company':'Company','footer.legal':'Legal',
+    'footer.yield-soon':'YieldIQ (Soon)','footer.about':'About','footer.pricing':'Pricing',
+    'footer.contact':'Contact','footer.impressum':'Impressum','footer.privacy':'Privacy Policy',
+    'footer.copy':'© 2026 PVMath. All rights reserved.',
+    'footer.sources':'Data sources: PVGIS (EC JRC) · NASA POWER · Copernicus GLO-30 DEM'
+  },
 
-  const prices = {
-    monthly: { starter: '€59', pro: '€99', team: '€249' },
-    annual:  { starter: '€44', pro: '€74', team: '€187' }
-  };
-  const notes = {
-    monthly: { starter: '', pro: '', team: '' },
-    annual:  {
-      starter: '€530 / year — save €178',
-      pro:     '€890 / year — save €298',
-      team:    '€2,240 / year — save €748'
-    }
-  };
-
-  function toggleBilling() {
-    isAnnual = !isAnnual;
-    const btn = document.getElementById('billing-toggle');
-    const lblM = document.getElementById('lbl-monthly');
-    const lblA = document.getElementById('lbl-annual');
-    const mode = isAnnual ? 'annual' : 'monthly';
-    const per  = isAnnual ? ' / month*' : ' / month';
-
-    btn.className = 'toggle-switch ' + mode;
-    lblM.style.opacity = isAnnual ? '.5' : '1';
-    lblA.style.opacity = isAnnual ? '1' : '.5';
-
-    document.getElementById('price-starter').innerHTML = prices[mode].starter + '<span>' + per + '</span>';
-    document.getElementById('price-pro').innerHTML     = prices[mode].pro     + '<span>' + per + '</span>';
-    document.getElementById('price-team').innerHTML    = prices[mode].team    + '<span>' + per + '</span>';
-
-    document.getElementById('note-starter').textContent = notes[mode].starter;
-    document.getElementById('note-pro').textContent     = notes[mode].pro;
-    document.getElementById('note-team').textContent    = notes[mode].team;
+  de: {
+    'nav.modules':'Module','nav.how':'Funktionsweise','nav.pricing':'Preise',
+    'nav.about':'Über uns','nav.contact':'Kontakt','nav.cta':'Kostenlos testen →',
+    'hero.badge':'Module 1 & 2 Live — SiteIQ · TopoIQ',
+    'hero.h1':'Solar-Intelligenztools –<br>entwickelt von <em>Ingenieuren,</em><br>für Ingenieure.',
+    'hero.p':'PVMath automatisiert die langsamen, manuellen Schritte der Solarplanung – von der ersten Standortbegehung bis zu bankfähigen Daten. Ingenieurqualität in Minuten statt Tagen.',
+    'hero.btn1':'SiteIQ kostenlos testen →','hero.btn2':'Module entdecken',
+    'stat.modules':'Aktive Module','stat.speed':'Standortprüfungszeit',
+    'stat.coverage':'Solare Datenabdeckung','stat.start':'Zum Starten','stat.free-val':'Gratis',
+    'modules.label':'Plattform-Module',
+    'modules.title':'Jedes Modul löst einen konkreten Engpass<br>im solaren Projektentwicklungsprozess.',
+    'modules.sub':'Jedes Tool liefert Ingenieur-Qualitätsdaten aus echten Quellen — PVGIS, NASA, Copernicus Satellite DEM — keine Schätzungen.',
+    'pill.live':'Jetzt Live','pill.soon':'Demnächst',
+    'siteiq.desc':'Schnelle Solarstandort-Vorprüfung für jeden Standort weltweit. GHI, Einstrahlung, Geländeübersicht, Regulierungshinweise und Kapazitätsschätzung in unter 60 Sekunden.',
+    'siteiq.f1':'Satellitenkarte mit Koordinateneingabe','siteiq.f2':'Jährliche & monatliche GHI / Einstrahlung',
+    'siteiq.f3':'Gelände- & Neigungsübersicht','siteiq.f4':'Regulierungshinweise (Schutzgebiete)',
+    'siteiq.f5':'Hochwasserrisiko-Indikator','siteiq.f6':'PDF-Bericht — kundenfähig','siteiq.btn':'SiteIQ starten →',
+    'topoiq.desc':'Satellitengestsützte Geländeextraktion für die solare Standortplanung. Polygon zeichnen, Höhen- und Neigungsdiagramme, Höhenlinien und DXF-Geländedateien für das 3D-Studium in Ihrer CAD-Software erhalten.',
+    'topoiq.f1':'Polygonbegrenzung auf Satellitenkarte','topoiq.f2':'Copernicus GLO-30 DEM (~1m Genauigkeit)',
+    'topoiq.f3':'Höhen- & solare Neigungskarten','topoiq.f4':'Aushub- & Auffüllmengenberechnung',
+    'topoiq.f5':'DXF-Geländedatei-Export','topoiq.f6':'PDF-Geländebericht','topoiq.btn':'TopoIQ starten →',
+    'yieldiq.desc':'Schnelle Energieertragschätzung vor dem Layout mit PVGIS- und NASA-Daten. Bankfähige Ertragszahlen vor dem vollständigen PV-Layout.',
+    'yieldiq.f1':'Spezifischer Ertrag (kWh/kWp)','yieldiq.f2':'PR und Kapazitätsfaktor',
+    'yieldiq.f3':'Monatliches Energieprofil','yieldiq.f4':'Temperatur- & Verschattungskorrektur',
+    'yieldiq.f5':'Tracker vs. Festaufständerung','yieldiq.f6':'Bankfähiger PDF-Ertragsbericht',
+    'yieldiq.btn':'Benachrichtigen wenn live',
+    'how.label':'Arbeitsablauf','how.title':'So funktioniert jedes Modul.',
+    'how.sub':'Zwei Tools, zwei Abläufe — beide für die Eliminierung manueller Schritte entwickelt.',
+    'how.siteiq.title':'SiteIQ — Standortprüfung','how.siteiq.sub':'Modul 01 · Jetzt Live',
+    'how.topoiq.title':'TopoIQ — Geländeextraktion','how.topoiq.sub':'Modul 02 · Jetzt Live',
+    'how.launch':'Starten →',
+    'siteiq.s1.h':'Standort festlegen','siteiq.s1.p':'Nach Ortsname suchen, Google Maps- oder Lat/Lon-Koordinaten einfügen oder eine KML/KMZ-Datei hochladen. Die Satellitenkarte zentriert sich sofort auf Ihren Standort.',
+    'siteiq.s2.h':'Projektparameter eingeben','siteiq.s2.p':'Projektname, Land und geschätzte Standortfläche in Hektar eingeben. SiteIQ ruft automatisch GHI, Einstrahlung, Geländeübersicht, Hochwasserrisiko und Regulierungshinweise ab.',
+    'siteiq.s3.h':'PDF-Bericht herunterladen','siteiq.s3.p':'Kundenfähigen PDF mit Solarressourcendaten, monatlichem Einstrahlungsdiagramm, Geländezusammenfassung und Go/No-Go-Empfehlung erhalten. Bereit für das nächste Kundengespräch.',
+    'topoiq.s1.h':'Grenze zeichnen','topoiq.s1.p':'Zum Standort auf der Satellitenkarte navigieren. Polygon-Tool zum Zeichnen der genauen Standortgrenze verwenden — Klicken für Eckpunkte, Doppelklick zum Schließen. Oder DXF/KML hochladen.',
+    'topoiq.s2.h':'Geländedaten extrahieren','topoiq.s2.p':'TopoIQ ruft Copernicus GLO-30 Satelliten-DEM (~1m Genauigkeit) für Ihr Polygon ab und berechnet Höhe, Neigungskarten sowie Aushub- und Auffüllmengen automatisch.',
+    'topoiq.s3.h':'DXF & PDF exportieren','topoiq.s3.p':'DXF-Geländedatei mit Höhenlinien im gewählten Abstand herunterladen — bereit für 3D-Studium in jeder CAD-Software — plus PDF-Geländebericht mit Höhen- und Neigungskarten.',
+    'why.label':'Warum PVMath','why.title':'Ingenieurqualitätsdaten.<br>Keine Schätzungen.',
+    'why.c1.h':'Bankfähige Solardaten','why.c1.p':'GHI und Einstrahlung von PVGIS (EC JRC) und NASA POWER — dieselben Quellen wie in bankfähigen Machbarkeitsstudien.',
+    'why.c2.h':'Satelliten-Geländepräzision','why.c2.p':'Copernicus GLO-30 DEM mit ~1m vertikaler Auflösung. Neigung, Höhe und Massen — in Sekunden berechnet, nicht in Tagen.',
+    'why.c3.h':'CAD-Software-kompatibel','why.c3.p':'DXF-Geländedateien funktionieren in jeder CAD-Software — Civil 3D, BricsCAD, QGIS und mehr. Keine Konvertierung nötig.',
+    'why.c4.h':'Unter 2 Minuten','why.c4.p':'SiteIQ prüft in <60 Sekunden. TopoIQ extrahiert Gelände in <2 Minuten. Vollständige Projektvorprüfung noch während des Kundengesprächs.',
+    'why.c5.h':'Kundenfähige Berichte','why.c5.p':'Gebrandete PDF-Ausgaben aus beiden Modulen — Solarressourcen-Zusammenfassung und Geländediagramme. Drucken, per E-Mail senden, präsentieren.',
+    'why.c6.h':'Von einem Solaringenieur entwickelt','why.c6.p':'Kein Software-Startup, das rät, was Ingenieure brauchen. Entwickelt von einem Solar Engineering Expert mit praktischer Erfahrung in Utility-Scale-Solar, Trackersystemen und EPC-Projekten in Europa.',
+    'reviews.label':'Erstes Feedback','reviews.title':'Was Ingenieure sagen.',
+    'reviews.sub':'PVMath ist im Early Access. Hier ist das Feedback der ersten Nutzer.',
+    'reviews.r1.text':'„TopoIQ hat uns bei einem 40-MWp-Projekt mindestens 2 Tage manueller Geländearbeit gespart. Der DXF-Export wurde ohne Probleme direkt in unsere CAD-Software geladen.“',
+    'reviews.r1.name':'Alexander M.','reviews.r1.role':'Bauingenieur, EPC-Unternehmen — Deutschland',
+    'reviews.r2.text':'„Wir prüfen 10–15 Standorte pro Woche. SiteIQ liefert die erste Go/No-Go-Einschätzung in der Zeit, die wir früher nur zum Öffnen von PVGIS gebraucht haben. Der PDF-Bericht kann direkt an Kunden gesendet werden.“',
+    'reviews.r2.name':'Sofia R.','reviews.r2.role':'Projektentwicklerin — Spanien',
+    'reviews.fb.title':'Feedback teilen',
+    'reviews.fb.p':'SiteIQ oder TopoIQ genutzt? Ihr Feedback gestaltet direkt die Roadmap.',
+    'reviews.fb.btn':'Feedback senden →',
+    'stats.sites':'Standorte geprüft','stats.modules':'Live-Module','stats.global-val':'Global',
+    'stats.coverage':'Datenabdeckung','stats.speed':'Pro Standortprüfung','stats.start':'Zum Starten',
+    'pricing.label':'Preise','pricing.title':'Einfache, transparente Preise.',
+    'pricing.sub':'4 kostenlose Analysen pro Modul. Keine Kreditkarte erforderlich. Upgrade jederzeit möglich.',
+    'pricing.monthly':'Monatlich','pricing.annual':'Jährlich','pricing.save':'25% sparen','pricing.popular':'Beliebteste Wahl',
+    'tier.starter':'Starter','tier.pro':'Professional','tier.team':'Team',
+    'plan.starter.desc':'Für einzelne Ingenieure mit gelegentlicher Standortprüfung.',
+    'plan.pro.desc':'Für Solaringenieure und EPC-Teams in aktiven Projekten.',
+    'plan.team.desc':'Für EPC-Unternehmen und Entwicklerteams mit mehreren Ingenieuren.',
+    'pf.s.f1':'20 SiteIQ-Prüfungen / Monat','pf.s.f2':'20 TopoIQ-Analysen / Monat',
+    'pf.s.f3':'PDF-Bericht-Download','pf.s.f4':'Globale Solardaten (PVGIS + NASA)',
+    'pf.s.f5':'DXF-Geländedatei-Export','pf.s.f6':'YieldIQ (demnächst)','pf.s.f7':'Team-Zugänge',
+    'pf.p.f1':'Unbegrenzte SiteIQ-Prüfungen','pf.p.f2':'Unbegrenzte TopoIQ-Analysen',
+    'pf.p.f3':'PDF-Gelände- & Solarberichte','pf.p.f4':'DXF-Geländedatei-Export',
+    'pf.p.f5':'Globale Solardaten (PVGIS + NASA)','pf.p.f6':'Copernicus Satellite DEM-Gelände',
+    'pf.p.f7':'YieldIQ Early Access',
+    'pf.t.f1':'Bis zu 5 Team-Zugänge','pf.t.f2':'Unbegrenzt alle Module',
+    'pf.t.f3':'Alle Professional-Features','pf.t.f4':'Gemeinsamer Projekt-Workspace',
+    'pf.t.f5':'Prioritäts-Support','pf.t.f6':'YieldIQ Early Access','pf.t.f7':'Individuelle Rechnung & Abrechnung',
+    'pricing.btn.start':'Jetzt starten →','pricing.btn.sub':'Abonnieren →','pricing.btn.contact':'Kontakt →',
+    'pricing.note':'Alle Pläne beinhalten 4 kostenlose Analysen. Keine Kreditkarte erforderlich. Jederzeit kündbar. Zzgl. MwSt. 19% für EU-Kunden.',
+    'pricing.per.monthly':'/ Monat','pricing.per.annual':'/ Monat*','pricing.year':'Jahr','pricing.save.word':'spare',
+    'about.label':'Über PVMath','about.title':'Aus der Praxis.<br>Nicht vom Schreibtisch.',
+    'about.p1':'PVMath wurde von einem Solar Engineering Expert mit praktischer Erfahrung in Utility-Scale-Solar gegründet — Trackersysteme, Geländeanalyse, Standortplanung und EPC-Projektabwicklung in ganz Europa.',
+    'about.p2':'Jedes Tool wurde entwickelt, um ein reales Problem zu lösen, das echte Projektstunden gekostet hat. Das Ergebnis ist eine Plattform, die dieselbe Sprache spricht wie die Ingenieure, die sie nutzen.',
+    'about.c1.h':'Speziell für Solar','about.c1.p':'Kein generisches GIS-Tool für Solar angepasst. Jedes Feature ist speziell für die solare Standortbewertung und -planung entwickelt.',
+    'about.c2.h':'Europa & globale Märkte','about.c2.p':'Mit europäischen Solarmarkten im Fokus — Deutschland, Österreich, Schweiz, Spanien, Italien — aber mit globaler Datenabdeckung von Anfang an.',
+    'about.c3.h':'Schnell wachsend','about.c3.p':'SiteIQ und TopoIQ sind live. YieldIQ ist in Entwicklung. Die Roadmap wird durch echte Ingenieursanfragen gesteuert.',
+    'contact.label':'Kontakt','contact.title':'Kontakt aufnehmen.',
+    'contact.sub':'Fragen zu Preisen, Zugang oder einem individuellen Enterprise-Plan? Wir antworten innerhalb eines Werktags.',
+    'contact.info':'Solar-Standortintelligenz-Tools für EPCs, Projektentwickler und Ingenieurbüros weltweit.',
+    'contact.response':'<strong>Antwortzeit:</strong> Innerhalb 1 Werktag<br><strong>Sprachen:</strong> English, Deutsch',
+    'form.name':'Ihr Name','form.email':'Geschäfts-E-Mail','form.company':'Unternehmen / Organisation',
+    'form.s0':'Womit können wir helfen?','form.s1':'Kostenloser Test von SiteIQ','form.s2':'Kostenloser Test von TopoIQ',
+    'form.s3':'YieldIQ Early Access','form.s4':'Professional-Plan','form.s5':'Team / Enterprise-Plan',
+    'form.s6':'Abrechnungsfrage','form.s7':'Technischer Support','form.s8':'Sonstiges',
+    'form.message':'Ihre Nachricht...','form.submit':'Nachricht senden →',
+    'footer.tagline':'Solar-Standortintelligenz für EPCs und Projektentwickler. Von Ingenieuren für Ingenieure.',
+    'footer.platform':'Plattform','footer.company':'Unternehmen','footer.legal':'Rechtliches',
+    'footer.yield-soon':'YieldIQ (demnächst)','\footer.about':'Über uns','footer.about':'Über uns',
+    'footer.pricing':'Preise','footer.contact':'Kontakt','footer.impressum':'Impressum',
+    'footer.privacy':'Datenschutz','footer.copy':'© 2026 PVMath. Alle Rechte vorbehalten.',
+    'footer.sources':'Datenquellen: PVGIS (EC JRC) · NASA POWER · Copernicus GLO-30 DEM'
   }
+};
 
-  // Init as annual
+// ─────────────────────────────────────────────────────────────────────────────
+//  i18n ENGINE
+// ─────────────────────────────────────────────────────────────────────────────
+var currentLang = 'en';
+
+function setLanguage(lang) {
+  if (!T[lang]) return;
+  currentLang = lang;
+  localStorage.setItem('pvmath-lang', lang);
+
+  document.querySelectorAll('[data-i18n]').forEach(function(el) {
+    var key = el.getAttribute('data-i18n');
+    if (T[lang][key] !== undefined) el.textContent = T[lang][key];
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(function(el) {
+    var key = el.getAttribute('data-i18n-html');
+    if (T[lang][key] !== undefined) el.innerHTML = T[lang][key];
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(function(el) {
+    var key = el.getAttribute('data-i18n-ph');
+    if (T[lang][key] !== undefined) el.placeholder = T[lang][key];
+  });
+  document.querySelectorAll('.lang-btn').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.lang === lang);
+  });
+  document.documentElement.lang = lang;
+  renderPricingNotes();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  PRICING TOGGLE
+// ─────────────────────────────────────────────────────────────────────────────
+var isAnnual = true;
+var prices = {
+  monthly: { starter: '€59', pro: '€99', team: '€249' },
+  annual:  { starter: '€44', pro: '€74', team: '€187' }
+};
+var annualData = {
+  starter: { total: '€530', saved: '€178' },
+  pro:     { total: '€890', saved: '€298' },
+  team:    { total: '€2.240', saved: '€748' }
+};
+
+function renderPricingNotes() {
+  var lang = currentLang;
+  var mode = isAnnual ? 'annual' : 'monthly';
+  var perStr   = (T[lang] && T[lang]['pricing.per.' + mode]) || (isAnnual ? '/ month*' : '/ month');
+  var yearWord = (T[lang] && T[lang]['pricing.year'])        || 'year';
+  var saveWord = (T[lang] && T[lang]['pricing.save.word'])   || 'save';
+
+  ['starter','pro','team'].forEach(function(plan) {
+    var amtEl  = document.getElementById('price-' + plan);
+    var perEl  = document.getElementById('per-'   + plan);
+    var noteEl = document.getElementById('note-'  + plan);
+    if (amtEl && amtEl.childNodes[0]) amtEl.childNodes[0].textContent = prices[mode][plan];
+    if (perEl)  perEl.textContent = ' ' + perStr;
+    if (noteEl) noteEl.textContent = isAnnual
+      ? annualData[plan].total + ' / ' + yearWord + ' — ' + saveWord + ' ' + annualData[plan].saved
+      : '';
+  });
+}
+
+function toggleBilling() {
+  isAnnual = !isAnnual;
+  var btn  = document.getElementById('billing-toggle');
+  var lblM = document.getElementById('lbl-monthly');
+  var lblA = document.getElementById('lbl-annual');
+  btn.className = 'toggle-switch ' + (isAnnual ? 'annual' : 'monthly');
+  lblM.style.opacity = isAnnual ? '.5' : '1';
+  lblA.style.opacity = isAnnual ? '1' : '.5';
+  renderPricingNotes();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  var saved   = localStorage.getItem('pvmath-lang');
+  var browser = (navigator.language || '').split('-')[0].toLowerCase();
+  var lang    = saved || (['de'].includes(browser) ? 'de' : 'en');
+  setLanguage(lang);
   document.getElementById('lbl-monthly').style.opacity = '.5';
+});
 </script>
 
 </body>
