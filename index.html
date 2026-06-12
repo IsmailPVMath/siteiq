@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="PVMath — Solar Site Intelligence Platform. Professional tools for solar site screening, feasibility analysis, and project intelligence. Used by EPCs and developers worldwide." />
+  <meta name="keywords" content="solar site screening, PV feasibility, Agri-PV, solar software, ground mount solar, SiteIQ, PVMath" />
+  <meta property="og:title" content="PVMath — Solar Site Intelligence" />
+  <meta property="og:description" content="From site to system. Professional solar intelligence tools for EPCs and developers worldwide." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://pvmath.com" />
+  <title>PVMath — Solar Site Intelligence Platform</title>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:    #1d9e52;
+      --green-dk: #145f34;
+      --green-md: #1d9e52;
+      --bg:       #f5f7f5;
+      --bg2:      #eef2ee;
+      --bg3:      #e6ece6;
+      --card:     #ffffff;
+      --border:   #d4e0d4;
+      --text:     #1a2e1a;
+      --muted:    #5a7a5a;
+      --accent:   #27ae60;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2.5rem;
+      background: rgba(245, 247, 245, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
+    .nav-logo-mark {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: linear-gradient(135deg, var(--green-dk), var(--green-md));
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 1rem; color: #fff;
+    }
+    .nav-logo-text { font-size: 1.2rem; font-weight: 700; color: var(--text); }
+    .nav-logo-text span { color: var(--green); }
+    .nav-links { display: flex; gap: 2rem; list-style: none; }
+    .nav-links a { text-decoration: none; color: var(--muted); font-size: 0.88rem; transition: color 0.2s; }
+    .nav-links a:hover { color: var(--green); }
+    .nav-cta {
+      background: var(--green-md); color: #fff;
+      padding: 0.5rem 1.2rem; border-radius: 6px;
+      text-decoration: none; font-size: 0.85rem; font-weight: 600;
+      transition: background 0.2s;
+    }
+    .nav-cta:hover { background: var(--green); }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 6rem 2rem 4rem;
+      background: radial-gradient(ellipse 80% 60% at 50% 30%, rgba(29,158,82,0.08) 0%, transparent 70%);
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 60px,
+        rgba(29,158,82,0.05) 60px, rgba(29,158,82,0.05) 61px
+      ),
+      repeating-linear-gradient(
+        90deg, transparent, transparent 60px,
+        rgba(29,158,82,0.05) 60px, rgba(29,158,82,0.05) 61px
+      );
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: rgba(46,204,113,0.1); border: 1px solid rgba(46,204,113,0.3);
+      color: var(--green); padding: 0.3rem 0.9rem; border-radius: 100px;
+      font-size: 0.78rem; font-weight: 600; letter-spacing: 0.05em;
+      margin-bottom: 1.5rem; position: relative;
+    }
+    .hero-badge::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green); animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
+
+    .hero h1 {
+      font-size: clamp(2.4rem, 6vw, 4.2rem);
+      font-weight: 800; line-height: 1.1; letter-spacing: -0.02em;
+      margin-bottom: 1.2rem; position: relative;
+    }
+    .hero h1 .hl { color: var(--green); }
+    .hero p {
+      font-size: clamp(1rem, 2vw, 1.2rem); color: var(--muted);
+      max-width: 600px; margin: 0 auto 2.5rem;
+    }
+    .hero-btns { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+    .btn-primary {
+      background: var(--green-md); color: #fff;
+      padding: 0.8rem 2rem; border-radius: 8px;
+      text-decoration: none; font-weight: 700; font-size: 0.95rem;
+      transition: all 0.2s; box-shadow: 0 0 24px rgba(39,174,96,0.3);
+    }
+    .btn-primary:hover { background: var(--green); box-shadow: 0 0 36px rgba(39,174,96,0.5); transform: translateY(-1px); }
+    .btn-secondary {
+      border: 1px solid var(--border); color: var(--text);
+      padding: 0.8rem 2rem; border-radius: 8px;
+      text-decoration: none; font-weight: 600; font-size: 0.95rem;
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover { border-color: var(--green); color: var(--green); }
+
+    .hero-stats {
+      display: flex; gap: 3rem; margin-top: 4rem; flex-wrap: wrap; justify-content: center;
+      position: relative;
+    }
+    .stat { text-align: center; }
+    .stat-num { font-size: 1.8rem; font-weight: 800; color: var(--green); }
+    .stat-lbl { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+    /* ── SECTION COMMONS ── */
+    section { padding: 6rem 2rem; }
+    .section-inner { max-width: 1100px; margin: 0 auto; }
+    .section-tag {
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--green); margin-bottom: 0.75rem;
+    }
+    .section-title {
+      font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 800;
+      line-height: 1.15; margin-bottom: 1rem;
+    }
+    .section-sub { color: var(--muted); max-width: 560px; font-size: 1rem; }
+
+    /* ── ABOUT ── */
+    #about { background: var(--bg2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .about-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; margin-top: 3rem;
+    }
+    .about-text p { color: var(--muted); margin-bottom: 1rem; }
+    .about-pillars { display: flex; flex-direction: column; gap: 1rem; }
+    .pillar {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1.2rem 1.4rem;
+      display: flex; gap: 1rem; align-items: flex-start;
+    }
+    .pillar-icon {
+      width: 38px; height: 38px; border-radius: 8px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+    }
+    .pillar-icon.green  { background: rgba(46,204,113,0.12); }
+    .pillar-icon.blue   { background: rgba(52,152,219,0.12); }
+    .pillar-icon.orange { background: rgba(243,156,18,0.12); }
+    .pillar h4 { font-size: 0.88rem; font-weight: 700; margin-bottom: 0.2rem; }
+    .pillar p  { font-size: 0.8rem; color: var(--muted); }
+
+    /* ── PRODUCTS ── */
+    #products { background: var(--bg); }
+    .products-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 3rem; }
+    .product-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 2rem; position: relative; overflow: hidden;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .product-card:hover { border-color: var(--green); transform: translateY(-3px); }
+    .product-card.active { border-color: rgba(46,204,113,0.4); }
+    .product-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--green-dk), var(--green));
+      opacity: 0; transition: opacity 0.2s;
+    }
+    .product-card.active::before, .product-card:hover::before { opacity: 1; }
+    .product-status {
+      display: inline-block; font-size: 0.7rem; font-weight: 700;
+      padding: 0.2rem 0.6rem; border-radius: 100px; margin-bottom: 1rem;
+      letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .status-live    { background: rgba(46,204,113,0.15); color: var(--green); border: 1px solid rgba(46,204,113,0.3); }
+    .status-soon    { background: rgba(52,152,219,0.12); color: #5b9bd5;      border: 1px solid rgba(52,152,219,0.2); }
+    .status-planned { background: rgba(127,140,141,0.1); color: var(--muted); border: 1px solid var(--border); }
+    .product-num { font-size: 0.7rem; color: var(--muted); font-weight: 600; letter-spacing: 0.1em; margin-bottom: 0.4rem; }
+    .product-card h3 { font-size: 1.2rem; font-weight: 800; margin-bottom: 0.5rem; }
+    .product-card p  { color: var(--muted); font-size: 0.85rem; line-height: 1.6; margin-bottom: 1.2rem; }
+    .product-features { list-style: none; display: flex; flex-direction: column; gap: 0.4rem; }
+    .product-features li {
+      font-size: 0.78rem; color: var(--muted);
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .product-features li::before { content: '—'; color: var(--green); font-weight: 700; }
+    .product-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      margin-top: 1.5rem; color: var(--green); font-size: 0.83rem; font-weight: 600;
+      text-decoration: none; transition: gap 0.2s;
+    }
+    .product-link:hover { gap: 0.7rem; }
+
+    /* ── HOW IT WORKS ── */
+    #how { background: var(--bg2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 2rem; margin-top: 3rem; }
+    .step { text-align: center; padding: 1rem; }
+    .step-num {
+      width: 48px; height: 48px; border-radius: 50%; margin: 0 auto 1.2rem;
+      background: linear-gradient(135deg, var(--green-dk), var(--green-md));
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 1.1rem; color: #fff;
+    }
+    .step h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .step p  { font-size: 0.82rem; color: var(--muted); }
+    .step-connector { display: none; }
+
+    /* ── PRICING ── */
+    #pricing { background: var(--bg); }
+    .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 3rem; }
+    .price-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 2rem; position: relative;
+    }
+    .price-card.featured {
+      border-color: rgba(46,204,113,0.4);
+      background: linear-gradient(135deg, #e8f5ee, #d4edde);
+    }
+    .price-badge {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      background: var(--green-md); color: #fff;
+      font-size: 0.7rem; font-weight: 700; padding: 0.25rem 0.9rem;
+      border-radius: 100px; letter-spacing: 0.06em; white-space: nowrap;
+    }
+    .price-tier { font-size: 0.7rem; font-weight: 700; color: var(--green); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem; }
+    .price-amount { font-size: 2.4rem; font-weight: 800; line-height: 1; }
+    .price-amount span { font-size: 1rem; font-weight: 400; color: var(--muted); }
+    .price-desc { font-size: 0.82rem; color: var(--muted); margin: 0.8rem 0 1.5rem; }
+    .price-features { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 2rem; }
+    .price-features li {
+      font-size: 0.82rem; display: flex; align-items: center; gap: 0.6rem;
+    }
+    .price-features li.yes::before { content: '✓'; color: var(--green); font-weight: 700; }
+    .price-features li.no  { color: var(--muted); }
+    .price-features li.no::before  { content: '—'; color: var(--border); }
+    .price-btn {
+      display: block; text-align: center; padding: 0.75rem;
+      border-radius: 8px; font-weight: 700; font-size: 0.88rem;
+      text-decoration: none; transition: all 0.2s;
+    }
+    .price-btn.outline { border: 1px solid var(--border); color: var(--text); }
+    .price-btn.outline:hover { border-color: var(--green); color: var(--green); }
+    .price-btn.solid   { background: var(--green-md); color: #fff; }
+    .price-btn.solid:hover { background: var(--green); }
+
+    /* ── CONTACT ── */
+    #contact { background: var(--bg2); border-top: 1px solid var(--border); }
+    .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start; margin-top: 3rem; }
+    .contact-info p { color: var(--muted); margin-bottom: 1.5rem; }
+    .contact-detail { display: flex; gap: 0.8rem; align-items: center; margin-bottom: 0.8rem; }
+    .contact-detail-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: rgba(46,204,113,0.1); border: 1px solid rgba(46,204,113,0.2);
+      display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0;
+    }
+    .contact-detail-text { font-size: 0.85rem; }
+    .contact-detail-text strong { display: block; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    form { display: flex; flex-direction: column; gap: 1rem; }
+    form input, form select, form textarea {
+      background: var(--card); border: 1px solid var(--border);
+      color: var(--text); padding: 0.75rem 1rem; border-radius: 8px;
+      font-size: 0.88rem; font-family: inherit; outline: none; width: 100%;
+      transition: border-color 0.2s;
+    }
+    form input:focus, form select:focus, form textarea:focus { border-color: var(--green); }
+    form input::placeholder, form textarea::placeholder { color: var(--muted); }
+    form textarea { resize: vertical; min-height: 110px; }
+    form select option { background: #fff; color: #1a2e1a; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .form-submit {
+      background: var(--green-md); color: #fff; border: none;
+      padding: 0.85rem; border-radius: 8px; font-size: 0.92rem;
+      font-weight: 700; cursor: pointer; transition: background 0.2s;
+    }
+    .form-submit:hover { background: var(--green); }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--bg); border-top: 1px solid var(--border);
+      padding: 2.5rem 2rem;
+    }
+    .footer-inner {
+      max-width: 1100px; margin: 0 auto;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;
+    }
+    .footer-logo { text-decoration: none; display: flex; align-items: center; gap: 0.5rem; }
+    .footer-logo-text { font-weight: 700; font-size: 1rem; color: var(--text); }
+    .footer-logo-text span { color: var(--green); }
+    .footer-links { display: flex; gap: 1.5rem; list-style: none; }
+    .footer-links a { color: var(--muted); font-size: 0.8rem; text-decoration: none; }
+    .footer-links a:hover { color: var(--green); }
+    .footer-copy { color: var(--muted); font-size: 0.75rem; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      nav { padding: 1rem 1.2rem; }
+      .nav-links { display: none; }
+      .about-grid, .contact-grid { grid-template-columns: 1fr; gap: 2rem; }
+      .form-row { grid-template-columns: 1fr; }
+      .hero-stats { gap: 2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-mark">PV</div>
+    <span class="nav-logo-text">PV<span>Math</span></span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#about">About</a></li>
+    <li><a href="#products">Products</a></li>
+    <li><a href="#how">How It Works</a></li>
+    <li><a href="#pricing">Pricing</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+  <a href="https://pvmath-siteiq.streamlit.app" target="_blank" class="nav-cta">Try SiteIQ Free →</a>
+</nav>
+
+<!-- ── HERO ── -->
+<section class="hero" id="home">
+  <div class="hero-badge">Now Live — Module 1: SiteIQ</div>
+  <h1>From Site to System.<br/><span class="hl">Solar Intelligence</span><br/>Built for Professionals.</h1>
+  <p>PVMath builds precision tools for solar EPCs and developers — from rapid site screening to full project intelligence. Save days of manual work on every project.</p>
+  <div class="hero-btns">
+    <a href="https://pvmath-siteiq.streamlit.app" target="_blank" class="btn-primary">Try SiteIQ Free</a>
+    <a href="#products" class="btn-secondary">See All Modules</a>
+  </div>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-num">5</div><div class="stat-lbl">Platform Modules</div></div>
+    <div class="stat"><div class="stat-num">10+</div><div class="stat-lbl">Countries Supported</div></div>
+    <div class="stat"><div class="stat-num">&lt;60s</div><div class="stat-lbl">Site Screening Time</div></div>
+    <div class="stat"><div class="stat-num">Free</div><div class="stat-lbl">To Get Started</div></div>
+  </div>
+</section>
+
+<!-- ── ABOUT ── -->
+<section id="about">
+  <div class="section-inner">
+    <div class="section-tag">Who We Are</div>
+    <h2 class="section-title">Built by solar engineers,<br/>for solar engineers.</h2>
+    <div class="about-grid">
+      <div class="about-text">
+        <p>PVMath was founded by a utility-scale solar engineer with 5+ years of hands-on experience in tracker systems, site design, and EPC project execution across Europe and beyond.</p>
+        <p>We know the pain points because we lived them — slow feasibility studies, BOM errors from layout revisions, procurement delays, and manual data transfer between teams. PVMath automates and accelerates all of it.</p>
+        <p>Our platform is designed for the professionals who build the world's solar infrastructure: EPCs, project developers, and engineering firms who need fast, reliable, bankable data.</p>
+      </div>
+      <div class="about-pillars">
+        <div class="pillar">
+          <div class="pillar-icon green">◈</div>
+          <div>
+            <h4>Engineering-Grade Data</h4>
+            <p>Every output is grounded in real data sources — PVGIS, OpenTopoData, OpenStreetMap — not estimates.</p>
+          </div>
+        </div>
+        <div class="pillar">
+          <div class="pillar-icon blue">◉</div>
+          <div>
+            <h4>Global Coverage</h4>
+            <p>Country-aware regulatory guidance for 10+ markets. Fixed tilt and tracker suitability for any terrain worldwide.</p>
+          </div>
+        </div>
+        <div class="pillar">
+          <div class="pillar-icon orange">◈</div>
+          <div>
+            <h4>Built for Speed</h4>
+            <p>What takes a team hours, SiteIQ does in under 60 seconds. PDF report included — ready for client meetings.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PRODUCTS ── -->
+<section id="products">
+  <div class="section-inner">
+    <div class="section-tag">Platform Modules</div>
+    <h2 class="section-title">One platform.<br/>Five modules.</h2>
+    <p class="section-sub">Each module solves a specific pain point in the solar project lifecycle — from first site visit to after-sales.</p>
+    <div class="products-grid">
+
+      <div class="product-card active">
+        <div class="product-num">MODULE 01</div>
+        <span class="product-status status-live">Live Now</span>
+        <h3>SiteIQ</h3>
+        <p>Rapid site screening for ground-mount solar. Solar resource, terrain slope, flood risk, regulatory check and capacity estimate — in under 60 seconds.</p>
+        <ul class="product-features">
+          <li>Annual GHI & monthly irradiation</li>
+          <li>Terrain slope & elevation analysis</li>
+          <li>Flood risk with local portal links</li>
+          <li>Country-specific regulatory guidance</li>
+          <li>Fixed tilt & single-axis tracker modes</li>
+          <li>Standard & Agri-PV land use</li>
+          <li>PDF report — client-ready</li>
+        </ul>
+        <a href="https://pvmath-siteiq.streamlit.app" target="_blank" class="product-link">Launch SiteIQ →</a>
+      </div>
+
+      <div class="product-card">
+        <div class="product-num">MODULE 02</div>
+        <span class="product-status status-soon">Coming Soon</span>
+        <h3>RevenueIQ</h3>
+        <p>EEG & feed-in revenue calculator. Model annual yield, tariff scenarios, and financial KPIs for any project — including Agri-PV bonus uplift.</p>
+        <ul class="product-features">
+          <li>Feed-in tariff modelling by country</li>
+          <li>Agri-PV EEG 2023 bonus scenarios</li>
+          <li>LCOE & IRR estimates</li>
+          <li>Sensitivity analysis</li>
+        </ul>
+      </div>
+
+      <div class="product-card">
+        <div class="product-num">MODULE 03</div>
+        <span class="product-status status-soon">Coming Soon</span>
+        <h3>LayoutIQ</h3>
+        <p>Automated layout generation and BOM creation for ground-mount projects. Eliminate manual errors in material take-offs.</p>
+        <ul class="product-features">
+          <li>Auto layout from site boundary</li>
+          <li>BOM generation by system type</li>
+          <li>Delta BOM — revision comparison</li>
+          <li>Export to Excel / DWG</li>
+        </ul>
+      </div>
+
+      <div class="product-card">
+        <div class="product-num">MODULE 04</div>
+        <span class="product-status status-planned">Planned</span>
+        <h3>ProcureIQ</h3>
+        <p>Procurement intelligence dashboard. Track supplier lead times, component availability, and order status across your project portfolio.</p>
+        <ul class="product-features">
+          <li>Supplier lead time tracking</li>
+          <li>Order status dashboard</li>
+          <li>Tariff & trade risk alerts</li>
+        </ul>
+      </div>
+
+      <div class="product-card">
+        <div class="product-num">MODULE 05</div>
+        <span class="product-status status-planned">Planned</span>
+        <h3>FieldIQ</h3>
+        <p>BIM-based execution and QA module. Post-installation verification, as-built documentation, and after-sales data management.</p>
+        <ul class="product-features">
+          <li>Post-installation BIM check</li>
+          <li>QA photo documentation</li>
+          <li>After-sales issue tracking</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ── -->
+<section id="how">
+  <div class="section-inner">
+    <div class="section-tag">How It Works</div>
+    <h2 class="section-title">Site screening in<br/>three steps.</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h4>Enter Your Site</h4>
+        <p>Click on the map, paste Google Maps coordinates, or upload a KML/KMZ boundary file from any GIS tool.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h4>Select Project Type</h4>
+        <p>Choose Standard or Agri-PV land use, and Fixed Tilt or Single-Axis Tracker mounting system.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h4>Get Your Report</h4>
+        <p>Receive solar resource, terrain analysis, flood risk, regulatory contacts and capacity estimates — then download a PDF ready for your client.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PRICING ── -->
+<section id="pricing">
+  <div class="section-inner">
+    <div class="section-tag">Pricing</div>
+    <h2 class="section-title">Simple, transparent<br/>pricing.</h2>
+    <p class="section-sub">Start for free. Upgrade when you're ready to screen more sites and access advanced features.</p>
+    <div class="pricing-grid">
+
+      <div class="price-card">
+        <div class="price-tier">Free</div>
+        <div class="price-amount">€0<span> / month</span></div>
+        <p class="price-desc">For engineers exploring the platform. No credit card required.</p>
+        <ul class="price-features">
+          <li class="yes">5 site screenings per month</li>
+          <li class="yes">SiteIQ — all features</li>
+          <li class="yes">PDF report download</li>
+          <li class="yes">10+ countries supported</li>
+          <li class="no">Priority data processing</li>
+          <li class="no">Team workspace</li>
+          <li class="no">API access</li>
+        </ul>
+        <a href="https://pvmath-siteiq.streamlit.app" target="_blank" class="price-btn outline">Get Started Free</a>
+      </div>
+
+      <div class="price-card featured">
+        <div class="price-badge">Most Popular</div>
+        <div class="price-tier">Professional</div>
+        <div class="price-amount">€49<span> / month</span></div>
+        <p class="price-desc">For individual engineers and small EPC teams running multiple projects.</p>
+        <ul class="price-features">
+          <li class="yes">Unlimited site screenings</li>
+          <li class="yes">SiteIQ — all features</li>
+          <li class="yes">PDF report download</li>
+          <li class="yes">10+ countries supported</li>
+          <li class="yes">Priority data processing</li>
+          <li class="yes">Project history & archive</li>
+          <li class="no">Team workspace</li>
+        </ul>
+        <a href="#contact" class="price-btn solid">Request Early Access</a>
+      </div>
+
+      <div class="price-card">
+        <div class="price-tier">Enterprise</div>
+        <div class="price-amount">Custom<span></span></div>
+        <p class="price-desc">For EPC companies and developer teams screening multiple projects per week.</p>
+        <ul class="price-features">
+          <li class="yes">Unlimited screenings</li>
+          <li class="yes">All platform modules</li>
+          <li class="yes">Team workspace & SSO</li>
+          <li class="yes">API access</li>
+          <li class="yes">Custom integrations</li>
+          <li class="yes">Dedicated support</li>
+          <li class="yes">On-site training</li>
+        </ul>
+        <a href="#contact" class="price-btn outline">Contact Us</a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── CONTACT ── -->
+<section id="contact">
+  <div class="section-inner">
+    <div class="section-tag">Get In Touch</div>
+    <h2 class="section-title">Start a conversation.</h2>
+    <div class="contact-grid">
+      <div class="contact-info">
+        <p>Whether you want early access, have a feature request, or want to discuss an enterprise plan — we'd love to hear from you.</p>
+        <div class="contact-detail">
+          <div class="contact-detail-icon">✉</div>
+          <div class="contact-detail-text">
+            <strong>Email</strong>
+            contact@pvmath.com
+          </div>
+        </div>
+        <div class="contact-detail">
+          <div class="contact-detail-icon">🌐</div>
+          <div class="contact-detail-text">
+            <strong>Web</strong>
+            pvmath.com · pvmath.de · pvmath.eu
+          </div>
+        </div>
+        <div class="contact-detail">
+          <div class="contact-detail-icon">📍</div>
+          <div class="contact-detail-text">
+            <strong>Based in</strong>
+            Regensburg, Germany
+          </div>
+        </div>
+      </div>
+      <form action="https://formspree.io/f/YOUR_FORM_ID" method="POST">
+        <div class="form-row">
+          <input type="text"  name="name"    placeholder="Your name"    required />
+          <input type="text"  name="company" placeholder="Company"               />
+        </div>
+        <input type="email" name="email"   placeholder="Work email"   required />
+        <select name="interest">
+          <option value="" disabled selected>I'm interested in…</option>
+          <option>Free trial of SiteIQ</option>
+          <option>Professional plan</option>
+          <option>Enterprise / Team plan</option>
+          <option>Feature request / feedback</option>
+          <option>Partnership</option>
+        </select>
+        <textarea name="message" placeholder="Tell us about your projects and what you're trying to solve…"></textarea>
+        <button type="submit" class="form-submit">Send Message →</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="footer-inner">
+    <a href="#" class="footer-logo">
+      <div class="nav-logo-mark" style="width:26px;height:26px;font-size:0.8rem;">PV</div>
+      <span class="footer-logo-text">PV<span>Math</span></span>
+    </a>
+    <ul class="footer-links">
+      <li><a href="#about">About</a></li>
+      <li><a href="#products">Products</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="#contact">Contact</a></li>
+      <li><a href="https://pvmath-siteiq.streamlit.app" target="_blank">Launch SiteIQ</a></li>
+    </ul>
+    <span class="footer-copy">© 2025 PVMath. All rights reserved.</span>
+  </div>
+</footer>
+
+</body>
+</html>
