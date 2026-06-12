@@ -13,6 +13,7 @@ import folium
 from folium.plugins import Draw
 from streamlit_folium import st_folium
 from datetime import datetime
+from usage_tracker import get_usage, increment_usage, is_over_limit, remaining, FREE_LIMIT, STRIPE_LINK, PRICE_LABEL
 
 # ── optional heavy deps — graceful fallback ──────────────────────────────────
 try:
@@ -263,40 +264,119 @@ st.set_page_config(
 
 st.markdown("""
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-    footer { visibility: hidden; }
-    .topo-header { font-size: 2rem; font-weight: 800; color: #1565c0; }
-    .section-hdr {
-        font-size: 0.82rem; font-weight: 700; text-transform: uppercase;
-        letter-spacing: 0.07em; margin: 0.6rem 0 0.4rem;
-        display: flex; align-items: center; gap: 0.4rem;
+    /* ── Base ── */
+    html, body, [class*="css"] {
+        font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif !important;
     }
+    footer { visibility: hidden; }
+    #MainMenu { visibility: hidden; }
+
+    /* ── Header ── */
+    .pvmath-header {
+        display: flex; align-items: center; gap: 0.75rem;
+        padding: 0.5rem 0 1rem 0; border-bottom: 1px solid #e8ede8; margin-bottom: 1.2rem;
+    }
+    .pvmath-logo-mark {
+        width: 40px; height: 40px; border-radius: 10px;
+        background: linear-gradient(135deg, #1565c0, #42a5f5);
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .pvmath-app-name { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; color: #1565c0; }
+    .pvmath-app-sub  { font-size: 0.82rem; color: #888; font-weight: 500; }
+    .pvmath-tagline  { font-size: 0.88rem; color: #5a7a5a; margin-top: 0.1rem; font-weight: 400; }
+
+    /* ── Section headers ── */
+    .section-hdr {
+        font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.12em; color: #1d9e52;
+        display: flex; align-items: center; gap: 0.45rem;
+        margin: 1.2rem 0 0.6rem 0; padding-bottom: 0.4rem;
+        border-bottom: 1px solid #e2ede2;
+    }
+
+    /* ── Info / accuracy card ── */
     .accuracy-card {
-        background: rgba(21,101,192,0.07);
-        border: 1px solid rgba(21,101,192,0.2);
-        border-radius: 10px; padding: 1rem 1.2rem; margin-top: 1rem;
+        background: #f0f7ff; border: 1px solid #c5daf5;
+        border-left: 3px solid #1565c0;
+        border-radius: 8px; padding: 0.9rem 1.1rem; margin-top: 0.8rem;
         font-size: 0.82rem;
     }
-    .accuracy-card h4 { color: #1565c0; margin-bottom: 0.4rem; font-size: 0.85rem; }
-    .accuracy-card p { color: #444; margin: 0.15rem 0; }
+    .accuracy-card h4 { color: #1565c0; margin-bottom: 0.35rem; font-size: 0.85rem; font-weight: 700; }
+    .accuracy-card p  { color: #334; margin: 0.12rem 0; line-height: 1.5; }
+
+    /* ── Metric cards ── */
+    div[data-testid="metric-container"] {
+        background: #fff; border: 1px solid #e2ede2;
+        border-radius: 10px; padding: 1rem;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+
+    /* ── Buttons ── */
+    div[data-testid="stButton"] > button {
+        font-family: 'Inter', sans-serif !important;
+        font-weight: 600 !important; letter-spacing: 0.01em;
+        border-radius: 8px !important;
+    }
+    div[data-testid="stButton"] > button[kind="primary"] {
+        background: linear-gradient(135deg, #1d9e52, #145f34) !important;
+        border: none !important; color: #fff !important;
+    }
+    div[data-testid="stButton"] > button[kind="primary"]:hover {
+        background: linear-gradient(135deg, #27ae60, #1d9e52) !important;
+        box-shadow: 0 0 20px rgba(29,158,82,0.3) !important;
+    }
+
+    /* ── Tabs ── */
+    div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+        color: #1d9e52 !important; border-bottom-color: #1d9e52 !important; font-weight: 700 !important;
+    }
+    div[data-testid="stTabs"] button[role="tab"] { font-weight: 500 !important; }
+
+    /* ── Download button ── */
+    div[data-testid="stDownloadButton"] > button {
+        font-family: 'Inter', sans-serif !important;
+        font-weight: 600 !important; border-radius: 8px !important;
+    }
+
+    /* ── Inputs ── */
+    div[data-baseweb="input"] input, div[data-baseweb="textarea"] textarea {
+        font-family: 'Inter', sans-serif !important;
+        border-radius: 8px !important;
+    }
+
+    /* ── Success / warning / error ── */
+    div[data-testid="stAlert"] {
+        border-radius: 10px !important; font-weight: 500;
+    }
+
+    /* ── Expander ── */
+    div[data-testid="stExpander"] {
+        border: 1px solid #e2ede2 !important; border-radius: 10px !important;
+    }
+
+    /* ── Sidebar (if used) ── */
+    section[data-testid="stSidebar"] { background: #f5f7f5 !important; }
 </style>
 """, unsafe_allow_html=True)
 
 # ─── Header ──────────────────────────────────────────────────────────────────
 st.markdown("""
-<div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:0.2rem;">
-  <span style="width:38px;height:38px;background:linear-gradient(135deg,#1565c0,#42a5f5);
-               border-radius:9px;display:inline-flex;align-items:center;justify-content:center;">
-    <i class="fa-solid fa-mountain" style="color:#fff;font-size:1rem;"></i>
-  </span>
-  <span class="topo-header">TopoIQ</span>
-  <span style="font-size:0.85rem;color:#888;align-self:flex-end;padding-bottom:0.3rem;">by PVMath</span>
+<div class="pvmath-header">
+  <div class="pvmath-logo-mark">
+    <i class="fa-solid fa-mountain" style="color:#fff;font-size:1.1rem;"></i>
+  </div>
+  <div>
+    <div style="display:flex;align-items:baseline;gap:0.5rem;">
+      <span class="pvmath-app-name">TopoIQ</span>
+      <span class="pvmath-app-sub">by PVMath</span>
+    </div>
+    <div class="pvmath-tagline">Satellite terrain extraction for solar site engineering — Civil 3D ready outputs</div>
+  </div>
 </div>
-<p style="color:#666;font-size:0.9rem;margin-bottom:0;">
-  Satellite terrain extraction for solar site engineering — Civil 3D ready outputs.
-</p>
 """, unsafe_allow_html=True)
-st.divider()
 
 # ─── Tile utilities ───────────────────────────────────────────────────────────
 
@@ -986,15 +1066,48 @@ with left:
     contour_minor = sc2.selectbox("Minor contour (m)", [0.5, 0.25, 1.0], index=0)
     contour_major = st.selectbox("Major contour (m)", [1.0, 2.0, 5.0], index=0)
 
-    run = st.button("⛰ Run Terrain Analysis", type="primary",
-                    use_container_width=True,
-                    disabled=(polygon_coords is None))
-    if polygon_coords is None:
-        st.caption("Draw or upload a site boundary to enable analysis.")
+    _topo_user = st.session_state.get("username", "guest")
+    _topo_left = remaining(_topo_user, "topoiq")
+
+    if is_over_limit(_topo_user, "topoiq"):
+        # ── PAYWALL ──────────────────────────────────────────────────────────
+        st.markdown(f"""
+        <div style="background:#fff;border:1.5px solid #e2ede2;border-radius:14px;
+                    padding:1.8rem 1.6rem;text-align:center;margin-top:0.5rem;
+                    font-family:'Inter',sans-serif;">
+          <div style="font-size:2rem;margin-bottom:0.5rem;">🔒</div>
+          <div style="font-size:1.2rem;font-weight:800;color:#1565c0;margin-bottom:0.4rem;">
+            Free Trial Complete
+          </div>
+          <div style="color:#555;font-size:0.88rem;margin-bottom:1.2rem;line-height:1.6;">
+            You've used all <b>{FREE_LIMIT} free analyses</b> in TopoIQ.<br>
+            Upgrade to run unlimited terrain extractions.
+          </div>
+          <a href="{STRIPE_LINK}" target="_blank"
+             style="display:inline-block;background:linear-gradient(135deg,#1d9e52,#145f34);
+                    color:#fff;font-weight:700;font-size:0.95rem;padding:0.75rem 2rem;
+                    border-radius:9px;text-decoration:none;letter-spacing:0.01em;">
+            Upgrade — {PRICE_LABEL} →
+          </a>
+          <div style="margin-top:1rem;font-size:0.78rem;color:#999;">
+            Questions? <a href="mailto:contact@pvmath.de" style="color:#1d9e52;">contact@pvmath.de</a>
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+        run = False
+    else:
+        if _topo_left <= 1:
+            st.warning(f"⚠️ {_topo_left} free analysis remaining after this run.")
+        run = st.button("⛰ Run Terrain Analysis", type="primary",
+                        use_container_width=True,
+                        disabled=(polygon_coords is None))
+        if polygon_coords is None:
+            st.caption("Draw or upload a site boundary to enable analysis.")
 
 # ─── Results ──────────────────────────────────────────────────────────────────
 with right:
     if run and polygon_coords:
+        increment_usage(st.session_state.get("username", "guest"), "topoiq")
         lons_p = [c[0] for c in polygon_coords]
         lats_p = [c[1] for c in polygon_coords]
         south, north = min(lats_p) - 0.001, max(lats_p) + 0.001

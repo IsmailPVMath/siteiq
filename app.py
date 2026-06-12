@@ -8,6 +8,7 @@ import zipfile
 import xml.etree.ElementTree as ET
 from datetime import datetime
 import folium
+from usage_tracker import get_usage, increment_usage, is_over_limit, remaining, FREE_LIMIT, STRIPE_LINK, PRICE_LABEL
 from streamlit_folium import st_folium
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -58,18 +59,19 @@ if st.session_state.get("authentication_status") is False:
     st.stop()
 elif st.session_state.get("authentication_status") is None:
     st.markdown("""
-    <div style="text-align:center; padding: 2rem 0 0.5rem;">
-      <div style="display:inline-flex;align-items:center;gap:0.6rem;margin-bottom:0.5rem;">
-        <span style="width:40px;height:40px;background:linear-gradient(135deg,#1a5c2e,#2ecc71);
-                     border-radius:10px;display:inline-flex;align-items:center;justify-content:center;">
-          <span style="color:#fff;font-size:1.2rem;">&#9788;</span>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <div style="text-align:center; padding: 3rem 0 1rem; font-family:'Inter',sans-serif;">
+      <div style="display:inline-flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
+        <span style="width:44px;height:44px;background:linear-gradient(135deg,#1a5c2e,#1d9e52);
+                     border-radius:12px;display:inline-flex;align-items:center;justify-content:center;">
+          <span style="color:#fff;font-size:1.4rem;">☀</span>
         </span>
-        <span style="font-size:1.8rem;font-weight:800;color:#1a5c2e;">SiteIQ</span>
-        <span style="font-size:0.85rem;color:#888;">by PVMath</span>
+        <span style="font-size:2rem;font-weight:800;color:#1a5c2e;letter-spacing:-0.02em;">SiteIQ</span>
+        <span style="font-size:0.85rem;color:#999;font-weight:500;">by PVMath</span>
       </div>
-      <p style="color:#666;font-size:0.9rem;">Solar Site Intelligence Platform — enter your credentials to continue.</p>
-      <p style="color:#aaa;font-size:0.78rem;margin-top:0.5rem;">
-        Need access? Contact <a href="mailto:contact@pvmath.de">contact@pvmath.de</a>
+      <p style="color:#5a7a5a;font-size:0.92rem;margin:0 0 0.5rem;">Solar Site Intelligence Platform</p>
+      <p style="color:#aaa;font-size:0.78rem;">
+        Need access? <a href="mailto:contact@pvmath.de" style="color:#1d9e52;text-decoration:none;font-weight:600;">contact@pvmath.de</a>
       </p>
     </div>
     """, unsafe_allow_html=True)
@@ -83,59 +85,108 @@ with st.sidebar:
 # ─── Styling ──────────────────────────────────────────────────────────────────
 st.markdown("""
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-    .main-header { font-size: 2.2rem; font-weight: 700; color: #1a5c2e; }
-    .sub-header  { font-size: 1rem; color: #666; margin-bottom: 1.5rem; }
+    /* ── Base ── */
+    html, body, [class*="css"] {
+        font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif !important;
+    }
     footer { visibility: hidden; }
-    .metric-card {
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 10px;
-        padding: 1rem 1.2rem;
-        margin-bottom: 0.5rem;
+    #MainMenu { visibility: hidden; }
+
+    /* ── Header ── */
+    .pvmath-header {
+        display: flex; align-items: center; gap: 0.75rem;
+        padding: 0.5rem 0 1rem 0; border-bottom: 1px solid #e8ede8; margin-bottom: 1.2rem;
     }
-    .metric-card .mc-icon {
-        font-size: 1.1rem;
-        margin-bottom: 0.35rem;
+    .pvmath-logo-mark {
+        width: 40px; height: 40px; border-radius: 10px;
+        background: linear-gradient(135deg, #1a5c2e, #1d9e52);
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
-    .metric-card .mc-label {
-        font-size: 0.75rem;
-        color: #888;
-        font-weight: 600;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-    }
-    .metric-card .mc-value {
-        font-size: 1.7rem;
-        font-weight: 700;
-        line-height: 1.1;
-        margin-top: 0.15rem;
-    }
+    .pvmath-app-name { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; color: #1a5c2e; }
+    .pvmath-app-sub  { font-size: 0.82rem; color: #888; font-weight: 500; }
+    .pvmath-tagline  { font-size: 0.88rem; color: #5a7a5a; margin-top: 0.1rem; font-weight: 400; }
+
+    /* ── Section headers ── */
     .section-hdr {
-        font-size: 0.85rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        margin-bottom: 0.5rem;
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
+        font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.12em; color: #1d9e52;
+        display: flex; align-items: center; gap: 0.45rem;
+        margin: 1.2rem 0 0.6rem 0; padding-bottom: 0.4rem;
+        border-bottom: 1px solid #e2ede2;
     }
+
+    /* ── Metric cards ── */
+    div[data-testid="metric-container"] {
+        background: #fff; border: 1px solid #e2ede2;
+        border-radius: 10px; padding: 1rem;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+
+    /* ── Buttons ── */
+    div[data-testid="stButton"] > button {
+        font-family: 'Inter', sans-serif !important;
+        font-weight: 600 !important; letter-spacing: 0.01em;
+        border-radius: 8px !important;
+    }
+    div[data-testid="stButton"] > button[kind="primary"] {
+        background: linear-gradient(135deg, #1d9e52, #145f34) !important;
+        border: none !important; color: #fff !important;
+    }
+    div[data-testid="stButton"] > button[kind="primary"]:hover {
+        background: linear-gradient(135deg, #27ae60, #1d9e52) !important;
+        box-shadow: 0 0 20px rgba(29,158,82,0.3) !important;
+    }
+
+    /* ── Tabs ── */
+    div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+        color: #1d9e52 !important; border-bottom-color: #1d9e52 !important; font-weight: 700 !important;
+    }
+    div[data-testid="stTabs"] button[role="tab"] { font-weight: 500 !important; }
+
+    /* ── Download button ── */
+    div[data-testid="stDownloadButton"] > button {
+        font-family: 'Inter', sans-serif !important;
+        font-weight: 600 !important; border-radius: 8px !important;
+    }
+
+    /* ── Inputs ── */
+    div[data-baseweb="input"] input, div[data-baseweb="textarea"] textarea {
+        font-family: 'Inter', sans-serif !important;
+        border-radius: 8px !important;
+    }
+
+    /* ── Alert boxes ── */
+    div[data-testid="stAlert"] {
+        border-radius: 10px !important; font-weight: 500;
+    }
+
+    /* ── Expander ── */
+    div[data-testid="stExpander"] {
+        border: 1px solid #e2ede2 !important; border-radius: 10px !important;
+    }
+
+    /* ── Sidebar ── */
+    section[data-testid="stSidebar"] { background: #f5f7f5 !important; }
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown("""
-<div style="display:flex; align-items:center; gap:0.6rem;">
-  <span style="width:36px;height:36px;background:linear-gradient(135deg,#1a5c2e,#2ecc71);border-radius:8px;
-               display:inline-flex;align-items:center;justify-content:center;">
-    <i class="fa-solid fa-solar-panel" style="color:#fff;font-size:1rem;"></i>
-  </span>
-  <span class="main-header" style="margin:0;">SiteIQ</span>
-  <span style="font-size:0.85rem; color:#888; margin-left:0.5rem; align-self:flex-end; padding-bottom:0.4rem;">by PVMath</span>
+<div class="pvmath-header">
+  <div class="pvmath-logo-mark">
+    <i class="fa-solid fa-solar-panel" style="color:#fff;font-size:1.1rem;"></i>
+  </div>
+  <div>
+    <div style="display:flex;align-items:baseline;gap:0.5rem;">
+      <span class="pvmath-app-name">SiteIQ</span>
+      <span class="pvmath-app-sub">by PVMath</span>
+    </div>
+    <div class="pvmath-tagline">Solar Site Intelligence Platform — fast pre-screening for utility-scale projects</div>
+  </div>
 </div>
 """, unsafe_allow_html=True)
-st.markdown('<p class="sub-header">Solar Site Intelligence Platform</p>', unsafe_allow_html=True)
-st.divider()
 
 # ─── Helper Functions ─────────────────────────────────────────────────────────
 
@@ -932,10 +983,42 @@ with left:
         area_ha = st.number_input("Site area (ha)", min_value=0.1, value=10.0, step=0.5,
                                    help="Default 10 ha. Adjust for capacity estimate.")
 
-    go = st.button("🔍 Run Site Screening", type="primary", use_container_width=True)
+    _username = st.session_state.get("username", "guest")
+    _used     = get_usage(_username, "siteiq")
+    _left     = remaining(_username, "siteiq")
+
+    if is_over_limit(_username, "siteiq"):
+        # ── PAYWALL ──────────────────────────────────────────────────────────
+        st.markdown(f"""
+        <div style="background:#fff;border:1.5px solid #e2ede2;border-radius:14px;
+                    padding:1.8rem 1.6rem;text-align:center;margin-top:0.5rem;
+                    font-family:'Inter',sans-serif;">
+          <div style="font-size:2rem;margin-bottom:0.5rem;">🔒</div>
+          <div style="font-size:1.2rem;font-weight:800;color:#1a5c2e;margin-bottom:0.4rem;">
+            Free Trial Complete
+          </div>
+          <div style="color:#555;font-size:0.88rem;margin-bottom:1.2rem;line-height:1.6;">
+            You've used all <b>{FREE_LIMIT} free analyses</b> in SiteIQ.<br>
+            Upgrade to run unlimited screenings.
+          </div>
+          <a href="{STRIPE_LINK}" target="_blank"
+             style="display:inline-block;background:linear-gradient(135deg,#1d9e52,#145f34);
+                    color:#fff;font-weight:700;font-size:0.95rem;padding:0.75rem 2rem;
+                    border-radius:9px;text-decoration:none;letter-spacing:0.01em;">
+            Upgrade — {PRICE_LABEL} →
+          </a>
+          <div style="margin-top:1rem;font-size:0.78rem;color:#999;">
+            Questions? <a href="mailto:contact@pvmath.de" style="color:#1d9e52;">contact@pvmath.de</a>
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        if _left <= 1:
+            st.warning(f"⚠️ {_left} free analysis remaining after this run.")
+        go = st.button("🔍 Run Site Screening", type="primary", use_container_width=True)
 
 with right:
-    if go:
+    if not is_over_limit(st.session_state.get("username", "guest"), "siteiq") and go:
         # ── Validate location ──
         if lat is None or lon is None:
             st.error("Please select a site location using one of the input methods on the left.")
@@ -947,6 +1030,9 @@ with right:
         st.session_state["siteiq_lat"]          = lat
         st.session_state["siteiq_lon"]          = lon
         st.session_state["siteiq_area_ha"]      = area_ha
+
+        # ── Increment usage ──
+        increment_usage(st.session_state.get("username", "guest"), "siteiq")
 
         # ── Fetch data ──
         with st.spinner("Fetching solar resource data from EU PVGIS…"):
