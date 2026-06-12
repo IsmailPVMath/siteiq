@@ -377,9 +377,9 @@ def export_dxf(X, Y, Z, lat_c, lon_c, minor_int=0.5, major_int=1.0):
                                    dxfattribs={"layer": layer,
                                                "elevation": float(level)})
 
-    buf = io.BytesIO()
-    doc.write(buf)
-    return buf.getvalue()
+    stream = io.StringIO()
+    doc.write(stream)
+    return stream.getvalue().encode("utf-8")
 
 
 # ─── KML/KMZ parser ───────────────────────────────────────────────────────────
@@ -632,11 +632,11 @@ with left:
             'border-radius:8px;padding:0.5rem 0.9rem;font-size:0.82rem;color:#ddd;margin-bottom:0.4rem;">'
             '<i class="fa-solid fa-pen-to-square" style="color:#ffc107;margin-right:0.5rem;"></i>'
             '<strong>How to draw:</strong> &nbsp;'
-            '① Click the <strong>polyline tool</strong> (line icon, top-left toolbar) to start. '
-            '② Click each corner of your site boundary — as many points as needed. '
-            '③ When finished, click the <strong>[ Finish ]</strong> button that appears in the map toolbar '
-            '<em>(or double-click the last point)</em>. '
-            'The boundary auto-closes into a polygon automatically.'
+            '① Pick a tool from the left toolbar: '
+            '<strong>Polyline</strong> (line icon) — click corners freely, click <strong>[Finish]</strong> when done; &nbsp;'
+            '<strong>Polygon</strong> (pentagon icon) — shows the closing line live as you draw, click <strong>[Finish]</strong> or double-click to close. '
+            '② Click each corner of your site. '
+            '③ Hit <strong>[Finish]</strong> in the toolbar — no need to snap back to the first point.'
             '</div>',
             unsafe_allow_html=True
         )
@@ -645,18 +645,20 @@ with left:
                        tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
                        attr="Google Satellite")
 
+        _style = {"color": "#ffeb3b", "weight": 5, "opacity": 1.0,
+                  "fillColor": "#ffeb3b", "fillOpacity": 0.10}
         Draw(
             export=False,
             draw_options={
                 "polyline": {
-                    "shapeOptions": {
-                        "color": "#ffeb3b",
-                        "weight": 5,
-                        "opacity": 1.0,
-                    },
+                    "shapeOptions": _style,
                     "metric": True,
                 },
-                "polygon": False,
+                "polygon": {
+                    "allowIntersection": False,
+                    "showArea": True,
+                    "shapeOptions": _style,
+                },
                 "rectangle": False,
                 "circle": False,
                 "marker": False,
@@ -822,16 +824,69 @@ with right:
         st.caption(f"Area: ~{area_ha:.1f} ha  ·  {len(z_valid):,} grid points at {grid_spacing}m  ·  "
                    f"{pct_over5:.0f}% of site >5% slope  ·  {pct_over10:.0f}% >10% slope")
 
-        # ── Elevation heatmap ──
+        # ── Elevation & Slope maps ──
         st.divider()
-        st.markdown('<div class="section-hdr"><i class="fa-solid fa-layer-group" style="color:#1565c0;"></i> Elevation Map</div>', unsafe_allow_html=True)
-        import pandas as pd
-        Z_display = np.flipud(Z)
-        st.image(
-            _normalize_for_display(Z_display),
-            caption=f"Elevation heatmap (blue=low, red=high) · {grid_spacing}m grid · Copernicus DEM via AWS",
-            use_container_width=True
-        )
+        st.markdown('<div class="section-hdr"><i class="fa-solid fa-layer-group" style="color:#1565c0;"></i> Visual Maps</div>', unsafe_allow_html=True)
+
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import matplotlib.colors as mcolors
+
+        map_col1, map_col2 = st.columns(2)
+
+        # ── Elevation map ──
+        with map_col1:
+            Zm = np.ma.masked_invalid(np.flipud(Z))
+            fig, ax = plt.subplots(figsize=(6, 5))
+            fig.patch.set_facecolor("#0e1117")
+            ax.set_facecolor("#0e1117")
+            im = ax.imshow(Zm, cmap="RdYlGn_r", interpolation="bilinear", aspect="auto")
+            cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+            cbar.set_label("Elevation (m)", color="white", fontsize=9)
+            cbar.ax.yaxis.set_tick_params(color="white", labelsize=8)
+            plt.setp(cbar.ax.yaxis.get_ticklabels(), color="white")
+            ax.set_title(f"Elevation · {grid_spacing}m grid", color="white", fontsize=10, pad=6)
+            ax.set_xticks([]); ax.set_yticks([])
+            for spine in ax.spines.values():
+                spine.set_edgecolor("#333")
+            plt.tight_layout(pad=0.5)
+            buf = io.BytesIO()
+            fig.savefig(buf, format="png", dpi=150, bbox_inches="tight", facecolor="#0e1117")
+            buf.seek(0); plt.close(fig)
+            st.image(buf, use_container_width=True)
+
+        # ── Slope map ──
+        with map_col2:
+            if HAS_SCIPY:
+                dy, dx = np.gradient(Z, grid_spacing, grid_spacing)
+                slope_pct = np.sqrt(dx**2 + dy**2) * 100
+                Sm = np.ma.masked_invalid(np.flipud(slope_pct))
+                fig2, ax2 = plt.subplots(figsize=(6, 5))
+                fig2.patch.set_facecolor("#0e1117")
+                ax2.set_facecolor("#0e1117")
+                # Green=flat, yellow=moderate, red=steep
+                cmap_slope = mcolors.LinearSegmentedColormap.from_list(
+                    "slope", ["#2ecc71", "#f1c40f", "#e74c3c", "#8e44ad"], N=256
+                )
+                im2 = ax2.imshow(Sm, cmap=cmap_slope, vmin=0, vmax=15,
+                                 interpolation="bilinear", aspect="auto")
+                cbar2 = fig2.colorbar(im2, ax=ax2, fraction=0.046, pad=0.04)
+                cbar2.set_label("Slope (%)", color="white", fontsize=9)
+                cbar2.ax.yaxis.set_tick_params(color="white", labelsize=8)
+                plt.setp(cbar2.ax.yaxis.get_ticklabels(), color="white")
+                ax2.set_title(f"Slope · {grid_spacing}m grid  (green<3%, red>10%)",
+                              color="white", fontsize=10, pad=6)
+                ax2.set_xticks([]); ax2.set_yticks([])
+                for spine in ax2.spines.values():
+                    spine.set_edgecolor("#333")
+                plt.tight_layout(pad=0.5)
+                buf2 = io.BytesIO()
+                fig2.savefig(buf2, format="png", dpi=150, bbox_inches="tight", facecolor="#0e1117")
+                buf2.seek(0); plt.close(fig2)
+                st.image(buf2, use_container_width=True)
+            else:
+                st.info("Install scipy for slope map.")
 
         # ── Exports ──
         st.divider()
