@@ -632,10 +632,11 @@ with left:
             'border-radius:8px;padding:0.5rem 0.9rem;font-size:0.82rem;color:#ddd;margin-bottom:0.4rem;">'
             '<i class="fa-solid fa-pen-to-square" style="color:#ffc107;margin-right:0.5rem;"></i>'
             '<strong>How to draw:</strong> &nbsp;'
-            'Click the <strong>polyline tool</strong> (line icon, top of left toolbar). '
-            'Then click each corner of your site — as many points as needed. '
-            'When done, <strong>double-click</strong> the last point to finish. '
-            'The boundary auto-closes into a polygon.'
+            '① Click the <strong>polyline tool</strong> (line icon, top-left toolbar) to start. '
+            '② Click each corner of your site boundary — as many points as needed. '
+            '③ When finished, click the <strong>[ Finish ]</strong> button that appears in the map toolbar '
+            '<em>(or double-click the last point)</em>. '
+            'The boundary auto-closes into a polygon automatically.'
             '</div>',
             unsafe_allow_html=True
         )
