@@ -509,6 +509,16 @@ def load_boundary_file(uploaded):
         return raw, "kml"
     elif name.endswith(".dxf"):
         return raw, "dxf"
+    elif name.endswith(".dwg"):
+        # ezdxf can read some DWG files — try it
+        if HAS_EZDXF:
+            try:
+                doc = ezdxf.readfile(io.BytesIO(raw))  # noqa — may work for newer DWG
+                # If it succeeds, treat as DXF-compatible
+                return raw, "dwg_ok"
+            except Exception:
+                pass
+        return raw, "dwg_unsupported"
     return raw, "unknown"
 
 
@@ -520,14 +530,14 @@ with left:
     st.markdown('<div class="section-hdr"><i class="fa-solid fa-draw-polygon" style="color:#1565c0;"></i> Site Boundary</div>', unsafe_allow_html=True)
 
     input_method = st.radio("Input method", [
-        "✏️ Draw on Map",
-        "📁 Upload KML / KMZ / DXF",
+        "✏️ Draw Site Boundary on Map",
+        "📁 Upload KML / KMZ / DXF / DWG",
     ], horizontal=True)
 
     polygon_coords = None
 
     # ── Draw on map ──
-    if input_method == "✏️ Draw on Map":
+    if input_method == "✏️ Draw Site Boundary on Map":
         search_q = st.text_input("Search location", placeholder="e.g. Rajasthan India or Andalusia Spain")
         if search_q and search_q != st.session_state.get("topo_last_search", ""):
             try:
@@ -549,6 +559,17 @@ with left:
         center = st.session_state.get("topo_center", [30.0, 10.0])
         zoom   = st.session_state.get("topo_zoom", 3)
 
+        st.markdown(
+            '<div style="background:rgba(21,101,192,0.1);border:1px solid rgba(21,101,192,0.3);'
+            'border-radius:8px;padding:0.6rem 0.9rem;font-size:0.82rem;color:#ccc;margin-bottom:0.5rem;">'
+            '<i class="fa-solid fa-pen-to-square" style="color:#42a5f5;margin-right:0.4rem;"></i>'
+            '<strong>How to draw:</strong> Click the polygon tool (pentagon icon) on the map toolbar. '
+            'Click each corner of your site boundary one by one. '
+            'Double-click the last point to close the shape.'
+            '</div>',
+            unsafe_allow_html=True
+        )
+
         m = folium.Map(location=center, zoom_start=zoom,
                        tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
                        attr="Google Satellite")
@@ -556,16 +577,23 @@ with left:
         Draw(
             export=True,
             draw_options={
-                "polygon": {"allowIntersection": False,
-                            "showArea": True},
-                "polyline": False, "rectangle": True,
-                "circle": False, "marker": False,
-                "circlemarker": False
+                "polygon": {
+                    "allowIntersection": False,
+                    "showArea": True,
+                    "shapeOptions": {"color": "#42a5f5", "weight": 2}
+                },
+                "polyline": {
+                    "shapeOptions": {"color": "#42a5f5", "weight": 2}
+                },
+                "rectangle": False,
+                "circle": False,
+                "marker": False,
+                "circlemarker": False,
             },
             edit_options={"edit": True}
         ).add_to(m)
 
-        map_data = st_folium(m, width=None, height=400,
+        map_data = st_folium(m, width=None, height=420,
                              returned_objects=["all_drawings"])
 
         if map_data and map_data.get("all_drawings"):
@@ -574,22 +602,40 @@ with left:
                 if geom.get("type") == "Polygon":
                     polygon_coords = [(c[0], c[1]) for c in geom["coordinates"][0]]
                     break
-                elif geom.get("type") == "Rectangle":
-                    polygon_coords = [(c[0], c[1]) for c in geom["coordinates"][0]]
+                elif geom.get("type") == "LineString":
+                    # Auto-close a drawn polyline into a polygon
+                    pts = [(c[0], c[1]) for c in geom["coordinates"]]
+                    if len(pts) >= 3:
+                        if pts[0] != pts[-1]:
+                            pts.append(pts[0])
+                        polygon_coords = pts
                     break
 
-        st.caption("Draw a polygon or rectangle around your PV site. Use satellite imagery to trace the exact boundary.")
+        if polygon_coords:
+            st.success(f"Site boundary captured — {len(polygon_coords)-1} vertices")
+        else:
+            st.caption("Draw your site boundary on the map above to enable analysis.")
 
     # ── Upload KML / KMZ / DXF ──
     else:
-        f = st.file_uploader("Upload boundary file", type=["kml", "kmz", "dxf"],
-                             help="KML / KMZ from Google Earth · DXF from Civil 3D / AutoCAD")
+        f = st.file_uploader(
+            "Upload boundary file",
+            type=["kml", "kmz", "dxf", "dwg"],
+            help="KML / KMZ from Google Earth · DXF or DWG from Civil 3D / AutoCAD"
+        )
         if f:
             raw, ftype = load_boundary_file(f)
 
-            if ftype == "kml":
+            if ftype == "dwg_unsupported":
+                st.warning(
+                    "**DWG file could not be read directly.**\n\n"
+                    "In Civil 3D / AutoCAD: **File → Save As → AutoCAD DXF** (takes ~5 seconds). "
+                    "Then re-upload the `.dxf` file here."
+                )
+                all_polys = {}
+            elif ftype in ("kml",):
                 all_polys = parse_kml_all_polygons(raw)
-            elif ftype == "dxf":
+            elif ftype in ("dxf", "dwg_ok"):
                 all_polys = parse_dxf_polygons(raw)
             else:
                 all_polys = {}
