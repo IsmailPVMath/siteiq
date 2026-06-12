@@ -538,23 +538,74 @@ with left:
 
     # ── Draw on map ──
     if input_method == "✏️ Draw Site Boundary on Map":
-        search_q = st.text_input("Search location", placeholder="e.g. Rajasthan India or Andalusia Spain")
-        if search_q and search_q != st.session_state.get("topo_last_search", ""):
-            try:
-                r = requests.get(
-                    "https://nominatim.openstreetmap.org/search",
-                    params={"q": search_q, "format": "json", "limit": 1},
-                    headers={"User-Agent": "TopoIQ/1.0 (pvmath.com; contact@pvmath.de)"},
-                    timeout=10
-                )
-                data = r.json()
-                if data:
-                    st.session_state["topo_center"] = [float(data[0]["lat"]), float(data[0]["lon"])]
-                    st.session_state["topo_zoom"] = 13
-            except Exception:
-                pass
-            st.session_state["topo_last_search"] = search_q
-            st.rerun()
+
+        # ── Location navigation ──────────────────────────────────────────────
+        nav_tab1, nav_tab2 = st.tabs(["🔍 Search by Name", "📍 Enter Coordinates"])
+
+        with nav_tab1:
+            search_q = st.text_input("Place name", placeholder="e.g. Rajasthan India or Andalusia Spain",
+                                     label_visibility="collapsed")
+            if search_q and search_q != st.session_state.get("topo_last_search", ""):
+                try:
+                    r = requests.get(
+                        "https://nominatim.openstreetmap.org/search",
+                        params={"q": search_q, "format": "json", "limit": 1},
+                        headers={"User-Agent": "TopoIQ/1.0 (pvmath.com; contact@pvmath.de)"},
+                        timeout=10
+                    )
+                    data = r.json()
+                    if data:
+                        st.session_state["topo_center"] = [float(data[0]["lat"]), float(data[0]["lon"])]
+                        st.session_state["topo_zoom"] = 15
+                        st.session_state["topo_last_search"] = search_q
+                        st.rerun()
+                    else:
+                        st.warning("Location not found — try a different name.")
+                except Exception:
+                    st.warning("Search unavailable — try coordinates instead.")
+                st.session_state["topo_last_search"] = search_q
+
+        with nav_tab2:
+            c1, c2 = st.columns(2)
+            with c1:
+                lat_in = st.text_input("Latitude", placeholder="e.g. 26.8467",
+                                       key="coord_lat")
+            with c2:
+                lon_in = st.text_input("Longitude", placeholder="e.g. 80.9462",
+                                       key="coord_lon")
+
+            # Parse and jump as soon as both fields have valid numbers
+            coord_key = f"{lat_in}|{lon_in}"
+            if lat_in and lon_in and coord_key != st.session_state.get("topo_last_coord", ""):
+                try:
+                    lat_f = float(lat_in.strip())
+                    lon_f = float(lon_in.strip())
+                    if -90 <= lat_f <= 90 and -180 <= lon_f <= 180:
+                        st.session_state["topo_center"] = [lat_f, lon_f]
+                        st.session_state["topo_zoom"] = 15
+                        st.session_state["topo_last_coord"] = coord_key
+                        st.rerun()
+                    else:
+                        st.error("Latitude must be −90 to 90, Longitude −180 to 180.")
+                except ValueError:
+                    st.caption("Type valid decimal numbers (e.g. 26.8467, 80.9462)")
+
+            # Also accept combined "lat, lon" paste in a single field
+            latlon_paste = st.text_input("Or paste as  lat, lon", placeholder="26.8467, 80.9462",
+                                         key="coord_paste")
+            if latlon_paste and latlon_paste != st.session_state.get("topo_last_paste", ""):
+                try:
+                    parts = latlon_paste.replace(";", ",").split(",")
+                    lat_f, lon_f = float(parts[0].strip()), float(parts[1].strip())
+                    if -90 <= lat_f <= 90 and -180 <= lon_f <= 180:
+                        st.session_state["topo_center"] = [lat_f, lon_f]
+                        st.session_state["topo_zoom"] = 15
+                        st.session_state["topo_last_paste"] = latlon_paste
+                        st.rerun()
+                    else:
+                        st.error("Coordinates out of range.")
+                except Exception:
+                    st.caption("Format: latitude, longitude  (decimal degrees)")
 
         center = st.session_state.get("topo_center", [30.0, 10.0])
         zoom   = st.session_state.get("topo_zoom", 3)
@@ -564,10 +615,11 @@ with left:
             'border-radius:8px;padding:0.6rem 0.9rem;font-size:0.82rem;color:#ccc;margin-bottom:0.5rem;">'
             '<i class="fa-solid fa-pen-to-square" style="color:#ffc107;margin-right:0.4rem;"></i>'
             '<strong>How to draw:</strong>&nbsp; '
-            '① Click the <strong>polygon tool</strong> (pentagon icon) on the left toolbar &nbsp;'
+            '① Click the <strong>polygon tool</strong> (pentagon) or <strong>polyline tool</strong> (line) on the left toolbar &nbsp;'
             '② Click each corner of your site boundary &nbsp;'
-            '③ To close — click back on the <strong>first point</strong> (it glows when you hover it), '
-            'or simply <strong>double-click</strong> the last point.'
+            '③ To close polygon — hover the first point until it glows, then click it. '
+            'Or <strong>double-click</strong> the last point. '
+            'Polyline will auto-close into a boundary automatically.'
             '</div>',
             unsafe_allow_html=True
         )
@@ -594,7 +646,13 @@ with left:
                         "iconSize": [12, 12],
                     },
                 },
-                "polyline": False,
+                "polyline": {
+                    "shapeOptions": {
+                        "color": "#ffeb3b",
+                        "weight": 4,
+                        "opacity": 1.0,
+                    }
+                },
                 "rectangle": False,
                 "circle": False,
                 "marker": False,
