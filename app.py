@@ -941,6 +941,13 @@ with right:
             st.error("Please select a site location using one of the input methods on the left.")
             st.stop()
 
+        # ── Save project data for TopoIQ to pick up ──
+        st.session_state["siteiq_project_name"] = project_name or "Unnamed Project"
+        st.session_state["siteiq_country"]      = project_country_input or ""
+        st.session_state["siteiq_lat"]          = lat
+        st.session_state["siteiq_lon"]          = lon
+        st.session_state["siteiq_area_ha"]      = area_ha
+
         # ── Fetch data ──
         with st.spinner("Fetching solar resource data from EU PVGIS…"):
             solar = get_solar_data(lat, lon)

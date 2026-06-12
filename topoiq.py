@@ -40,7 +40,8 @@ def generate_pdf_report(
     z_min, z_max, z_range, mean_slope, max_slope,
     pct_over5, pct_over10,
     elev_img_buf, slope_img_buf,
-    verdict_label, verdict_detail
+    verdict_label, verdict_detail,
+    project_name="", country=""
 ):
     """Generate a professional PDF terrain report using ReportLab."""
     try:
@@ -106,13 +107,15 @@ def generate_pdf_report(
 
     # ── Project info ───────────────────────────────────────────────────────
     story.append(Paragraph("Project Summary", hdr_style))
-    info_data = [
-        ["Site Reference",  fname],
+    info_data = []
+    if project_name:
+        info_data.append(["Project Name", project_name])
+    if country:
+        info_data.append(["Location", country])
+    info_data += [
         ["Coordinates",     f"Lat {lat_c:.5f}°,  Lon {lon_c:.5f}°"],
         ["Site Area",       f"~{area_ha:.1f} ha  ({area_ha*10000:,.0f} m²)"],
         ["Grid Resolution", f"{grid_spacing} m"],
-        ["DEM Source",      "Copernicus GLO-30 via AWS Terrain Tiles (ESA/EC 2021)"],
-        ["Analysis Date",   datetime.now().strftime("%d %B %Y")],
     ]
     info_tbl = Table(info_data, colWidths=[45*mm, usable-45*mm])
     info_tbl.setStyle(TableStyle([
@@ -740,6 +743,48 @@ def load_boundary_file(uploaded):
 
 # ─── Main UI ─────────────────────────────────────────────────────────────────
 
+# ── SiteIQ → TopoIQ handoff banner ───────────────────────────────────────────
+_siq = {k: st.session_state.get(k) for k in
+        ["siteiq_project_name", "siteiq_country", "siteiq_lat", "siteiq_lon", "siteiq_area_ha"]}
+
+if _siq["siteiq_lat"] and _siq["siteiq_lon"]:
+    _pname   = _siq["siteiq_project_name"] or "Unnamed Project"
+    _country = _siq["siteiq_country"] or ""
+    _label   = f"{_pname}" + (f" · {_country}" if _country else "")
+    st.markdown(
+        f'<div style="background:linear-gradient(90deg,#1565c0,#0d47a1);'
+        f'border-radius:10px;padding:0.7rem 1.1rem;margin-bottom:0.8rem;'
+        f'display:flex;align-items:center;justify-content:space-between;">'
+        f'<span style="color:white;font-size:0.92rem;">'
+        f'<i class="fa-solid fa-link" style="margin-right:0.5rem;"></i>'
+        f'<b>SiteIQ project available:</b> {_label} &nbsp;'
+        f'<span style="opacity:0.75;font-size:0.82rem;">({_siq["siteiq_lat"]:.4f}°, {_siq["siteiq_lon"]:.4f}°)</span>'
+        f'</span></div>',
+        unsafe_allow_html=True
+    )
+    if st.button("📥 Load this site into TopoIQ", use_container_width=True):
+        st.session_state["topo_center"]      = [_siq["siteiq_lat"], _siq["siteiq_lon"]]
+        st.session_state["topo_zoom"]        = 14
+        st.session_state["topo_project_name"] = _pname
+        st.session_state["topo_country"]      = _country
+        st.rerun()
+
+# Pull project name (from SiteIQ or default)
+topo_project_name = st.session_state.get("topo_project_name", "")
+topo_country      = st.session_state.get("topo_country", "")
+
+# Allow override
+with st.expander("✏️ Set project name for report", expanded=not bool(topo_project_name)):
+    _pn_col1, _pn_col2 = st.columns(2)
+    topo_project_name = _pn_col1.text_input("Project Name", value=topo_project_name,
+                                             placeholder="e.g. Bavaria North – Site A")
+    topo_country      = _pn_col2.text_input("Country / Region", value=topo_country,
+                                             placeholder="e.g. Germany")
+    if topo_project_name:
+        st.session_state["topo_project_name"] = topo_project_name
+    if topo_country:
+        st.session_state["topo_country"] = topo_country
+
 left, right = st.columns([1, 1.4])
 
 with left:
@@ -1023,8 +1068,16 @@ with right:
             verdict_detail = f"Mean slope {mean_slope:.1f}%. Significant grading required. Detailed civil study essential."
             st.error(f"**{verdict_label}** — {verdict_detail}")
 
-        st.caption(f"Area: ~{area_ha:.1f} ha  ·  {len(z_valid):,} grid points at {grid_spacing}m  ·  "
-                   f"{pct_over5:.0f}% of site >5% slope  ·  {pct_over10:.0f}% >10% slope")
+        st.markdown(
+            f'<div style="font-size:1rem;font-weight:600;color:#1a1a1a;'
+            f'background:#f0f4f8;border-radius:8px;padding:0.55rem 1rem;margin-top:0.3rem;">'
+            f'📐 <b>{area_ha:.1f} ha</b> &nbsp;·&nbsp; '
+            f'🔢 <b>{len(z_valid):,}</b> grid points at <b>{grid_spacing} m</b> &nbsp;·&nbsp; '
+            f'⚠️ <b>{pct_over5:.0f}%</b> of site &gt;5% slope &nbsp;·&nbsp; '
+            f'🔴 <b>{pct_over10:.0f}%</b> &gt;10% slope'
+            f'</div>',
+            unsafe_allow_html=True
+        )
 
         # ── Elevation & Slope maps ──
         st.divider()
@@ -1126,6 +1179,8 @@ with right:
                 slope_img_buf=pdf_slope_buf_for_pdf,
                 verdict_label=verdict_label,
                 verdict_detail=verdict_detail,
+                project_name=st.session_state.get("topo_project_name", ""),
+                country=st.session_state.get("topo_country", ""),
             )
         if pdf_bytes:
             st.download_button(
