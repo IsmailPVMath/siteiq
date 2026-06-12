@@ -560,12 +560,14 @@ with left:
         zoom   = st.session_state.get("topo_zoom", 3)
 
         st.markdown(
-            '<div style="background:rgba(21,101,192,0.1);border:1px solid rgba(21,101,192,0.3);'
+            '<div style="background:rgba(255,193,7,0.08);border:1px solid rgba(255,193,7,0.35);'
             'border-radius:8px;padding:0.6rem 0.9rem;font-size:0.82rem;color:#ccc;margin-bottom:0.5rem;">'
-            '<i class="fa-solid fa-pen-to-square" style="color:#42a5f5;margin-right:0.4rem;"></i>'
-            '<strong>How to draw:</strong> Click the polygon tool (pentagon icon) on the map toolbar. '
-            'Click each corner of your site boundary one by one. '
-            'Double-click the last point to close the shape.'
+            '<i class="fa-solid fa-pen-to-square" style="color:#ffc107;margin-right:0.4rem;"></i>'
+            '<strong>How to draw:</strong>&nbsp; '
+            '① Click the <strong>polygon tool</strong> (pentagon icon) on the left toolbar &nbsp;'
+            '② Click each corner of your site boundary &nbsp;'
+            '③ To close — click back on the <strong>first point</strong> (it glows when you hover it), '
+            'or simply <strong>double-click</strong> the last point.'
             '</div>',
             unsafe_allow_html=True
         )
@@ -580,11 +582,19 @@ with left:
                 "polygon": {
                     "allowIntersection": False,
                     "showArea": True,
-                    "shapeOptions": {"color": "#42a5f5", "weight": 2}
+                    "shapeOptions": {
+                        "color": "#ffeb3b",        # bright yellow — visible on any satellite bg
+                        "weight": 4,
+                        "opacity": 1.0,
+                        "fillColor": "#ffeb3b",
+                        "fillOpacity": 0.12,
+                    },
+                    "icon": {                       # enlarge snap target on first vertex
+                        "className": "leaflet-div-icon",
+                        "iconSize": [12, 12],
+                    },
                 },
-                "polyline": {
-                    "shapeOptions": {"color": "#42a5f5", "weight": 2}
-                },
+                "polyline": False,
                 "rectangle": False,
                 "circle": False,
                 "marker": False,
@@ -592,6 +602,23 @@ with left:
             },
             edit_options={"edit": True}
         ).add_to(m)
+
+        # Inject JS to widen the snap tolerance so first-point closing is easy
+        m.get_root().html.add_child(folium.Element("""
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Wait for Leaflet.Draw to initialise, then raise snap tolerance
+            setTimeout(function() {
+                if (window.L && L.Draw && L.Draw.Polygon) {
+                    L.Draw.Polygon.prototype.options.touchIcon = new L.DivIcon({
+                        className: 'leaflet-div-icon leaflet-editing-icon',
+                        iconSize: new L.Point(16, 16)
+                    });
+                }
+            }, 800);
+        });
+        </script>
+        """))
 
         map_data = st_folium(m, width=None, height=420,
                              returned_objects=["all_drawings"])
