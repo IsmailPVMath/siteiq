@@ -373,7 +373,7 @@ st.markdown("""
       <span class="pvmath-app-name">TopoIQ</span>
       <span class="pvmath-app-sub">by PVMath</span>
     </div>
-    <div class="pvmath-tagline">Satellite terrain extraction for solar site engineering — Civil 3D ready outputs</div>
+    <div class="pvmath-tagline">Satellite terrain extraction for solar site engineering — DXF terrain files for detailed 3D study in your CAD software</div>
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -546,7 +546,7 @@ def export_xyz_projected(X, Y, Z, lat_c, lon_c):
 
 
 def export_landxml(X, Y, Z, site_name="TopoIQ_Surface"):
-    """Generate LandXML TIN surface — importable directly into Civil 3D."""
+    """Generate LandXML TIN surface — importable directly into CAD software."""
     valid_pts = []
     for r in range(X.shape[0]):
         for c in range(X.shape[1]):
@@ -1014,7 +1014,7 @@ with left:
         f = st.file_uploader(
             "Upload boundary file",
             type=["kml", "kmz", "dxf", "dwg"],
-            help="KML / KMZ from Google Earth · DXF or DWG from Civil 3D / AutoCAD"
+            help="KML / KMZ from Google Earth · DXF or DWG from any CAD software"
         )
         if f:
             raw, ftype = load_boundary_file(f)
@@ -1022,7 +1022,7 @@ with left:
             if ftype == "dwg_unsupported":
                 st.warning(
                     "**DWG file could not be read directly.**\n\n"
-                    "In Civil 3D / AutoCAD: **File → Save As → AutoCAD DXF** (takes ~5 seconds). "
+                    "In your CAD software: **File → Save As → AutoCAD DXF** (takes ~5 seconds). "
                     "Then re-upload the `.dxf` file here."
                 )
                 all_polys = {}
@@ -1317,7 +1317,7 @@ with right:
                                 file_name=f"{fname}.xml",
                                 mime="application/xml",
                                 use_container_width=True,
-                                help="Import directly into Civil 3D as TIN surface")
+                                help="Import directly into CAD software as TIN surface")
 
         # XYZ CSV
         xyz = export_xyz_projected(X, Y, Z, lat_c, lon_c)
@@ -1338,7 +1338,7 @@ with right:
                                     file_name=f"{fname}_contours.dxf",
                                     mime="application/dxf",
                                     use_container_width=True,
-                                    help="Major + minor contour lines for Civil 3D / AutoCAD")
+                                    help="Major + minor contour lines for CAD software / AutoCAD")
         else:
             ex3.info("Install ezdxf for DXF export")
 
