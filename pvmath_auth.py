@@ -139,11 +139,21 @@ def render_auth_page(app_name: str = "PVMath"):
         background-color: #f5f7f5 !important;
     }
 
-    /* Hide Streamlit chrome on auth page */
-    #MainMenu { visibility: hidden; }
-    footer { visibility: hidden; }
-    header { visibility: hidden; }
-    [data-testid="stToolbar"] { display: none; }
+    /* Hide ALL Streamlit branding — no exceptions */
+    #MainMenu { visibility: hidden !important; }
+    footer { visibility: hidden !important; height: 0 !important; }
+    header { visibility: hidden !important; }
+    [data-testid="stToolbar"]       { display: none !important; }
+    [data-testid="stDeployButton"]  { display: none !important; }
+    [data-testid="stStatusWidget"]  { display: none !important; }
+    [data-testid="stDecoration"]    { display: none !important; }
+    #stDecoration                   { display: none !important; }
+    [class*="viewerBadge"]          { display: none !important; }
+    [class*="StatusWidget"]         { display: none !important; }
+    [class*="deployButton"]         { display: none !important; }
+    [class*="styles_viewerBadge"]   { display: none !important; }
+    iframe[title="streamlitApp"]    { display: none !important; }
+    div[data-stale="false"] > div > div > div:last-child > div[class*="badge"] { display: none !important; }
 
     /* Full page centering */
     .block-container {
