@@ -45,12 +45,7 @@
       border-bottom: 1px solid var(--border);
     }
     .nav-logo { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
-    .nav-logo-mark {
-      width: 34px; height: 34px; border-radius: 8px;
-      background: linear-gradient(135deg, var(--green-dk), var(--green));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1rem; color: #fff; font-weight: 800;
-    }
+    .nav-logo-mark { display:flex; align-items:center; }
     .nav-brand { font-size: 1.15rem; font-weight: 800; color: var(--text); letter-spacing: -0.02em; }
     .nav-right { display: flex; align-items: center; gap: 1.5rem; }
     .nav-links { display: flex; align-items: center; gap: 2rem; }
@@ -250,7 +245,13 @@
 <!-- ── NAV ── -->
 <nav>
   <a href="#" class="nav-logo">
-    <div class="nav-logo-mark">P</div>
+    <div class="nav-logo-mark">
+      <svg width="34" height="34" viewBox="0 0 34 34" xmlns="http://www.w3.org/2000/svg">
+        <rect width="34" height="34" rx="8" fill="#145f34"/>
+        <path d="M0 8 Q0 0 8 0 H26 Q34 0 34 8 V11 H0 Z" fill="#1d9e52"/>
+        <text x="3" y="28" font-family="Arial Black,Inter,sans-serif" font-size="15" font-weight="900" fill="white" letter-spacing="-0.5">PV</text>
+      </svg>
+    </div>
     <span class="nav-brand">PVMath</span>
   </a>
   <div class="nav-right">
