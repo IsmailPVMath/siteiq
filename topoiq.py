@@ -280,8 +280,15 @@ st.markdown("""
     html, body, [class*="css"] {
         font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif !important;
     }
-    footer { visibility: hidden; }
-    #MainMenu { visibility: hidden; }
+    footer { visibility: hidden !important; }
+    #MainMenu { visibility: hidden !important; }
+    header { visibility: hidden !important; }
+    [data-testid="stDeployButton"] { display: none !important; }
+    [data-testid="stToolbar"] { display: none !important; }
+    .viewerBadge_container__r5tak { display: none !important; }
+    .viewerBadge_link__qRIco { display: none !important; }
+    #stDecoration { display: none !important; }
+    [data-testid="stStatusWidget"] { display: none !important; }
 
     /* ── Header ── */
     .pvmath-header {
