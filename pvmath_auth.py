@@ -129,7 +129,14 @@ def render_auth_page(app_name: str = "PVMath"):
 
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif !important;
-        background-color: #f7faf8 !important;
+        background-color: #f5f7f5 !important;
+        color: #1a2e1a !important;
+    }
+    [data-testid="stAppViewContainer"],
+    [data-testid="stMain"],
+    [data-testid="stMainBlockContainer"],
+    .main, .stApp {
+        background-color: #f5f7f5 !important;
     }
 
     /* Hide Streamlit chrome on auth page */
@@ -144,41 +151,13 @@ def render_auth_page(app_name: str = "PVMath"):
         max-width: 100% !important;
     }
 
-    /* Auth page background */
-    .auth-page-bg {
-        min-height: 100vh;
-        background: linear-gradient(160deg, #f0f7f2 0%, #ffffff 60%, #e8f5ee 100%);
-        display: flex; align-items: center; justify-content: center;
-        padding: 2rem 1rem;
-    }
-
-    /* Logo */
-    .auth-logo {
-        display: flex; align-items: center; gap: 0.7rem;
-        justify-content: center; margin-bottom: 0.5rem;
-    }
-    .auth-logo-mark {
-        width: 42px; height: 42px; border-radius: 10px;
-        background: linear-gradient(135deg, #145f34, #1d9e52);
-        display: flex; align-items: center; justify-content: center;
-        color: #fff; font-weight: 800; font-size: 1.2rem;
-        box-shadow: 0 4px 12px rgba(29,158,82,.3);
-    }
-    .auth-logo-text {
-        font-size: 1.6rem; font-weight: 800; color: #1a2e1a;
-        letter-spacing: -0.04em;
-    }
+    /* Logo sub */
     .auth-logo-sub {
         font-size: 0.8rem; color: #5a7a5a; text-align: center;
-        margin-bottom: 2rem; font-weight: 500; letter-spacing: 0.02em;
+        margin-bottom: 2rem; font-weight: 500; letter-spacing: 0.04em;
     }
 
-    /* Card */
-    .auth-card {
-        background: #fff; border: 1.5px solid #d4e8d8; border-radius: 16px;
-        padding: 2rem 2rem 1.8rem;
-        box-shadow: 0 8px 40px rgba(29,158,82,.08), 0 2px 8px rgba(0,0,0,.04);
-    }
+    /* Auth title & sub */
     .auth-title {
         font-size: 1.1rem; font-weight: 800; color: #1a2e1a;
         letter-spacing: -0.02em; margin-bottom: 0.25rem;
@@ -187,7 +166,7 @@ def render_auth_page(app_name: str = "PVMath"):
         font-size: 0.82rem; color: #5a7a5a; margin-bottom: 1.4rem; line-height: 1.5;
     }
     .free-badge {
-        background: #e8f5ee; border: 1px solid rgba(29,158,82,.3);
+        background: #e8f5ee; border: 1px solid #b8ddc8;
         color: #145f34; font-size: 0.78rem; font-weight: 700;
         padding: 0.55rem 1rem; border-radius: 9px; margin-bottom: 1.4rem;
         line-height: 1.5; letter-spacing: 0.01em;
@@ -201,7 +180,7 @@ def render_auth_page(app_name: str = "PVMath"):
         font-size: 0.92rem !important; padding: 0.72rem 1rem !important;
         width: 100% !important; transition: all .2s !important;
         letter-spacing: 0.01em !important;
-        box-shadow: 0 2px 8px rgba(29,158,82,.2) !important;
+        box-shadow: 0 2px 10px rgba(29,158,82,.25) !important;
     }
     .stButton > button:hover {
         box-shadow: 0 6px 20px rgba(29,158,82,.4) !important;
@@ -210,24 +189,26 @@ def render_auth_page(app_name: str = "PVMath"):
 
     /* Inputs */
     .stTextInput > div > input {
-        background: #f7faf8 !important;
-        border: 1.5px solid #c8dece !important; border-radius: 9px !important;
+        background: #ffffff !important;
+        border: 1.5px solid #d4e0d4 !important; border-radius: 9px !important;
         font-family: 'Inter', sans-serif !important; font-size: 0.88rem !important;
         color: #1a2e1a !important;
     }
     .stTextInput > div > input:focus {
         border-color: #1d9e52 !important;
         box-shadow: 0 0 0 3px rgba(29,158,82,.12) !important;
-        background: #fff !important;
+        background: #ffffff !important;
     }
+    .stTextInput > label { color: #5a7a5a !important; font-size: 0.82rem !important; }
 
     /* Tabs */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 0.5rem; border-bottom: 2px solid #e0ece4;
+        gap: 0.5rem; border-bottom: 2px solid #d4e0d4;
+        background: transparent !important;
     }
     .stTabs [data-baseweb="tab"] {
         font-weight: 600 !important; color: #5a7a5a !important;
-        font-size: 0.88rem !important;
+        font-size: 0.88rem !important; background: transparent !important;
     }
     .stTabs [aria-selected="true"] {
         color: #145f34 !important;
@@ -246,11 +227,15 @@ def render_auth_page(app_name: str = "PVMath"):
     # ── Logo + tagline ─────────────────────────────────────────
     st.markdown(f"""
     <div style="text-align:center;margin-top:2.5rem;margin-bottom:0.5rem;">
-      <div class="auth-logo">
-        <div class="auth-logo-mark">P</div>
-        <span class="auth-logo-text">PVMath</span>
+      <div style="display:flex;align-items:center;gap:0.7rem;justify-content:center;margin-bottom:0.4rem;">
+        <svg width="46" height="46" viewBox="0 0 46 46" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;display:block;">
+          <rect width="46" height="46" rx="10" fill="#145f34"/>
+          <path d="M0 10 Q0 0 10 0 H36 Q46 0 46 10 V14 H0 Z" fill="#1d9e52"/>
+          <text x="5" y="38" font-family="Arial Black,Inter,sans-serif" font-size="20" font-weight="900" fill="white" letter-spacing="-1">PV</text>
+        </svg>
+        <span style="font-family:Inter,sans-serif;font-size:1.7rem;font-weight:800;color:#1a2e1a;letter-spacing:-0.04em;">PVMath</span>
       </div>
-      <div class="auth-logo-sub">Solar Intelligence Platform &nbsp;·&nbsp; {app_name}</div>
+      <div class="auth-logo-sub">Solar Site Intelligence &nbsp;·&nbsp; {app_name}</div>
     </div>
     """, unsafe_allow_html=True)
 
