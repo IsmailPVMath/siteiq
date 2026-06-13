@@ -21,10 +21,14 @@ PRICE_LABEL  = "€99 / month"
 # ── Supabase client (cached) ──────────────────────────────────
 @st.cache_resource
 def get_supabase() -> Client:
-    url = st.secrets.get("SUPABASE_URL") or os.environ.get("SUPABASE_URL", "")
-    key = st.secrets.get("SUPABASE_KEY") or os.environ.get("SUPABASE_KEY", "")
+    try:
+        url = st.secrets.get("SUPABASE_URL", "") or os.environ.get("SUPABASE_URL", "")
+        key = st.secrets.get("SUPABASE_KEY", "") or os.environ.get("SUPABASE_KEY", "")
+    except Exception:
+        url = os.environ.get("SUPABASE_URL", "")
+        key = os.environ.get("SUPABASE_KEY", "")
     if not url or not key:
-        st.error("⚠️ Supabase credentials missing. Add SUPABASE_URL and SUPABASE_KEY to your Streamlit secrets.")
+        st.error("⚠️ Supabase credentials missing. Add SUPABASE_URL and SUPABASE_KEY to your environment variables.")
         st.stop()
     return create_client(url, key)
 
