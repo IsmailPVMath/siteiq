@@ -23,6 +23,8 @@
       --blue:     #1565c0;
       --blue-lt:  #e8f0fb;
       --amber:    #f59e0b;
+      --coral:    #e85d04;
+      --coral-lt: #fff1ee;
       --amber-lt: #fef3c7;
       --bg:       #f5f7f5;
       --bg2:      #eef2ee;
@@ -147,11 +149,33 @@
 
     /* ── HOW IT WORKS ── */
     #how { background: var(--bg); }
-    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
-    .step { text-align: center; padding: 1.5rem; }
-    .step-num { width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, var(--green), var(--green-dk)); color: #fff; font-weight: 800; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.2rem; }
-    .step h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; }
-    .step p { font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+    .steps { display: flex; align-items: flex-start; gap: 0; }
+    .step {
+      flex: 1; background: #fff; border: 1.5px solid var(--border);
+      border-radius: 16px; padding: 1.6rem 1.4rem 1.4rem; text-align: center;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .step:hover { transform: translateY(-4px); box-shadow: 0 10px 32px rgba(0,0,0,.08); }
+    .step-connector {
+      flex-shrink: 0; width: 36px; display: flex; align-items: center;
+      justify-content: center; padding-top: 2.8rem;
+      color: var(--muted); font-size: 1rem;
+    }
+    .step-badge {
+      display: inline-block; font-size: 0.7rem; font-weight: 800;
+      letter-spacing: 0.1em; padding: 0.2rem 0.65rem; border-radius: 20px;
+      margin-bottom: 1.1rem;
+    }
+    .step-icon {
+      width: 54px; height: 54px; border-radius: 14px; margin: 0 auto 1rem;
+      display: flex; align-items: center; justify-content: center; font-size: 1.4rem;
+    }
+    .step-coral .step-badge { background: var(--coral-lt); color: var(--coral); }
+    .step-coral .step-icon  { background: var(--coral-lt); color: var(--coral); }
+    .step-blue  .step-badge { background: var(--blue-lt);  color: var(--blue);  }
+    .step-blue  .step-icon  { background: var(--blue-lt);  color: var(--blue);  }
+    .step h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text); }
+    .step p  { font-size: 0.83rem; color: var(--muted); line-height: 1.6; }
 
     /* ── WHY PVMATH ── */
     #why { background: var(--card); }
@@ -248,7 +272,9 @@
     <div class="nav-logo-mark">
       <svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
         <rect width="36" height="36" rx="9" fill="#145f34"/>
-        <path d="M0 9 Q0 0 9 0 H27 Q36 0 36 9 V13 H0 Z" fill="#f59e0b"/>
+        <path d="M0 9 Q0 0 9 0 H12 V13 H0 Z" fill="#e85d04"/>
+        <rect x="12" y="0" width="12" height="13" fill="#1565c0"/>
+        <path d="M24 0 H27 Q36 0 36 9 V13 H24 Z" fill="#f59e0b"/>
         <text x="18" y="30" text-anchor="middle" font-family="Arial Black,Inter,sans-serif" font-size="15" font-weight="900" fill="white" letter-spacing="-0.5">PV</text>
       </svg>
     </div>
@@ -277,11 +303,11 @@
       <span class="dot"></span>
       <span data-i18n="hero.badge">Modules 1 &amp; 2 Live &mdash; SiteIQ &middot; TopoIQ</span>
     </div>
-    <h1 data-i18n-html="hero.h1">Solar intelligence tools<br>built by <em>engineers,</em><br>for engineers.</h1>
+    <h1 data-i18n-html="hero.h1">Solar intelligence tools<br>built by <em>industry experts,</em><br>for every solar stakeholder.</h1>
     <p data-i18n="hero.p">PVMath automates the slow, manual parts of solar project development &mdash; from first site visit to bankable data. Engineering-grade outputs in minutes, not days.</p>
     <div class="hero-btns">
-      <a href="https://pvmath-siteiq.streamlit.app" target="_blank" class="btn-primary" data-i18n="hero.btn1">Try SiteIQ Free &rarr;</a>
-      <a href="#modules" class="btn-outline" data-i18n="hero.btn2">Explore Modules</a>
+      <a href="https://pvmath-siteiq.streamlit.app" target="_blank" class="btn-primary" data-i18n="hero.btn1">Try it Free &rarr;</a>
+      <a href="#modules" class="btn-outline" data-i18n="hero.btn2">View All Tools</a>
     </div>
     <div class="hero-stats">
       <div class="stat"><div class="stat-num">3</div><div class="stat-lbl" data-i18n="stat.modules">Active Modules</div></div>
@@ -377,9 +403,26 @@
         <a href="https://pvmath-siteiq.streamlit.app" target="_blank" style="margin-left:auto;background:var(--green-lt);color:var(--green-dk);font-size:0.78rem;font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;" data-i18n="how.launch">Launch &rarr;</a>
       </div>
       <div class="steps">
-        <div class="step"><div class="step-num">1</div><h3 data-i18n="siteiq.s1.h">Locate Your Site</h3><p data-i18n="siteiq.s1.p">Search by place name, paste Google Maps or lat/lon coordinates, or upload a KML/KMZ file. The satellite map centres on your site instantly.</p></div>
-        <div class="step"><div class="step-num">2</div><h3 data-i18n="siteiq.s2.h">Set Project Parameters</h3><p data-i18n="siteiq.s2.p">Enter project name, country, and estimated site area in hectares. SiteIQ fetches GHI, irradiation, terrain overview, flood risk, and regulatory flags automatically.</p></div>
-        <div class="step"><div class="step-num">3</div><h3 data-i18n="siteiq.s3.h">Download PDF Report</h3><p data-i18n="siteiq.s3.p">Get a client-ready PDF with solar resource data, monthly irradiation chart, terrain summary, and a go/no-go verdict. Ready for your next client meeting.</p></div>
+        <div class="step step-coral">
+          <div class="step-badge">Step 01</div>
+          <div class="step-icon"><i class="fa-solid fa-map-location-dot"></i></div>
+          <h3 data-i18n="siteiq.s1.h">Locate Your Site</h3>
+          <p data-i18n="siteiq.s1.p">Search by place name, paste Google Maps or lat/lon coordinates, or upload a KML/KMZ file. The satellite map centres on your site instantly.</p>
+        </div>
+        <div class="step-connector">→</div>
+        <div class="step step-coral">
+          <div class="step-badge">Step 02</div>
+          <div class="step-icon"><i class="fa-solid fa-sliders"></i></div>
+          <h3 data-i18n="siteiq.s2.h">Set Project Parameters</h3>
+          <p data-i18n="siteiq.s2.p">Enter project name, country, and estimated site area in hectares. SiteIQ fetches GHI, irradiation, terrain overview, flood risk, and regulatory flags automatically.</p>
+        </div>
+        <div class="step-connector">→</div>
+        <div class="step step-coral">
+          <div class="step-badge">Step 03</div>
+          <div class="step-icon"><i class="fa-solid fa-file-arrow-down"></i></div>
+          <h3 data-i18n="siteiq.s3.h">Download PDF Report</h3>
+          <p data-i18n="siteiq.s3.p">Get a client-ready PDF with solar resource data, monthly irradiation chart, terrain summary, and a go/no-go verdict. Ready for your next client meeting.</p>
+        </div>
       </div>
     </div>
 
@@ -396,9 +439,26 @@
         <a href="https://pvmath-topoiq.streamlit.app" target="_blank" style="margin-left:auto;background:#e8f0fb;color:#1565c0;font-size:0.78rem;font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;" data-i18n="how.launch">Launch &rarr;</a>
       </div>
       <div class="steps">
-        <div class="step"><div class="step-num">1</div><h3 data-i18n="topoiq.s1.h">Draw Your Boundary</h3><p data-i18n="topoiq.s1.p">Navigate to your site on the satellite map. Use the polygon tool to draw the exact site boundary &mdash; click to place vertices, double-click or hit Finish to close. Or upload a DXF/KML file.</p></div>
-        <div class="step"><div class="step-num">2</div><h3 data-i18n="topoiq.s2.h">Extract Terrain Data</h3><p data-i18n="topoiq.s2.p">TopoIQ fetches Copernicus GLO-30 satellite DEM (~1m accuracy) for your polygon, computes elevation, slope heatmaps, and cut &amp; fill volume estimates automatically.</p></div>
-        <div class="step"><div class="step-num">3</div><h3 data-i18n="topoiq.s3.h">Export DXF &amp; PDF</h3><p data-i18n="topoiq.s3.p">Download a DXF terrain file with contour lines at your chosen spacing &mdash; ready for detailed 3D study in any CAD software &mdash; plus a PDF terrain report with elevation and slope maps.</p></div>
+        <div class="step step-blue">
+          <div class="step-badge">Step 01</div>
+          <div class="step-icon"><i class="fa-solid fa-draw-polygon"></i></div>
+          <h3 data-i18n="topoiq.s1.h">Draw Your Boundary</h3>
+          <p data-i18n="topoiq.s1.p">Navigate to your site on the satellite map. Use the polygon tool to draw the exact site boundary &mdash; click to place vertices, double-click or hit Finish to close. Or upload a DXF/KML file.</p>
+        </div>
+        <div class="step-connector">→</div>
+        <div class="step step-blue">
+          <div class="step-badge">Step 02</div>
+          <div class="step-icon"><i class="fa-solid fa-mountain"></i></div>
+          <h3 data-i18n="topoiq.s2.h">Extract Terrain Data</h3>
+          <p data-i18n="topoiq.s2.p">TopoIQ fetches Copernicus GLO-30 satellite DEM (~1m accuracy) for your polygon, computes elevation, slope heatmaps, and cut &amp; fill volume estimates automatically.</p>
+        </div>
+        <div class="step-connector">→</div>
+        <div class="step step-blue">
+          <div class="step-badge">Step 03</div>
+          <div class="step-icon"><i class="fa-solid fa-file-export"></i></div>
+          <h3 data-i18n="topoiq.s3.h">Export DXF &amp; PDF</h3>
+          <p data-i18n="topoiq.s3.p">Download a DXF terrain file with contour lines at your chosen spacing &mdash; ready for detailed 3D study in any CAD software &mdash; plus a PDF terrain report with elevation and slope maps.</p>
+        </div>
       </div>
     </div>
   </div>
@@ -615,7 +675,7 @@
   <div class="footer-inner">
     <div>
       <div class="footer-brand">PVMath</div>
-      <p class="footer-tagline" data-i18n="footer.tagline">Solar site intelligence tools for EPCs and project developers. Built by engineers, for engineers.</p>
+      <p class="footer-tagline" data-i18n="footer.tagline">Solar site intelligence tools for EPCs, developers, financers and everyone shaping solar projects.</p>
       <p style="font-size:0.75rem;opacity:.5;" data-i18n="footer.copy">&copy; 2026 PVMath. All rights reserved.</p>
     </div>
     <div class="footer-col">
@@ -652,9 +712,9 @@ var T = {
     'nav.modules':'Modules','nav.how':'How It Works','nav.pricing':'Pricing',
     'nav.about':'About','nav.contact':'Contact','nav.cta':'Try Free →',
     'hero.badge':'Modules 1 & 2 Live — SiteIQ · TopoIQ',
-    'hero.h1':'Solar intelligence tools<br>built by <em>engineers,</em><br>for engineers.',
+    'hero.h1':'Solar intelligence tools<br>built by <em>industry experts,</em><br>for every solar stakeholder.',
     'hero.p':'PVMath automates the slow, manual parts of solar project development — from first site visit to bankable data. Engineering-grade outputs in minutes, not days.',
-    'hero.btn1':'Try SiteIQ Free →','hero.btn2':'Explore Modules',
+    'hero.btn1':'Try it Free →','hero.btn2':'View All Tools',
     'stat.modules':'Active Modules','stat.speed':'Site Screening Time',
     'stat.coverage':'Solar Data Coverage','stat.start':'To Get Started','stat.free-val':'Free',
     'modules.label':'Platform Modules',
@@ -738,7 +798,7 @@ var T = {
     'form.s3':'YieldIQ early access','form.s4':'Professional plan','form.s5':'Team / Enterprise plan',
     'form.s6':'Billing & invoicing question','form.s7':'Technical support','form.s8':'Other',
     'form.message':'Your message...','form.submit':'Send Message →',
-    'footer.tagline':'Solar site intelligence tools for EPCs and project developers. Built by engineers, for engineers.',
+    'footer.tagline':'Solar site intelligence tools for EPCs, developers, financers and everyone shaping solar projects.',
     'footer.platform':'Platform','footer.company':'Company','footer.legal':'Legal',
     'footer.yield-soon':'YieldIQ (Soon)','footer.about':'About','footer.pricing':'Pricing',
     'footer.contact':'Contact','footer.impressum':'Impressum','footer.privacy':'Privacy Policy',
