@@ -155,6 +155,13 @@ def render_auth_page(app_name: str = "PVMath"):
     iframe[title="streamlitApp"]    { display: none !important; }
     div[data-stale="false"] > div > div > div:last-child > div[class*="badge"] { display: none !important; }
 
+    /* Nuke bottom-right fixed/absolute Streamlit badges by position */
+    [style*="position: fixed"][style*="bottom"][style*="right"],
+    [style*="position:fixed"][style*="bottom"][style*="right"] {
+        display: none !important;
+    }
+
+
     /* Full page centering */
     .block-container {
         padding-top: 0 !important;
@@ -232,6 +239,33 @@ def render_auth_page(app_name: str = "PVMath"):
     }
     .auth-footer a { color: #1d9e52; text-decoration: none; font-weight: 600; }
     </style>
+    <script>
+    (function() {
+      function killBadge() {
+        // Target any fixed bottom-right element (Streamlit badge lives here)
+        document.querySelectorAll('*').forEach(function(el) {
+          try {
+            var s = window.getComputedStyle(el);
+            var cl = el.className || '';
+            var id = el.id || '';
+            if (
+              (s.position === 'fixed' && parseInt(s.bottom) >= 0 && parseInt(s.right) >= 0 && el.tagName !== 'BODY') ||
+              cl.toString().toLowerCase().includes('badge') ||
+              cl.toString().toLowerCase().includes('viewer') ||
+              id.toLowerCase().includes('badge')
+            ) {
+              el.style.setProperty('display', 'none', 'important');
+              el.style.setProperty('visibility', 'hidden', 'important');
+            }
+          } catch(e) {}
+        });
+      }
+      // Run immediately and observe DOM changes
+      killBadge();
+      var obs = new MutationObserver(killBadge);
+      obs.observe(document.body || document.documentElement, {childList: true, subtree: true});
+    })();
+    </script>
     """, unsafe_allow_html=True)
 
     # ── Logo + tagline ─────────────────────────────────────────

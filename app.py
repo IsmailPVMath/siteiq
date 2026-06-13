@@ -57,6 +57,32 @@ st.markdown("""
     [class*="StatusWidget"]         { display: none !important; }
     [class*="deployButton"]         { display: none !important; }
     [class*="styles_viewerBadge"]   { display: none !important; }
+    iframe[title="streamlitApp"]    { display: none !important; }
+    [style*="position: fixed"][style*="bottom"][style*="right"],
+    [style*="position:fixed"][style*="bottom"][style*="right"] { display: none !important; }
+    </style>
+    <script>
+    (function() {
+      function killBadge() {
+        document.querySelectorAll('*').forEach(function(el) {
+          try {
+            var s = window.getComputedStyle(el);
+            var cl = el.className ? el.className.toString().toLowerCase() : '';
+            if (
+              (s.position === 'fixed' && parseInt(s.bottom) >= 0 && parseInt(s.right) >= 0 && el.tagName !== 'BODY') ||
+              cl.includes('badge') || cl.includes('viewer')
+            ) {
+              el.style.setProperty('display', 'none', 'important');
+              el.style.setProperty('visibility', 'hidden', 'important');
+            }
+          } catch(e) {}
+        });
+      }
+      killBadge();
+      new MutationObserver(killBadge).observe(document.documentElement, {childList:true, subtree:true});
+    })();
+    </script>
+    <style>
 
     /* ── Header ── */
     .pvmath-header {
