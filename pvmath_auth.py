@@ -230,9 +230,7 @@ def render_auth_page(app_name: str = "PVMath"):
       <div style="display:flex;align-items:center;gap:0.7rem;justify-content:center;margin-bottom:0.4rem;">
         <svg width="46" height="46" viewBox="0 0 46 46" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;display:block;">
           <rect width="46" height="46" rx="10" fill="#145f34"/>
-          <path d="M0 10 Q0 0 10 0 H15 V14 H0 Z" fill="#e85d04"/>
-          <rect x="15" y="0" width="16" height="14" fill="#1565c0"/>
-          <path d="M31 0 H36 Q46 0 46 10 V14 H31 Z" fill="#f59e0b"/>
+          <path d="M0 10 Q0 0 10 0 H36 Q46 0 46 10 V14 H0 Z" fill="#1d9e52"/>
           <text x="23" y="37" text-anchor="middle" font-family="Arial Black,Inter,sans-serif" font-size="20" font-weight="900" fill="white" letter-spacing="-1">PV</text>
         </svg>
         <span style="font-family:Inter,sans-serif;font-size:1.7rem;font-weight:800;color:#1a2e1a;letter-spacing:-0.04em;">PVMath</span>

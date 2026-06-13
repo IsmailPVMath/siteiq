@@ -125,6 +125,8 @@
     .module-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,.08); }
     .module-card.live { border-color: rgba(29,158,82,.35); }
     .module-card.live:hover { border-color: var(--green); }
+    .module-card.siteiq { border-color: rgba(232,93,4,.3); }
+    .module-card.siteiq:hover { border-color: var(--coral); }
     .module-card.soon { border-color: rgba(245,158,11,.3); opacity: .9; }
     .module-pill { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.3rem 0.75rem; border-radius: 100px; margin-bottom: 1.2rem; width: fit-content; }
     .pill-live { background: var(--green-lt); color: var(--green-dk); }
@@ -132,7 +134,7 @@
     .pill-soon { background: var(--amber-lt); color: #92400e; }
     .module-num { font-size: 0.72rem; font-weight: 700; color: var(--muted); letter-spacing: 0.1em; margin-bottom: 0.5rem; }
     .module-name { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.6rem; }
-    .module-name.green { color: var(--green-dk); }
+    .module-name.green { color: var(--coral); }
     .module-name.blue  { color: var(--blue); }
     .module-name.amber { color: #92400e; }
     .module-desc { font-size: 0.88rem; color: var(--muted); line-height: 1.65; margin-bottom: 1.5rem; flex: 1; }
@@ -141,41 +143,25 @@
     .module-features li::before { content:'✓'; color: var(--green); font-weight: 700; flex-shrink: 0; }
     .module-features li.soon-item::before { content:'◷'; color: var(--amber); }
     .module-link { display: block; text-align: center; padding: 0.7rem; border-radius: 8px; font-weight: 700; font-size: 0.88rem; text-decoration: none; transition: all .2s; }
-    .link-green { background: var(--green); color: #fff; }
-    .link-green:hover { background: var(--green-dk); box-shadow: 0 4px 14px rgba(29,158,82,.3); }
+    .link-green { background: var(--coral); color: #fff; }
+    .link-green:hover { background: #c24a00; box-shadow: 0 4px 14px rgba(232,93,4,.3); }
     .link-blue { background: var(--blue); color: #fff; }
     .link-blue:hover { background: #0d47a1; box-shadow: 0 4px 14px rgba(21,101,192,.3); }
     .link-soon { background: var(--bg2); color: var(--muted); cursor: default; border: 1.5px dashed var(--border); }
 
     /* ── HOW IT WORKS ── */
     #how { background: var(--bg); }
-    .steps { display: flex; align-items: flex-start; gap: 0; }
-    .step {
-      flex: 1; background: #fff; border: 1.5px solid var(--border);
-      border-radius: 16px; padding: 1.6rem 1.4rem 1.4rem; text-align: center;
-      transition: transform .2s, box-shadow .2s;
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
+    .step { text-align: center; padding: 1.5rem; }
+    .step-num {
+      width: 48px; height: 48px; border-radius: 50%;
+      color: #fff; font-weight: 800; font-size: 1.1rem;
+      display: flex; align-items: center; justify-content: center; margin: 0 auto 1.2rem;
     }
-    .step:hover { transform: translateY(-4px); box-shadow: 0 10px 32px rgba(0,0,0,.08); }
-    .step-connector {
-      flex-shrink: 0; width: 36px; display: flex; align-items: center;
-      justify-content: center; padding-top: 2.8rem;
-      color: var(--muted); font-size: 1rem;
-    }
-    .step-badge {
-      display: inline-block; font-size: 0.7rem; font-weight: 800;
-      letter-spacing: 0.1em; padding: 0.2rem 0.65rem; border-radius: 20px;
-      margin-bottom: 1.1rem;
-    }
-    .step-icon {
-      width: 54px; height: 54px; border-radius: 14px; margin: 0 auto 1rem;
-      display: flex; align-items: center; justify-content: center; font-size: 1.4rem;
-    }
-    .step-coral .step-badge { background: var(--coral-lt); color: var(--coral); }
-    .step-coral .step-icon  { background: var(--coral-lt); color: var(--coral); }
-    .step-blue  .step-badge { background: var(--blue-lt);  color: var(--blue);  }
-    .step-blue  .step-icon  { background: var(--blue-lt);  color: var(--blue);  }
-    .step h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text); }
-    .step p  { font-size: 0.83rem; color: var(--muted); line-height: 1.6; }
+    .step-num.coral { background: linear-gradient(135deg, var(--coral), #c24a00); }
+    .step-num.blue  { background: linear-gradient(135deg, var(--blue), #0d47a1); }
+    .step h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .step p  { font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
 
     /* ── WHY PVMATH ── */
     #why { background: var(--card); }
@@ -272,9 +258,7 @@
     <div class="nav-logo-mark">
       <svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
         <rect width="36" height="36" rx="9" fill="#145f34"/>
-        <path d="M0 9 Q0 0 9 0 H12 V13 H0 Z" fill="#e85d04"/>
-        <rect x="12" y="0" width="12" height="13" fill="#1565c0"/>
-        <path d="M24 0 H27 Q36 0 36 9 V13 H24 Z" fill="#f59e0b"/>
+        <path d="M0 9 Q0 0 9 0 H27 Q36 0 36 9 V13 H0 Z" fill="#1d9e52"/>
         <text x="18" y="30" text-anchor="middle" font-family="Arial Black,Inter,sans-serif" font-size="15" font-weight="900" fill="white" letter-spacing="-0.5">PV</text>
       </svg>
     </div>
@@ -329,7 +313,7 @@
     <div class="modules-grid">
 
       <!-- SiteIQ -->
-      <div class="module-card live">
+      <div class="module-card live siteiq">
         <div class="module-pill pill-live" data-i18n="pill.live">Live Now</div>
         <div class="module-num">Module 01</div>
         <div class="module-name green">SiteIQ</div>
@@ -403,26 +387,9 @@
         <a href="https://pvmath-siteiq.streamlit.app" target="_blank" style="margin-left:auto;background:var(--green-lt);color:var(--green-dk);font-size:0.78rem;font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;" data-i18n="how.launch">Launch &rarr;</a>
       </div>
       <div class="steps">
-        <div class="step step-coral">
-          <div class="step-badge">Step 01</div>
-          <div class="step-icon"><i class="fa-solid fa-map-location-dot"></i></div>
-          <h3 data-i18n="siteiq.s1.h">Locate Your Site</h3>
-          <p data-i18n="siteiq.s1.p">Search by place name, paste Google Maps or lat/lon coordinates, or upload a KML/KMZ file. The satellite map centres on your site instantly.</p>
-        </div>
-        <div class="step-connector">→</div>
-        <div class="step step-coral">
-          <div class="step-badge">Step 02</div>
-          <div class="step-icon"><i class="fa-solid fa-sliders"></i></div>
-          <h3 data-i18n="siteiq.s2.h">Set Project Parameters</h3>
-          <p data-i18n="siteiq.s2.p">Enter project name, country, and estimated site area in hectares. SiteIQ fetches GHI, irradiation, terrain overview, flood risk, and regulatory flags automatically.</p>
-        </div>
-        <div class="step-connector">→</div>
-        <div class="step step-coral">
-          <div class="step-badge">Step 03</div>
-          <div class="step-icon"><i class="fa-solid fa-file-arrow-down"></i></div>
-          <h3 data-i18n="siteiq.s3.h">Download PDF Report</h3>
-          <p data-i18n="siteiq.s3.p">Get a client-ready PDF with solar resource data, monthly irradiation chart, terrain summary, and a go/no-go verdict. Ready for your next client meeting.</p>
-        </div>
+        <div class="step"><div class="step-num coral">1</div><h3 data-i18n="siteiq.s1.h">Locate Your Site</h3><p data-i18n="siteiq.s1.p">Search by place name, paste Google Maps or lat/lon coordinates, or upload a KML/KMZ file. The satellite map centres on your site instantly.</p></div>
+        <div class="step"><div class="step-num coral">2</div><h3 data-i18n="siteiq.s2.h">Set Project Parameters</h3><p data-i18n="siteiq.s2.p">Enter project name, country, and estimated site area in hectares. SiteIQ fetches GHI, irradiation, terrain overview, flood risk, and regulatory flags automatically.</p></div>
+        <div class="step"><div class="step-num coral">3</div><h3 data-i18n="siteiq.s3.h">Download PDF Report</h3><p data-i18n="siteiq.s3.p">Get a client-ready PDF with solar resource data, monthly irradiation chart, terrain summary, and a go/no-go verdict. Ready for your next client meeting.</p></div>
       </div>
     </div>
 
@@ -439,26 +406,9 @@
         <a href="https://pvmath-topoiq.streamlit.app" target="_blank" style="margin-left:auto;background:#e8f0fb;color:#1565c0;font-size:0.78rem;font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;" data-i18n="how.launch">Launch &rarr;</a>
       </div>
       <div class="steps">
-        <div class="step step-blue">
-          <div class="step-badge">Step 01</div>
-          <div class="step-icon"><i class="fa-solid fa-draw-polygon"></i></div>
-          <h3 data-i18n="topoiq.s1.h">Draw Your Boundary</h3>
-          <p data-i18n="topoiq.s1.p">Navigate to your site on the satellite map. Use the polygon tool to draw the exact site boundary &mdash; click to place vertices, double-click or hit Finish to close. Or upload a DXF/KML file.</p>
-        </div>
-        <div class="step-connector">→</div>
-        <div class="step step-blue">
-          <div class="step-badge">Step 02</div>
-          <div class="step-icon"><i class="fa-solid fa-mountain"></i></div>
-          <h3 data-i18n="topoiq.s2.h">Extract Terrain Data</h3>
-          <p data-i18n="topoiq.s2.p">TopoIQ fetches Copernicus GLO-30 satellite DEM (~1m accuracy) for your polygon, computes elevation, slope heatmaps, and cut &amp; fill volume estimates automatically.</p>
-        </div>
-        <div class="step-connector">→</div>
-        <div class="step step-blue">
-          <div class="step-badge">Step 03</div>
-          <div class="step-icon"><i class="fa-solid fa-file-export"></i></div>
-          <h3 data-i18n="topoiq.s3.h">Export DXF &amp; PDF</h3>
-          <p data-i18n="topoiq.s3.p">Download a DXF terrain file with contour lines at your chosen spacing &mdash; ready for detailed 3D study in any CAD software &mdash; plus a PDF terrain report with elevation and slope maps.</p>
-        </div>
+        <div class="step"><div class="step-num blue">1</div><h3 data-i18n="topoiq.s1.h">Draw Your Boundary</h3><p data-i18n="topoiq.s1.p">Navigate to your site on the satellite map. Use the polygon tool to draw the exact site boundary &mdash; click to place vertices, double-click or hit Finish to close. Or upload a DXF/KML file.</p></div>
+        <div class="step"><div class="step-num blue">2</div><h3 data-i18n="topoiq.s2.h">Extract Terrain Data</h3><p data-i18n="topoiq.s2.p">TopoIQ fetches Copernicus GLO-30 satellite DEM (~1m accuracy) for your polygon, computes elevation, slope heatmaps, and cut &amp; fill volume estimates automatically.</p></div>
+        <div class="step"><div class="step-num blue">3</div><h3 data-i18n="topoiq.s3.h">Export DXF &amp; PDF</h3><p data-i18n="topoiq.s3.p">Download a DXF terrain file with contour lines at your chosen spacing &mdash; ready for detailed 3D study in any CAD software &mdash; plus a PDF terrain report with elevation and slope maps.</p></div>
       </div>
     </div>
   </div>
