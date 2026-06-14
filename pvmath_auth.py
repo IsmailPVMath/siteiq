@@ -377,7 +377,7 @@ def render_auth_page(app_name: str = "PVMath"):
         </svg>
         <span style="font-family:Inter,sans-serif;font-size:1.7rem;font-weight:800;color:#1a2e1a;letter-spacing:-0.04em;">PVMath</span>
       </div>
-      <div class="auth-logo-sub">Solar Site Intelligence &nbsp;·&nbsp; {app_name}</div>
+      <div class="auth-logo-sub">Solar Site Intelligence &nbsp;·&nbsp; SiteIQ &amp; TopoIQ</div>
     </div>
     """, unsafe_allow_html=True)
 
