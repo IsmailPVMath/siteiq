@@ -253,15 +253,26 @@ st.markdown("""
 <style>
     html, body, [class*="css"] {
         font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif !important;
-        font-size: 15px !important;
+        font-size: 16px !important;
     }
-    p, li, label, span, div { font-size: 0.97rem; line-height: 1.65; }
-    [data-testid="stMarkdown"] p { font-size: 0.97rem; }
-    [data-testid="stRadio"] label { font-size: 0.97rem !important; }
-    [data-testid="stSelectbox"] label, [data-testid="stTextInput"] label,
-    [data-testid="stNumberInput"] label { font-size: 0.95rem !important; font-weight: 600; color: #1a2a4a; }
-    [data-testid="stMetric"] label { font-size: 0.8rem !important; }
-    [data-testid="stMetric"] [data-testid="stMetricValue"] { font-size: 1.5rem !important; font-weight: 700; }
+    /* ── Global font size lift ── */
+    [data-testid="stMarkdown"] p,
+    [data-testid="stMarkdown"] li,
+    [data-testid="stMarkdown"] span  { font-size: 1rem !important; line-height: 1.7 !important; }
+    [data-testid="stRadio"] label span  { font-size: 1rem !important; }
+    [data-testid="stCheckbox"] label span { font-size: 1rem !important; }
+    [data-testid="stSelectbox"] label,
+    [data-testid="stTextInput"] label,
+    [data-testid="stNumberInput"] label,
+    [data-testid="stFileUploader"] label { font-size: 0.97rem !important; font-weight: 600 !important; color: #1a2a4a !important; }
+    [data-testid="stSelectbox"] div[data-baseweb="select"] span,
+    [data-testid="stTextInput"] input   { font-size: 0.97rem !important; }
+    [data-testid="stMetric"] label      { font-size: 0.78rem !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; color: #666 !important; }
+    [data-testid="stMetricValue"]       { font-size: 1.6rem !important; font-weight: 700 !important; }
+    [data-testid="stExpander"] summary p { font-size: 0.97rem !important; font-weight: 600 !important; }
+    [data-testid="stAlert"] p           { font-size: 0.97rem !important; }
+    button[data-testid="stBaseButton-secondary"],
+    button[data-testid="stBaseButton-primary"] { font-size: 0.97rem !important; }
     footer { visibility: hidden !important; height: 0 !important; }
     #MainMenu { visibility: hidden !important; }
     header { visibility: hidden !important; }
