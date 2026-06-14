@@ -42,7 +42,7 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 # ADMIN GATE
 # ─────────────────────────────────────────────────────────────────────────────
 ADMIN_EMAIL = "ismailpasha747@gmail.com"
-if st.session_state.get("pvm_email", "") != ADMIN_EMAIL:
+if st.session_state.get("pvm_email", "").lower().strip() != ADMIN_EMAIL:
     st.error("🔒 LayoutIQ is not available yet. Coming soon.")
     st.stop()
 

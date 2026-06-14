@@ -200,6 +200,14 @@ def render_auth_page(app_name: str = "PVMath"):
 
     # Already logged in?
     if st.session_state.get("pvm_user_id"):
+        # Backfill pvm_email if missing (old sessions before email was stored)
+        if not st.session_state.get("pvm_email"):
+            try:
+                user = get_supabase().auth.get_user()
+                if user and user.user:
+                    st.session_state["pvm_email"] = user.user.email
+            except Exception:
+                pass
         return True
 
     # ── Password recovery mode ─────────────────────────────────

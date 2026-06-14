@@ -72,7 +72,8 @@ _pages = [
 ]
 # YieldIQ + LayoutIQ — admin only, hidden from all other users
 _ADMIN = {"ismailpasha747@gmail.com"}
-if st.session_state.get("pvm_email", "") in _ADMIN:
+_user_email = st.session_state.get("pvm_email", "").lower().strip()
+if _user_email in _ADMIN:
     _pages.append(st.Page("pages/yieldiq.py",  title="YieldIQ",  icon="⚡"))
     _pages.append(st.Page("pages/layoutiq.py", title="LayoutIQ", icon="📐"))
 
