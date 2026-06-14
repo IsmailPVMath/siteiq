@@ -24,8 +24,25 @@
     .nav-back { font-size: 0.82rem; font-weight: 600; color: var(--green-dk); text-decoration: none; }
     .nav-back:hover { text-decoration: underline; }
     .container { max-width: 760px; margin: 0 auto; padding: 4rem 2rem 6rem; }
-    h1 { font-size: 2rem; font-weight: 800; color: var(--text); margin-bottom: 0.4rem; letter-spacing: -0.03em; }
-    .subtitle { font-size: 0.82rem; color: var(--muted); margin-bottom: 3rem; }
+    h1 { font-size: 2rem; font-weight: 800; color: var(--text); margin-bottom: 0.3rem; letter-spacing: -0.03em; }
+    .subtitle { font-size: 0.82rem; color: var(--muted); margin-bottom: 2.5rem; }
+    .lang-label {
+      display: inline-block; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; padding: 0.25rem 0.7rem; border-radius: 100px;
+      margin-bottom: 1.5rem;
+    }
+    .lang-de { background: #1a2e1a; color: #fff; }
+    .lang-en { background: var(--green-lt); color: var(--green-dk); border: 1px solid rgba(29,158,82,.3); }
+    .section-divider {
+      border: none; border-top: 2px dashed var(--border);
+      margin: 3rem 0; position: relative;
+    }
+    .section-divider::after {
+      content: 'English translation below'; position: absolute;
+      top: -0.65rem; left: 50%; transform: translateX(-50%);
+      background: var(--bg); padding: 0 0.8rem;
+      font-size: 0.72rem; color: var(--muted); font-weight: 500; white-space: nowrap;
+    }
     h2 { font-size: 1rem; font-weight: 700; color: var(--text); margin: 2rem 0 0.5rem; }
     p { font-size: 0.92rem; color: #3a5a3a; margin-bottom: 0.5rem; }
     a { color: var(--green-dk); }
@@ -52,51 +69,106 @@
     </svg>
     <span class="nav-logo-name">PVMath</span>
   </a>
-  <a class="nav-back" href="https://pvmath.com">← Back to pvmath.com</a>
+  <a class="nav-back" href="https://pvmath.com">← Zurück / Back to pvmath.com</a>
 </nav>
 
 <div class="container">
   <h1>Impressum</h1>
-  <p class="subtitle">Legal Notice (Angaben gemäß § 5 TMG)</p>
+  <p class="subtitle">Angaben gemäß § 5 TMG</p>
+
+  <!-- ── GERMAN (legally required first) ── -->
+  <span class="lang-label lang-de">Deutsch — Rechtlich verbindlich</span>
 
   <div class="card">
-    <h2>Provider / Anbieter</h2>
+    <h2>Anbieter</h2>
     <p><strong>Mohammed Ismail Pasha</strong></p>
     <p>Straubinger Strasse 1</p>
     <p>93055 Regensburg</p>
-    <p>Germany / Deutschland</p>
+    <p>Deutschland</p>
 
-    <h2>Contact / Kontakt</h2>
-    <p>Phone / Telefon: <a href="tel:+4915901482999">+49 15 901 482 999</a></p>
-    <p>Email / E-Mail: <a href="mailto:contact@pvmath.de">contact@pvmath.de</a></p>
+    <h2>Kontakt</h2>
+    <p>Telefon: <a href="tel:+4915901482999">+49 15 901 482 999</a></p>
+    <p>E-Mail: <a href="mailto:contact@pvmath.de">contact@pvmath.de</a></p>
     <p>Website: <a href="https://pvmath.com">pvmath.com</a></p>
 
-    <h2>Responsible for content / Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV</h2>
+    <h2>Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV</h2>
+    <p>Mohammed Ismail Pasha</p>
+    <p>Straubinger Strasse 1, 93055 Regensburg</p>
+  </div>
+
+  <div class="card">
+    <h2>Haftungsausschluss</h2>
+    <p>
+      Die Inhalte dieser Website wurden mit größtmöglicher Sorgfalt erstellt.
+      Für die Richtigkeit, Vollständigkeit und Aktualität der Inhalte kann jedoch keine Gewähr übernommen werden.
+      Die über PVMath bereitgestellten Daten (PVGIS, Geländedaten, Kapazitätsschätzungen) dienen ausschließlich
+      der Vorprüfung und ersetzen keine bankfähigen Ertragsgutachten oder ingenieurtechnische Detailplanung.
+    </p>
+
+    <h2>Urheberrecht</h2>
+    <p>
+      Die durch den Seitenbetreiber erstellten Inhalte und Werke auf diesen Seiten unterliegen dem deutschen Urheberrecht.
+      Die Vervielfältigung, Bearbeitung, Verbreitung und jede Art der Verwertung außerhalb der Grenzen des Urheberrechtes
+      bedürfen der schriftlichen Zustimmung des jeweiligen Autors.
+    </p>
+
+    <h2>Externe Links</h2>
+    <p>
+      Diese Website enthält Links zu externen Websites Dritter, auf deren Inhalte kein Einfluss besteht.
+      Für die Inhalte der verlinkten Seiten ist stets der jeweilige Anbieter oder Betreiber verantwortlich.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Streitschlichtung</h2>
+    <p>
+      Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit:
+      <a href="https://ec.europa.eu/consumers/odr" target="_blank">https://ec.europa.eu/consumers/odr</a>.
+      Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer
+      Verbraucherschlichtungsstelle teilzunehmen.
+    </p>
+  </div>
+
+  <!-- ── DIVIDER ── -->
+  <hr class="section-divider">
+
+  <!-- ── ENGLISH TRANSLATION ── -->
+  <span class="lang-label lang-en">English — Translation for reference</span>
+
+  <div class="card">
+    <h2>Provider</h2>
+    <p><strong>Mohammed Ismail Pasha</strong></p>
+    <p>Straubinger Strasse 1</p>
+    <p>93055 Regensburg</p>
+    <p>Germany</p>
+
+    <h2>Contact</h2>
+    <p>Phone: <a href="tel:+4915901482999">+49 15 901 482 999</a></p>
+    <p>Email: <a href="mailto:contact@pvmath.de">contact@pvmath.de</a></p>
+    <p>Website: <a href="https://pvmath.com">pvmath.com</a></p>
+
+    <h2>Responsible for content (§ 55 Abs. 2 RStV)</h2>
     <p>Mohammed Ismail Pasha</p>
     <p>Straubinger Strasse 1, 93055 Regensburg, Germany</p>
   </div>
 
   <div class="card">
-    <h2>Disclaimer / Haftungsausschluss</h2>
+    <h2>Disclaimer</h2>
     <p>
       The contents of this website have been created with the greatest possible care.
       However, no guarantee can be given for the accuracy, completeness, or timeliness of the content.
       Data provided through PVMath (PVGIS, terrain data, capacity estimates) is intended for preliminary
       screening only and does not replace a bankable energy yield assessment or detailed engineering study.
     </p>
-    <p style="margin-top:0.5rem;font-size:0.82rem;color:#5a7a5a;">
-      <em>DE: Die Inhalte dieser Website wurden mit größtmöglicher Sorgfalt erstellt. Die über PVMath bereitgestellten Daten
-      dienen ausschließlich der Vorprüfung und ersetzen keine bankfähigen Ertragsgutachten.</em>
-    </p>
 
-    <h2>Copyright / Urheberrecht</h2>
+    <h2>Copyright</h2>
     <p>
       All content and works on this website created by the operator are subject to German copyright law.
       Reproduction, editing, distribution, or any form of use beyond the limits of copyright law
       requires the written consent of the respective author.
     </p>
 
-    <h2>External Links / Externe Links</h2>
+    <h2>External Links</h2>
     <p>
       This website contains links to external third-party websites. We have no influence over their content.
       The respective provider or operator of the linked pages is always responsible for their content.
@@ -104,7 +176,7 @@
   </div>
 
   <div class="card">
-    <h2>Dispute Resolution / Streitschlichtung</h2>
+    <h2>Dispute Resolution</h2>
     <p>
       The European Commission provides a platform for online dispute resolution (ODR):
       <a href="https://ec.europa.eu/consumers/odr" target="_blank">https://ec.europa.eu/consumers/odr</a>.
@@ -117,7 +189,7 @@
 <footer>
   <p>&copy; 2026 PVMath · Mohammed Ismail Pasha &nbsp;·&nbsp;
     <a href="/impressum.html">Impressum</a> &nbsp;·&nbsp;
-    <a href="/privacy.html">Datenschutz</a> &nbsp;·&nbsp;
+    <a href="/privacy.html">Datenschutz / Privacy</a> &nbsp;·&nbsp;
     <a href="https://pvmath.com">pvmath.com</a>
   </p>
 </footer>
