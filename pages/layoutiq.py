@@ -185,21 +185,25 @@ def parse_pasted(text: str):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def run_layout(latlons, module_h, module_w, n_portrait,
-               pitch, setback, azimuth, inter_gap=0.01):
+               pitch, setback, azimuth, mounting_type="fixed_tilt", inter_gap=0.01):
     """
     Parameters
     ----------
-    latlons   : list of (lat, lon)
-    module_h  : module long side (m) — runs N-S in portrait 1P/2P
-    module_w  : module short side (m) — runs E-W along row
-    n_portrait: 1 (1P) or 2 (2P)
-    pitch     : row-to-row distance, front to front (m)
-    setback   : boundary inset (m)
-    azimuth   : 180 = south-facing (degrees)
-    inter_gap : gap between modules within row (m)
+    latlons       : list of (lat, lon)
+    module_h      : module long side (m)
+    module_w      : module short side (m)
+    n_portrait    : 1 (1P) or 2 (2P)
+    pitch         : row-to-row distance (m) — N-S for fixed tilt, E-W for SAT
+    setback       : boundary inset (m)
+    azimuth       : south-facing azimuth in degrees (fixed tilt only; ignored for SAT)
+    mounting_type : "fixed_tilt" or "sat"
+    inter_gap     : gap between modules within row (m)
 
-    Returns dict or None on failure.
+    Fixed Tilt — rows run E-W, pitch measured N-S, azimuth applies.
+    SAT        — rows run N-S, pitch measured E-W, azimuth ignored (always N-S axis).
     """
+    is_tracker = (mounting_type == "sat")
+
     lats    = [p[0] for p in latlons]
     lons    = [p[1] for p in latlons]
     ref_lat = sum(lats) / len(lats)
@@ -218,13 +222,19 @@ def run_layout(latlons, module_h, module_w, n_portrait,
     if poly_inset.is_empty or poly_inset.area < 4:
         return None
 
-    # Rotate polygon so rows become horizontal sweep lines
-    rot_angle = -(azimuth - 180.0)   # CCW degrees
-    ctr       = poly_inset.centroid
-    poly_rot  = shp_rotate(poly_inset, rot_angle, origin=(ctr.x, ctr.y))
+    if is_tracker:
+        # SAT: rows run N-S. Rotate 90° CCW → N-S axis becomes horizontal in sweep space.
+        rot_angle = 90.0
+        row_ns    = module_w * n_portrait   # E-W cross-section of one tracker row
+        mod_ew    = module_h + inter_gap    # N-S step per module along tracker
+    else:
+        # Fixed tilt: rows run E-W.
+        rot_angle = -(azimuth - 180.0)
+        row_ns    = module_h * n_portrait   # N-S footprint of one row
+        mod_ew    = module_w + inter_gap    # E-W step per module
 
-    row_ns   = module_h * n_portrait          # N-S footprint of one row (metres)
-    mod_ew   = module_w + inter_gap           # E-W step per module
+    ctr      = poly_inset.centroid
+    poly_rot = shp_rotate(poly_inset, rot_angle, origin=(ctr.x, ctr.y))
 
     minx, miny, maxx, maxy = poly_rot.bounds
 
@@ -290,6 +300,8 @@ def run_layout(latlons, module_h, module_w, n_portrait,
         "ref_lon":       ref_lon,
         "row_ns":        row_ns,
         "n_portrait":    n_portrait,
+        "is_tracker":    is_tracker,
+        "mounting_type": mounting_type,
     }
 
 
@@ -402,10 +414,11 @@ def make_layout_drawing(layout: dict, project_name: str,
             ha="center", va="bottom", fontsize=8)
 
     dc_kwp  = layout["total_modules"] * module_wp / 1000
+    mount_str = "Single-Axis Tracker (SAT)" if layout.get("is_tracker") else f"Fixed Tilt · Az {azimuth}°"
     summary = (f"{layout['total_modules']:,} modules  |  "
                f"{layout['total_rows']} rows  |  "
                f"{dc_kwp:,.0f} kWp  |  {layout['area_ha']} ha  |  "
-               f"Azimuth {azimuth}°")
+               f"{mount_str}")
     ax.set_title(f"LayoutIQ — {project_name}\n{summary}",
                  fontsize=10, fontweight="bold", pad=10, color="#1a1a2e")
 
@@ -468,7 +481,8 @@ def build_pdf(project_name, layout, bom, chart_bytes, module_label,
          lp("DATE",       lbl), lp(str(date.today()), bod)],
         [lp("MODULE",     lbl), lp(module_label, bod),
          lp("MODULE Wp",  lbl), lp(f"{module_wp} Wp", bod)],
-        [lp("CONFIG",     lbl), lp(f"{'1P' if n_portrait==1 else '2P'} Portrait — Azimuth {azimuth}°", bod),
+        [lp("CONFIG",     lbl), lp(f"{'1P' if n_portrait==1 else '2P'} Portrait — " +
+                              ("SAT N-S axis" if mounting_type=='sat' else f"Fixed Tilt · Azimuth {azimuth}°"), bod),
          lp("PITCH / SETBACK", lbl), lp(f"{pitch} m pitch · {setback} m setback", bod)],
     ], colWidths=["2.5cm","6.5cm","3cm","6cm"])
     info.setStyle(TableStyle([
@@ -600,18 +614,36 @@ with c1:
 
 with c2:
     st.markdown("**Row configuration**")
-    rc1, rc2 = st.columns(2)
+    rc0, rc1 = st.columns(2)
+    mounting_type = rc0.selectbox(
+        "Mounting type",
+        ["fixed_tilt", "sat"],
+        format_func=lambda x: "Fixed Tilt" if x == "fixed_tilt" else "Single-Axis Tracker (SAT)",
+    )
+    is_tracker = (mounting_type == "sat")
     n_portrait = rc1.selectbox("Portrait rows (1P / 2P)", [1, 2],
                                 format_func=lambda x: f"{x}P")
-    azimuth    = rc2.number_input("Azimuth (°)", 90.0, 270.0, 180.0, 1.0,
-                                   help="180° = south-facing. 90° = east, 270° = west.")
-    rc3, rc4, rc5 = st.columns(3)
-    pitch   = rc3.number_input("Row pitch (m)", 2.0, 20.0, 5.0, 0.1,
-                                help="Front-to-front row spacing (metres N-S).")
+
+    rc2, rc3, rc4 = st.columns(3)
+    if not is_tracker:
+        azimuth = rc2.number_input("Azimuth (°)", 90.0, 270.0, 180.0, 1.0,
+                                    help="180° = south-facing. Applies to fixed tilt only.")
+    else:
+        azimuth = 180.0
+        rc2.markdown(
+            "<div style='font-size:0.82rem;color:#7c3aed;margin-top:1.6rem;font-weight:600'>"
+            "SAT — N-S axis (no azimuth)</div>", unsafe_allow_html=True
+        )
+
+    pitch_label = "Row pitch E-W (m)" if is_tracker else "Row pitch N-S (m)"
+    pitch_help  = ("E-W distance between tracker row centrelines." if is_tracker
+                   else "N-S front-to-front row spacing.")
+    pitch   = rc3.number_input(pitch_label, 2.0, 20.0, 5.5 if is_tracker else 5.0, 0.1,
+                                help=pitch_help)
     setback = rc4.number_input("Boundary setback (m)", 0.0, 50.0, 5.0, 0.5,
                                 help="Inset from site boundary.")
-    gap     = rc5.number_input("Module gap (m)", 0.0, 0.1, 0.01, 0.005, format="%.3f",
-                                help="Gap between modules within a row.")
+    gap = st.number_input("Module gap within row (m)", 0.0, 0.1, 0.01, 0.005, format="%.3f",
+                           help="Gap between modules along the row.")
 
 st.markdown("---")
 st.markdown("**Inverter & string configuration**")
@@ -633,8 +665,9 @@ row_ns_display = f"{n_portrait}P row width: {round(mod_h * n_portrait, 3)} m  | 
 st.markdown(f"<div style='font-size:0.85rem;color:#5a5a7a;margin-bottom:0.8rem;'>{row_ns_display}</div>",
             unsafe_allow_html=True)
 
-if pitch <= mod_h * n_portrait:
-    st.error(f"⚠️ Pitch ({pitch} m) must be greater than row width ({round(mod_h*n_portrait,2)} m).")
+_row_cross = mod_w * n_portrait if is_tracker else mod_h * n_portrait
+if pitch <= _row_cross:
+    st.error(f"⚠️ Pitch ({pitch} m) must be greater than row cross-section ({round(_row_cross,2)} m).")
     st.stop()
 
 run_btn = st.button("📐 Generate Layout + BOM", type="primary",
@@ -653,7 +686,9 @@ if run_btn and polygon_latlons:
             module_h=mod_h, module_w=mod_w,
             n_portrait=n_portrait,
             pitch=pitch, setback=setback,
-            azimuth=azimuth, inter_gap=gap,
+            azimuth=azimuth,
+            mounting_type=mounting_type,
+            inter_gap=gap,
         )
 
     if layout is None:
