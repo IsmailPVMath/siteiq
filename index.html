@@ -324,7 +324,7 @@
           <li data-i18n="siteiq.f5">Flood risk indicator</li>
           <li data-i18n="siteiq.f6">PDF report &mdash; client-ready</li>
         </ul>
-        <a href="https://siteiq.pvmath.com" target="_blank" class="module-link link-green" data-i18n="siteiq.btn">Launch SiteIQ &rarr;</a>
+        <a href="https://siteiq.pvmath.com" target="_blank" class="module-link link-green" data-i18n="siteiq.btn">Open in App &rarr;</a>
       </div>
 
       <!-- TopoIQ -->
@@ -341,7 +341,7 @@
           <li data-i18n="topoiq.f5">DXF terrain file export</li>
           <li data-i18n="topoiq.f6">PDF terrain report</li>
         </ul>
-        <a href="https://topoiq.pvmath.com" target="_blank" class="module-link link-blue" data-i18n="topoiq.btn">Launch TopoIQ &rarr;</a>
+        <a href="https://siteiq.pvmath.com" target="_blank" class="module-link link-blue" data-i18n="topoiq.btn">Open in App &rarr;</a>
       </div>
 
       <!-- YieldIQ -->
@@ -382,7 +382,7 @@
           <div style="font-size:1.1rem;font-weight:800;color:var(--coral);letter-spacing:-0.02em;" data-i18n="how.siteiq.title">SiteIQ &mdash; Site Screening</div>
           <div style="font-size:0.78rem;color:var(--muted);" data-i18n="how.siteiq.sub">Module 01 &middot; Live Now</div>
         </div>
-        <a href="https://siteiq.pvmath.com" target="_blank" style="margin-left:auto;background:var(--coral-lt);color:var(--coral);font-size:0.78rem;font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;" data-i18n="how.launch">Launch &rarr;</a>
+        <a href="https://siteiq.pvmath.com" target="_blank" style="margin-left:auto;background:var(--coral-lt);color:var(--coral);font-size:0.78rem;font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;" data-i18n="how.launch">Open in App &rarr;</a>
       </div>
       <div class="steps">
         <div class="step"><div class="step-num coral">1</div><h3 data-i18n="siteiq.s1.h">Locate Your Site</h3><p data-i18n="siteiq.s1.p">Search by place name, paste Google Maps or lat/lon coordinates, or upload a KML/KMZ file. The satellite map centres on your site instantly.</p></div>
@@ -401,7 +401,7 @@
           <div style="font-size:1.1rem;font-weight:800;color:#1565c0;letter-spacing:-0.02em;" data-i18n="how.topoiq.title">TopoIQ &mdash; Terrain Extraction</div>
           <div style="font-size:0.78rem;color:var(--muted);" data-i18n="how.topoiq.sub">Module 02 &middot; Live Now</div>
         </div>
-        <a href="https://topoiq.pvmath.com" target="_blank" style="margin-left:auto;background:#e8f0fb;color:#1565c0;font-size:0.78rem;font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;" data-i18n="how.launch">Launch &rarr;</a>
+        <a href="https://siteiq.pvmath.com" target="_blank" style="margin-left:auto;background:#e8f0fb;color:#1565c0;font-size:0.78rem;font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;" data-i18n="how.launch">Open in App &rarr;</a>
       </div>
       <div class="steps">
         <div class="step"><div class="step-num blue">1</div><h3 data-i18n="topoiq.s1.h">Draw Your Boundary</h3><p data-i18n="topoiq.s1.p">Navigate to your site on the satellite map. Use the polygon tool to draw the exact site boundary &mdash; click to place vertices, double-click or hit Finish to close. Or upload a DXF/KML file.</p></div>
@@ -613,7 +613,7 @@
     <div class="footer-col">
       <h5 data-i18n="footer.platform">Platform</h5>
       <a href="https://siteiq.pvmath.com" target="_blank">SiteIQ</a>
-      <a href="https://topoiq.pvmath.com" target="_blank">TopoIQ</a>
+      <a href="https://siteiq.pvmath.com" target="_blank">TopoIQ</a>
       <a href="#contact" data-i18n="footer.yield-soon">YieldIQ (Soon)</a>
     </div>
     <div class="footer-col">
@@ -656,11 +656,11 @@ var T = {
     'siteiq.desc':'Fast solar site pre-screening for any location globally. Get GHI, irradiation, terrain overview, regulatory flags, and capacity estimates in under 60 seconds.',
     'siteiq.f1':'Satellite map with coordinate input','siteiq.f2':'Annual & monthly GHI / irradiation',
     'siteiq.f3':'Terrain & slope overview','siteiq.f4':'Regulatory flags (protected areas)',
-    'siteiq.f5':'Flood risk indicator','siteiq.f6':'PDF report — client-ready','siteiq.btn':'Launch SiteIQ →',
+    'siteiq.f5':'Flood risk indicator','siteiq.f6':'PDF report — client-ready','siteiq.btn':'Open in App →',
     'topoiq.desc':'Satellite terrain extraction for solar site engineering. Draw your polygon, get elevation and slope heatmaps, contour lines, and DXF terrain files ready for detailed 3D study in your CAD software.',
     'topoiq.f1':'Polygon boundary drawing on satellite map','topoiq.f2':'Copernicus GLO-30 DEM (~30m native, 5m grid)',
     'topoiq.f3':'Elevation & solar-grade slope maps','topoiq.f4':'Cut & fill volume estimates',
-    'topoiq.f5':'DXF terrain file export','topoiq.f6':'PDF terrain report','topoiq.btn':'Launch TopoIQ →',
+    'topoiq.f5':'DXF terrain file export','topoiq.f6':'PDF terrain report','topoiq.btn':'Open in App →',
     'yieldiq.desc':'Quick pre-layout energy yield estimation using PVGIS and NASA data. Get preliminary yield estimates before committing to full PV layout design.',
     'yieldiq.f1':'Specific yield estimation (kWh/kWp)','yieldiq.f2':'PR and capacity factor',
     'yieldiq.f3':'Monthly energy profile','yieldiq.f4':'Temperature & shading correction',
@@ -670,7 +670,7 @@ var T = {
     'how.sub':'Two tools, two workflows — both designed to eliminate manual steps.',
     'how.siteiq.title':'SiteIQ — Site Screening','how.siteiq.sub':'Module 01 · Live Now',
     'how.topoiq.title':'TopoIQ — Terrain Extraction','how.topoiq.sub':'Module 02 · Live Now',
-    'how.launch':'Launch →',
+    'how.launch':'Open in App →',
     'siteiq.s1.h':'Locate Your Site','siteiq.s1.p':'Search by place name, paste Google Maps or lat/lon coordinates, or upload a KML/KMZ file. The satellite map centres on your site instantly.',
     'siteiq.s2.h':'Set Project Parameters','siteiq.s2.p':'Enter project name, country, and estimated site area in hectares. SiteIQ fetches GHI, irradiation, terrain overview, flood risk, and regulatory flags automatically.',
     'siteiq.s3.h':'Download PDF Report','siteiq.s3.p':'Get a client-ready PDF with solar resource data, monthly irradiation chart, terrain summary, and a go/no-go verdict. Ready for your next client meeting.',
@@ -754,11 +754,11 @@ var T = {
     'siteiq.desc':'Schnelle Solarstandort-Vorprüfung für jeden Standort weltweit. GHI, Einstrahlung, Geländeübersicht, Regulierungshinweise und Kapazitätsschätzung in unter 60 Sekunden.',
     'siteiq.f1':'Satellitenkarte mit Koordinateneingabe','siteiq.f2':'Jährliche & monatliche GHI / Einstrahlung',
     'siteiq.f3':'Gelände- & Neigungsübersicht','siteiq.f4':'Regulierungshinweise (Schutzgebiete)',
-    'siteiq.f5':'Hochwasserrisiko-Indikator','siteiq.f6':'PDF-Bericht — kundenfähig','siteiq.btn':'SiteIQ starten →',
+    'siteiq.f5':'Hochwasserrisiko-Indikator','siteiq.f6':'PDF-Bericht — kundenfähig','siteiq.btn':'In der App öffnen →',
     'topoiq.desc':'Satellitengestsützte Geländeextraktion für die solare Standortplanung. Polygon zeichnen, Höhen- und Neigungsdiagramme, Höhenlinien und DXF-Geländedateien für das 3D-Studium in Ihrer CAD-Software erhalten.',
     'topoiq.f1':'Polygonbegrenzung auf Satellitenkarte','topoiq.f2':'Copernicus GLO-30 DEM (~30m nativ, 5m Raster)',
     'topoiq.f3':'Höhen- & solare Neigungskarten','topoiq.f4':'Aushub- & Auffüllmengenberechnung',
-    'topoiq.f5':'DXF-Geländedatei-Export','topoiq.f6':'PDF-Geländebericht','topoiq.btn':'TopoIQ starten →',
+    'topoiq.f5':'DXF-Geländedatei-Export','topoiq.f6':'PDF-Geländebericht','topoiq.btn':'In der App öffnen →',
     'yieldiq.desc':'Schnelle Energieertragschätzung vor dem Layout mit PVGIS- und NASA-Daten. Vorläufige Ertragszahlen vor dem vollständigen PV-Layout.',
     'yieldiq.f1':'Spezifischer Ertrag (kWh/kWp)','yieldiq.f2':'PR und Kapazitätsfaktor',
     'yieldiq.f3':'Monatliches Energieprofil','yieldiq.f4':'Temperatur- & Verschattungskorrektur',
@@ -768,7 +768,7 @@ var T = {
     'how.sub':'Zwei Tools, zwei Abläufe — beide für die Eliminierung manueller Schritte entwickelt.',
     'how.siteiq.title':'SiteIQ — Standortprüfung','how.siteiq.sub':'Modul 01 · Jetzt Live',
     'how.topoiq.title':'TopoIQ — Geländeextraktion','how.topoiq.sub':'Modul 02 · Jetzt Live',
-    'how.launch':'Starten →',
+    'how.launch':'In der App öffnen →',
     'siteiq.s1.h':'Standort festlegen','siteiq.s1.p':'Nach Ortsname suchen, Google Maps- oder Lat/Lon-Koordinaten einfügen oder eine KML/KMZ-Datei hochladen. Die Satellitenkarte zentriert sich sofort auf Ihren Standort.',
     'siteiq.s2.h':'Projektparameter eingeben','siteiq.s2.p':'Projektname, Land und geschätzte Standortfläche in Hektar eingeben. SiteIQ ruft automatisch GHI, Einstrahlung, Geländeübersicht, Hochwasserrisiko und Regulierungshinweise ab.',
     'siteiq.s3.h':'PDF-Bericht herunterladen','siteiq.s3.p':'Kundenfähigen PDF mit Solarressourcendaten, monatlichem Einstrahlungsdiagramm, Geländezusammenfassung und Go/No-Go-Empfehlung erhalten. Bereit für das nächste Kundengespräch.',
