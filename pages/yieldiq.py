@@ -38,11 +38,6 @@ from pvmath_auth import (
 # ─────────────────────────────────────────────────────────────────────────────
 _uid = st.session_state.get("pvm_user_id", "guest")
 
-# ─── Admin gate — YieldIQ is in development, not yet public ──────────────────
-_ADMIN_EMAIL = "ismailpasha747@gmail.com"
-if st.session_state.get("pvm_email", "").lower().strip() != _ADMIN_EMAIL:
-    st.error("🔒 YieldIQ is coming soon. Stay tuned!")
-    st.stop()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CSS
