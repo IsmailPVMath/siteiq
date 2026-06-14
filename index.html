@@ -411,6 +411,25 @@
         <div class="step"><div class="step-num blue">3</div><h3 data-i18n="topoiq.s3.h">Export DXF &amp; PDF</h3><p data-i18n="topoiq.s3.p">Download a DXF terrain file with contour lines at your chosen spacing &mdash; ready for detailed 3D study in any CAD software &mdash; plus a PDF terrain report with elevation and slope maps.</p></div>
       </div>
     </div>
+
+    <div style="border-top:1px solid var(--border);margin-bottom:3rem;margin-top:3rem;"></div>
+
+    <!-- YieldIQ steps -->
+    <div>
+      <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;">
+        <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#d4840a,#b36a00);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:0.85rem;flex-shrink:0;">Y</div>
+        <div>
+          <div style="font-size:1.1rem;font-weight:800;color:#d4840a;letter-spacing:-0.02em;" data-i18n="how.yieldiq.title">YieldIQ &mdash; Energy Yield Estimation</div>
+          <div style="font-size:0.78rem;color:var(--muted);" data-i18n="how.yieldiq.sub">Module 03 &middot; Live Now</div>
+        </div>
+        <a href="https://siteiq.pvmath.com" target="_blank" style="margin-left:auto;background:#fef3e2;color:#d4840a;font-size:0.78rem;font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;" data-i18n="how.launch">Open in App &rarr;</a>
+      </div>
+      <div class="steps">
+        <div class="step"><div class="step-num" style="background:#d4840a;">1</div><h3 data-i18n="yieldiq.s1.h">Enter Site &amp; System Parameters</h3><p data-i18n="yieldiq.s1.p">Paste coordinates or a Google Maps link. Select your mounting type (Fixed Tilt or Single-Axis Tracker), module wattage, system losses, and DC capacity in MWp.</p></div>
+        <div class="step"><div class="step-num" style="background:#d4840a;">2</div><h3 data-i18n="yieldiq.s2.h">Compare 4 Configurations</h3><p data-i18n="yieldiq.s2.p">YieldIQ runs 1P Fixed, 2P Fixed, 1P Tracker, and 2P Tracker simultaneously using PVGIS JRC data. Results include specific yield, performance ratio, capacity factor, and GCR-based shading losses.</p></div>
+        <div class="step"><div class="step-num" style="background:#d4840a;">3</div><h3 data-i18n="yieldiq.s3.h">Download Yield Report</h3><p data-i18n="yieldiq.s3.p">Get a PDF comparing all 4 configurations with monthly energy charts in MWh, tracker gain analysis, and a pre-layout disclaimer. Ready for internal review before committing to a full layout.</p></div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -672,6 +691,10 @@ var T = {
     'how.sub':'Two tools, two workflows — both designed to eliminate manual steps.',
     'how.siteiq.title':'SiteIQ — Site Screening','how.siteiq.sub':'Module 01 · Live Now',
     'how.topoiq.title':'TopoIQ — Terrain Extraction','how.topoiq.sub':'Module 02 · Live Now',
+    'how.yieldiq.title':'YieldIQ — Energy Yield Estimation','how.yieldiq.sub':'Module 03 · Live Now',
+    'yieldiq.s1.h':'Enter Site & System Parameters','yieldiq.s1.p':'Paste coordinates or a Google Maps link. Select your mounting type (Fixed Tilt or Single-Axis Tracker), module wattage, system losses, and DC capacity in MWp.',
+    'yieldiq.s2.h':'Compare 4 Configurations','yieldiq.s2.p':'YieldIQ runs 1P Fixed, 2P Fixed, 1P Tracker, and 2P Tracker simultaneously using PVGIS JRC data. Results include specific yield, performance ratio, capacity factor, and GCR-based shading losses.',
+    'yieldiq.s3.h':'Download Yield Report','yieldiq.s3.p':'Get a PDF comparing all 4 configurations with monthly energy charts in MWh, tracker gain analysis, and a pre-layout disclaimer. Ready for internal review before committing to a full layout.',
     'how.launch':'Open in App →',
     'siteiq.s1.h':'Locate Your Site','siteiq.s1.p':'Search by place name, paste Google Maps or lat/lon coordinates, or upload a KML/KMZ file. The satellite map centres on your site instantly.',
     'siteiq.s2.h':'Set Project Parameters','siteiq.s2.p':'Enter project name, country, and estimated site area in hectares. SiteIQ fetches GHI, irradiation, terrain overview, flood risk, and regulatory flags automatically.',
@@ -722,7 +745,7 @@ var T = {
     'about.p2':'Our tools are built to solve problems that cost real project hours — not features invented in a boardroom. The result is a platform that speaks the same language as the engineers using it.',
     'about.c1.h':'Purpose-Built for Solar','about.c1.p':'Not a generic GIS tool adapted for solar. Every feature is designed specifically for solar site assessment and engineering.',
     'about.c2.h':'Europe & Global Markets','about.c2.p':'Built with European solar markets in mind — Germany, Austria, Switzerland, Spain, Italy — but with global data coverage from day one.',
-    'about.c3.h':'Growing Fast','about.c3.p':'SiteIQ and TopoIQ are live. YieldIQ is in development. The roadmap is driven by what engineers actually ask for.',
+    'about.c3.h':'Growing Fast','about.c3.p':'SiteIQ, TopoIQ, and YieldIQ are live. The roadmap is driven by what engineers actually ask for.',
     'contact.label':'Contact','contact.title':'Get in touch.',
     'contact.sub':'Questions about pricing, access, or a custom enterprise plan? We respond within one business day.',
     'contact.info':'Solar site intelligence tools for EPCs, project developers, and engineering firms worldwide.',
@@ -770,6 +793,10 @@ var T = {
     'how.sub':'Zwei Tools, zwei Abläufe — beide für die Eliminierung manueller Schritte entwickelt.',
     'how.siteiq.title':'SiteIQ — Standortprüfung','how.siteiq.sub':'Modul 01 · Jetzt Live',
     'how.topoiq.title':'TopoIQ — Geländeextraktion','how.topoiq.sub':'Modul 02 · Jetzt Live',
+    'how.yieldiq.title':'YieldIQ — Energieertragsprognose','how.yieldiq.sub':'Modul 03 · Jetzt Live',
+    'yieldiq.s1.h':'Standort & Systemparameter eingeben','yieldiq.s1.p':'Koordinaten oder Google Maps Link einfügen. Montagesystem (Festwinkel oder Einachsiger Tracker), Modulleistung, Systemverluste und DC-Leistung in MWp auswählen.',
+    'yieldiq.s2.h':'4 Konfigurationen vergleichen','yieldiq.s2.p':'YieldIQ berechnet 1P Fest, 2P Fest, 1P Tracker und 2P Tracker gleichzeitig mit PVGIS JRC-Daten. Ergebnisse umfassen spezifischen Ertrag, Performance Ratio, Kapazitätsfaktor und GCR-basierte Verschattungsverluste.',
+    'yieldiq.s3.h':'Ertragsreport herunterladen','yieldiq.s3.p':'PDF mit Vergleich aller 4 Konfigurationen, monatlichen Energiediagrammen in MWh, Tracker-Gewinnanalyse und Vorab-Hinweis. Bereit für interne Prüfung vor dem vollständigen Layout-Entwurf.',
     'how.launch':'In der App öffnen →',
     'siteiq.s1.h':'Standort festlegen','siteiq.s1.p':'Nach Ortsname suchen, Google Maps- oder Lat/Lon-Koordinaten einfügen oder eine KML/KMZ-Datei hochladen. Die Satellitenkarte zentriert sich sofort auf Ihren Standort.',
     'siteiq.s2.h':'Projektparameter eingeben','siteiq.s2.p':'Projektname, Land und geschätzte Standortfläche in Hektar eingeben. SiteIQ ruft automatisch GHI, Einstrahlung, Geländeübersicht, Hochwasserrisiko und Regulierungshinweise ab.',
@@ -820,7 +847,7 @@ var T = {
     'about.p2':'Unsere Tools sind gebaut, um Probleme zu lösen, die echte Projektstunden kosten — keine Features, die im Konferenzraum erfunden wurden. Das Ergebnis ist eine Plattform, die dieselbe Sprache spricht wie die Ingenieure, die sie nutzen.',
     'about.c1.h':'Speziell für Solar','about.c1.p':'Kein generisches GIS-Tool für Solar angepasst. Jedes Feature ist speziell für die solare Standortbewertung und -planung entwickelt.',
     'about.c2.h':'Europa & globale Märkte','about.c2.p':'Mit europäischen Solarmarkten im Fokus — Deutschland, Österreich, Schweiz, Spanien, Italien — aber mit globaler Datenabdeckung von Anfang an.',
-    'about.c3.h':'Schnell wachsend','about.c3.p':'SiteIQ und TopoIQ sind live. YieldIQ ist in Entwicklung. Die Roadmap wird durch echte Ingenieursanfragen gesteuert.',
+    'about.c3.h':'Schnell wachsend','about.c3.p':'SiteIQ, TopoIQ und YieldIQ sind live. Die Roadmap wird durch echte Ingenieursanfragen gesteuert.',
     'contact.label':'Kontakt','contact.title':'Kontakt aufnehmen.',
     'contact.sub':'Fragen zu Preisen, Zugang oder einem individuellen Enterprise-Plan? Wir antworten innerhalb eines Werktags.',
     'contact.info':'Solar-Standortintelligenz-Tools für EPCs, Projektentwickler und Ingenieurbüros weltweit.',
