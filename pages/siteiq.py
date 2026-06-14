@@ -1123,4 +1123,4 @@ with right:
                 f'</div>',
                 unsafe_allow_html=True
             )
-        st.caption("Data: PVGIS JRC · EU-DEM / SRTM via OpenTopoData · OpenStreetMap  |  SiteIQ by PVMath — Module 1 of 2 · pvmath.com")
+        st.caption("Data: PVGIS JRC · EU-DEM / SRTM via OpenTopoData · OpenStreetMap  |  SiteIQ by PVMath — Module 1 of 3 · pvmath.com")
