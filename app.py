@@ -69,11 +69,11 @@ with st.sidebar:
 _pages = [
     st.Page("pages/siteiq.py",  title="SiteIQ",  icon="🌍"),
     st.Page("pages/topoiq.py",  title="TopoIQ",  icon="⛰️"),
-    st.Page("pages/yieldiq.py", title="YieldIQ", icon="⚡"),
 ]
-# LayoutIQ — admin only, hidden from all other users
+# YieldIQ + LayoutIQ — admin only, hidden from all other users
 _ADMIN = {"ismailpasha747@gmail.com"}
 if st.session_state.get("pvm_email", "") in _ADMIN:
+    _pages.append(st.Page("pages/yieldiq.py",  title="YieldIQ",  icon="⚡"))
     _pages.append(st.Page("pages/layoutiq.py", title="LayoutIQ", icon="📐"))
 
 pg = st.navigation(_pages)
