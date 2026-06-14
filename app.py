@@ -67,7 +67,8 @@ with st.sidebar:
 
 # ── Navigation ────────────────────────────────────────────────────────────────
 pg = st.navigation([
-    st.Page("pages/siteiq.py",  title="SiteIQ",  icon="🌍"),
-    st.Page("pages/topoiq.py",  title="TopoIQ",  icon="⛰️"),
+    st.Page("pages/siteiq.py",   title="SiteIQ",   icon="🌍"),
+    st.Page("pages/topoiq.py",   title="TopoIQ",   icon="⛰️"),
+    st.Page("pages/yieldiq.py",  title="YieldIQ",  icon="⚡"),
 ])
 pg.run()
