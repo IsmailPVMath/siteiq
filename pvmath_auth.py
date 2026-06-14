@@ -67,6 +67,28 @@ def sign_out():
         st.session_state.pop(key, None)
 
 
+def reset_password_email(email: str) -> dict:
+    try:
+        sb = get_supabase()
+        sb.auth.reset_password_for_email(
+            email,
+            options={"redirect_to": "https://siteiq.pvmath.com/"}
+        )
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def update_password(access_token: str, refresh_token: str, new_password: str) -> dict:
+    try:
+        sb = get_supabase()
+        sb.auth.set_session(access_token, refresh_token)
+        sb.auth.update_user({"password": new_password})
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 # ── Admin check ───────────────────────────────────────────────
 def is_admin(user_id: str) -> bool:
     """Returns True if the user has the admin flag set in profiles."""
@@ -117,6 +139,57 @@ def remaining(user_id: str, app: str) -> int:
     return max(0, FREE_LIMIT - get_usage(user_id, app))
 
 
+# ── Password reset form ───────────────────────────────────────
+def _render_reset_password_form(access_token: str, refresh_token: str):
+    """Shown when user arrives via Supabase password-reset email link."""
+    st.markdown("""
+    <style>
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif !important; background-color: #f5f7f5 !important; }
+    [data-testid="stAppViewContainer"], [data-testid="stMain"], .main, .stApp { background-color: #f5f7f5 !important; }
+    #MainMenu { visibility: hidden !important; } footer { visibility: hidden !important; } header { visibility: hidden !important; }
+    .stButton > button {
+        background: linear-gradient(135deg, #1d9e52, #145f34) !important;
+        color: #fff !important; border: none !important; border-radius: 9px !important;
+        font-weight: 700 !important; width: 100% !important;
+    }
+    .stTextInput > div > input {
+        background: #ffffff !important; border: 1.5px solid #d4e0d4 !important; border-radius: 9px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="text-align:center;margin-top:3rem;margin-bottom:2rem;">
+      <span style="font-size:1.6rem;font-weight:800;color:#1a2e1a;letter-spacing:-0.03em;">Set new password</span><br>
+      <span style="font-size:0.85rem;color:#5a7a5a;">Choose a new password for your PVMath account.</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns([1, 1.4, 1])
+    with col2:
+        new_pass  = st.text_input("New password", type="password", key="reset_pass1", placeholder="Min. 8 characters")
+        new_pass2 = st.text_input("Confirm password", type="password", key="reset_pass2", placeholder="Repeat password")
+
+        if st.button("Update Password →", key="btn_reset"):
+            if not new_pass or not new_pass2:
+                st.error("Please enter and confirm your new password.")
+            elif len(new_pass) < 8:
+                st.error("Password must be at least 8 characters.")
+            elif new_pass != new_pass2:
+                st.error("Passwords do not match.")
+            elif not access_token:
+                st.error("Reset link is invalid or expired. Please request a new one.")
+            else:
+                with st.spinner("Updating password…"):
+                    result = update_password(access_token, refresh_token, new_pass)
+                if result["success"]:
+                    st.success("✅ Password updated! You can now log in with your new password.")
+                    # Clear recovery params
+                    st.query_params.clear()
+                else:
+                    st.error(f"Failed to update password: {result.get('error', 'Unknown error')}. The link may have expired — request a new reset email.")
+
+
 # ── Auth UI ───────────────────────────────────────────────────
 def render_auth_page(app_name: str = "PVMath"):
     """
@@ -128,6 +201,16 @@ def render_auth_page(app_name: str = "PVMath"):
     # Already logged in?
     if st.session_state.get("pvm_user_id"):
         return True
+
+    # ── Password recovery mode ─────────────────────────────────
+    # Supabase sends access_token in URL fragment (#); JS converts to query params
+    params = st.query_params
+    if params.get("type") == "recovery":
+        _render_reset_password_form(
+            params.get("access_token", ""),
+            params.get("refresh_token", "")
+        )
+        return False
 
     # ── Styles ────────────────────────────────────────────────
     st.markdown("""
@@ -247,6 +330,14 @@ def render_auth_page(app_name: str = "PVMath"):
     .auth-footer a { color: #1d9e52; text-decoration: none; font-weight: 600; }
     </style>
     <script>
+    // Convert Supabase recovery fragment (#access_token=...) to query params
+    (function() {
+      if (window.location.hash && window.location.hash.includes('type=recovery')) {
+        var params = new URLSearchParams(window.location.hash.slice(1));
+        window.location.replace(window.location.pathname + '?' + params.toString());
+      }
+    })();
+
     (function() {
       function killBadge() {
         // Target any fixed bottom-right element (Streamlit badge lives here)
@@ -351,6 +442,21 @@ def render_auth_page(app_name: str = "PVMath"):
                         st.warning("📬 Please confirm your email first. Check your inbox for the confirmation link, then try again.")
                     else:
                         st.error("Incorrect email or password.")
+
+            # ── Forgot password ───────────────────────────────
+            st.markdown("<div style='margin-top:0.5rem;'></div>", unsafe_allow_html=True)
+            if st.toggle("Forgot password?", key="toggle_forgot"):
+                forgot_email = st.text_input("Enter your account email", key="forgot_email", placeholder="you@company.com")
+                if st.button("Send Reset Link →", key="btn_forgot"):
+                    if not forgot_email:
+                        st.error("Please enter your email address.")
+                    else:
+                        with st.spinner("Sending reset email…"):
+                            result = reset_password_email(forgot_email)
+                        if result["success"]:
+                            st.success("✅ Reset link sent — check your inbox. Click the link and you'll be brought back here to set a new password.")
+                        else:
+                            st.error(f"Failed to send reset email: {result.get('error', 'Unknown error')}")
 
         st.markdown("""
         <div class="auth-footer">
