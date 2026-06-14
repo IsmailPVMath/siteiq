@@ -63,8 +63,9 @@ def sign_out():
         get_supabase().auth.sign_out()
     except Exception:
         pass
-    for key in ["pvm_user", "pvm_user_id", "pvm_email"]:
-        st.session_state.pop(key, None)
+    # Clear all session state so auth gate shows login screen
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
 
 
 def reset_password_email(email: str) -> dict:
