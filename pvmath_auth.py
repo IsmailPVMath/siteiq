@@ -137,15 +137,27 @@ def resend_confirmation(email: str) -> dict:
 
 # ── OTP email verification ────────────────────────────────────
 def _smtp_cfg():
-    """Return SMTP config from Streamlit secrets, or None if not configured."""
+    """Return SMTP config — checks env vars (Railway) then st.secrets (Streamlit Cloud)."""
+    def _get(key, fallback=None):
+        v = os.environ.get(key, "")
+        if v:
+            return v
+        try:
+            return st.secrets[key]
+        except Exception:
+            return fallback
+
+    host = _get("SMTP_HOST")
+    port = _get("SMTP_PORT")
+    user = _get("SMTP_USER")
+    pw   = _get("SMTP_PASS")
+    frm  = _get("SMTP_FROM", user)
+
+    if not all([host, port, user, pw]):
+        return None
+
     try:
-        return {
-            "host":     st.secrets["SMTP_HOST"],
-            "port":     int(st.secrets["SMTP_PORT"]),
-            "user":     st.secrets["SMTP_USER"],
-            "password": st.secrets["SMTP_PASS"],
-            "from":     st.secrets.get("SMTP_FROM", st.secrets["SMTP_USER"]),
-        }
+        return {"host": host, "port": int(port), "user": user, "password": pw, "from": frm}
     except Exception:
         return None
 
