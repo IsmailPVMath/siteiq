@@ -13,13 +13,11 @@ import os
 import smtplib
 import secrets
 import time
-from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 import requests as _req
 import streamlit as st
-import extra_streamlit_components as stx
 
 # ── Config ────────────────────────────────────────────────────
 FREE_LIMIT   = 5
@@ -122,10 +120,9 @@ def sign_out():
                       headers=_auth_hdr(token), timeout=10)
     except Exception:
         pass
-    # Clear the persistent cookie
+    # Clear the session token from URL params
     try:
-        cm = stx.CookieManager(key="pvm_cookie_mgr")
-        cm.delete("pvm_rt")
+        st.query_params.clear()
     except Exception:
         pass
     for key in list(st.session_state.keys()):
@@ -457,24 +454,20 @@ def render_auth_page(app_name: str = "PVMath"):
     Call at the top of each Streamlit app.
     """
 
-    # ── Cookie manager — must be instantiated every run before any st.stop() ──
-    _cm = stx.CookieManager(key="pvm_cookie_mgr")
-
-    # ── Auto-restore session from stored refresh token (survives refresh/back) ──
+    # ── Auto-restore session from URL param (survives browser refresh / back) ──
     if not st.session_state.get("pvm_user_id"):
-        _stored_rt = _cm.get("pvm_rt")
+        _stored_rt = st.query_params.get("s", "")
         if _stored_rt:
             _restored = _refresh_session(_stored_rt)
             if _restored.get("success"):
                 st.session_state["pvm_user_id"]      = _restored["user_id"]
                 st.session_state["pvm_email"]        = _restored["email"]
                 st.session_state["pvm_access_token"] = _restored["access_token"]
-                # Refresh the cookie with the new token
-                _cm.set("pvm_rt", _restored["refresh_token"],
-                        expires_at=datetime.now() + timedelta(days=30))
+                # Update param with rotated refresh token
+                st.query_params["s"] = _restored["refresh_token"]
             else:
-                # Token expired / revoked — clear it
-                _cm.delete("pvm_rt")
+                # Token expired — clear it
+                st.query_params.clear()
 
     # Already logged in?
     if st.session_state.get("pvm_user_id"):
@@ -503,7 +496,6 @@ def render_auth_page(app_name: str = "PVMath"):
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
         html,body,[class*="css"]{font-family:'Inter',sans-serif!important;background:#f5f7f5!important;}
         [data-testid="stAppViewContainer"],[data-testid="stMain"],.main,.stApp{background:#f5f7f5!important;}
-        section[data-testid="stSidebar"]{width:0!important;min-width:0!important;}
         #MainMenu,footer,header{visibility:hidden!important;}
         .block-container{padding-top:0!important;max-width:100%!important;}
         .stButton>button{
@@ -613,8 +605,7 @@ def render_auth_page(app_name: str = "PVMath"):
                                     st.session_state["pvm_email"]        = result["user"].get("email")
                                     st.session_state["pvm_access_token"] = result.get("access_token", "")
                                     if result.get("refresh_token"):
-                                        _cm.set("pvm_rt", result["refresh_token"],
-                                                expires_at=datetime.now() + timedelta(days=30))
+                                        st.query_params["s"] = result["refresh_token"]
                                     st.rerun()
                                 else:
                                     st.error("Login error — please contact support.")
@@ -693,8 +684,6 @@ def render_auth_page(app_name: str = "PVMath"):
     }
 
 
-    /* Collapse sidebar to zero-width during auth */
-    section[data-testid="stSidebar"] { width: 0 !important; min-width: 0 !important; }
 
 
     /* Full page centering */
@@ -864,8 +853,7 @@ def render_auth_page(app_name: str = "PVMath"):
                             st.session_state["pvm_email"]        = result["user"].get("email") or reg_email
                             st.session_state["pvm_access_token"] = result["access_token"]
                             if result.get("refresh_token"):
-                                _cm.set("pvm_rt", result["refresh_token"],
-                                        expires_at=datetime.now() + timedelta(days=30))
+                                st.query_params["s"] = result["refresh_token"]
                         else:
                             # Fallback: sign in with password
                             _r = sign_in(reg_email, reg_pass)
@@ -874,8 +862,7 @@ def render_auth_page(app_name: str = "PVMath"):
                                 st.session_state["pvm_email"]        = _r["user"].get("email")
                                 st.session_state["pvm_access_token"] = _r.get("access_token", "")
                                 if _r.get("refresh_token"):
-                                    _cm.set("pvm_rt", _r["refresh_token"],
-                                            expires_at=datetime.now() + timedelta(days=30))
+                                    st.query_params["s"] = _r["refresh_token"]
                         st.rerun()
                     else:
                         err = result.get("error", "")
@@ -903,8 +890,7 @@ def render_auth_page(app_name: str = "PVMath"):
                         st.session_state["pvm_email"]        = result["user"].get("email")
                         st.session_state["pvm_access_token"] = result.get("access_token", "")
                         if result.get("refresh_token"):
-                            _cm.set("pvm_rt", result["refresh_token"],
-                                    expires_at=datetime.now() + timedelta(days=30))
+                            st.query_params["s"] = result["refresh_token"]
                         st.rerun()
                     elif result.get("error") == "email_not_confirmed":
                         # Shouldn't happen with email confirmation disabled,
