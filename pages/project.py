@@ -185,37 +185,51 @@ if show_form:
 
     # ── Mode selector ─────────────────────────────────────────────────────────
     st.markdown("**Analysis Mode**")
-    mode_col1, mode_col2 = st.columns(2)
-    current_mode = proj.get("mode", "quick")
+    # Use session state so clicking a card button persists across reruns
+    if "proj_mode_sel" not in st.session_state:
+        st.session_state["proj_mode_sel"] = proj.get("mode", "quick")
+    current_mode = st.session_state["proj_mode_sel"]
 
+    mode_col1, mode_col2 = st.columns(2)
     with mode_col1:
-        quick_active = "active" if current_mode == "quick" else ""
+        is_q = current_mode == "quick"
         st.markdown(f"""
-        <div class="proj-mode-card {quick_active}">
-          <h4>⚡ Quick Mode — Pin Drop</h4>
-          <p>Drop a pin on the map. Enables <strong>SiteIQ</strong> and <strong>YieldIQ</strong>.
-          Ideal for rapid pre-screening in client meetings. Under 2 minutes.</p>
+        <div style="border:2px solid {'#1d9e52' if is_q else '#e0e8e0'};border-radius:12px;
+                    padding:1rem 1.2rem;background:{'#f0faf5' if is_q else '#fff'};
+                    min-height:90px;">
+          <h4 style="margin:0 0 0.3rem 0;font-size:1rem;font-weight:700;color:#1a2e1a;">
+            ⚡ Quick Mode — Pin Drop</h4>
+          <p style="margin:0;font-size:0.84rem;color:#5a7a5a;line-height:1.5;">
+            Drop a pin on the map. Enables <strong>SiteIQ</strong> and <strong>YieldIQ</strong>.
+            Ideal for rapid pre-screening. Under 2 minutes.</p>
         </div>
         """, unsafe_allow_html=True)
+        if st.button("✓ Select Quick Mode" if is_q else "Select Quick Mode",
+                     key="btn_mode_quick", use_container_width=True,
+                     type="primary" if is_q else "secondary"):
+            st.session_state["proj_mode_sel"] = "quick"
+            st.rerun()
 
     with mode_col2:
-        full_active = "active" if current_mode == "full" else ""
+        is_f = current_mode == "full"
         st.markdown(f"""
-        <div class="proj-mode-card {full_active}">
-          <h4>🗺️ Full Mode — Site Boundary</h4>
-          <p>Draw the site boundary polygon. Enables <strong>all 3 modules</strong> including
-          <strong>TopoIQ</strong> terrain extraction. Recommended for engineering work.</p>
+        <div style="border:2px solid {'#1d9e52' if is_f else '#e0e8e0'};border-radius:12px;
+                    padding:1rem 1.2rem;background:{'#f0faf5' if is_f else '#fff'};
+                    min-height:90px;">
+          <h4 style="margin:0 0 0.3rem 0;font-size:1rem;font-weight:700;color:#1a2e1a;">
+            🗺️ Full Mode — Site Boundary</h4>
+          <p style="margin:0;font-size:0.84rem;color:#5a7a5a;line-height:1.5;">
+            Draw the site boundary polygon. Enables <strong>all 3 modules</strong> including
+            <strong>TopoIQ</strong> terrain extraction. For engineering work.</p>
         </div>
         """, unsafe_allow_html=True)
+        if st.button("✓ Select Full Mode" if is_f else "Select Full Mode",
+                     key="btn_mode_full", use_container_width=True,
+                     type="primary" if is_f else "secondary"):
+            st.session_state["proj_mode_sel"] = "full"
+            st.rerun()
 
-    mode = st.radio(
-        "Select mode",
-        ["⚡ Quick Mode (pin drop)", "🗺️ Full Mode (draw site boundary)"],
-        index=0 if current_mode == "quick" else 1,
-        label_visibility="collapsed",
-        horizontal=True,
-    )
-    is_full = "Full" in mode
+    is_full = current_mode == "full"
 
     st.divider()
 

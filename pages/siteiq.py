@@ -764,10 +764,13 @@ if _has_proj:
       &nbsp;·&nbsp; {_proj_lat:.5f}°N, {_proj_lon:.5f}°E
     </div>
     """, unsafe_allow_html=True)
-    # Pre-centre the map on the project location (only if no map interaction yet)
+    # Pre-centre the map and pre-populate coordinates from project context
     if "map_center" not in st.session_state:
         st.session_state["map_center"] = [_proj_lat, _proj_lon]
         st.session_state["map_zoom"]   = 13
+    if "map_lat" not in st.session_state:
+        st.session_state["map_lat"] = _proj_lat
+        st.session_state["map_lon"] = _proj_lon
 
 pd_col1, pd_col2 = st.columns(2)
 with pd_col1:
