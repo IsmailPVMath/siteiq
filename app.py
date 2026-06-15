@@ -142,4 +142,48 @@ with st.sidebar:
     if _user_email in _ADMIN:
         st.page_link("pages/_layoutiq.py", label="LayoutIQ", icon="📐")
 
+# ── Top-bar: account chip + sign-out (always visible even if sidebar collapsed) ──
+_tb_email = st.session_state.get("pvm_email", "")
+if _tb_email:
+    st.markdown("""
+    <style>
+    .pvm-topbar {
+        display: flex; justify-content: flex-end; align-items: center;
+        gap: 0.6rem; padding: 0.3rem 0 0.5rem 0; margin-bottom: 0.2rem;
+    }
+    .pvm-topbar-email {
+        font-size: 0.78rem; font-weight: 600; color: #4a6a4a;
+        background: #f0faf5; border: 1px solid #b2dfca;
+        border-radius: 20px; padding: 0.22rem 0.75rem;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        max-width: 220px;
+    }
+    /* Style the sign-out button inline with the chip */
+    div[data-testid="stButton"].pvm-signout-btn > button {
+        font-size: 0.78rem !important; font-weight: 600 !important;
+        padding: 0.2rem 0.75rem !important; border-radius: 20px !important;
+        border: 1px solid #e0d0c0 !important;
+        background: #fff8f5 !important; color: #8a4a2a !important;
+        line-height: 1.4 !important; height: auto !important;
+    }
+    div[data-testid="stButton"].pvm-signout-btn > button:hover {
+        background: #e53935 !important; color: #fff !important;
+        border-color: #e53935 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    _tb_l, _tb_r = st.columns([7, 3])
+    with _tb_r:
+        _chip_col, _btn_col = st.columns([3, 2])
+        with _chip_col:
+            st.markdown(f'<div class="pvm-topbar-email">👤 {_tb_email}</div>',
+                        unsafe_allow_html=True)
+        with _btn_col:
+            st.markdown('<div class="pvm-signout-btn">', unsafe_allow_html=True)
+            if st.button("Sign out", key="topbar_signout"):
+                sign_out()
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+
 pg.run()
