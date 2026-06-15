@@ -125,7 +125,19 @@ st.markdown("""
 # SHOW CURRENT PROJECT BANNER (if already set)
 # ─────────────────────────────────────────────────────────────────────────────
 proj = st.session_state.get("pvm_project", {})
+
+# Pre-seed pin state from saved project so "Proceed" works without re-clicking map
+if proj.get("lat") and proj.get("lon"):
+    if "proj_pin_lat" not in st.session_state:
+        st.session_state["proj_pin_lat"] = proj["lat"]
+        st.session_state["proj_pin_lon"] = proj["lon"]
+    if "proj_map_center" not in st.session_state:
+        st.session_state["proj_map_center"] = [proj["lat"], proj["lon"]]
+        st.session_state["proj_map_zoom"]   = 13
+
+# Show compact status banner + quick-launch buttons if project already exists
 if proj.get("lat"):
+    topo_ok = proj.get("mode") == "full" and proj.get("polygon_coords")
     mode_badge = "⚡ Quick Mode" if proj.get("mode") == "quick" else "🗺️ Full Mode"
     boundary_info = f" · {proj.get('area_ha', '—')} ha" if proj.get("area_ha") else ""
     st.markdown(f"""
@@ -138,35 +150,26 @@ if proj.get("lat"):
     </div>
     """, unsafe_allow_html=True)
 
-    nav_c1, nav_c2, nav_c3, nav_c4 = st.columns(4)
+    nav_c1, nav_c2, nav_c3 = st.columns(3)
     with nav_c1:
         if st.button("🌍 Open SiteIQ", use_container_width=True, type="primary"):
             st.switch_page("pages/siteiq.py")
     with nav_c2:
-        yiq_disabled = False
         if st.button("⚡ Open YieldIQ", use_container_width=True):
             st.switch_page("pages/yieldiq.py")
     with nav_c3:
-        topo_ok = proj.get("mode") == "full" and proj.get("polygon_coords")
-        topo_label = "⛰️ Open TopoIQ" if topo_ok else "⛰️ TopoIQ (needs boundary)"
+        topo_label = "⛰️ Open TopoIQ" if topo_ok else "⛰️ TopoIQ (needs Full Mode boundary)"
         if st.button(topo_label, use_container_width=True, disabled=not topo_ok):
             st.switch_page("pages/topoiq.py")
-    with nav_c4:
-        if st.button("✏️ Edit Project", use_container_width=True):
-            st.session_state["proj_edit_mode"] = True
-            st.rerun()
 
-    if not st.session_state.get("proj_edit_mode", False):
-        if not topo_ok:
-            st.info("⛰️ **TopoIQ requires Full Mode:** Switch to Full Mode below and draw the site boundary to enable terrain analysis.")
-        st.divider()
+    if not topo_ok:
+        st.caption("⛰️ TopoIQ requires Full Mode with a drawn site boundary — update project below.")
+    st.divider()
 
 # ─────────────────────────────────────────────────────────────────────────────
-# SETUP FORM
+# SETUP FORM — always visible so project can be updated at any time
 # ─────────────────────────────────────────────────────────────────────────────
-show_form = not proj.get("lat") or st.session_state.get("proj_edit_mode", False)
-
-if show_form:
+if True:
     # ── Project name + country ────────────────────────────────────────────────
     f1, f2 = st.columns(2)
     with f1:
@@ -247,7 +250,9 @@ if show_form:
     )
     _is_map = loc_method.startswith("🗺️")
 
-    lat = lon = None
+    # Pre-fill from existing project so Proceed works without re-interacting with map
+    lat = proj.get("lat")
+    lon = proj.get("lon")
     # Read polygon from session draft first (survives reruns), else from saved project
     polygon_coords = st.session_state.get("proj_polygon_draft", proj.get("polygon_coords"))
 
