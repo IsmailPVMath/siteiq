@@ -128,11 +128,12 @@ if proj.get("lat") is not None and proj.get("lon") is not None:
         st.session_state["proj_map_center"] = [proj["lat"], proj["lon"]]
         st.session_state["proj_map_zoom"]   = 13
 
-# Compact status bar + equal launch buttons if project already exists
+# Compact status bar + equal launch buttons — shown only after a project has been saved
 if proj.get("lat") is not None:
-    topo_ok  = proj.get("mode") == "full" and proj.get("polygon_coords")
-    mode_str = "Quick Mode" if proj.get("mode") == "quick" else "Full Mode"
-    area_str = f" · {proj.get('area_ha')} ha" if proj.get("area_ha") else ""
+    _is_quick = proj.get("mode") == "quick"
+    topo_ok   = (not _is_quick) and bool(proj.get("polygon_coords"))
+    mode_str  = "Quick Mode" if _is_quick else "Full Mode"
+    area_str  = f" · {proj.get('area_ha')} ha" if proj.get("area_ha") else ""
 
     st.markdown(f"""
     <div style="background:#f0faf5;border:1.5px solid #b2dfca;border-radius:10px;
@@ -154,12 +155,19 @@ if proj.get("lat") is not None:
         if st.button("⚡ YieldIQ", use_container_width=True):
             st.switch_page("pages/yieldiq.py")
     with _nc3:
-        _topo_lbl = "⛰️ TopoIQ" if topo_ok else "⛰️ TopoIQ — needs boundary"
+        if _is_quick:
+            _topo_lbl = "⛰️ TopoIQ — Full Mode only"
+        elif not topo_ok:
+            _topo_lbl = "⛰️ TopoIQ — needs boundary"
+        else:
+            _topo_lbl = "⛰️ TopoIQ"
         if st.button(_topo_lbl, use_container_width=True, disabled=not topo_ok):
             st.switch_page("pages/topoiq.py")
 
-    if not topo_ok:
-        st.caption("TopoIQ requires Full Mode with a drawn boundary. Update project below.")
+    if _is_quick:
+        st.caption("TopoIQ is only available in Full Mode with a drawn site boundary.")
+    elif not topo_ok:
+        st.caption("TopoIQ requires a drawn site boundary. Update project below to add one.")
     st.divider()
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -347,10 +355,14 @@ if True:
             map_result = st_folium(m, width=None, height=420,
                                    returned_objects=["all_drawings"], key="proj_map_full")
 
-            # Extract polygon from drawings and persist to session state draft
-            # (do NOT rerun — let map remain stable while drawing)
+            # Extract polygon from drawings and persist to session state draft.
+            # NOTE: The static folium.Polygon re-added on reruns is NOT a Draw layer —
+            # the map toolbar's delete button cannot select it. Deletion is handled via
+            # the "Clear Boundary" button below, or by using the draw tool to redraw.
             if map_result:
-                drawings = map_result.get("all_drawings") or []
+                raw_drawings = map_result.get("all_drawings")
+                drawings = raw_drawings if isinstance(raw_drawings, list) else []
+                polygon_found = False
                 for drawing in drawings:
                     geom = drawing.get("geometry", {})
                     if geom.get("type") == "Polygon":
@@ -361,7 +373,17 @@ if True:
                         _clat, _clon = centroid_of(_poly)
                         st.session_state["proj_pin_lat"] = _clat
                         st.session_state["proj_pin_lon"] = _clon
+                        polygon_found = True
                         break
+                # If the Draw toolbar delete was used in THIS interaction (empty list returned
+                # but we had a draft), clear it so the polygon disappears.
+                if isinstance(raw_drawings, list) and not polygon_found and \
+                        st.session_state.get("proj_polygon_draft"):
+                    st.session_state.pop("proj_polygon_draft", None)
+                    st.session_state.pop("proj_pin_lat", None)
+                    st.session_state.pop("proj_pin_lon", None)
+                    polygon_coords = None
+                    st.rerun()
 
             # Show result or prompt
             if polygon_coords and len(polygon_coords) >= 3:
@@ -369,7 +391,16 @@ if True:
                 lon = st.session_state.get("proj_pin_lon")
                 if lat is not None and lon is not None:
                     area_from_poly = polygon_area_ha(polygon_coords)
-                    st.success(f"✅ Boundary drawn · Centroid: {lat:.5f}°N, {lon:.5f}°E · Area: **{area_from_poly} ha**")
+                    _ps1, _ps2 = st.columns([4, 1])
+                    with _ps1:
+                        st.success(f"✅ Boundary drawn · Centroid: {lat:.5f}°N, {lon:.5f}°E · Area: **{area_from_poly} ha**")
+                    with _ps2:
+                        if st.button("🗑️ Clear", use_container_width=True,
+                                     help="Remove the drawn boundary and start over"):
+                            st.session_state.pop("proj_polygon_draft", None)
+                            st.session_state.pop("proj_pin_lat", None)
+                            st.session_state.pop("proj_pin_lon", None)
+                            st.rerun()
             else:
                 st.markdown(
                     '<div style="background:#7a4800;color:#fff;border-radius:7px;padding:0.4rem 0.8rem;'
@@ -423,7 +454,7 @@ if True:
     st.markdown("")
     save_c1, save_c2 = st.columns([1, 3])
     with save_c1:
-        save_clicked = st.button("Proceed →", type="primary", use_container_width=True)
+        save_clicked = st.button("💾 Save Project", type="primary", use_container_width=True)
 
     if save_clicked:
         if lat is None or lon is None:
