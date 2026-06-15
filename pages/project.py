@@ -92,13 +92,6 @@ div[data-testid="stButton"] > button[kind="primary"] {
 .proj-mode-card.active { border-color: #1d9e52; box-shadow: 0 0 0 3px rgba(29,158,82,.12); }
 .proj-mode-card h4 { margin: 0 0 0.3rem 0; font-size: 1rem; font-weight: 700; color: #1a2e1a; }
 .proj-mode-card p  { margin: 0; font-size: 0.84rem; color: #5a7a5a; line-height: 1.5; }
-.project-banner {
-    background: linear-gradient(135deg, #1d9e52, #145f34);
-    border-radius: 12px; padding: 1.2rem 1.6rem; color: #fff;
-    display: flex; align-items: center; gap: 1.2rem; margin-bottom: 1.5rem;
-}
-.project-banner h3 { margin: 0; font-size: 1.1rem; font-weight: 800; letter-spacing: -0.02em; }
-.project-banner p  { margin: 0.2rem 0 0 0; font-size: 0.85rem; opacity: 0.85; }
 .module-btn {
     display: inline-block; padding: 0.55rem 1.1rem; border-radius: 8px;
     font-weight: 700; font-size: 0.88rem; text-decoration: none;
@@ -114,7 +107,7 @@ st.markdown("""
 <div style="padding:1.5rem 0 0.5rem 0;border-bottom:2px solid #e8f5ee;margin-bottom:1.5rem;">
   <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;
               letter-spacing:0.12em;color:#1d9e52;margin-bottom:0.3rem;">Project Setup</div>
-  <h1 style="font-size:2rem;font-weight:800;color:#1a2e1a;margin:0 0 0.3rem 0;">📋 New Project</h1>
+  <h1 style="font-size:2rem;font-weight:800;color:#1a2e1a;margin:0 0 0.3rem 0;">📋 Project Setup</h1>
   <p style="color:#5a7a5a;font-size:1rem;margin:0;">
     Enter project details once — SiteIQ, TopoIQ, and YieldIQ will use this context automatically.
   </p>
@@ -135,35 +128,38 @@ if proj.get("lat") and proj.get("lon"):
         st.session_state["proj_map_center"] = [proj["lat"], proj["lon"]]
         st.session_state["proj_map_zoom"]   = 13
 
-# Show compact status banner + quick-launch buttons if project already exists
+# Compact status bar + equal launch buttons if project already exists
 if proj.get("lat"):
-    topo_ok = proj.get("mode") == "full" and proj.get("polygon_coords")
-    mode_badge = "⚡ Quick Mode" if proj.get("mode") == "quick" else "🗺️ Full Mode"
-    boundary_info = f" · {proj.get('area_ha', '—')} ha" if proj.get("area_ha") else ""
+    topo_ok  = proj.get("mode") == "full" and proj.get("polygon_coords")
+    mode_str = "Quick Mode" if proj.get("mode") == "quick" else "Full Mode"
+    area_str = f" · {proj.get('area_ha')} ha" if proj.get("area_ha") else ""
+
     st.markdown(f"""
-    <div class="project-banner">
-      <div style="font-size:2rem;">✅</div>
-      <div>
-        <h3>{proj.get('name', 'Unnamed Project')}</h3>
-        <p>{proj.get('country', '')} · {proj.get('lat', 0):.5f}°N, {proj.get('lon', 0):.5f}°E{boundary_info} · {mode_badge}</p>
-      </div>
+    <div style="background:#f0faf5;border:1.5px solid #b2dfca;border-radius:10px;
+                padding:0.65rem 1rem;margin-bottom:0.6rem;">
+      <span style="color:#1d9e52;font-size:0.8rem;">●</span>
+      &nbsp;<strong style="color:#1a2e1a;font-size:0.9rem;">{proj.get('name', 'Project')}</strong>
+      <span style="color:#5a7a5a;font-size:0.85rem;">
+        &nbsp;·&nbsp;{proj.get('country', '')}
+        &nbsp;·&nbsp;{mode_str}{area_str}
+      </span>
     </div>
     """, unsafe_allow_html=True)
 
-    nav_c1, nav_c2, nav_c3 = st.columns(3)
-    with nav_c1:
-        if st.button("🌍 Open SiteIQ", use_container_width=True, type="primary"):
+    _nc1, _nc2, _nc3 = st.columns(3)
+    with _nc1:
+        if st.button("🌍 SiteIQ", use_container_width=True):
             st.switch_page("pages/siteiq.py")
-    with nav_c2:
-        if st.button("⚡ Open YieldIQ", use_container_width=True):
+    with _nc2:
+        if st.button("⚡ YieldIQ", use_container_width=True):
             st.switch_page("pages/yieldiq.py")
-    with nav_c3:
-        topo_label = "⛰️ Open TopoIQ" if topo_ok else "⛰️ TopoIQ (needs Full Mode boundary)"
-        if st.button(topo_label, use_container_width=True, disabled=not topo_ok):
+    with _nc3:
+        _topo_lbl = "⛰️ TopoIQ" if topo_ok else "⛰️ TopoIQ — needs boundary"
+        if st.button(_topo_lbl, use_container_width=True, disabled=not topo_ok):
             st.switch_page("pages/topoiq.py")
 
     if not topo_ok:
-        st.caption("⛰️ TopoIQ requires Full Mode with a drawn site boundary — update project below.")
+        st.caption("TopoIQ requires Full Mode with a drawn boundary. Update project below.")
     st.divider()
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -430,7 +426,7 @@ if True:
         save_clicked = st.button("Proceed →", type="primary", use_container_width=True)
 
     if save_clicked:
-        if not lat or not lon:
+        if lat is None or lon is None:
             st.error("Please select a site location before saving.")
         elif not proj_name.strip():
             st.error("Please enter a project name.")
@@ -456,7 +452,7 @@ if True:
             for key in ["map_center", "map_zoom", "map_lat", "map_lon", "last_map_search",
                         "proj_polygon_draft"]:
                 st.session_state.pop(key, None)
-            st.success(f"✅ Project saved — **{proj_name.strip()}** · {mode_val.title()} Mode")
+            st.toast(f"✅ Project saved — {proj_name.strip()} · {mode_val.title()} Mode", icon="✅")
             st.rerun()
 
 # ─────────────────────────────────────────────────────────────────────────────
