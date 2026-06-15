@@ -16,70 +16,113 @@ import time
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+import requests as _req
 import streamlit as st
-from supabase import create_client, Client
 
 # ── Config ────────────────────────────────────────────────────
 FREE_LIMIT   = 5
 STRIPE_LINK  = "https://buy.stripe.com/YOUR_LINK_HERE"
 PRICE_LABEL  = "€99 / month"
 
-# ── Supabase client (cached) ──────────────────────────────────
-@st.cache_resource
-def get_supabase() -> Client:
-    # Try os.environ first (Railway), fall back to st.secrets (Streamlit Cloud)
-    url = os.environ.get("SUPABASE_URL", "")
-    key = os.environ.get("SUPABASE_KEY", "")
-    if not url or not key:
-        try:
-            url = url or st.secrets["SUPABASE_URL"]
-            key = key or st.secrets["SUPABASE_KEY"]
-        except Exception:
-            pass
-    if not url or not key:
-        st.error("⚠️ Supabase credentials missing.")
+# ── Supabase helpers (direct REST — no supabase-py) ───────────
+def _sb_url() -> str:
+    v = os.environ.get("SUPABASE_URL", "")
+    if not v:
+        try: v = st.secrets["SUPABASE_URL"]
+        except Exception: pass
+    if not v:
+        st.error("⚠️ SUPABASE_URL missing from secrets.")
         st.stop()
-    return create_client(url, key)
+    return v.rstrip("/")
+
+def _sb_key() -> str:
+    v = os.environ.get("SUPABASE_KEY", "")
+    if not v:
+        try: v = st.secrets["SUPABASE_KEY"]
+        except Exception: pass
+    if not v:
+        st.error("⚠️ SUPABASE_KEY missing from secrets.")
+        st.stop()
+    return v
+
+def _auth_hdr(token: str = "") -> dict:
+    """Headers for /auth/v1 endpoints."""
+    h = {"apikey": _sb_key(), "Content-Type": "application/json"}
+    if token:
+        h["Authorization"] = f"Bearer {token}"
+    return h
+
+def _db_hdr() -> dict:
+    """Headers for /rest/v1 DB endpoints (uses stored user token for RLS)."""
+    key = _sb_key()
+    token = st.session_state.get("pvm_access_token", "") or key
+    return {
+        "apikey": key,
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+
+def _parse_err(r: _req.Response) -> str:
+    try:
+        d = r.json()
+        return d.get("msg") or d.get("message") or d.get("error_description") or d.get("error") or str(d)
+    except Exception:
+        return r.text or f"HTTP {r.status_code}"
 
 
-# ── Auth functions ────────────────────────────────────────────
+# ── Auth functions (direct REST — no supabase-py) ─────────────
 def sign_up(email: str, password: str) -> dict:
     try:
-        sb = get_supabase()
-        res = sb.auth.sign_up({"email": email, "password": password})
-        return {"success": True, "user": res.user}
+        r = _req.post(f"{_sb_url()}/auth/v1/signup",
+                      json={"email": email, "password": password},
+                      headers=_auth_hdr(), timeout=15)
+        if r.status_code in (200, 201):
+            data = r.json()
+            if data.get("id"):
+                return {"success": True, "user": data}
+        return {"success": False, "error": _parse_err(r)}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
 
 def sign_in(email: str, password: str) -> dict:
     try:
-        sb = get_supabase()
-        res = sb.auth.sign_in_with_password({"email": email, "password": password})
-        return {"success": True, "user": res.user, "session": res.session}
-    except Exception as e:
-        msg = str(e)
-        if "Email not confirmed" in msg:
+        r = _req.post(f"{_sb_url()}/auth/v1/token?grant_type=password",
+                      json={"email": email, "password": password},
+                      headers=_auth_hdr(), timeout=15)
+        if r.status_code == 200:
+            data = r.json()
+            if data.get("access_token"):
+                return {"success": True, "user": data.get("user", {}),
+                        "access_token": data["access_token"],
+                        "refresh_token": data.get("refresh_token", "")}
+        err = _parse_err(r)
+        if "not confirmed" in err.lower() or "email_not_confirmed" in err.lower():
             return {"success": False, "error": "email_not_confirmed"}
-        return {"success": False, "error": msg}
+        return {"success": False, "error": err}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 def sign_out():
     try:
-        get_supabase().auth.sign_out()
+        token = st.session_state.get("pvm_access_token", "")
+        if token:
+            _req.post(f"{_sb_url()}/auth/v1/logout",
+                      headers=_auth_hdr(token), timeout=10)
     except Exception:
         pass
-    # Clear all session state so auth gate shows login screen
     for key in list(st.session_state.keys()):
         del st.session_state[key]
 
 
 def resend_confirmation(email: str) -> dict:
-    """Resend Supabase signup confirmation email."""
     try:
-        sb = get_supabase()
-        sb.auth.resend({"type": "signup", "email": email})
-        return {"success": True}
+        r = _req.post(f"{_sb_url()}/auth/v1/resend",
+                      json={"type": "signup", "email": email},
+                      headers=_auth_hdr(), timeout=15)
+        return {"success": True} if r.status_code in (200, 204) \
+               else {"success": False, "error": _parse_err(r)}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -165,33 +208,35 @@ def send_otp_email(to_email: str, otp: str) -> dict:
 
 def reset_password_email(email: str) -> dict:
     try:
-        sb = get_supabase()
-        sb.auth.reset_password_for_email(
-            email,
-            options={"redirect_to": "https://siteiq.pvmath.com/"}
-        )
-        return {"success": True}
+        r = _req.post(f"{_sb_url()}/auth/v1/recover",
+                      json={"email": email},
+                      params={"redirect_to": "https://siteiq.pvmath.com/"},
+                      headers=_auth_hdr(), timeout=15)
+        return {"success": True} if r.status_code in (200, 204) \
+               else {"success": False, "error": _parse_err(r)}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
 
 def update_password(access_token: str, refresh_token: str, new_password: str) -> dict:
     try:
-        sb = get_supabase()
-        sb.auth.set_session(access_token, refresh_token)
-        sb.auth.update_user({"password": new_password})
-        return {"success": True}
+        r = _req.put(f"{_sb_url()}/auth/v1/user",
+                     json={"password": new_password},
+                     headers=_auth_hdr(access_token), timeout=15)
+        return {"success": True} if r.status_code == 200 \
+               else {"success": False, "error": _parse_err(r)}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
 
 # ── Admin check ───────────────────────────────────────────────
 def is_admin(user_id: str) -> bool:
-    """Returns True if the user has the admin flag set in profiles."""
     try:
-        sb = get_supabase()
-        res = sb.table("profiles").select("is_admin").eq("id", user_id).execute()
-        return res.data[0]["is_admin"] if res.data else False
+        r = _req.get(f"{_sb_url()}/rest/v1/profiles",
+                     params={"id": f"eq.{user_id}", "select": "is_admin"},
+                     headers=_db_hdr(), timeout=10)
+        data = r.json()
+        return bool(data[0]["is_admin"]) if data else False
     except Exception:
         return False
 
@@ -199,23 +244,27 @@ def is_admin(user_id: str) -> bool:
 # ── Usage tracking ────────────────────────────────────────────
 def get_usage(user_id: str, app: str) -> int:
     try:
-        sb = get_supabase()
-        res = sb.table("usage_tracking").select("count").eq("user_id", user_id).eq("app", app).execute()
-        return res.data[0]["count"] if res.data else 0
+        r = _req.get(f"{_sb_url()}/rest/v1/usage_tracking",
+                     params={"user_id": f"eq.{user_id}", "app": f"eq.{app}", "select": "count"},
+                     headers=_db_hdr(), timeout=10)
+        data = r.json()
+        return data[0]["count"] if data else 0
     except Exception:
         return 0
 
 
 def increment_usage(user_id: str, app: str) -> int:
-    """Increments usage counter. Admins are tracked but never blocked."""
     try:
-        sb = get_supabase()
         current = get_usage(user_id, app)
         new_count = current + 1
+        base = f"{_sb_url()}/rest/v1/usage_tracking"
         if current == 0:
-            sb.table("usage_tracking").insert({"user_id": user_id, "app": app, "count": 1}).execute()
+            _req.post(base, json={"user_id": user_id, "app": app, "count": 1},
+                      headers=_db_hdr(), timeout=10)
         else:
-            sb.table("usage_tracking").update({"count": new_count}).eq("user_id", user_id).eq("app", app).execute()
+            _req.patch(base, json={"count": new_count},
+                       params={"user_id": f"eq.{user_id}", "app": f"eq.{app}"},
+                       headers=_db_hdr(), timeout=10)
         return new_count
     except Exception:
         return 0
@@ -296,12 +345,13 @@ def render_auth_page(app_name: str = "PVMath"):
 
     # Already logged in?
     if st.session_state.get("pvm_user_id"):
-        # Backfill pvm_email if missing (old sessions before email was stored)
         if not st.session_state.get("pvm_email"):
             try:
-                user = get_supabase().auth.get_user()
-                if user and user.user:
-                    st.session_state["pvm_email"] = user.user.email
+                token = st.session_state.get("pvm_access_token", "")
+                r = _req.get(f"{_sb_url()}/auth/v1/user",
+                             headers=_auth_hdr(token), timeout=10)
+                if r.status_code == 200:
+                    st.session_state["pvm_email"] = r.json().get("email", "")
             except Exception:
                 pass
         return True
@@ -414,8 +464,9 @@ def render_auth_page(app_name: str = "PVMath"):
                                           "pvm_otp_password", "pvm_otp_code",
                                           "pvm_otp_expiry", "pvm_otp_attempts"]:
                                     st.session_state.pop(k, None)
-                                st.session_state["pvm_user_id"] = result["user"].id
-                                st.session_state["pvm_email"]   = result["user"].email
+                                st.session_state["pvm_user_id"]      = result["user"].get("id")
+                                st.session_state["pvm_email"]        = result["user"].get("email")
+                                st.session_state["pvm_access_token"] = result.get("access_token", "")
                                 st.rerun()
                             else:
                                 st.error("Login error — please contact support.")
@@ -696,8 +747,9 @@ def render_auth_page(app_name: str = "PVMath"):
                     with st.spinner("Logging in…"):
                         result = sign_in(login_email, login_pass)
                     if result["success"]:
-                        st.session_state["pvm_user_id"] = result["user"].id
-                        st.session_state["pvm_email"]   = result["user"].email
+                        st.session_state["pvm_user_id"]      = result["user"].get("id")
+                        st.session_state["pvm_email"]        = result["user"].get("email")
+                        st.session_state["pvm_access_token"] = result.get("access_token", "")
                         st.rerun()
                     elif result.get("error") == "email_not_confirmed":
                         # Shouldn't happen with email confirmation disabled,
