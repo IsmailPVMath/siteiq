@@ -90,9 +90,17 @@ st.markdown("""
         border-radius: 8px !important;
     }
 
-    /* ── Alert boxes ── */
+    /* ── Alert boxes — saturate + darken for readability ── */
     div[data-testid="stAlert"] {
-        border-radius: 10px !important; font-weight: 500;
+        border-radius: 10px !important;
+        font-weight: 600 !important;
+        filter: saturate(2.2) brightness(0.82) !important;
+    }
+    div[data-testid="stAlert"] p,
+    div[data-testid="stAlert"] strong,
+    div[data-testid="stAlert"] a {
+        font-weight: 600 !important;
+        font-size: 0.92rem !important;
     }
 
     /* ── Expander ── */
