@@ -68,6 +68,16 @@ def sign_out():
         del st.session_state[key]
 
 
+def resend_confirmation(email: str) -> dict:
+    """Resend Supabase signup confirmation email."""
+    try:
+        sb = get_supabase()
+        sb.auth.resend({"type": "signup", "email": email})
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 def reset_password_email(email: str) -> dict:
     try:
         sb = get_supabase()
@@ -261,6 +271,12 @@ def render_auth_page(app_name: str = "PVMath"):
     }
 
 
+    /* Hide sidebar completely during auth */
+    section[data-testid="stSidebar"]        { display: none !important; }
+    [data-testid="stSidebarNav"]            { display: none !important; }
+    [data-testid="stSidebarNavLink"]        { display: none !important; }
+    [data-testid="collapsedControl"]        { display: none !important; }
+
     /* Full page centering */
     .block-container {
         padding-top: 0 !important;
@@ -421,13 +437,32 @@ def render_auth_page(app_name: str = "PVMath"):
                     with st.spinner("Creating your account…"):
                         result = sign_up(reg_email, reg_pass)
                     if result["success"]:
-                        st.success("✅ Account created! Check your inbox for a confirmation email. Click the link, then come back here to log in.")
+                        st.session_state["pending_confirm_email"] = reg_email
+                        st.success("✅ Account created!")
+                        st.info(
+                            "📬 We sent a confirmation email to **" + reg_email + "**. "
+                            "Click the link in the email, then come back here to log in.\n\n"
+                            "⚠️ Check your **spam / junk folder** if you don't see it within 2 minutes."
+                        )
                     else:
                         err = result.get("error", "")
                         if "already registered" in err.lower() or "already been registered" in err.lower():
                             st.error("This email is already registered. Please log in.")
+                            st.session_state["pending_confirm_email"] = reg_email
                         else:
                             st.error(f"Registration failed: {err}")
+
+            # Resend confirmation button (shown after signup attempt)
+            _pending = st.session_state.get("pending_confirm_email", "")
+            if _pending and "@" in _pending:
+                st.markdown("<div style='margin-top:0.6rem;'></div>", unsafe_allow_html=True)
+                if st.button("Resend confirmation email", key="btn_resend_reg"):
+                    with st.spinner("Resending…"):
+                        r2 = resend_confirmation(_pending)
+                    if r2["success"]:
+                        st.success("✅ Confirmation email resent to " + _pending)
+                    else:
+                        st.error("Resend failed — " + r2.get("error", "try again in a moment."))
 
         # ── LOGIN TAB ─────────────────────────────────────────
         with tab_login:
@@ -448,9 +483,24 @@ def render_auth_page(app_name: str = "PVMath"):
                         st.session_state["pvm_email"]   = result["user"].email
                         st.rerun()
                     elif result.get("error") == "email_not_confirmed":
-                        st.warning("📬 Please confirm your email first. Check your inbox for the confirmation link, then try again.")
+                        st.warning(
+                            "📬 Email not confirmed yet. Check your inbox for the confirmation link "
+                            "(also check spam/junk), then try again."
+                        )
+                        st.session_state["pending_confirm_email"] = login_email
                     else:
                         st.error("Incorrect email or password.")
+
+            # Resend confirmation button (shown after email-not-confirmed error)
+            _pending_login = st.session_state.get("pending_confirm_email", "")
+            if _pending_login and "@" in _pending_login:
+                if st.button("Resend confirmation email", key="btn_resend_login"):
+                    with st.spinner("Resending…"):
+                        r3 = resend_confirmation(_pending_login)
+                    if r3["success"]:
+                        st.success("✅ Confirmation email resent to " + _pending_login)
+                    else:
+                        st.error("Resend failed — " + r3.get("error", "try again in a moment."))
 
             # ── Forgot password ───────────────────────────────
             st.markdown("<div style='margin-top:0.5rem;'></div>", unsafe_allow_html=True)

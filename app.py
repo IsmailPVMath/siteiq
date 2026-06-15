@@ -8,11 +8,27 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# ── Navigation MUST be set up before auth check ───────────────────────────────
+# If st.navigation() isn't called before st.stop(), Streamlit falls back to
+# auto-discovering pages/ and shows them in the sidebar before login.
+_pages = [
+    st.Page("pages/project.py", title="Project",  icon="📋"),
+    st.Page("pages/siteiq.py",  title="SiteIQ",   icon="🌍"),
+    st.Page("pages/topoiq.py",  title="TopoIQ",   icon="⛰️"),
+    st.Page("pages/yieldiq.py", title="YieldIQ",  icon="⚡"),
+]
+_ADMIN = {"ismailpasha747@gmail.com"}
+_user_email = st.session_state.get("pvm_email", "").lower().strip()
+if _user_email in _ADMIN:
+    _pages.append(st.Page("pages/_layoutiq.py", title="LayoutIQ", icon="📐"))
+
+pg = st.navigation(_pages)
+
 # ── Auth gate ─────────────────────────────────────────────────────────────────
 if not render_auth_page("PVMath"):
     st.stop()
 
-# ── Sidebar ───────────────────────────────────────────────────────────────────
+# ── Sidebar (only rendered when authenticated) ────────────────────────────────
 with st.sidebar:
     email = st.session_state.get("pvm_email", "")
     st.markdown(f"""
@@ -28,8 +44,13 @@ with st.sidebar:
       }}
       div[data-testid="stButton"] > button {{
         font-family: 'Inter', sans-serif !important;
+        font-weight: 700 !important;
+        border-radius: 9px !important;
+      }}
+      /* Sidebar nav link text */
+      [data-testid="stSidebarNavLink"] span {{
         font-weight: 600 !important;
-        border-radius: 8px !important;
+        font-size: 0.95rem !important;
       }}
     </style>
     <div style="padding:0.8rem 0 1rem 0;border-bottom:1px solid #d4e4d4;margin-bottom:0.8rem;">
@@ -41,15 +62,15 @@ with st.sidebar:
                 font-family="Arial Black,Arial,sans-serif" font-size="18" font-weight="900" fill="white">PV</text>
         </svg>
         <div>
-          <div style="font-weight:800;font-size:1.05rem;color:#1a2e1a;letter-spacing:-0.02em;line-height:1.1;">PVMath</div>
-          <div style="font-size:0.7rem;color:#6a8a6a;font-weight:500;letter-spacing:0.03em;">SOLAR SITE INTELLIGENCE</div>
+          <div style="font-weight:800;font-size:1.05rem;color:#0d1a0d;letter-spacing:-0.02em;line-height:1.1;">PVMath</div>
+          <div style="font-size:0.7rem;color:#4a7a4a;font-weight:600;letter-spacing:0.03em;">SOLAR SITE INTELLIGENCE</div>
         </div>
       </div>
-      <div style="font-size:0.75rem;color:#5a7a5a;overflow:hidden;text-overflow:ellipsis;
+      <div style="font-size:0.75rem;color:#3a5a3a;overflow:hidden;text-overflow:ellipsis;
                   white-space:nowrap;padding:0.3rem 0.5rem;background:#e8f0e8;
                   border-radius:6px;">
         <span style="opacity:0.7;">Logged in as</span><br>
-        <strong>{email}</strong>
+        <strong style="color:#0d1a0d;">{email}</strong>
       </div>
     </div>
     """, unsafe_allow_html=True)
@@ -60,23 +81,9 @@ with st.sidebar:
 
     st.markdown("""
     <div style="margin-top:1.5rem;padding-top:0.8rem;border-top:1px solid #d4e4d4;">
-      <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;
-                  letter-spacing:0.1em;color:#8a9a8a;margin-bottom:0.6rem;">Modules</div>
+      <div style="font-size:0.65rem;font-weight:800;text-transform:uppercase;
+                  letter-spacing:0.12em;color:#1d9e52;margin-bottom:0.6rem;">Modules</div>
     </div>
     """, unsafe_allow_html=True)
 
-# ── Navigation ────────────────────────────────────────────────────────────────
-_pages = [
-    st.Page("pages/project.py", title="Project",  icon="📋"),
-    st.Page("pages/siteiq.py",  title="SiteIQ",   icon="🌍"),
-    st.Page("pages/topoiq.py",  title="TopoIQ",   icon="⛰️"),
-    st.Page("pages/yieldiq.py", title="YieldIQ",  icon="⚡"),
-]
-# LayoutIQ — admin only
-_ADMIN = {"ismailpasha747@gmail.com"}
-_user_email = st.session_state.get("pvm_email", "").lower().strip()
-if _user_email in _ADMIN:
-    _pages.append(st.Page("pages/_layoutiq.py", title="LayoutIQ", icon="📐"))
-
-pg = st.navigation(_pages)
 pg.run()
