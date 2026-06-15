@@ -760,21 +760,29 @@ def render_auth_page(app_name: str = "PVMath"):
                     with st.spinner("Creating your account…"):
                         result = sign_up(reg_email, reg_pass)
                     if result["success"]:
-                        # Generate OTP and send via our own SMTP
-                        _otp = generate_otp()
-                        st.session_state["pvm_otp_state"]    = "pending"
-                        st.session_state["pvm_otp_email"]    = reg_email
-                        st.session_state["pvm_otp_password"] = reg_pass
-                        st.session_state["pvm_otp_code"]     = _otp
-                        st.session_state["pvm_otp_expiry"]   = time.time() + 600
-                        st.session_state["pvm_otp_attempts"] = 0
-                        with st.spinner("Sending verification code…"):
-                            _send = send_otp_email(reg_email, _otp)
-                        if _send["success"]:
+                        # If Supabase auto-confirmed (email confirm disabled), log in directly.
+                        # OTP flow re-enabled once Brevo account is activated.
+                        if result.get("access_token"):
+                            st.session_state["pvm_user_id"]      = result["user"].get("id")
+                            st.session_state["pvm_email"]        = result["user"].get("email")
+                            st.session_state["pvm_access_token"] = result["access_token"]
                             st.rerun()
                         else:
-                            st.error(f"Account created but could not send code: {_send['error']}")
-                            st.info("Please contact support or check your SMTP settings.")
+                            # Supabase email confirmation ON — send OTP
+                            _otp = generate_otp()
+                            st.session_state["pvm_otp_state"]    = "pending"
+                            st.session_state["pvm_otp_email"]    = reg_email
+                            st.session_state["pvm_otp_password"] = reg_pass
+                            st.session_state["pvm_otp_code"]     = _otp
+                            st.session_state["pvm_otp_expiry"]   = time.time() + 600
+                            st.session_state["pvm_otp_attempts"] = 0
+                            with st.spinner("Sending verification code…"):
+                                _send = send_otp_email(reg_email, _otp)
+                            if _send["success"]:
+                                st.rerun()
+                            else:
+                                st.error(f"Account created but could not send code: {_send['error']}")
+                                st.info("Please contact support or check your SMTP settings.")
                     else:
                         err = result.get("error", "")
                         if "already registered" in err.lower() or "already been registered" in err.lower():
