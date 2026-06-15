@@ -10,6 +10,12 @@ Requires environment variables (set in Streamlit Cloud secrets):
 """
 
 import os
+import smtplib
+import secrets
+import time
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
 import streamlit as st
 from supabase import create_client, Client
 
@@ -73,6 +79,85 @@ def resend_confirmation(email: str) -> dict:
     try:
         sb = get_supabase()
         sb.auth.resend({"type": "signup", "email": email})
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ── OTP email verification ────────────────────────────────────
+def _smtp_cfg() -> dict | None:
+    """Return SMTP config from Streamlit secrets, or None if not configured."""
+    try:
+        return {
+            "host":     st.secrets["SMTP_HOST"],
+            "port":     int(st.secrets["SMTP_PORT"]),
+            "user":     st.secrets["SMTP_USER"],
+            "password": st.secrets["SMTP_PASS"],
+            "from":     st.secrets.get("SMTP_FROM", st.secrets["SMTP_USER"]),
+        }
+    except Exception:
+        return None
+
+
+def generate_otp() -> str:
+    """Return a cryptographically random 6-digit string."""
+    return f"{secrets.randbelow(900000) + 100000}"
+
+
+def send_otp_email(to_email: str, otp: str) -> dict:
+    """Send OTP via configured SMTP. Returns {success, error}."""
+    cfg = _smtp_cfg()
+    if not cfg:
+        return {"success": False, "error": "SMTP not configured in Streamlit secrets."}
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = f"PVMath — Your verification code: {otp}"
+    msg["From"]    = cfg["from"]
+    msg["To"]      = to_email
+
+    plain = (
+        f"Your PVMath verification code is:\n\n"
+        f"  {otp}\n\n"
+        f"This code expires in 10 minutes. Do not share it.\n\n"
+        f"— PVMath Team\npvmath.com"
+    )
+    html = f"""
+<div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;
+            padding:2rem;background:#f5f7f5;border-radius:12px;">
+  <div style="text-align:center;margin-bottom:1.5rem;">
+    <span style="font-size:1.4rem;font-weight:800;color:#1a2e1a;">PVMath</span>
+    <div style="font-size:0.8rem;color:#5a7a5a;margin-top:0.2rem;">
+      Solar Site Intelligence
+    </div>
+  </div>
+  <div style="background:#fff;border-radius:10px;padding:2rem;text-align:center;
+              border:1px solid #d4e0d4;">
+    <div style="font-size:0.9rem;color:#5a7a5a;margin-bottom:1.2rem;">
+      Your verification code is:
+    </div>
+    <div style="font-size:2.4rem;font-weight:800;color:#1d9e52;
+                letter-spacing:0.35em;background:#e8f5ee;
+                padding:1rem 1.5rem;border-radius:8px;display:inline-block;">
+      {otp}
+    </div>
+    <div style="font-size:0.8rem;color:#5a7a5a;margin-top:1.2rem;">
+      Expires in <strong>10 minutes</strong>.
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:1.2rem;font-size:0.75rem;color:#888;">
+    If you didn't create a PVMath account, ignore this email.
+  </div>
+</div>"""
+
+    msg.attach(MIMEText(plain, "plain"))
+    msg.attach(MIMEText(html,  "html"))
+
+    try:
+        with smtplib.SMTP(cfg["host"], cfg["port"], timeout=15) as s:
+            s.ehlo()
+            s.starttls()
+            s.login(cfg["user"], cfg["password"])
+            s.send_message(msg)
         return {"success": True}
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -220,6 +305,143 @@ def render_auth_page(app_name: str = "PVMath"):
             except Exception:
                 pass
         return True
+
+    # ── OTP verification screen ────────────────────────────────
+    if st.session_state.get("pvm_otp_state") == "pending":
+        _otp_email    = st.session_state.get("pvm_otp_email", "")
+        _otp_pass     = st.session_state.get("pvm_otp_password", "")
+        _otp_code     = st.session_state.get("pvm_otp_code", "")
+        _otp_expiry   = st.session_state.get("pvm_otp_expiry", 0)
+        _otp_attempts = st.session_state.get("pvm_otp_attempts", 0)
+
+        # Re-apply minimal styles (sidebar hidden, fonts, bg)
+        st.markdown("""
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+        html,body,[class*="css"]{font-family:'Inter',sans-serif!important;background:#f5f7f5!important;}
+        [data-testid="stAppViewContainer"],[data-testid="stMain"],.main,.stApp{background:#f5f7f5!important;}
+        section[data-testid="stSidebar"],[data-testid="stSidebarNav"],
+        [data-testid="collapsedControl"]{display:none!important;}
+        #MainMenu,footer,header{visibility:hidden!important;}
+        .block-container{padding-top:0!important;max-width:100%!important;}
+        .stButton>button{
+          background:linear-gradient(135deg,#1d9e52,#145f34)!important;
+          color:#fff!important;border:none!important;border-radius:9px!important;
+          font-weight:700!important;width:100%!important;
+          box-shadow:0 2px 10px rgba(29,158,82,.25)!important;
+        }
+        .stTextInput>div>input{
+          background:#fff!important;border:1.5px solid #d4e0d4!important;
+          border-radius:9px!important;font-size:1.4rem!important;
+          letter-spacing:0.25em!important;text-align:center!important;
+          font-weight:700!important;color:#1a2e1a!important;
+        }
+        .stTextInput>div>input:focus{border-color:#1d9e52!important;
+          box-shadow:0 0 0 3px rgba(29,158,82,.12)!important;}
+        </style>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div style="text-align:center;margin-top:3rem;margin-bottom:0.5rem;">
+          <div style="display:flex;align-items:center;gap:0.6rem;justify-content:center;margin-bottom:0.4rem;">
+            <svg width="40" height="40" viewBox="0 0 46 46" xmlns="http://www.w3.org/2000/svg">
+              <rect width="46" height="46" rx="10" fill="#145f34"/>
+              <path d="M0 10 Q0 0 10 0 H36 Q46 0 46 10 V14 H0 Z" fill="#1d9e52"/>
+              <text x="23" y="32" text-anchor="middle" dominant-baseline="middle"
+                    font-family="Arial Black,Arial,sans-serif" font-size="18"
+                    font-weight="900" fill="white">PV</text>
+            </svg>
+            <span style="font-size:1.5rem;font-weight:800;color:#1a2e1a;letter-spacing:-0.04em;">PVMath</span>
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        col1, col2, col3 = st.columns([1, 1.4, 1])
+        with col2:
+            st.markdown(f"""
+            <div style="text-align:center;background:#fff;border:1px solid #d4e0d4;
+                        border-radius:14px;padding:2rem 2rem 1.5rem;margin-bottom:1.2rem;">
+              <div style="font-size:2rem;margin-bottom:0.6rem;">📬</div>
+              <div style="font-size:1.05rem;font-weight:800;color:#1a2e1a;margin-bottom:0.4rem;">
+                Check your inbox
+              </div>
+              <div style="font-size:0.84rem;color:#5a7a5a;line-height:1.5;">
+                We sent a 6-digit code to<br>
+                <strong style="color:#1a2e1a;">{_otp_email}</strong>
+              </div>
+              <div style="font-size:0.75rem;color:#888;margin-top:0.6rem;">
+                Also check spam / junk folder.
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            if time.time() > _otp_expiry:
+                st.error("Code expired.")
+                if st.button("Send new code →", key="btn_otp_regen"):
+                    _new = generate_otp()
+                    st.session_state["pvm_otp_code"]     = _new
+                    st.session_state["pvm_otp_expiry"]   = time.time() + 600
+                    st.session_state["pvm_otp_attempts"] = 0
+                    with st.spinner("Sending…"):
+                        send_otp_email(_otp_email, _new)
+                    st.success("New code sent!")
+                    st.rerun()
+            elif _otp_attempts >= 5:
+                st.error("Too many incorrect attempts. Request a new code.")
+                if st.button("Send new code →", key="btn_otp_regen_b"):
+                    _new = generate_otp()
+                    st.session_state["pvm_otp_code"]     = _new
+                    st.session_state["pvm_otp_expiry"]   = time.time() + 600
+                    st.session_state["pvm_otp_attempts"] = 0
+                    with st.spinner("Sending…"):
+                        send_otp_email(_otp_email, _new)
+                    st.success("New code sent!")
+                    st.rerun()
+            else:
+                otp_input = st.text_input(
+                    "Verification code", key="otp_input_field",
+                    placeholder="• • • • • •", max_chars=6
+                )
+
+                cola, colb = st.columns(2)
+                with cola:
+                    if st.button("Verify →", key="btn_otp_verify"):
+                        if otp_input.strip() == _otp_code:
+                            with st.spinner("Verified! Logging in…"):
+                                result = sign_in(_otp_email, _otp_pass)
+                            if result["success"]:
+                                for k in ["pvm_otp_state", "pvm_otp_email",
+                                          "pvm_otp_password", "pvm_otp_code",
+                                          "pvm_otp_expiry", "pvm_otp_attempts"]:
+                                    st.session_state.pop(k, None)
+                                st.session_state["pvm_user_id"] = result["user"].id
+                                st.session_state["pvm_email"]   = result["user"].email
+                                st.rerun()
+                            else:
+                                st.error("Login error — please contact support.")
+                        else:
+                            st.session_state["pvm_otp_attempts"] += 1
+                            left = 5 - st.session_state["pvm_otp_attempts"]
+                            st.error(f"Incorrect code. {left} attempt(s) remaining.")
+                with colb:
+                    if st.button("Resend code", key="btn_otp_resend"):
+                        _new = generate_otp()
+                        st.session_state["pvm_otp_code"]     = _new
+                        st.session_state["pvm_otp_expiry"]   = time.time() + 600
+                        st.session_state["pvm_otp_attempts"] = 0
+                        with st.spinner("Sending…"):
+                            send_otp_email(_otp_email, _new)
+                        st.success("New code sent!")
+                        st.rerun()
+
+            st.markdown("<div style='margin-top:0.8rem;'></div>", unsafe_allow_html=True)
+            if st.button("← Back to login", key="btn_otp_back"):
+                for k in ["pvm_otp_state", "pvm_otp_email", "pvm_otp_password",
+                          "pvm_otp_code", "pvm_otp_expiry", "pvm_otp_attempts"]:
+                    st.session_state.pop(k, None)
+                st.rerun()
+
+        return False
 
     # ── Password recovery mode ─────────────────────────────────
     # Supabase sends access_token in URL fragment (#); JS converts to query params
@@ -437,32 +659,27 @@ def render_auth_page(app_name: str = "PVMath"):
                     with st.spinner("Creating your account…"):
                         result = sign_up(reg_email, reg_pass)
                     if result["success"]:
-                        st.session_state["pending_confirm_email"] = reg_email
-                        st.success("✅ Account created!")
-                        st.info(
-                            "📬 We sent a confirmation email to **" + reg_email + "**. "
-                            "Click the link in the email, then come back here to log in.\n\n"
-                            "⚠️ Check your **spam / junk folder** if you don't see it within 2 minutes."
-                        )
+                        # Generate OTP and send via our own SMTP
+                        _otp = generate_otp()
+                        st.session_state["pvm_otp_state"]    = "pending"
+                        st.session_state["pvm_otp_email"]    = reg_email
+                        st.session_state["pvm_otp_password"] = reg_pass
+                        st.session_state["pvm_otp_code"]     = _otp
+                        st.session_state["pvm_otp_expiry"]   = time.time() + 600
+                        st.session_state["pvm_otp_attempts"] = 0
+                        with st.spinner("Sending verification code…"):
+                            _send = send_otp_email(reg_email, _otp)
+                        if _send["success"]:
+                            st.rerun()
+                        else:
+                            st.error(f"Account created but could not send code: {_send['error']}")
+                            st.info("Please contact support or check your SMTP settings.")
                     else:
                         err = result.get("error", "")
                         if "already registered" in err.lower() or "already been registered" in err.lower():
                             st.error("This email is already registered. Please log in.")
-                            st.session_state["pending_confirm_email"] = reg_email
                         else:
                             st.error(f"Registration failed: {err}")
-
-            # Resend confirmation button (shown after signup attempt)
-            _pending = st.session_state.get("pending_confirm_email", "")
-            if _pending and "@" in _pending:
-                st.markdown("<div style='margin-top:0.6rem;'></div>", unsafe_allow_html=True)
-                if st.button("Resend confirmation email", key="btn_resend_reg"):
-                    with st.spinner("Resending…"):
-                        r2 = resend_confirmation(_pending)
-                    if r2["success"]:
-                        st.success("✅ Confirmation email resent to " + _pending)
-                    else:
-                        st.error("Resend failed — " + r2.get("error", "try again in a moment."))
 
         # ── LOGIN TAB ─────────────────────────────────────────
         with tab_login:
@@ -483,24 +700,20 @@ def render_auth_page(app_name: str = "PVMath"):
                         st.session_state["pvm_email"]   = result["user"].email
                         st.rerun()
                     elif result.get("error") == "email_not_confirmed":
-                        st.warning(
-                            "📬 Email not confirmed yet. Check your inbox for the confirmation link "
-                            "(also check spam/junk), then try again."
-                        )
-                        st.session_state["pending_confirm_email"] = login_email
+                        # Shouldn't happen with email confirmation disabled,
+                        # but handle gracefully — send them an OTP to verify
+                        _otp = generate_otp()
+                        st.session_state["pvm_otp_state"]    = "pending"
+                        st.session_state["pvm_otp_email"]    = login_email
+                        st.session_state["pvm_otp_password"] = login_pass
+                        st.session_state["pvm_otp_code"]     = _otp
+                        st.session_state["pvm_otp_expiry"]   = time.time() + 600
+                        st.session_state["pvm_otp_attempts"] = 0
+                        with st.spinner("Sending verification code…"):
+                            send_otp_email(login_email, _otp)
+                        st.rerun()
                     else:
                         st.error("Incorrect email or password.")
-
-            # Resend confirmation button (shown after email-not-confirmed error)
-            _pending_login = st.session_state.get("pending_confirm_email", "")
-            if _pending_login and "@" in _pending_login:
-                if st.button("Resend confirmation email", key="btn_resend_login"):
-                    with st.spinner("Resending…"):
-                        r3 = resend_confirmation(_pending_login)
-                    if r3["success"]:
-                        st.success("✅ Confirmation email resent to " + _pending_login)
-                    else:
-                        st.error("Resend failed — " + r3.get("error", "try again in a moment."))
 
             # ── Forgot password ───────────────────────────────
             st.markdown("<div style='margin-top:0.5rem;'></div>", unsafe_allow_html=True)
