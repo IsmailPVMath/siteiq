@@ -244,6 +244,14 @@
     .footer-bottom a { color: rgba(255,255,255,.5); text-decoration: none; }
     .footer-bottom a:hover { color: var(--green); }
 
+    /* ── PRODUCT PREVIEW ── */
+    .preview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+    @media (max-width: 900px) { .preview-grid { grid-template-columns: 1fr; } }
+
+    /* ── DATA ACCURACY STRIP ── */
+    .accuracy-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    @media (max-width: 900px) { .accuracy-grid { grid-template-columns: 1fr; } }
+
     /* ── RESPONSIVE ── */
     @media (max-width: 900px) {
       .modules-grid, .pricing-grid, .steps, .why-grid, .reviews-grid { grid-template-columns: 1fr; }
@@ -299,6 +307,160 @@
       <div class="stat"><div class="stat-num">Global</div><div class="stat-lbl" data-i18n="stat.coverage">Solar Data Coverage</div></div>
       <div class="stat"><div class="stat-num" data-i18n="stat.free-val">Free</div><div class="stat-lbl" data-i18n="stat.start">To Get Started</div></div>
     </div>
+  </div>
+</section>
+
+<!-- ── PRODUCT PREVIEW ── -->
+<section style="background:var(--card);padding:4rem 1.5rem;border-top:1px solid var(--border);">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:2.5rem;">
+      <div class="section-label" style="justify-content:center;display:flex;">See it in action</div>
+      <h2 class="section-title">Real outputs. In under 2 minutes.</h2>
+      <p class="section-sub" style="margin:0 auto;">Here's exactly what SiteIQ, TopoIQ, and YieldIQ produce — representative examples from a 187 ha site in southern Spain.</p>
+    </div>
+    <div class="preview-grid">
+
+      <!-- SiteIQ mockup -->
+      <div style="border-radius:14px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.12);border:1.5px solid var(--border);">
+        <div style="background:linear-gradient(135deg,#e85d04,#c24a00);padding:0.65rem 1rem;display:flex;align-items:center;gap:0.5rem;">
+          <span style="font-size:0.82rem;">🌍</span>
+          <span style="font-size:0.72rem;font-weight:800;color:#fff;letter-spacing:0.05em;">SITEIQ — SITE ASSESSMENT</span>
+        </div>
+        <div style="background:#fff;padding:1.1rem;">
+          <div style="font-size:0.68rem;color:#888;margin-bottom:0.9rem;font-weight:500;">38.2°N, 2.5°W &middot; Castilla-La Mancha, Spain</div>
+          <div style="display:flex;flex-direction:column;gap:0.42rem;margin-bottom:0.9rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.73rem;">
+              <span style="color:#5a7a5a;">GHI Annual</span>
+              <span style="font-weight:700;">1,842 kWh/m&sup2;/yr &nbsp;<span style="background:#d1fae5;color:#065f46;border-radius:4px;padding:1px 5px;font-size:0.6rem;font-weight:700;">HIGH</span></span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.73rem;">
+              <span style="color:#5a7a5a;">Irradiation</span>
+              <span style="font-weight:700;">2,109 kWh/m&sup2;/yr</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.73rem;">
+              <span style="color:#5a7a5a;">Avg Slope</span>
+              <span style="font-weight:700;">3.2% &nbsp;<span style="background:#d1fae5;color:#065f46;border-radius:4px;padding:1px 5px;font-size:0.6rem;font-weight:700;">EXCELLENT</span></span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.73rem;">
+              <span style="color:#5a7a5a;">Flood Risk</span>
+              <span style="font-weight:700;"><span style="background:#d1fae5;color:#065f46;border-radius:4px;padding:1px 5px;font-size:0.6rem;font-weight:700;">LOW</span></span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.73rem;">
+              <span style="color:#5a7a5a;">Est. Capacity (FT)</span>
+              <span style="font-weight:700;">~280&ndash;320 MWp</span>
+            </div>
+          </div>
+          <div style="font-size:0.62rem;color:#888;margin-bottom:0.4rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Monthly GHI (kWh/m&sup2;)</div>
+          <div style="display:flex;align-items:flex-end;gap:2px;height:38px;margin-bottom:0.7rem;">
+            <div style="flex:1;background:#f87171;border-radius:2px 2px 0 0;height:50%;"></div>
+            <div style="flex:1;background:#fb923c;border-radius:2px 2px 0 0;height:63%;"></div>
+            <div style="flex:1;background:#facc15;border-radius:2px 2px 0 0;height:74%;"></div>
+            <div style="flex:1;background:#a3e635;border-radius:2px 2px 0 0;height:83%;"></div>
+            <div style="flex:1;background:#4ade80;border-radius:2px 2px 0 0;height:92%;"></div>
+            <div style="flex:1;background:#22c55e;border-radius:2px 2px 0 0;height:100%;"></div>
+            <div style="flex:1;background:#22c55e;border-radius:2px 2px 0 0;height:98%;"></div>
+            <div style="flex:1;background:#4ade80;border-radius:2px 2px 0 0;height:90%;"></div>
+            <div style="flex:1;background:#a3e635;border-radius:2px 2px 0 0;height:80%;"></div>
+            <div style="flex:1;background:#facc15;border-radius:2px 2px 0 0;height:66%;"></div>
+            <div style="flex:1;background:#fb923c;border-radius:2px 2px 0 0;height:51%;"></div>
+            <div style="flex:1;background:#f87171;border-radius:2px 2px 0 0;height:44%;"></div>
+          </div>
+          <div style="display:flex;gap:2px;margin-bottom:0.8rem;">
+            <div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">J</div><div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">F</div><div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">M</div><div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">A</div><div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">M</div><div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">J</div><div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">J</div><div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">A</div><div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">S</div><div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">O</div><div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">N</div><div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">D</div>
+          </div>
+          <div style="background:#d1fae5;border-radius:8px;padding:0.55rem 0.8rem;font-size:0.76rem;font-weight:800;color:#065f46;">&#9989; EXCELLENT &mdash; Proceed to Detail Study</div>
+          <div style="margin-top:0.45rem;font-size:0.6rem;color:#bbb;text-align:right;">Source: PVGIS JRC &middot; EUDEM25m</div>
+        </div>
+      </div>
+
+      <!-- TopoIQ mockup -->
+      <div style="border-radius:14px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.12);border:1.5px solid var(--border);">
+        <div style="background:linear-gradient(135deg,#1565c0,#0d47a1);padding:0.65rem 1rem;display:flex;align-items:center;gap:0.5rem;">
+          <span style="font-size:0.82rem;">&#9968;&#65039;</span>
+          <span style="font-size:0.72rem;font-weight:800;color:#fff;letter-spacing:0.05em;">TOPOIQ — TERRAIN ANALYSIS</span>
+        </div>
+        <div style="background:#fff;padding:1.1rem;">
+          <div style="font-size:0.68rem;color:#888;margin-bottom:0.7rem;font-weight:500;">Site boundary: 187 ha &middot; Copernicus GLO-30 DEM</div>
+          <svg viewBox="0 0 260 130" xmlns="http://www.w3.org/2000/svg" style="width:100%;border-radius:8px;margin-bottom:0.6rem;display:block;">
+            <defs>
+              <filter id="tf"><feGaussianBlur stdDeviation="4"/></filter>
+              <radialGradient id="rg1" cx="35%" cy="45%" r="55%"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#3b82f600"/></radialGradient>
+              <radialGradient id="rg2" cx="70%" cy="38%" r="50%"><stop offset="0%" stop-color="#ef4444"/><stop offset="100%" stop-color="#ef444400"/></radialGradient>
+              <radialGradient id="rg3" cx="55%" cy="72%" r="45%"><stop offset="0%" stop-color="#22c55e"/><stop offset="100%" stop-color="#22c55e00"/></radialGradient>
+              <radialGradient id="rg4" cx="20%" cy="25%" r="35%"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#60a5fa00"/></radialGradient>
+              <radialGradient id="rg5" cx="85%" cy="78%" r="30%"><stop offset="0%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#f59e0b00"/></radialGradient>
+            </defs>
+            <rect width="260" height="130" fill="#eef2f8"/>
+            <rect width="260" height="130" fill="url(#rg1)" opacity="0.85"/>
+            <rect width="260" height="130" fill="url(#rg2)" opacity="0.7"/>
+            <rect width="260" height="130" fill="url(#rg3)" opacity="0.65"/>
+            <rect width="260" height="130" fill="url(#rg4)" opacity="0.6"/>
+            <rect width="260" height="130" fill="url(#rg5)" opacity="0.55"/>
+            <path d="M10,95 Q55,78 105,86 Q148,94 195,79 Q230,68 255,74" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="1.5"/>
+            <path d="M8,75 Q50,60 100,68 Q148,76 196,60 Q232,48 255,54" fill="none" stroke="rgba(255,255,255,0.65)" stroke-width="1.5"/>
+            <path d="M12,57 Q55,44 105,50 Q150,58 196,42 Q232,30 255,36" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="1.2"/>
+            <path d="M15,40 Q58,28 108,34 Q152,42 196,26 Q230,16 254,20" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="1"/>
+            <polygon points="35,18 228,12 248,118 18,122" fill="none" stroke="#ffff00" stroke-width="2.5" stroke-dasharray="7,3"/>
+            <text x="6" y="13" font-size="6.5" fill="rgba(0,0,0,0.65)" font-family="Arial,sans-serif" font-weight="700">410m</text>
+            <text x="6" y="128" font-size="6.5" fill="rgba(0,0,0,0.65)" font-family="Arial,sans-serif" font-weight="700">342m</text>
+            <text x="100" y="72" font-size="6" fill="rgba(255,255,255,0.8)" font-family="Arial,sans-serif" font-weight="700">68m range</text>
+          </svg>
+          <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.75rem;">
+            <div style="font-size:0.6rem;color:#888;font-weight:600;">342m</div>
+            <div style="flex:1;height:7px;border-radius:4px;background:linear-gradient(to right,#3b82f6,#22c55e,#eab308,#ef4444);"></div>
+            <div style="font-size:0.6rem;color:#888;font-weight:600;">410m &nbsp;Elev.</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:0.4rem;margin-bottom:0.8rem;">
+            <div style="display:flex;justify-content:space-between;font-size:0.73rem;"><span style="color:#5a7a5a;">Elevation range</span><span style="font-weight:700;">68 m</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:0.73rem;"><span style="color:#5a7a5a;">Max N&ndash;S slope</span><span style="font-weight:700;">4.8% &nbsp;<span style="background:#d1fae5;color:#065f46;border-radius:4px;padding:1px 5px;font-size:0.6rem;font-weight:700;">ACCEPTABLE</span></span></div>
+            <div style="display:flex;justify-content:space-between;font-size:0.73rem;"><span style="color:#5a7a5a;">Contour spacing</span><span style="font-weight:700;">5 m</span></div>
+          </div>
+          <div style="display:flex;gap:0.5rem;">
+            <div style="flex:1;background:#e8f0fb;border-radius:7px;padding:0.45rem;text-align:center;font-size:0.7rem;font-weight:700;color:#1565c0;">&#128196; PDF Report</div>
+            <div style="flex:1;background:#e8f0fb;border-radius:7px;padding:0.45rem;text-align:center;font-size:0.7rem;font-weight:700;color:#1565c0;">&#128208; DXF Export</div>
+          </div>
+          <div style="margin-top:0.45rem;font-size:0.6rem;color:#bbb;text-align:right;">Source: Copernicus GLO-30 DEM</div>
+        </div>
+      </div>
+
+      <!-- YieldIQ mockup -->
+      <div style="border-radius:14px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.12);border:1.5px solid var(--border);">
+        <div style="background:linear-gradient(135deg,#d4840a,#b36a00);padding:0.65rem 1rem;display:flex;align-items:center;gap:0.5rem;">
+          <span style="font-size:0.82rem;">&#9889;</span>
+          <span style="font-size:0.72rem;font-weight:800;color:#fff;letter-spacing:0.05em;">YIELDIQ — YIELD ESTIMATION</span>
+        </div>
+        <div style="background:#fff;padding:1.1rem;">
+          <div style="font-size:0.68rem;color:#888;margin-bottom:0.9rem;font-weight:500;">100 MWp DC &middot; 4 configurations &middot; PVGIS JRC</div>
+          <div style="font-size:0.62rem;color:#888;margin-bottom:0.5rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Specific Yield (kWh/kWp/yr)</div>
+          <div style="display:flex;flex-direction:column;gap:0.55rem;margin-bottom:0.85rem;">
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:0.7rem;margin-bottom:2px;"><span style="font-weight:700;">1P Tracker</span><span style="font-weight:800;color:#1d9e52;">2,041</span></div>
+              <div style="height:15px;background:#f0f4f0;border-radius:4px;overflow:hidden;"><div style="height:100%;width:95%;background:linear-gradient(135deg,#1d9e52,#145f34);border-radius:4px;"></div></div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:0.7rem;margin-bottom:2px;"><span style="font-weight:700;">2P Tracker</span><span style="font-weight:800;color:#1d9e52;">1,978</span></div>
+              <div style="height:15px;background:#f0f4f0;border-radius:4px;overflow:hidden;"><div style="height:100%;width:92%;background:linear-gradient(135deg,#1d9e52,#145f34);border-radius:4px;opacity:0.8;"></div></div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:0.7rem;margin-bottom:2px;"><span style="font-weight:700;">1P Fixed Tilt</span><span style="font-weight:800;color:#e85d04;">1,732</span></div>
+              <div style="height:15px;background:#f0f4f0;border-radius:4px;overflow:hidden;"><div style="height:100%;width:81%;background:linear-gradient(135deg,#e85d04,#c24a00);border-radius:4px;opacity:0.85;"></div></div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:0.7rem;margin-bottom:2px;"><span style="font-weight:700;">2P Fixed Tilt</span><span style="font-weight:800;color:#e85d04;">1,668</span></div>
+              <div style="height:15px;background:#f0f4f0;border-radius:4px;overflow:hidden;"><div style="height:100%;width:78%;background:linear-gradient(135deg,#e85d04,#c24a00);border-radius:4px;opacity:0.7;"></div></div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:0.73rem;margin-bottom:0.35rem;"><span style="color:#5a7a5a;">Tracker gain (1P vs FT)</span><span style="font-weight:700;color:#1d9e52;">+17.9%</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:0.73rem;margin-bottom:0.8rem;"><span style="color:#5a7a5a;">Best PR (1P Tracker)</span><span style="font-weight:700;">82.1%</span></div>
+          <div style="background:#fff8e6;border:1.5px solid #f0b429;border-radius:7px;padding:0.5rem 0.7rem;">
+            <div style="font-size:0.66rem;color:#7a4f00;line-height:1.5;font-weight:600;">&#9888;&#65039; Early-stage feasibility only. Not a substitute for bankable energy assessment (PVsyst, DNV).</div>
+          </div>
+          <div style="margin-top:0.45rem;font-size:0.6rem;color:#bbb;text-align:right;">Source: PVGIS JRC ERA5</div>
+        </div>
+      </div>
+
+    </div>
+    <p style="text-align:center;margin-top:2rem;font-size:0.82rem;color:var(--muted);">Representative examples only. Actual outputs depend on location, system configuration, and site conditions.</p>
   </div>
 </section>
 
@@ -360,6 +522,10 @@
           <li class="feat-item" data-i18n="yieldiq.f5">Tracker vs fixed-tilt comparison</li>
           <li class="feat-item" data-i18n="yieldiq.f6">Preliminary yield PDF report</li>
         </ul>
+        <div style="background:#fff8e6;border:1.5px solid #f0b429;border-radius:8px;padding:0.6rem 0.8rem;margin-bottom:1rem;display:flex;align-items:flex-start;gap:0.4rem;">
+          <span style="font-size:0.85rem;flex-shrink:0;">&#9888;&#65039;</span>
+          <div style="font-size:0.73rem;color:#7a4f00;line-height:1.55;font-weight:600;">Early-stage feasibility only. Not a substitute for bankable energy assessment (PVsyst, DNV SolarFarmer, Aurora).</div>
+        </div>
         <a href="https://siteiq.pvmath.com" target="_blank" class="module-link link-amber" data-i18n="yieldiq.btn">Open in App &rarr;</a>
       </div>
 
@@ -447,7 +613,7 @@
         <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#d4840a,#b36a00);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:0.85rem;flex-shrink:0;">Y</div>
         <div>
           <div style="font-size:1.1rem;font-weight:800;color:#d4840a;letter-spacing:-0.02em;" data-i18n="how.yieldiq.title">YieldIQ &mdash; Energy Yield Estimation</div>
-          <div style="font-size:0.78rem;color:var(--muted);" data-i18n="how.yieldiq.sub">Module 03 &middot; Live Now</div>
+          <div style="font-size:0.78rem;color:var(--muted);" data-i18n="how.yieldiq.sub">Module 03 &middot; Live Now &middot; Pre-layout feasibility only</div>
         </div>
         <a href="https://siteiq.pvmath.com" target="_blank" style="margin-left:auto;background:#fef3e2;color:#d4840a;font-size:0.78rem;font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;" data-i18n="how.launch">Open in App &rarr;</a>
       </div>
@@ -474,6 +640,30 @@
       <div class="why-card"><div class="why-icon">&#9889;</div><h4 data-i18n="why.c4.h">Under 2 Minutes</h4><p data-i18n="why.c4.p">SiteIQ screens in &lt;60 seconds. TopoIQ extracts terrain in &lt;2 minutes. YieldIQ estimates yield in &lt;2 minutes. Full pre-check before the client call ends.</p></div>
       <div class="why-card"><div class="why-icon">&#128196;</div><h4 data-i18n="why.c5.h">Client-Ready Reports</h4><p data-i18n="why.c5.p">Branded PDF outputs from all 3 modules &mdash; site screening, terrain analysis, and energy yield. Print, email, present.</p></div>
       <div class="why-card"><div class="why-icon">&#128119;</div><h4 data-i18n="why.c6.h">Built by a Solar Engineer</h4><p data-i18n="why.c6.p">Not a software startup guessing what engineers need. Built by a Solar Engineering Expert with hands-on experience in utility-scale solar, tracker systems, and EPC delivery worldwide.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── DATA ACCURACY ── -->
+<section style="background:var(--bg2);padding:3rem 1.5rem;border-top:1px solid var(--border);">
+  <div class="container">
+    <div style="margin-bottom:1.4rem;">
+      <div class="section-label">Data Sources &amp; Accuracy</div>
+      <h3 style="font-size:1.1rem;font-weight:700;color:var(--text);">Where the data comes from &mdash; and what it's good for.</h3>
+    </div>
+    <div class="accuracy-grid">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.2rem;">
+        <div style="font-size:0.82rem;font-weight:800;color:var(--green-dk);margin-bottom:0.5rem;">PVGIS &mdash; EC Joint Research Centre</div>
+        <div style="font-size:0.8rem;color:var(--muted);line-height:1.65;">EU Commission's satellite irradiance database. Used in bankable pre-feasibility studies under IEC 61724 globally. GHI uncertainty: ~5&ndash;8% at P50 level depending on region. Same source referenced by major independent engineers (DNV, BV, TÜV).</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.2rem;">
+        <div style="font-size:0.82rem;font-weight:800;color:#1565c0;margin-bottom:0.5rem;">Copernicus GLO-30 DEM &mdash; ESA / Airbus</div>
+        <div style="font-size:0.8rem;color:var(--muted);line-height:1.65;">30 m horizontal resolution global DEM from TanDEM-X radar imagery. Vertical accuracy ~1&ndash;4 m RMSE in open terrain. TopoIQ uses this for slope maps, contour extraction, and DXF terrain files. Suitable for site selection and conceptual layout &mdash; not a substitute for RTK survey.</div>
+      </div>
+      <div style="background:#fff8e6;border:1.5px solid #f0b429;border-radius:10px;padding:1.2rem;">
+        <div style="font-size:0.82rem;font-weight:800;color:#7a4f00;margin-bottom:0.5rem;">&#9888; YieldIQ &mdash; Know the Limits</div>
+        <div style="font-size:0.8rem;color:#7a4f00;line-height:1.65;">YieldIQ uses PVGIS satellite data with simplified shading models. Typical uncertainty vs. a full bankable energy yield assessment: <strong>±8&ndash;15%</strong>. Use for internal go/no-go screening only. For financing, permitting, or EPC contracts: commission a bankable assessment from a certified independent engineer (PVsyst + P50/P90 analysis).</div>
+      </div>
     </div>
   </div>
 </section>
@@ -532,62 +722,90 @@
 <section id="pricing">
   <div class="container">
     <div class="section-header" style="text-align:center;">
-      <div class="section-label" style="justify-content:center;display:flex;" data-i18n="pricing.label">Pricing</div>
-      <h2 class="section-title" data-i18n="pricing.title">Simple, transparent pricing.</h2>
-      <p class="section-sub" style="margin:0 auto;" data-i18n="pricing.sub">5 free analyses per module. No credit card required to start. Upgrade when you&rsquo;re ready.</p>
+      <div class="section-label" style="justify-content:center;display:flex;">Pricing</div>
+      <h2 class="section-title">Pay for what you use.</h2>
+      <p class="section-sub" style="margin:0 auto;">Usage-based tiers for solar engineers. Start free &mdash; scale when your pipeline grows.</p>
     </div>
 
     <div class="pricing-toggle">
-      <span class="toggle-label" id="lbl-monthly" data-i18n="pricing.monthly">Monthly</span>
+      <span class="toggle-label" id="lbl-monthly">Monthly</span>
       <button class="toggle-switch annual" id="billing-toggle" onclick="toggleBilling()"></button>
-      <span class="toggle-label" id="lbl-annual"><span data-i18n="pricing.annual">Annual</span> <span class="toggle-badge" data-i18n="pricing.save">Save 25%</span></span>
+      <span class="toggle-label" id="lbl-annual">Annual <span class="toggle-badge">Save 25%</span></span>
     </div>
 
-    <div class="pricing-grid" style="grid-template-columns:repeat(2,1fr);max-width:820px;margin:0 auto;">
+    <div class="pricing-grid" style="grid-template-columns:repeat(3,1fr);max-width:1050px;margin:0 auto;">
 
-      <div class="price-card featured">
-        <div class="price-badge" data-i18n="pricing.popular">Most Popular</div>
-        <div class="price-tier" data-i18n="tier.pro">Professional</div>
-        <div class="price-amount" id="price-pro">&euro;74<span id="per-pro"> / month*</span></div>
-        <div class="price-annual-note" id="note-pro">&euro;890 / year &mdash; save &euro;298</div>
-        <p class="price-desc" data-i18n="plan.pro.desc">For solar engineers and EPC teams running active projects.</p>
-        <ul class="price-features">
-          <li class="yes" data-i18n="pf.p.f1">Unlimited SiteIQ screenings</li>
-          <li class="yes" data-i18n="pf.p.f2">Unlimited TopoIQ analyses</li>
-          <li class="yes" data-i18n="pf.p.f3">PDF terrain &amp; solar reports</li>
-          <li class="yes" data-i18n="pf.p.f4">DXF terrain file export</li>
-          <li class="yes" data-i18n="pf.p.f5">Global solar data (PVGIS JRC)</li>
-          <li class="yes" data-i18n="pf.p.f6">Copernicus Satellite DEM terrain</li>
-          <li class="yes" data-i18n="pf.p.f7">YieldIQ — Full Access</li>
-        </ul>
-        <a href="#contact" class="price-btn solid" data-i18n="pricing.btn.sub">Subscribe &rarr;</a>
-      </div>
-
+      <!-- Free -->
       <div class="price-card">
-        <div class="price-tier" data-i18n="tier.team">Team</div>
-        <div class="price-amount" id="price-team">&euro;187<span id="per-team"> / month*</span></div>
-        <div class="price-annual-note" id="note-team">&euro;2.240 / year &mdash; save &euro;748</div>
-        <p class="price-desc" data-i18n="plan.team.desc">For EPC companies and developer teams with multiple engineers.</p>
+        <div class="price-tier">Free</div>
+        <div class="price-amount">&euro;0<span> / month</span></div>
+        <div class="price-annual-note">&nbsp;</div>
+        <p class="price-desc">Get started without a credit card. 5 runs per module per month.</p>
         <ul class="price-features">
-          <li class="yes" data-i18n="pf.t.f1">Up to 5 team seats</li>
-          <li class="yes" data-i18n="pf.t.f2">Unlimited all modules</li>
-          <li class="yes" data-i18n="pf.t.f3">All Professional features</li>
-          <li class="yes" data-i18n="pf.t.f4">Shared project workspace</li>
-          <li class="yes" data-i18n="pf.t.f5">Priority support</li>
-          <li class="yes" data-i18n="pf.t.f6">YieldIQ — Full Access</li>
-          <li class="yes" data-i18n="pf.t.f7">Custom invoice &amp; billing</li>
+          <li class="yes">5 SiteIQ screenings / month</li>
+          <li class="yes">5 TopoIQ analyses / month</li>
+          <li class="yes">5 YieldIQ runs / month</li>
+          <li class="yes">PDF report download</li>
+          <li class="yes">DXF terrain export</li>
+          <li class="no">Priority data refresh</li>
+          <li class="no">Email support</li>
         </ul>
-        <a href="#contact" class="price-btn outline" data-i18n="pricing.btn.contact">Contact Us &rarr;</a>
+        <a href="https://siteiq.pvmath.com" target="_blank" class="price-btn outline">Get Started &rarr;</a>
+      </div>
+
+      <!-- Professional -->
+      <div class="price-card featured">
+        <div class="price-badge">Most Popular</div>
+        <div class="price-tier">Professional</div>
+        <div class="price-amount" id="price-pro">&euro;149<span id="per-pro"> / month</span></div>
+        <div class="price-annual-note" id="note-pro">&euro;1,341 / year &mdash; save &euro;447</div>
+        <p class="price-desc">For active solar engineers and EPC teams screening multiple sites per month.</p>
+        <ul class="price-features">
+          <li class="yes">50 analyses / module / month</li>
+          <li class="yes">SiteIQ &middot; TopoIQ &middot; YieldIQ full access</li>
+          <li class="yes">PDF solar &amp; terrain reports</li>
+          <li class="yes">DXF terrain file export</li>
+          <li class="yes">PVGIS JRC + Copernicus DEM</li>
+          <li class="yes">Priority data refresh</li>
+          <li class="yes">Email support (1 business day)</li>
+        </ul>
+        <a href="#contact" class="price-btn solid">Subscribe &rarr;</a>
+      </div>
+
+      <!-- Developer -->
+      <div class="price-card">
+        <div class="price-tier">Developer</div>
+        <div class="price-amount" id="price-dev">&euro;499<span id="per-dev"> / month</span></div>
+        <div class="price-annual-note" id="note-dev">&euro;4,491 / year &mdash; save &euro;1,497</div>
+        <p class="price-desc">For high-volume pipelines and teams integrating PVMath into project workflows.</p>
+        <ul class="price-features">
+          <li class="yes">250 analyses / module / month</li>
+          <li class="yes">All Professional features</li>
+          <li class="yes">Up to 5 team seats</li>
+          <li class="yes">API access (Q4 2026)</li>
+          <li class="yes">Shared project workspace</li>
+          <li class="yes">Priority support</li>
+          <li class="yes">Custom invoice &amp; VAT billing</li>
+        </ul>
+        <a href="#contact" class="price-btn outline">Contact Us &rarr;</a>
       </div>
     </div>
 
-    <p style="text-align:center;margin-top:1.5rem;font-size:0.82rem;color:var(--muted);" data-i18n="pricing.note">
-      All plans include a 5-analysis free trial. No credit card required. Cancel anytime. VAT (19%) added for EU customers.
+    <!-- Enterprise strip -->
+    <div style="max-width:1050px;margin:1.5rem auto 0;background:linear-gradient(135deg,#0d1a0d,#1a2e1a);border-radius:14px;padding:1.6rem 2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+      <div>
+        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#1d9e52;margin-bottom:0.3rem;">Enterprise</div>
+        <div style="font-size:1.05rem;font-weight:800;color:#fff;margin-bottom:0.25rem;">Need more? Let&rsquo;s talk.</div>
+        <div style="font-size:0.82rem;color:rgba(255,255,255,.6);">Unlimited analyses &middot; Custom seats &middot; SLA &middot; White-label reports &middot; API &middot; Dedicated onboarding</div>
+      </div>
+      <a href="#contact" style="background:var(--green);color:#fff;text-decoration:none;padding:0.75rem 1.6rem;border-radius:9px;font-weight:700;font-size:0.88rem;white-space:nowrap;flex-shrink:0;transition:background .2s;" onmouseover="this.style.background='#145f34'" onmouseout="this.style.background='#1d9e52'">Contact for Custom Pricing &rarr;</a>
+    </div>
+
+    <p style="text-align:center;margin-top:1.5rem;font-size:0.82rem;color:var(--muted);">
+      All plans include 5 free analyses to start. No credit card required. Cancel anytime. VAT (19%) added for EU customers.
     </p>
   </div>
 </section>
-
-<!-- Billing section hidden from public -->
 
 <!-- ── ABOUT ── -->
 <section id="about">
@@ -935,23 +1153,22 @@ function setLanguage(lang) {
 // ─────────────────────────────────────────────────────────────────────────────
 var isAnnual = true;
 var prices = {
-  monthly: { starter: '€59', pro: '€99', team: '€249' },
-  annual:  { starter: '€44', pro: '€74', team: '€187' }
+  monthly: { pro: '€149', dev: '€499' },
+  annual:  { pro: '€112', dev: '€374' }
 };
 var annualData = {
-  starter: { total: '€530', saved: '€178' },
-  pro:     { total: '€890', saved: '€298' },
-  team:    { total: '€2.240', saved: '€748' }
+  pro: { total: '€1,341', saved: '€447' },
+  dev: { total: '€4,491', saved: '€1,497' }
 };
 
 function renderPricingNotes() {
   var lang = currentLang;
   var mode = isAnnual ? 'annual' : 'monthly';
-  var perStr   = (T[lang] && T[lang]['pricing.per.' + mode]) || (isAnnual ? '/ month*' : '/ month');
-  var yearWord = (T[lang] && T[lang]['pricing.year'])        || 'year';
-  var saveWord = (T[lang] && T[lang]['pricing.save.word'])   || 'save';
+  var perStr   = isAnnual ? '/ month*' : '/ month';
+  var yearWord = 'year';
+  var saveWord = (lang === 'de') ? 'spare' : 'save';
 
-  ['starter','pro','team'].forEach(function(plan) {
+  ['pro','dev'].forEach(function(plan) {
     var amtEl  = document.getElementById('price-' + plan);
     var perEl  = document.getElementById('per-'   + plan);
     var noteEl = document.getElementById('note-'  + plan);
