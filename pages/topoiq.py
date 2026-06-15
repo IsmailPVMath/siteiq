@@ -77,11 +77,11 @@ def generate_pdf_report(
     LIGHT_BG  = colors.HexColor("#f0f4f8")
 
     title_style = ParagraphStyle("title", fontName="Helvetica-Bold",
-                                  fontSize=20, textColor=colors.white,
-                                  alignment=TA_CENTER, spaceAfter=2)
+                                  fontSize=14, textColor=colors.white,
+                                  alignment=TA_LEFT, leading=17)
     sub_style   = ParagraphStyle("sub", fontName="Helvetica",
-                                  fontSize=9, textColor=colors.HexColor("#b0c4de"),
-                                  alignment=TA_CENTER)
+                                  fontSize=8.5, textColor=colors.HexColor("#b0c4de"),
+                                  alignment=2)  # TA_RIGHT = 2
     hdr_style   = ParagraphStyle("hdr", fontName="Helvetica-Bold",
                                   fontSize=11, textColor=MID_BLUE,
                                   spaceBefore=6, spaceAfter=3)
@@ -91,15 +91,17 @@ def generate_pdf_report(
 
     story = []
 
-    header_tbl = Table([[Paragraph("TopoIQ — Terrain Intelligence Report", title_style)],
-                         [Paragraph(f"by PVMath · pvmath.com · Generated {datetime.now().strftime('%d %b %Y')}", sub_style)]],
-                        colWidths=[usable])
+    header_tbl = Table([[
+        Paragraph("TOPOIQ — TERRAIN ANALYSIS REPORT", title_style),
+        Paragraph(f"PVMath · pvmath.com", sub_style),
+    ]], colWidths=["65%","35%"])
     header_tbl.setStyle(TableStyle([
-        ("BACKGROUND", (0,0), (-1,-1), DARK_BLUE),
-        ("TOPPADDING",    (0,0), (-1,-1), 10),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 10),
-        ("LEFTPADDING",   (0,0), (-1,-1), 12),
-        ("ROUNDEDCORNERS", [6]),
+        ("BACKGROUND",    (0,0), (-1,-1), colors.HexColor("#1565c0")),
+        ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
+        ("TOPPADDING",    (0,0), (-1,-1), 13),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 13),
+        ("LEFTPADDING",   (0,0), (-1,-1), 14),
+        ("RIGHTPADDING",  (0,0), (-1,-1), 14),
     ]))
     story.append(header_tbl)
     story.append(Spacer(1, 6*mm))

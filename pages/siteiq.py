@@ -565,31 +565,88 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
                             rightMargin=2*cm, leftMargin=2*cm,
                             topMargin=2*cm,  bottomMargin=2*cm)
     styles = getSampleStyleSheet()
-    GREEN  = colors.HexColor("#1a5c2e")
-    LGRAY  = colors.HexColor("#f8f9fa")
-    story  = []
+    # ── Brand colours matching pvmath.com ─────────────────────────────────────
+    GREEN    = colors.HexColor("#1d9e52")
+    GREEN_DK = colors.HexColor("#145f34")
+    ORANGE   = colors.HexColor("#e85d04")
+    ORANGE_DK= colors.HexColor("#c24a00")
+    LGRAY    = colors.HexColor("#f5f7f5")
+    BORDER   = colors.HexColor("#d4e0d4")
+    DARK_TXT = colors.HexColor("#1a2e1a")
+    MUTED    = colors.HexColor("#5a7a5a")
 
-    C_GREEN  = colors.HexColor("#1a5c2e")
-    C_LGREEN = colors.HexColor("#e8f5e9")
-    C_YELLOW = colors.HexColor("#f9a825")
-    C_LYELLOW= colors.HexColor("#fff9e6")
-    C_ORANGE = colors.HexColor("#e65100")
-    C_LORANG = colors.HexColor("#fff3e0")
-    C_RED    = colors.HexColor("#c62828")
-    C_LRED   = colors.HexColor("#ffebee")
+    C_GREEN  = colors.HexColor("#1d9e52")
+    C_LGREEN = colors.HexColor("#d1fae5")
+    C_LGREEN2= colors.HexColor("#e8f5ee")
+    C_YELLOW = colors.HexColor("#f59e0b")
+    C_LYELLOW= colors.HexColor("#fef9c3")
+    C_ORANGE = colors.HexColor("#ea580c")
+    C_LORANG = colors.HexColor("#ffedd5")
+    C_RED    = colors.HexColor("#dc2626")
+    C_LRED   = colors.HexColor("#fee2e2")
 
-    def lp(text, color=colors.black, bold=False, size=8):
+    # ── Rainbow bar colours by month (N-hemisphere seasonal) ─────────────────
+    _MONTH_COLORS = [
+        "#f87171",  # Jan — winter red
+        "#fb923c",  # Feb — orange
+        "#facc15",  # Mar — yellow
+        "#a3e635",  # Apr — light green
+        "#4ade80",  # May — green
+        "#22c55e",  # Jun — peak green
+        "#22c55e",  # Jul — peak green
+        "#4ade80",  # Aug — green
+        "#a3e635",  # Sep — light green
+        "#facc15",  # Oct — yellow
+        "#fb923c",  # Nov — orange
+        "#f87171",  # Dec — winter red
+    ]
+
+    def lp(text, color=DARK_TXT, bold=False, size=8.5):
         fn = "Helvetica-Bold" if bold else "Helvetica"
         return Paragraph(text, ParagraphStyle("lp", parent=styles["Normal"],
                          fontSize=size, fontName=fn, textColor=color,
-                         leading=10, spaceAfter=0))
+                         leading=11, spaceAfter=0))
 
-    story.append(Paragraph("SiteIQ by PVMath",
-        ParagraphStyle("T", parent=styles["Heading1"], fontSize=22, textColor=GREEN, spaceAfter=4)))
-    story.append(Paragraph("Site Screening Report",
-        ParagraphStyle("S", parent=styles["Normal"], fontSize=11, textColor=colors.grey)))
-    story.append(HRFlowable(width="100%", thickness=2, color=GREEN))
-    story.append(Spacer(1, 0.4*cm))
+    def section_hdr(text):
+        """Section title with orange left-accent stripe."""
+        t = Table([[
+            Paragraph("", ParagraphStyle("x", parent=styles["Normal"])),
+            Paragraph(text, ParagraphStyle("sh", parent=styles["Normal"],
+                      fontSize=11, fontName="Helvetica-Bold",
+                      textColor=DARK_TXT, leading=14)),
+        ]], colWidths=[0.28*cm, 16.72*cm])
+        t.setStyle(TableStyle([
+            ("BACKGROUND",    (0,0), (0,-1), ORANGE),
+            ("TOPPADDING",    (0,0), (-1,-1), 6),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 6),
+            ("LEFTPADDING",   (1,0), (1,-1), 8),
+            ("RIGHTPADDING",  (0,0), (-1,-1), 0),
+            ("LEFTPADDING",   (0,0), (0,-1), 0),
+        ]))
+        return t
+
+    story = []
+
+    # ── Orange header bar (matches website mockup) ────────────────────────────
+    hdr = Table([[
+        Paragraph("SITEIQ — SITE ASSESSMENT REPORT",
+            ParagraphStyle("ht", parent=styles["Normal"], fontSize=14,
+                           fontName="Helvetica-Bold", textColor=colors.white,
+                           leading=17)),
+        Paragraph("PVMath &nbsp;·&nbsp; pvmath.com",
+            ParagraphStyle("hs", parent=styles["Normal"], fontSize=8.5,
+                           textColor=colors.HexColor("#ffd0b5"), alignment=2,
+                           leading=12)),
+    ]], colWidths=["63%", "37%"])
+    hdr.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0),(-1,-1), ORANGE),
+        ("VALIGN",        (0,0),(-1,-1), "MIDDLE"),
+        ("TOPPADDING",    (0,0),(-1,-1), 13),
+        ("BOTTOMPADDING", (0,0),(-1,-1), 13),
+        ("LEFTPADDING",   (0,0),(-1,-1), 14),
+        ("RIGHTPADDING",  (0,0),(-1,-1), 14),
+    ]))
+    story += [hdr, Spacer(1, 0.4*cm)]
 
     site_rows = [
         ["Project Name",   site_name or "—"],
@@ -612,54 +669,83 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
     story.append(t)
     story.append(Spacer(1, 0.5*cm))
 
-    v_color = GREEN if "✅" in verdict else \
-              colors.HexColor("#f9a825") if "⚠️" in verdict else \
-              colors.HexColor("#d32f2f")
-    story.append(Paragraph("OVERALL VERDICT",
-        ParagraphStyle("H2", parent=styles["Heading2"], fontSize=12, textColor=GREEN)))
+    # ── Verdict styling (green/amber/red depending on result) ────────────────
+    _is_exc  = "EXCELLENT" in verdict
+    _is_acc  = "ACCEPTABLE" in verdict or "CHALLENGING" in verdict
+    v_color  = C_GREEN if _is_exc else (C_YELLOW if _is_acc else C_RED)
+    v_bg     = C_LGREEN if _is_exc else (C_LYELLOW if _is_acc else C_LRED)
+    v_border = GREEN if _is_exc else (C_YELLOW if _is_acc else C_RED)
+
+    story.append(Spacer(1, 0.1*cm))
+    story.append(section_hdr("OVERALL VERDICT"))
+    story.append(Spacer(1, 0.15*cm))
     vt = Table([[
         Paragraph(f"<b>{verdict}</b>",
-            ParagraphStyle("V", parent=styles["Normal"], fontSize=12, textColor=v_color)),
-        Paragraph(verdict_txt, styles["Normal"])
-    ]], colWidths=[6*cm, 11*cm])
+            ParagraphStyle("V", parent=styles["Normal"], fontSize=13,
+                           fontName="Helvetica-Bold", textColor=v_color, leading=16)),
+        Paragraph(verdict_txt,
+            ParagraphStyle("Vt", parent=styles["Normal"], fontSize=9,
+                           textColor=DARK_TXT, leading=13)),
+    ]], colWidths=[6.5*cm, 10.5*cm])
     vt.setStyle(TableStyle([
-        ("BACKGROUND",(0,0),(-1,-1), LGRAY),
-        ("GRID",      (0,0),(-1,-1), 0.5, colors.lightgrey),
-        ("TOPPADDING",(0,0),(-1,-1), 10),
-        ("BOTTOMPADDING",(0,0),(-1,-1), 10),
-        ("LEFTPADDING",(0,0),(-1,-1), 10),
+        ("BACKGROUND",    (0,0),(-1,-1), v_bg),
+        ("BACKGROUND",    (0,0),(0,-1),  v_bg),
+        ("BOX",           (0,0),(-1,-1), 1.5, v_border),
+        ("LEFTLINEWIDTH", (0,0),(0,-1),  4),
+        ("TOPPADDING",    (0,0),(-1,-1), 11),
+        ("BOTTOMPADDING", (0,0),(-1,-1), 11),
+        ("LEFTPADDING",   (0,0),(-1,-1), 12),
+        ("VALIGN",        (0,0),(-1,-1), "MIDDLE"),
     ]))
     story.append(vt)
     story.append(Spacer(1, 0.5*cm))
 
-    story.append(Paragraph("KEY METRICS",
-        ParagraphStyle("H2", parent=styles["Heading2"], fontSize=12, textColor=GREEN)))
+    story.append(section_hdr("KEY METRICS"))
+    story.append(Spacer(1, 0.15*cm))
     _density = (0.18 if land_use=='Agri-PV' and mount_type=='Single-Axis Tracker'
                 else 0.20 if land_use=='Agri-PV'
                 else 0.35 if mount_type=='Single-Axis Tracker' else 0.40)
+
+    def _badge(text):
+        """Colour-coded rating badge matching website style."""
+        _t = text.split("—")[0].strip().upper()
+        if any(w in _t for w in ["EXCELLENT","GOOD","LOW"]):
+            return lp(f"<b>{_t}</b>", C_GREEN, bold=True, size=8)
+        if any(w in _t for w in ["ACCEPTABLE","MODERATE","LOW-MOD"]):
+            return lp(f"<b>{_t}</b>", C_YELLOW, bold=True, size=8)
+        if any(w in _t for w in ["CHALLENGING","HIGH"]):
+            return lp(f"<b>{_t}</b>", C_ORANGE, bold=True, size=8)
+        if any(w in _t for w in ["CRITICAL","VERY HIGH"]):
+            return lp(f"<b>{_t}</b>", C_RED, bold=True, size=8)
+        return lp(text, MUTED, size=8)
+
+    _slope_badge = _badge(slope_lbl)
+    _solar_badge = _badge(solar_lbl)
+
     rows = [
-        [lp("Metric", colors.white, bold=True, size=9),
-         lp("Value",  colors.white, bold=True, size=9),
-         lp("Rating", colors.white, bold=True, size=9)],
-        [lp("Annual GHI"),         lp(f"{solar.get('annual_ghi','—')} kWh/m²/yr"),   lp(solar_lbl.split("—")[0].strip())],
-        [lp("Annual Yield"),       lp(f"{solar.get('annual_yield','—')} kWh/kWp/yr"),lp("—")],
-        [lp("Optimal Tilt"),       lp(f"{solar.get('optimal_tilt','—')}°"),           lp("—")],
-        [lp("Max Terrain Slope"),  lp(f"{terrain.get('max_slope_pct','—')}%"),        lp(slope_lbl.split("—")[0].strip())],
-        [lp("Elevation (centre)"), lp(f"{terrain.get('center_elev','—')} m asl"),     lp("—")],
-        [lp("Est. Capacity"),      lp(f"{cap_mw} MWp"),                               lp(f"Density: {_density} MW/ha")],
-        [lp("Est. Annual Output"), lp(f"{cap_mwh:,.0f} MWh/yr"),                      lp("Indicative only")],
-        [lp("EEG / Incentive"),    lp(eeg_status),                                    lp(eeg_note)],
+        [lp("Metric",          colors.white, bold=True, size=9),
+         lp("Value",           colors.white, bold=True, size=9),
+         lp("Rating",          colors.white, bold=True, size=9)],
+        [lp("Annual GHI",      MUTED, size=9), lp(f"{solar.get('annual_ghi','—')} kWh/m²/yr", bold=True, size=9),   _solar_badge],
+        [lp("Annual Yield",    MUTED, size=9), lp(f"{solar.get('annual_yield','—')} kWh/kWp/yr", bold=True, size=9), lp("—", MUTED, size=8)],
+        [lp("Optimal Tilt",    MUTED, size=9), lp(f"{solar.get('optimal_tilt','—')}°", bold=True, size=9),           lp("—", MUTED, size=8)],
+        [lp("Max Slope",       MUTED, size=9), lp(f"{terrain.get('max_slope_pct','—')}%", bold=True, size=9),        _slope_badge],
+        [lp("Elevation",       MUTED, size=9), lp(f"{terrain.get('center_elev','—')} m asl", bold=True, size=9),     lp("—", MUTED, size=8)],
+        [lp("Est. Capacity",   MUTED, size=9), lp(f"{cap_mw} MWp", bold=True, size=9),                               lp(f"Density: {_density} MW/ha", MUTED, size=8)],
+        [lp("Est. Output",     MUTED, size=9), lp(f"{cap_mwh:,.0f} MWh/yr", bold=True, size=9),                      lp("Indicative only", MUTED, size=8)],
+        [lp("EEG / Incentive", MUTED, size=9), lp(eeg_status, bold=True, size=9),                                    lp(eeg_note, MUTED, size=8)],
     ]
     mt = Table(rows, colWidths=[4.5*cm, 5.5*cm, 7*cm])
     mt.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0),(-1,0), GREEN),
+        ("BACKGROUND",    (0,0),(-1,0), ORANGE),
         ("FONTSIZE",      (0,0),(-1,-1), 9),
-        ("GRID",          (0,0),(-1,-1), 0.5, colors.lightgrey),
+        ("BOX",           (0,0),(-1,-1), 0.5, BORDER),
+        ("INNERGRID",     (0,0),(-1,-1), 0.4, BORDER),
         ("ROWBACKGROUNDS",(0,1),(-1,-1), [colors.white, LGRAY]),
-        ("TOPPADDING",    (0,0),(-1,-1), 6),
-        ("BOTTOMPADDING", (0,0),(-1,-1), 6),
-        ("LEFTPADDING",   (0,0),(-1,-1), 6),
-        ("VALIGN",        (0,0),(-1,-1), "TOP"),
+        ("TOPPADDING",    (0,0),(-1,-1), 7),
+        ("BOTTOMPADDING", (0,0),(-1,-1), 7),
+        ("LEFTPADDING",   (0,0),(-1,-1), 8),
+        ("VALIGN",        (0,0),(-1,-1), "MIDDLE"),
     ]))
     story.append(mt)
     story.append(Spacer(1, 0.5*cm))
@@ -667,8 +753,7 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
     # ── Monthly Irradiation Bar Chart ────────────────────────────────────────
     monthly_data = solar.get("monthly", [])
     if monthly_data:
-        _chart_header = Paragraph("MONTHLY SOLAR IRRADIATION (kWh/m²)",
-            ParagraphStyle("H2", parent=styles["Heading2"], fontSize=12, textColor=GREEN))
+        _chart_header = section_hdr("MONTHLY SOLAR IRRADIATION (kWh/m²)")
 
         months_abbr = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
         ghi_vals = [row.get("GHI (kWh/m²)", 0) for row in monthly_data[:12]]
@@ -694,10 +779,10 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
         for _gi, _gv in enumerate([0.25, 0.5, 0.75, 1.0]):
             _gy = _pad_b + _bar_area_h * _gv
             d.add(Line(_pad_l, _gy, _chart_w - _pad_r, _gy,
-                       strokeColor=colors.HexColor("#e0e8e0"), strokeWidth=0.5))
+                       strokeColor=colors.HexColor("#d4e0d4"), strokeWidth=0.5))
             _gl = f"{int(max_ghi * _gv)}"
             d.add(String(_pad_l - 4, _gy - 3, _gl,
-                         fontSize=6, fillColor=colors.HexColor("#4a6a4a"),
+                         fontSize=6, fillColor=colors.HexColor("#5a7a5a"),
                          textAnchor="end"))
 
         # Bars + month labels + value labels
@@ -707,9 +792,8 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
             _bx      = _pad_l + _i * _gap + (_gap - _bar_w) / 2
             _by      = _pad_b
 
-            # Gradient-ish: darker green for higher months
-            _g_int   = int(26 + (1 - _ratio) * (140 - 26))
-            _bar_col = colors.Color(26/255, _g_int/255, 46/255)
+            # Rainbow by month position (red winter → green summer)
+            _bar_col = colors.HexColor(_MONTH_COLORS[_i % 12])
 
             d.add(Rect(_bx, _by, _bar_w, _bh,
                        fillColor=_bar_col, strokeColor=None))
@@ -727,7 +811,7 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
 
         # Baseline
         d.add(Line(_pad_l, _pad_b, _chart_w - _pad_r, _pad_b,
-                   strokeColor=colors.HexColor("#1d9e52"), strokeWidth=1))
+                   strokeColor=colors.HexColor("#d4e0d4"), strokeWidth=1))
 
         _sub = Paragraph(
             f"Peak month: {months_abbr[ghi_vals.index(max_ghi)]} ({max_ghi:.0f} kWh/m²)  |  "
@@ -737,29 +821,30 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
         story.append(KeepTogether([_chart_header, Spacer(1, 0.15*cm), d, Spacer(1, 0.2*cm), _sub]))
         story.append(Spacer(1, 0.5*cm))
 
-    story.append(Paragraph("RECOMMENDED NEXT STEPS",
-        ParagraphStyle("H2", parent=styles["Heading2"], fontSize=12, textColor=GREEN)))
+    story.append(section_hdr("RECOMMENDED NEXT STEPS"))
+    story.append(Spacer(1, 0.15*cm))
     for step in get_next_steps(project_country or country, land_use):
-        story.append(Paragraph(step, styles["Normal"]))
+        story.append(Paragraph(step,
+            ParagraphStyle("step", parent=styles["Normal"], fontSize=9,
+                           textColor=DARK_TXT, leading=13, leftIndent=4)))
         story.append(Spacer(1, 0.2*cm))
 
     story.append(Spacer(1, 0.3*cm))
 
     # ── Rating Legend — two compact tables side by side ───────────────────────
-    story.append(Paragraph("RATING LEGEND",
-        ParagraphStyle("H2", parent=styles["Heading2"], fontSize=11, textColor=GREEN)))
+    story.append(section_hdr("RATING LEGEND"))
 
     # Performance ratings table
     perf_rows = [
         [lp("Performance Rating", colors.white, bold=True, size=8), lp("Action", colors.white, bold=True, size=8)],
-        [lp("✅ EXCELLENT / GOOD", C_GREEN,  bold=True, size=8), lp("All parameters ideal — proceed", size=8)],
-        [lp("⚠️ ACCEPTABLE",       C_YELLOW, bold=True, size=8), lp("Viable with constraints — monitor", size=8)],
-        [lp("⚠️ CHALLENGING",      C_ORANGE, bold=True, size=8), lp("Near limit — detailed study required", size=8)],
-        [lp("❌ CRITICAL",         C_RED,    bold=True, size=8), lp("Exceeds threshold — reconsider site", size=8)],
+        [lp("EXCELLENT / GOOD", C_GREEN,  bold=True, size=8), lp("All parameters ideal — proceed", MUTED, size=8)],
+        [lp("ACCEPTABLE",       C_YELLOW, bold=True, size=8), lp("Viable with constraints — monitor", MUTED, size=8)],
+        [lp("CHALLENGING",      C_ORANGE, bold=True, size=8), lp("Near limit — detailed study required", MUTED, size=8)],
+        [lp("CRITICAL",         C_RED,    bold=True, size=8), lp("Exceeds threshold — reconsider site", MUTED, size=8)],
     ]
     pt = Table(perf_rows, colWidths=[4.5*cm, 5.5*cm])
     pt.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0), (-1,0),  GREEN),
+        ("BACKGROUND",    (0,0), (-1,0),  ORANGE),
         ("GRID",          (0,0), (-1,-1), 0.5, colors.lightgrey),
         ("TOPPADDING",    (0,0), (-1,-1), 5),
         ("BOTTOMPADDING", (0,0), (-1,-1), 5),
@@ -775,14 +860,14 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
     # Flood risk table
     flood_rows = [
         [lp("Flood Risk Rating", colors.white, bold=True, size=8), lp("Action", colors.white, bold=True, size=8)],
-        [lp("🟢 LOW RISK",       C_GREEN,  bold=True, size=8), lp("Verify at local flood portal", size=8)],
-        [lp("🟡 LOW-MODERATE",   C_YELLOW, bold=True, size=8), lp("Cross-check official flood maps", size=8)],
-        [lp("🟠 MODERATE RISK",  C_ORANGE, bold=True, size=8), lp("Manual flood risk check required", size=8)],
-        [lp("🔴 HIGH RISK",      C_RED,    bold=True, size=8), lp("Flood zone study before proceeding", size=8)],
+        [lp("LOW RISK",       C_GREEN,  bold=True, size=8), lp("Verify at local flood portal", MUTED, size=8)],
+        [lp("LOW-MODERATE",   C_YELLOW, bold=True, size=8), lp("Cross-check official flood maps", MUTED, size=8)],
+        [lp("MODERATE RISK",  C_ORANGE, bold=True, size=8), lp("Manual flood risk check required", MUTED, size=8)],
+        [lp("HIGH RISK",      C_RED,    bold=True, size=8), lp("Flood zone study before proceeding", MUTED, size=8)],
     ]
     ft = Table(flood_rows, colWidths=[4.5*cm, 5.5*cm])
     ft.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0), (-1,0),  GREEN),
+        ("BACKGROUND",    (0,0), (-1,0),  ORANGE),
         ("GRID",          (0,0), (-1,-1), 0.5, colors.lightgrey),
         ("TOPPADDING",    (0,0), (-1,-1), 5),
         ("BOTTOMPADDING", (0,0), (-1,-1), 5),
@@ -805,12 +890,13 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
     story.append(legend_wrapper)
 
     story.append(Spacer(1, 0.4*cm))
-    story.append(HRFlowable(width="100%", thickness=1, color=colors.lightgrey))
+    story.append(HRFlowable(width="100%", thickness=1, color=BORDER))
     story.append(Spacer(1, 0.2*cm))
     story.append(Paragraph(
-        "Generated by SiteIQ — Solar Site Intelligence Platform by PVMath | For professional use only. "
-        "Data sources: PVGIS JRC (EU Commission), EU-DEM / SRTM via OpenTopoData, OpenStreetMap (Nominatim).",
-        ParagraphStyle("Ft", parent=styles["Normal"], fontSize=7, textColor=colors.grey)
+        "Generated by SiteIQ — Solar Site Intelligence Platform by PVMath &nbsp;|&nbsp; pvmath.com &nbsp;|&nbsp; "
+        "For professional use only — pre-feasibility screening only, not a substitute for a bankable energy study. "
+        "Data: PVGIS JRC (EU Commission), EU-DEM / SRTM (OpenTopoData), OpenStreetMap (Nominatim).",
+        ParagraphStyle("Ft", parent=styles["Normal"], fontSize=7, textColor=MUTED, leading=10)
     ))
 
     doc.build(story)

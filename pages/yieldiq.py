@@ -151,7 +151,7 @@ def gcr_shading(gcr: float, tracker: bool) -> float:
 PVGIS_URL = "https://re.jrc.ec.europa.eu/api/v5_2/PVcalc"
 MONTHS    = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 CONFIG_ORDER  = ["1P Fixed", "2P Fixed", "1P Tracker", "2P Tracker"]
-CHART_COLORS  = ["#1565c0", "#42a5f5", "#2e7d32", "#66bb6a"]
+CHART_COLORS  = ["#e85d04", "#c24a00", "#1d9e52", "#145f34"]  # Fixed: orange / Tracker: green
 
 
 def call_pvgis(lat: float, lon: float, total_loss_pct: float, tracker: bool) -> dict:
@@ -255,7 +255,7 @@ def make_monthly_chart(results: dict, dc_kwp: float) -> bytes:
     width = 0.18
     fig, ax = plt.subplots(figsize=(13, 5))
     fig.patch.set_facecolor("white")
-    ax.set_facecolor("#f8faf8")
+    ax.set_facecolor("#f5f7f5")
 
     for i, (cfg, color) in enumerate(zip(CONFIG_ORDER, CHART_COLORS)):
         if cfg not in results:
@@ -265,17 +265,19 @@ def make_monthly_chart(results: dict, dc_kwp: float) -> bytes:
         ax.bar(x + offset, vals_mwh, width, label=cfg, color=color,
                alpha=0.88, edgecolor="white", linewidth=0.5)
 
-    ax.set_xlabel("Month", fontsize=10, labelpad=5)
-    ax.set_ylabel("Energy output (MWh)", fontsize=10, labelpad=5)
+    ax.set_xlabel("Month", fontsize=10, labelpad=5, color="#5a7a5a")
+    ax.set_ylabel("Energy output (MWh)", fontsize=10, labelpad=5, color="#5a7a5a")
     ax.set_xticks(x)
     ax.set_xticklabels(MONTHS, fontsize=9)
-    ax.tick_params(axis="y", labelsize=9)
-    ax.legend(framealpha=0.85, fontsize=9, loc="upper left", ncol=2)
-    ax.grid(axis="y", alpha=0.3, linewidth=0.5)
+    ax.tick_params(axis="both", labelsize=9, colors="#5a7a5a")
+    ax.legend(framealpha=0.9, fontsize=9, loc="upper left", ncol=2,
+              edgecolor="#d4e0d4", labelcolor="#1a2e1a")
+    ax.grid(axis="y", alpha=0.25, linewidth=0.5, color="#d4e0d4")
     ax.spines[["top", "right"]].set_visible(False)
+    ax.spines[["left", "bottom"]].set_color("#d4e0d4")
     ax.set_title(
         f"Monthly Energy Output — {dc_kwp:,.0f} kWp System",
-        fontsize=11, fontweight="bold", pad=10
+        fontsize=11, fontweight="bold", pad=10, color="#1a2e1a"
     )
     plt.tight_layout()
 
@@ -294,31 +296,54 @@ def build_pdf(project_name, lat, lon, dc_kwp, gcr_1p, gcr_2p, base_loss,
                               topMargin=2*cm,  bottomMargin=2*cm)
     styles = getSampleStyleSheet()
     S = lambda name, **kw: ParagraphStyle(name, parent=styles["Normal"], **kw)
-    lbl  = S("lbl",  fontSize=7.5, fontName="Helvetica-Bold",
-             textColor=colors.HexColor("#6a8a6a"))
-    bod  = S("bod",  fontSize=9,   textColor=colors.HexColor("#2a3a2a"), leading=13)
-    sh   = S("sh",   fontSize=11,  fontName="Helvetica-Bold",
-             textColor=colors.HexColor("#145f34"), spaceAfter=5)
-    note = S("note", fontSize=7.5, textColor=colors.HexColor("#8a9a8a"), leading=11)
+    # ── Brand palette matching pvmath.com ─────────────────────────────────────
+    AMBER    = colors.HexColor("#d4840a")
+    AMBER_DK = colors.HexColor("#b36a00")
+    GREEN_C  = colors.HexColor("#1d9e52")
+    GREEN_DK = colors.HexColor("#145f34")
+    DARK_TXT = colors.HexColor("#1a2e1a")
+    MUTED    = colors.HexColor("#5a7a5a")
+    LGRAY    = colors.HexColor("#f5f7f5")
+    BORDER   = colors.HexColor("#d4e0d4")
+    ORANGE_C = colors.HexColor("#e85d04")
+
+    lbl  = S("lbl",  fontSize=7.5, fontName="Helvetica-Bold", textColor=MUTED)
+    bod  = S("bod",  fontSize=9,   textColor=DARK_TXT, leading=13)
+    sh   = S("sh",   fontSize=11,  fontName="Helvetica-Bold", textColor=DARK_TXT, spaceAfter=5)
+    note = S("note", fontSize=7.5, textColor=colors.HexColor("#7a4f00"), leading=11)
     def lp(txt, style=bod): return Paragraph(str(txt), style)
+
+    def section_hdr(text):
+        t = Table([[
+            Paragraph("", S("x")),
+            Paragraph(text, S("sh2", fontSize=11, fontName="Helvetica-Bold", textColor=DARK_TXT, leading=14)),
+        ]], colWidths=[0.28*cm, 16.72*cm])
+        t.setStyle(TableStyle([
+            ("BACKGROUND",    (0,0), (0,-1), AMBER),
+            ("TOPPADDING",    (0,0), (-1,-1), 6),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 6),
+            ("LEFTPADDING",   (1,0), (1,-1), 8),
+            ("LEFTPADDING",   (0,0), (0,-1), 0),
+            ("RIGHTPADDING",  (0,0), (-1,-1), 0),
+        ]))
+        return t
 
     story = []
 
-    # ── Green header bar ──────────────────────────────────────────────────────
+    # ── Amber header bar (matches website mockup) ─────────────────────────────
     hdr = Table([[
-        lp("YieldIQ ⚡", S("ht", fontSize=15, fontName="Helvetica-Bold",
-                            textColor=colors.white)),
-        lp("PVMath · Solar Site Intelligence · pvmath.com",
-           S("hs", fontSize=8.5, textColor=colors.HexColor("#c8e6c9"),
-             alignment=TA_RIGHT)),
-    ]], colWidths=["55%","45%"])
+        lp("YIELDIQ — ENERGY YIELD ESTIMATION REPORT",
+           S("ht", fontSize=14, fontName="Helvetica-Bold", textColor=colors.white, leading=17)),
+        lp("PVMath &nbsp;·&nbsp; pvmath.com",
+           S("hs", fontSize=8.5, textColor=colors.HexColor("#fde8c0"), alignment=TA_RIGHT, leading=12)),
+    ]], colWidths=["63%","37%"])
     hdr.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0),(-1,-1), colors.HexColor("#145f34")),
+        ("BACKGROUND",    (0,0),(-1,-1), AMBER),
         ("VALIGN",        (0,0),(-1,-1), "MIDDLE"),
-        ("TOPPADDING",    (0,0),(-1,-1), 10),
-        ("BOTTOMPADDING", (0,0),(-1,-1), 10),
-        ("LEFTPADDING",   (0,0),(-1,-1), 12),
-        ("RIGHTPADDING",  (0,0),(-1,-1), 12),
+        ("TOPPADDING",    (0,0),(-1,-1), 13),
+        ("BOTTOMPADDING", (0,0),(-1,-1), 13),
+        ("LEFTPADDING",   (0,0),(-1,-1), 14),
+        ("RIGHTPADDING",  (0,0),(-1,-1), 14),
     ]))
     story += [hdr, Spacer(1, 0.35*cm)]
 
@@ -334,8 +359,8 @@ def build_pdf(project_name, lat, lon, dc_kwp, gcr_1p, gcr_2p, base_loss,
          lp("DATA SOURCE", lbl), lp("PVGIS JRC (EU Commission)", bod)],
     ], colWidths=["3cm","6cm","3cm","6cm"])
     info.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0),(-1,-1), colors.HexColor("#f5f9f5")),
-        ("BOX",           (0,0),(-1,-1), 0.5, colors.HexColor("#c8e0c8")),
+        ("BACKGROUND",    (0,0),(-1,-1), LGRAY),
+        ("BOX",           (0,0),(-1,-1), 0.5, BORDER),
         ("TOPPADDING",    (0,0),(-1,-1), 5),
         ("BOTTOMPADDING", (0,0),(-1,-1), 5),
         ("LEFTPADDING",   (0,0),(-1,-1), 8),
@@ -343,24 +368,27 @@ def build_pdf(project_name, lat, lon, dc_kwp, gcr_1p, gcr_2p, base_loss,
     story += [info, Spacer(1, 0.5*cm)]
 
     # ── Results table ─────────────────────────────────────────────────────────
-    story.append(lp("Configuration Comparison", sh))
+    story.append(section_hdr("CONFIGURATION COMPARISON"))
+    story.append(Spacer(1, 0.15*cm))
     hdr_row = [lp(h, lbl) for h in [
         "Configuration","GCR","Shading\nLoss","Total\nLoss",
         "Specific Yield\n(kWh/kWp/yr)","Annual Energy\n(MWh/yr)","PR (%)","CF (%)"
     ]]
     rows = [hdr_row]
+    _cfg_row_colors = []  # track row background per cfg
     for cfg in CONFIG_ORDER:
         if cfg not in results:
             continue
         r  = results[cfg]
         is_best = r["spec_y"] == best_sy
-        sy_style = S("sy", fontSize=10, fontName="Helvetica-Bold",
-                     textColor=colors.HexColor("#1565c0"))
+        is_tracker = "Tracker" in cfg
+        sy_color = GREEN_C if is_tracker else ORANGE_C
+        sy_style = S("sy", fontSize=10, fontName="Helvetica-Bold", textColor=sy_color)
+        cfg_style = S("cf", fontSize=9,
+                      fontName="Helvetica-Bold" if is_best else "Helvetica",
+                      textColor=GREEN_DK if is_tracker else colors.HexColor("#c24a00"))
         rows.append([
-            lp(cfg + (" ★" if is_best else ""),
-               S("cf", fontSize=9,
-                 fontName="Helvetica-Bold" if is_best else "Helvetica",
-                 textColor=colors.HexColor("#1a2e1a"))),
+            lp(cfg + (" ★" if is_best else ""), cfg_style),
             lp(f"{r['gcr']:.2f}", bod),
             lp(f"{r['shading']:.1f}%", bod),
             lp(f"{r['total_loss']:.1f}%", bod),
@@ -369,17 +397,22 @@ def build_pdf(project_name, lat, lon, dc_kwp, gcr_1p, gcr_2p, base_loss,
             lp(f"{r['pr']:.1f}%" if r["pr"] else "—", bod),
             lp(f"{r['cf']:.1f}%", bod),
         ])
+        _cfg_row_colors.append(
+            colors.HexColor("#f0faf4") if is_tracker else colors.HexColor("#fff4ee")
+        )
     res_tbl = Table(rows, colWidths=["3cm","1.4cm","1.7cm","1.7cm","3cm","2.8cm","1.5cm","1.5cm"])
-    res_tbl.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0),(-1, 0), colors.HexColor("#e8f5e9")),
-        ("BOX",           (0,0),(-1,-1), 0.5, colors.HexColor("#c8e0c8")),
-        ("INNERGRID",     (0,0),(-1,-1), 0.3, colors.HexColor("#ddeedd")),
+    _tbl_style = [
+        ("BACKGROUND",    (0,0),(-1, 0), AMBER),
+        ("BOX",           (0,0),(-1,-1), 0.5, BORDER),
+        ("INNERGRID",     (0,0),(-1,-1), 0.3, BORDER),
         ("VALIGN",        (0,0),(-1,-1), "MIDDLE"),
-        ("TOPPADDING",    (0,0),(-1,-1), 5),
-        ("BOTTOMPADDING", (0,0),(-1,-1), 5),
-        ("LEFTPADDING",   (0,0),(-1,-1), 5),
-        ("ROWBACKGROUNDS",(0,1),(-1,-1), [colors.white, colors.HexColor("#f5f9f5")]),
-    ]))
+        ("TOPPADDING",    (0,0),(-1,-1), 6),
+        ("BOTTOMPADDING", (0,0),(-1,-1), 6),
+        ("LEFTPADDING",   (0,0),(-1,-1), 6),
+    ]
+    for _ri, _bg in enumerate(_cfg_row_colors):
+        _tbl_style.append(("BACKGROUND", (0, _ri+1), (-1, _ri+1), _bg))
+    res_tbl.setStyle(TableStyle(_tbl_style))
     story += [res_tbl, Spacer(1, 0.5*cm)]
 
     # ── Tracker gain summary ──────────────────────────────────────────────────
@@ -395,22 +428,45 @@ def build_pdf(project_name, lat, lon, dc_kwp, gcr_1p, gcr_2p, base_loss,
         story.append(Spacer(1, 0.4*cm))
 
     # ── Monthly chart ─────────────────────────────────────────────────────────
-    story.append(lp("Monthly Energy Profile", sh))
-    story.append(RLImage(io.BytesIO(chart_bytes), width=16*cm, height=6.5*cm))
-    story += [Spacer(1, 0.5*cm),
-              HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#c8e0c8")),
-              Spacer(1, 0.3*cm)]
-
-    # ── Disclaimer ────────────────────────────────────────────────────────────
-    story.append(lp(
-        "DISCLAIMER: Preliminary yield estimates for pre-feasibility use only. Results are based on "
-        "PVGIS (EC JRC) irradiance data and simplified row shading models derived from GCR. "
-        "PVMath does not claim bankability. A certified energy yield assessment (PVsyst or equivalent) "
-        "is required for financing, permitting, and EPC decisions.", note))
+    story.append(section_hdr("MONTHLY ENERGY PROFILE"))
     story.append(Spacer(1, 0.15*cm))
+    story.append(RLImage(io.BytesIO(chart_bytes), width=16*cm, height=6.5*cm))
+    story.append(Spacer(1, 0.5*cm))
+
+    # ── Disclaimer — amber warning box ───────────────────────────────────────
+    disc_inner = Table([[
+        lp("⚠  IMPORTANT DISCLAIMER", S("dt", fontSize=9, fontName="Helvetica-Bold",
+                                         textColor=colors.HexColor("#7a4f00"), leading=12)),
+    ]], colWidths=["100%"])
+    disc_inner.setStyle(TableStyle([("LEFTPADDING",(0,0),(-1,-1),0),("BOTTOMPADDING",(0,0),(-1,-1),4)]))
+
+    disc_body = (
+        "These are preliminary yield estimates for pre-feasibility and internal go/no-go screening only. "
+        "Results are based on PVGIS (EC JRC) satellite irradiance data and simplified row shading models derived from GCR. "
+        "Typical uncertainty vs. a full bankable energy yield study: ±8–15%. "
+        "PVMath does not claim bankability. "
+        "A certified energy yield assessment (PVsyst + P50/P90 analysis by a qualified independent engineer) "
+        "is required before financing, permitting, or EPC contract execution."
+    )
+    disc_tbl = Table([[
+        lp(disc_body, S("db", fontSize=8.5, textColor=colors.HexColor("#7a4f00"), leading=13)),
+    ]], colWidths=["100%"])
+    disc_tbl.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0),(-1,-1), colors.HexColor("#fff8e6")),
+        ("BOX",           (0,0),(-1,-1), 1.5, colors.HexColor("#f0b429")),
+        ("TOPPADDING",    (0,0),(-1,-1), 10),
+        ("BOTTOMPADDING", (0,0),(-1,-1), 10),
+        ("LEFTPADDING",   (0,0),(-1,-1), 12),
+        ("RIGHTPADDING",  (0,0),(-1,-1), 12),
+    ]))
+    story.append(disc_tbl)
+    story.append(Spacer(1, 0.3*cm))
+    story.append(HRFlowable(width="100%", thickness=1, color=BORDER))
+    story.append(Spacer(1, 0.2*cm))
     story.append(lp(
-        "Generated by YieldIQ — PVMath Solar Site Intelligence Platform | pvmath.com | "
-        "Data: PVGIS (EC JRC). For professional use only.", note))
+        "Generated by YieldIQ — PVMath Solar Site Intelligence Platform &nbsp;|&nbsp; pvmath.com &nbsp;|&nbsp; "
+        "Data: PVGIS JRC (EU Commission). For professional use only.",
+        S("ft", fontSize=7, textColor=MUTED, leading=10)))
 
     doc.build(story)
     buf.seek(0)
