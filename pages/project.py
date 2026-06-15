@@ -235,124 +235,38 @@ if show_form:
 
     # ── Location input ────────────────────────────────────────────────────────
     st.markdown("**Site Location**")
+
+    # In Full Mode the map method is for drawing, not just clicking
+    _map_label = "🗺️ Draw on Map" if is_full else "🗺️ Search / Click on Map"
     loc_method = st.radio(
         "Input method",
-        ["🗺️ Search / Click on Map", "📐 Coordinates (Lat / Lon)", "🔗 Google Maps Link"],
+        [_map_label, "📐 Coordinates (Lat / Lon)", "🔗 Google Maps Link"],
         horizontal=True,
         label_visibility="collapsed",
     )
+    _is_map = loc_method.startswith("🗺️")
 
     lat = lon = None
-    polygon_coords = proj.get("polygon_coords")
+    # Read polygon from session draft first (survives reruns), else from saved project
+    polygon_coords = st.session_state.get("proj_polygon_draft", proj.get("polygon_coords"))
 
-    # ── MAP ───────────────────────────────────────────────────────────────────
-    if loc_method == "🗺️ Search / Click on Map":
-        search_q = st.text_input(
-            "Search by place name",
-            placeholder="e.g. Munich, Bavaria  or  Rajasthan India",
-            label_visibility="collapsed",
-        )
-        if search_q and search_q != st.session_state.get("proj_last_search", ""):
-            with st.spinner("Searching…"):
-                slat, slon, _ = geocode_address(search_q)
-            if slat:
-                st.session_state["proj_map_center"] = [slat, slon]
-                st.session_state["proj_map_zoom"]   = 13
-                st.session_state["proj_last_search"] = search_q
-                st.rerun()
-            else:
-                st.session_state["proj_last_search"] = search_q
-                st.warning("Location not found — try adding the country name.")
+    # ── Coordinate / Google Maps inputs (used to centre map in Full Mode too) ──
+    _coord_center = None  # [lat, lon] to jump map to
 
-        center = st.session_state.get("proj_map_center", proj.get("map_center_cache", [30.0, 10.0]))
-        zoom   = st.session_state.get("proj_map_zoom",   4)
-
-        m = folium.Map(
-            location=center, zoom_start=zoom,
-            tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
-            attr="Google Satellite",
-        )
-
-        if is_full:
-            # Draw plugin for polygon boundary
-            Draw(
-                export=False,
-                position="topleft",
-                draw_options={
-                    "polyline":     False,
-                    "polygon":      True,
-                    "circle":       False,
-                    "rectangle":    True,
-                    "circlemarker": False,
-                    "marker":       False,
-                },
-                edit_options={"edit": True, "remove": True},
-            ).add_to(m)
-            # Show existing polygon if any
-            if polygon_coords and len(polygon_coords) >= 3:
-                folium.Polygon(
-                    locations=[[c[0], c[1]] for c in polygon_coords],
-                    color="#1d9e52", fill=True, fill_opacity=0.15, weight=2,
-                    tooltip="Current site boundary",
-                ).add_to(m)
-            st.caption("Draw a **polygon** or **rectangle** around the site boundary. Use the edit tool to adjust vertices.")
-        else:
-            # Pin drop
-            if "proj_pin_lat" in st.session_state:
-                folium.Marker(
-                    [st.session_state["proj_pin_lat"], st.session_state["proj_pin_lon"]],
-                    tooltip="Selected site",
-                    icon=folium.Icon(color="green", icon="star"),
-                ).add_to(m)
-            st.caption("Click anywhere on the map to drop a pin on your site.")
-
-        returned = ["last_clicked", "all_drawings"] if is_full else ["last_clicked"]
-        map_result = st_folium(m, width=None, height=400, returned_objects=returned, key="proj_map")
-
-        if map_result:
-            if is_full:
-                drawings = map_result.get("all_drawings") or []
-                for drawing in drawings:
-                    geom = drawing.get("geometry", {})
-                    if geom.get("type") == "Polygon":
-                        raw_coords = geom["coordinates"][0]
-                        polygon_coords = [[c[1], c[0]] for c in raw_coords]  # GeoJSON is [lon,lat]
-                        lat, lon = centroid_of(polygon_coords)
-                        st.session_state["proj_pin_lat"] = lat
-                        st.session_state["proj_pin_lon"] = lon
-                        break
-                # Also allow click to centre the map
-                if map_result.get("last_clicked") and not polygon_coords:
-                    lc = map_result["last_clicked"]
-                    st.session_state["proj_map_center"] = [lc["lat"], lc["lng"]]
-            else:
-                if map_result.get("last_clicked"):
-                    lc = map_result["last_clicked"]
-                    st.session_state["proj_pin_lat"] = lc["lat"]
-                    st.session_state["proj_pin_lon"] = lc["lng"]
-                    st.session_state["proj_map_center"] = [lc["lat"], lc["lng"]]
-                    st.rerun()
-
-        if "proj_pin_lat" in st.session_state:
-            lat = st.session_state["proj_pin_lat"]
-            lon = st.session_state["proj_pin_lon"]
-            if not is_full:
-                st.success(f"📌 Pin: {lat:.5f}°N, {lon:.5f}°E")
-            else:
-                if polygon_coords:
-                    area_from_poly = polygon_area_ha(polygon_coords)
-                    st.success(f"✅ Boundary drawn · Centroid: {lat:.5f}°N, {lon:.5f}°E · Area: **{area_from_poly} ha**")
-                else:
-                    st.info("Draw a polygon around the site boundary on the map above.")
-
-    elif loc_method == "📐 Coordinates (Lat / Lon)":
+    if loc_method == "📐 Coordinates (Lat / Lon)":
         _c1, _c2 = st.columns(2)
         with _c1:
             lat = st.number_input("Latitude",  value=proj.get("lat", 48.5665), format="%.5f", key="proj_lat_in")
         with _c2:
             lon = st.number_input("Longitude", value=proj.get("lon", 12.1521), format="%.5f", key="proj_lon_in")
         if is_full:
-            st.info("Switch to 'Search / Click on Map' to draw a site boundary for Full Mode.")
+            _coord_center = [lat, lon]
+            st.markdown(
+                '<div style="background:#1565c0;color:#fff;border-radius:7px;padding:0.4rem 0.8rem;'
+                'font-size:0.84rem;font-weight:600;margin-top:0.4rem;">'
+                'ℹ️ Coordinates used to centre the map — switch to Draw on Map to draw your boundary.</div>',
+                unsafe_allow_html=True,
+            )
 
     elif loc_method == "🔗 Google Maps Link":
         maps_raw = st.text_input(
@@ -364,8 +278,127 @@ if show_form:
             lat, lon = parse_google_maps_url(maps_raw)
             if lat and lon:
                 st.success(f"📌 Extracted: {lat:.5f}°N, {lon:.5f}°E")
+                if is_full:
+                    _coord_center = [lat, lon]
             else:
                 st.warning("Could not parse. Try pasting coordinates as '48.137, 11.576'.")
+
+    # ── MAP ───────────────────────────────────────────────────────────────────
+    if _is_map or (is_full and _coord_center):
+        # Search bar (map mode) or just show map centred on coords
+        if _is_map:
+            search_q = st.text_input(
+                "Search by place name",
+                placeholder="e.g. Munich, Bavaria  or  Rajasthan India",
+                label_visibility="collapsed",
+            )
+            if search_q and search_q != st.session_state.get("proj_last_search", ""):
+                with st.spinner("Searching…"):
+                    slat, slon, _ = geocode_address(search_q)
+                if slat:
+                    st.session_state["proj_map_center"] = [slat, slon]
+                    st.session_state["proj_map_zoom"]   = 13
+                    st.session_state["proj_last_search"] = search_q
+                    st.rerun()
+                else:
+                    st.session_state["proj_last_search"] = search_q
+                    st.warning("Location not found — try adding the country name.")
+
+        # Jump to coord-entered location
+        if _coord_center and _coord_center != st.session_state.get("proj_map_center"):
+            st.session_state["proj_map_center"] = _coord_center
+            st.session_state["proj_map_zoom"]   = 13
+
+        center = st.session_state.get("proj_map_center", proj.get("map_center_cache", [30.0, 10.0]))
+        zoom   = st.session_state.get("proj_map_zoom", 4)
+
+        m = folium.Map(
+            location=center, zoom_start=zoom,
+            tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+            attr="Google Satellite",
+        )
+
+        if is_full:
+            # Polygon-only draw tool with thick yellow outline
+            Draw(
+                export=False,
+                position="topleft",
+                draw_options={
+                    "polyline":     False,
+                    "polygon":      {"shapeOptions": {"color": "#f5c518", "weight": 4, "fillOpacity": 0.15}},
+                    "circle":       False,
+                    "rectangle":    False,
+                    "circlemarker": False,
+                    "marker":       False,
+                },
+                edit_options={"edit": True, "remove": True},
+            ).add_to(m)
+            # Show any previously drawn / saved polygon
+            if polygon_coords and len(polygon_coords) >= 3:
+                folium.Polygon(
+                    locations=[[c[0], c[1]] for c in polygon_coords],
+                    color="#f5c518", fill=True, fill_opacity=0.15, weight=4,
+                    tooltip="Site boundary",
+                ).add_to(m)
+            st.caption("Draw a **polygon** around the site boundary. Use the edit tool to adjust vertices.")
+
+            map_result = st_folium(m, width=None, height=420,
+                                   returned_objects=["all_drawings"], key="proj_map_full")
+
+            # Extract polygon from drawings and persist to session state draft
+            # (do NOT rerun — let map remain stable while drawing)
+            if map_result:
+                drawings = map_result.get("all_drawings") or []
+                for drawing in drawings:
+                    geom = drawing.get("geometry", {})
+                    if geom.get("type") == "Polygon":
+                        raw = geom["coordinates"][0]
+                        _poly = [[c[1], c[0]] for c in raw]  # GeoJSON [lon,lat] → [lat,lon]
+                        st.session_state["proj_polygon_draft"] = _poly
+                        polygon_coords = _poly
+                        _clat, _clon = centroid_of(_poly)
+                        st.session_state["proj_pin_lat"] = _clat
+                        st.session_state["proj_pin_lon"] = _clon
+                        break
+
+            # Show result or prompt
+            if polygon_coords and len(polygon_coords) >= 3:
+                lat = st.session_state.get("proj_pin_lat")
+                lon = st.session_state.get("proj_pin_lon")
+                if lat and lon:
+                    area_from_poly = polygon_area_ha(polygon_coords)
+                    st.success(f"✅ Boundary drawn · Centroid: {lat:.5f}°N, {lon:.5f}°E · Area: **{area_from_poly} ha**")
+            else:
+                st.markdown(
+                    '<div style="background:#7a4800;color:#fff;border-radius:7px;padding:0.4rem 0.8rem;'
+                    'font-size:0.84rem;font-weight:600;margin-top:0.3rem;">'
+                    '✏️ Draw a polygon around the site boundary on the map above.</div>',
+                    unsafe_allow_html=True,
+                )
+
+        else:
+            # Quick Mode — pin drop
+            if "proj_pin_lat" in st.session_state:
+                folium.Marker(
+                    [st.session_state["proj_pin_lat"], st.session_state["proj_pin_lon"]],
+                    tooltip="Selected site",
+                    icon=folium.Icon(color="green", icon="star"),
+                ).add_to(m)
+            st.caption("Click anywhere on the map to drop a pin on your site.")
+
+            map_result = st_folium(m, width=None, height=400,
+                                   returned_objects=["last_clicked"], key="proj_map_quick")
+            if map_result and map_result.get("last_clicked"):
+                lc = map_result["last_clicked"]
+                st.session_state["proj_pin_lat"]    = lc["lat"]
+                st.session_state["proj_pin_lon"]    = lc["lng"]
+                st.session_state["proj_map_center"] = [lc["lat"], lc["lng"]]
+                st.rerun()
+
+            if "proj_pin_lat" in st.session_state:
+                lat = st.session_state["proj_pin_lat"]
+                lon = st.session_state["proj_pin_lon"]
+                st.success(f"📌 Pin: {lat:.5f}°N, {lon:.5f}°E")
 
     st.divider()
 
@@ -409,7 +442,8 @@ if show_form:
             }
             st.session_state["proj_edit_mode"] = False
             # Clear per-module map state so they recentre on new project location
-            for key in ["map_center", "map_zoom", "map_lat", "map_lon", "last_map_search"]:
+            for key in ["map_center", "map_zoom", "map_lat", "map_lon", "last_map_search",
+                        "proj_polygon_draft"]:
                 st.session_state.pop(key, None)
             st.success(f"✅ Project saved — **{proj_name.strip()}** · {mode_val.title()} Mode")
             st.rerun()
