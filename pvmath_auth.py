@@ -78,8 +78,16 @@ def sign_up(email: str, password: str) -> dict:
                       headers=_auth_hdr(), timeout=15)
         if r.status_code in (200, 201):
             data = r.json()
-            if data.get("id"):
-                return {"success": True, "user": data}
+            # Email confirmation OFF → Supabase returns a full session object
+            if data.get("access_token"):
+                return {"success": True, "user": data.get("user", {}),
+                        "access_token": data["access_token"],
+                        "refresh_token": data.get("refresh_token", ""),
+                        "auto_confirmed": True}
+            # Email confirmation ON → returns user object with id at root
+            if data.get("id") or data.get("user", {}).get("id"):
+                return {"success": True,
+                        "user": data if data.get("id") else data.get("user", {})}
         return {"success": False, "error": _parse_err(r)}
     except Exception as e:
         return {"success": False, "error": str(e)}
