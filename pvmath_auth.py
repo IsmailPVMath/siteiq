@@ -167,40 +167,19 @@ def generate_otp() -> str:
     return f"{secrets.randbelow(900000) + 100000}"
 
 
-def send_otp_email(to_email: str, otp: str) -> dict:
-    """Send OTP via configured SMTP. Returns {success, error}."""
-    cfg = _smtp_cfg()
-    if not cfg:
-        return {"success": False, "error": "SMTP not configured in Streamlit secrets."}
-
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"PVMath — Your verification code: {otp}"
-    msg["From"]    = cfg["from"]
-    msg["To"]      = to_email
-
-    plain = (
-        f"Your PVMath verification code is:\n\n"
-        f"  {otp}\n\n"
-        f"This code expires in 10 minutes. Do not share it.\n\n"
-        f"— PVMath Team\npvmath.com"
-    )
-    html = f"""
+def _otp_html(otp: str) -> str:
+    return f"""
 <div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;
             padding:2rem;background:#f5f7f5;border-radius:12px;">
   <div style="text-align:center;margin-bottom:1.5rem;">
     <span style="font-size:1.4rem;font-weight:800;color:#1a2e1a;">PVMath</span>
-    <div style="font-size:0.8rem;color:#5a7a5a;margin-top:0.2rem;">
-      Solar Site Intelligence
-    </div>
+    <div style="font-size:0.8rem;color:#5a7a5a;margin-top:0.2rem;">Solar Site Intelligence</div>
   </div>
   <div style="background:#fff;border-radius:10px;padding:2rem;text-align:center;
               border:1px solid #d4e0d4;">
-    <div style="font-size:0.9rem;color:#5a7a5a;margin-bottom:1.2rem;">
-      Your verification code is:
-    </div>
-    <div style="font-size:2.4rem;font-weight:800;color:#1d9e52;
-                letter-spacing:0.35em;background:#e8f5ee;
-                padding:1rem 1.5rem;border-radius:8px;display:inline-block;">
+    <div style="font-size:0.9rem;color:#5a7a5a;margin-bottom:1.2rem;">Your verification code is:</div>
+    <div style="font-size:2.4rem;font-weight:800;color:#1d9e52;letter-spacing:0.35em;
+                background:#e8f5ee;padding:1rem 1.5rem;border-radius:8px;display:inline-block;">
       {otp}
     </div>
     <div style="font-size:0.8rem;color:#5a7a5a;margin-top:1.2rem;">
@@ -212,6 +191,56 @@ def send_otp_email(to_email: str, otp: str) -> dict:
   </div>
 </div>"""
 
+
+def _get_env(key, fallback=None):
+    v = os.environ.get(key, "")
+    if v:
+        return v
+    try:
+        return st.secrets[key]
+    except Exception:
+        return fallback
+
+
+def send_otp_email(to_email: str, otp: str) -> dict:
+    """Send OTP via Brevo HTTP API (primary) or SMTP (fallback)."""
+    subject = f"PVMath — Your verification code: {otp}"
+    html    = _otp_html(otp)
+    plain   = (f"Your PVMath verification code is:\n\n  {otp}\n\n"
+               f"Expires in 10 minutes. Do not share it.\n\n— PVMath Team\npvmath.com")
+
+    # ── Option 1: Brevo REST API (HTTPS — works on Railway) ──────
+    brevo_key = _get_env("BREVO_API_KEY")
+    sender_email = _get_env("SMTP_FROM") or _get_env("SMTP_USER") or "noreply@pvmath.com"
+    if brevo_key:
+        try:
+            r = _req.post(
+                "https://api.brevo.com/v3/smtp/email",
+                headers={"api-key": brevo_key, "Content-Type": "application/json"},
+                json={
+                    "sender":      {"name": "PVMath", "email": sender_email},
+                    "to":          [{"email": to_email}],
+                    "subject":     subject,
+                    "htmlContent": html,
+                    "textContent": plain,
+                },
+                timeout=15,
+            )
+            if r.status_code in (200, 201):
+                return {"success": True}
+            return {"success": False, "error": f"Brevo API error {r.status_code}: {r.text}"}
+        except Exception as e:
+            return {"success": False, "error": f"Brevo API exception: {e}"}
+
+    # ── Option 2: SMTP fallback (Streamlit Cloud / local) ────────
+    cfg = _smtp_cfg()
+    if not cfg:
+        return {"success": False, "error": "No email config: set BREVO_API_KEY (or SMTP_*) in Railway Variables."}
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"]    = cfg["from"]
+    msg["To"]      = to_email
     msg.attach(MIMEText(plain, "plain"))
     msg.attach(MIMEText(html,  "html"))
 
@@ -508,7 +537,8 @@ def render_auth_page(app_name: str = "PVMath"):
             st.markdown("<div style='margin-top:0.8rem;'></div>", unsafe_allow_html=True)
             if st.button("← Back to login", key="btn_otp_back"):
                 for k in ["pvm_otp_state", "pvm_otp_email", "pvm_otp_password",
-                          "pvm_otp_code", "pvm_otp_expiry", "pvm_otp_attempts"]:
+                          "pvm_otp_code", "pvm_otp_expiry", "pvm_otp_attempts",
+                          "pvm_user_id", "pvm_email", "pvm_access_token"]:
                     st.session_state.pop(k, None)
                 st.rerun()
 
