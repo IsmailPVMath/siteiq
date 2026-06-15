@@ -33,15 +33,10 @@ if _uid_for_load and "pvm_project" not in st.session_state:
     if _loaded:
         st.session_state["pvm_project"] = _loaded
 
-# ── Restore sidebar after auth (auth page collapses it to width:0)
+# ── Restore sidebar after auth (auth page sets width:0)
 st.markdown("""
 <style>
-section[data-testid="stSidebar"] {
-    width: var(--sidebar-width, 21rem) !important;
-    min-width: 14rem !important;
-    overflow: visible !important;
-}
-[data-testid="collapsedControl"] { display: flex !important; }
+section[data-testid="stSidebar"] { width: 21rem !important; min-width: 14rem !important; }
 </style>
 """, unsafe_allow_html=True)
 
