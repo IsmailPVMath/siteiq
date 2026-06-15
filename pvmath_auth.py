@@ -454,7 +454,6 @@ def render_auth_page(app_name: str = "PVMath"):
         html,body,[class*="css"]{font-family:'Inter',sans-serif!important;background:#f5f7f5!important;}
         [data-testid="stAppViewContainer"],[data-testid="stMain"],.main,.stApp{background:#f5f7f5!important;}
         section[data-testid="stSidebar"]{width:0!important;min-width:0!important;overflow:hidden!important;padding:0!important;}
-        [data-testid="collapsedControl"]{display:none!important;}
         #MainMenu,footer,header{visibility:hidden!important;}
         .block-container{padding-top:0!important;max-width:100%!important;}
         .stButton>button{
@@ -646,7 +645,7 @@ def render_auth_page(app_name: str = "PVMath"):
         width: 0 !important; min-width: 0 !important;
         overflow: hidden !important; padding: 0 !important;
     }
-    [data-testid="collapsedControl"] { display: none !important; }
+
 
     /* Full page centering */
     .block-container {

@@ -105,16 +105,6 @@ with st.sidebar:
 
     # TopoIQ — greyed out unless project is in Full Mode with a drawn boundary
     st.page_link("pages/topoiq.py",   label="TopoIQ",   icon="⛰️", disabled=not _topo_ok)
-    if not _topo_ok:
-        _reason = "Select Full Mode and draw a site boundary in Project to unlock."
-        st.markdown(
-            f'<div style="font-size:0.74rem;color:#8a6a2a;background:#fff8e8;'
-            f'border:1px solid #e8d8a0;border-radius:6px;padding:0.3rem 0.6rem;'
-            f'margin:-0.3rem 0 0.6rem 1.8rem;line-height:1.4;">⛰️ TopoIQ requires '
-            f'<strong>Full Mode</strong> with a drawn boundary.<br>'
-            f'<span style="opacity:0.8;">{_reason}</span></div>',
-            unsafe_allow_html=True,
-        )
 
     st.page_link("pages/yieldiq.py",  label="YieldIQ",  icon="⚡")
     if _user_email in _ADMIN:
