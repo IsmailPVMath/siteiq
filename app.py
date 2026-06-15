@@ -1,5 +1,5 @@
 import streamlit as st
-from pvmath_auth import render_auth_page, sign_out
+from pvmath_auth import render_auth_page, sign_out, load_project
 
 st.set_page_config(
     page_title="PVMath — Solar Site Intelligence",
@@ -25,6 +25,13 @@ pg = st.navigation(_pages, position="hidden")
 # ── Auth gate ─────────────────────────────────────────────────────────────────
 if not render_auth_page("PVMath"):
     st.stop()
+
+# ── Restore project context if session was cleared (back button / refresh) ────
+_uid_for_load = st.session_state.get("pvm_user_id", "")
+if _uid_for_load and "pvm_project" not in st.session_state:
+    _loaded = load_project(_uid_for_load)
+    if _loaded:
+        st.session_state["pvm_project"] = _loaded
 
 # ── Restore sidebar after auth (auth page collapses it to width:0)
 st.markdown("""

@@ -12,6 +12,7 @@ import folium
 from folium.plugins import Draw
 from streamlit_folium import st_folium
 from pvmath_styles import inject_styles
+from pvmath_auth import save_project
 
 # ─────────────────────────────────────────────────────────────────────────────
 # HELPERS
@@ -430,7 +431,7 @@ if show_form:
             st.error("Please enter a project name.")
         else:
             mode_val = "full" if is_full else "quick"
-            st.session_state["pvm_project"] = {
+            _proj_data = {
                 "name":           proj_name.strip(),
                 "country":        proj_country.strip(),
                 "lat":            lat,
@@ -440,7 +441,12 @@ if show_form:
                 "polygon_coords": polygon_coords if is_full else None,
                 "map_center_cache": [lat, lon],
             }
+            st.session_state["pvm_project"] = _proj_data
             st.session_state["proj_edit_mode"] = False
+            # Persist to Supabase so project survives browser back / refresh
+            _uid = st.session_state.get("pvm_user_id", "")
+            if _uid:
+                save_project(_uid, _proj_data)
             # Clear per-module map state so they recentre on new project location
             for key in ["map_center", "map_zoom", "map_lat", "map_lon", "last_map_search",
                         "proj_polygon_draft"]:

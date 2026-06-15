@@ -333,6 +333,40 @@ def remaining(user_id: str, app: str) -> int:
     return max(0, FREE_LIMIT - get_usage(user_id, app))
 
 
+# ── Project persistence ───────────────────────────────────────
+def save_project(user_id: str, project: dict) -> bool:
+    """Upsert project data to Supabase user_projects table."""
+    import json
+    try:
+        base = f"{_sb_url()}/rest/v1/user_projects"
+        payload = {"user_id": user_id, "project_data": project}
+        r = _req.post(
+            base, json=payload,
+            headers={**_db_hdr(), "Prefer": "resolution=merge-duplicates,return=minimal"},
+            timeout=10,
+        )
+        return r.status_code in (200, 201, 204)
+    except Exception:
+        return False
+
+
+def load_project(user_id: str) -> dict | None:
+    """Load the most recent project from Supabase. Returns dict or None."""
+    try:
+        r = _req.get(
+            f"{_sb_url()}/rest/v1/user_projects",
+            params={"user_id": f"eq.{user_id}", "select": "project_data"},
+            headers=_db_hdr(), timeout=10,
+        )
+        if r.status_code == 200:
+            rows = r.json()
+            if rows and isinstance(rows, list) and rows[0].get("project_data"):
+                return rows[0]["project_data"]
+    except Exception:
+        pass
+    return None
+
+
 # ── Password reset form ───────────────────────────────────────
 def _render_reset_password_form(access_token: str, refresh_token: str):
     """Shown when user arrives via Supabase password-reset email link."""
