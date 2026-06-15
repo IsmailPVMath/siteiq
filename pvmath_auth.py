@@ -128,7 +128,7 @@ def resend_confirmation(email: str) -> dict:
 
 
 # ── OTP email verification ────────────────────────────────────
-def _smtp_cfg() -> dict | None:
+def _smtp_cfg():
     """Return SMTP config from Streamlit secrets, or None if not configured."""
     try:
         return {
