@@ -11,6 +11,7 @@ import streamlit as st
 import folium
 from folium.plugins import Draw
 from streamlit_folium import st_folium
+from pvmath_styles import inject_styles
 
 # ─────────────────────────────────────────────────────────────────────────────
 # HELPERS
@@ -74,21 +75,13 @@ def centroid_of(coords):
 # ─────────────────────────────────────────────────────────────────────────────
 # CSS
 # ─────────────────────────────────────────────────────────────────────────────
+inject_styles(accent="#1d9e52", accent_light="#d4e8d4")
+
 st.markdown("""
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-html, body, [class*="css"] {
-    font-family: 'Inter','Segoe UI',system-ui,sans-serif !important;
-    font-size: 16px !important;
-}
-[data-testid="stTextInput"] label,
-[data-testid="stNumberInput"] label,
-[data-testid="stRadio"] label > div {
-    font-size: 0.97rem !important; font-weight: 600 !important; color: #2a3820 !important;
-}
-div[data-testid="stButton"] > button {
-    border-radius: 8px !important; font-weight: 600 !important; font-size: 0.97rem !important;
+div[data-testid="stButton"] > button[kind="primary"] {
+    background: linear-gradient(135deg, #1d9e52, #145f34) !important;
+    border: none !important; color: #fff !important;
 }
 .proj-mode-card {
     border: 2px solid #e0e8e0; border-radius: 12px;

@@ -12,6 +12,7 @@ from pvmath_auth import (
     show_paywall,
     increment_usage, is_over_limit, remaining, FREE_LIMIT, STRIPE_LINK, PRICE_LABEL
 )
+from pvmath_styles import inject_styles
 from streamlit_folium import st_folium
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -23,71 +24,10 @@ from reportlab.lib.units import cm
 _username = st.session_state.get("pvm_user_id", "guest")
 
 # ─── Styling ──────────────────────────────────────────────────────────────────
+inject_styles(accent="#1d9e52", accent_light="#e2ede2")
+
 st.markdown("""
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
 <style>
-    html, body, [class*="css"] {
-        font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif !important;
-        font-size: 16px !important;
-    }
-    /* ── Global font size lift ── */
-    [data-testid="stMarkdown"] p,
-    [data-testid="stMarkdown"] li,
-    [data-testid="stMarkdown"] span  { font-size: 1rem !important; line-height: 1.7 !important; }
-    [data-testid="stRadio"] label span  { font-size: 1rem !important; }
-    [data-testid="stCheckbox"] label span { font-size: 1rem !important; }
-    [data-testid="stSelectbox"] label,
-    [data-testid="stTextInput"] label,
-    [data-testid="stNumberInput"] label,
-    [data-testid="stFileUploader"] label { font-size: 0.97rem !important; font-weight: 600 !important; color: #2a3a2a !important; }
-    [data-testid="stSelectbox"] div[data-baseweb="select"] span,
-    [data-testid="stTextInput"] input   { font-size: 0.97rem !important; }
-    [data-testid="stMetric"] label      { font-size: 0.78rem !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; color: #666 !important; }
-    [data-testid="stMetricValue"]       { font-size: 1.6rem !important; font-weight: 700 !important; }
-    [data-testid="stExpander"] summary p { font-size: 0.97rem !important; font-weight: 600 !important; }
-    [data-testid="stAlert"] p           { font-size: 0.97rem !important; }
-    button[data-testid="stBaseButton-secondary"],
-    button[data-testid="stBaseButton-primary"] { font-size: 0.97rem !important; }
-    footer { visibility: hidden !important; height: 0 !important; }
-    #MainMenu { visibility: hidden !important; }
-    header { visibility: hidden !important; }
-    [data-testid="stToolbar"]       { display: none !important; }
-    [data-testid="stDeployButton"]  { display: none !important; }
-    [data-testid="stStatusWidget"]  { display: none !important; }
-    [data-testid="stDecoration"]    { display: none !important; }
-    #stDecoration                   { display: none !important; }
-    [class*="viewerBadge"]          { display: none !important; }
-    [class*="StatusWidget"]         { display: none !important; }
-    [class*="deployButton"]         { display: none !important; }
-    [class*="styles_viewerBadge"]   { display: none !important; }
-    iframe[title="streamlitApp"]    { display: none !important; }
-    [style*="position: fixed"][style*="bottom"][style*="right"],
-    [style*="position:fixed"][style*="bottom"][style*="right"] { display: none !important; }
-    </style>
-    <script>
-    (function() {
-      function killBadge() {
-        document.querySelectorAll('*').forEach(function(el) {
-          try {
-            var s = window.getComputedStyle(el);
-            var cl = el.className ? el.className.toString().toLowerCase() : '';
-            if (
-              (s.position === 'fixed' && parseInt(s.bottom) >= 0 && parseInt(s.right) >= 0 && el.tagName !== 'BODY') ||
-              cl.includes('badge') || cl.includes('viewer')
-            ) {
-              el.style.setProperty('display', 'none', 'important');
-              el.style.setProperty('visibility', 'hidden', 'important');
-            }
-          } catch(e) {}
-        });
-      }
-      killBadge();
-      new MutationObserver(killBadge).observe(document.documentElement, {childList:true, subtree:true});
-    })();
-    </script>
-    <style>
 
     /* ── Header ── */
     .pvmath-header {
@@ -99,35 +39,35 @@ st.markdown("""
         background: linear-gradient(135deg, #1a5c2e, #1d9e52);
         display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
-    .pvmath-app-name { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; color: #1a5c2e; }
-    .pvmath-app-sub  { font-size: 0.88rem; color: #888; font-weight: 500; }
-    .pvmath-tagline  { font-size: 0.95rem; color: #5a7a5a; margin-top: 0.15rem; font-weight: 400; line-height: 1.5; }
+    .pvmath-app-name { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; color: #0d1a0d; }
+    .pvmath-app-sub  { font-size: 0.88rem; color: #4a6a4a; font-weight: 600; }
+    .pvmath-tagline  { font-size: 0.97rem; color: #2a4a2a; margin-top: 0.15rem; font-weight: 500; line-height: 1.6; }
 
     /* ── Section headers ── */
     .section-hdr {
-        font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
-        letter-spacing: 0.13em; color: #1d9e52;
+        font-size: 0.72rem; font-weight: 800; text-transform: uppercase;
+        letter-spacing: 0.14em; color: #1d9e52;
         display: flex; align-items: center; gap: 0.5rem;
-        margin: 1.4rem 0 0.75rem 0; padding-bottom: 0.45rem;
-        border-bottom: 2px solid #e2ede2;
+        margin: 1.6rem 0 0.85rem 0; padding-bottom: 0.5rem;
+        border-bottom: 2.5px solid #d4e8d4;
     }
     /* ── Result value text ── */
-    .result-label { font-size: 0.82rem; color: #666; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; }
-    .result-value { font-size: 1.35rem; font-weight: 700; color: #1a2e1a; line-height: 1.2; }
-    .result-unit  { font-size: 0.85rem; font-weight: 400; color: #888; margin-left: 0.15rem; }
+    .result-label { font-size: 0.78rem; color: #1d9e52; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+    .result-value { font-size: 1.5rem; font-weight: 800; color: #0d1a0d; line-height: 1.15; letter-spacing: -0.02em; }
+    .result-unit  { font-size: 0.88rem; font-weight: 500; color: #3a5a3a; margin-left: 0.2rem; }
 
     /* ── Metric cards ── */
     div[data-testid="metric-container"] {
-        background: #fff; border: 1px solid #e2ede2;
-        border-radius: 10px; padding: 1rem;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        background: #fff; border: 1.5px solid #d4e8d4;
+        border-radius: 12px; padding: 1.1rem;
+        box-shadow: 0 1px 6px rgba(0,0,0,0.05);
     }
 
     /* ── Buttons ── */
     div[data-testid="stButton"] > button {
         font-family: 'Inter', sans-serif !important;
-        font-weight: 600 !important; letter-spacing: 0.01em;
-        border-radius: 8px !important;
+        font-weight: 700 !important; letter-spacing: -0.01em;
+        border-radius: 9px !important;
     }
     div[data-testid="stButton"] > button[kind="primary"] {
         background: linear-gradient(135deg, #1d9e52, #145f34) !important;
@@ -140,15 +80,9 @@ st.markdown("""
 
     /* ── Tabs ── */
     div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
-        color: #1d9e52 !important; border-bottom-color: #1d9e52 !important; font-weight: 700 !important;
+        color: #1d9e52 !important; border-bottom-color: #1d9e52 !important; font-weight: 800 !important;
     }
-    div[data-testid="stTabs"] button[role="tab"] { font-weight: 500 !important; }
-
-    /* ── Download button ── */
-    div[data-testid="stDownloadButton"] > button {
-        font-family: 'Inter', sans-serif !important;
-        font-weight: 600 !important; border-radius: 8px !important;
-    }
+    div[data-testid="stTabs"] button[role="tab"] { font-weight: 600 !important; color: #3a5a3a !important; }
 
     /* ── Inputs ── */
     div[data-baseweb="input"] input, div[data-baseweb="textarea"] textarea {

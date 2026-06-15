@@ -32,6 +32,7 @@ from pvmath_auth import (
     show_paywall, increment_usage, is_over_limit,
     remaining, FREE_LIMIT, STRIPE_LINK, PRICE_LABEL,
 )
+from pvmath_styles import inject_styles
 
 # ─────────────────────────────────────────────────────────────────────────────
 # AUTH
@@ -42,38 +43,34 @@ _uid = st.session_state.get("pvm_user_id", "guest")
 # ─────────────────────────────────────────────────────────────────────────────
 # CSS
 # ─────────────────────────────────────────────────────────────────────────────
+inject_styles(accent="#d4840a", accent_light="#fde8b0")
+
 st.markdown("""
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-      rel="stylesheet">
 <style>
-html, body, [class*="css"] {
-    font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif !important;
-    font-size:16px !important;
-}
-[data-testid="stMarkdown"] p,
-[data-testid="stMarkdown"] li   { font-size:1rem !important; line-height:1.7 !important; }
-[data-testid="stRadio"] label span { font-size:1rem !important; }
-[data-testid="stSelectbox"] label,
-[data-testid="stTextInput"] label,
-[data-testid="stNumberInput"] label,
-[data-testid="stSlider"] label  {
-    font-size:0.97rem !important; font-weight:600 !important; color:#2a3820 !important;
-}
-[data-testid="stMetricValue"]   { font-size:1.55rem !important; font-weight:700 !important; }
-[data-testid="stMetricLabel"]   { font-size:0.82rem !important; font-weight:500 !important; }
-div[data-testid="stButton"] > button {
-    border-radius:8px !important; font-weight:600 !important; font-size:0.97rem !important;
-}
 .yiq-section {
-    font-size:1.05rem; font-weight:700; color:#d4840a;
-    border-bottom:2px solid #fef3e2; padding-bottom:0.4rem;
-    margin:1.4rem 0 0.9rem 0;
+    font-size:1.05rem; font-weight:800; color:#b36a00;
+    border-bottom:2.5px solid #fde8b0; padding-bottom:0.45rem;
+    margin:1.6rem 0 0.9rem 0; letter-spacing:-0.01em;
 }
 .yiq-row {
-    display:flex; align-items:center; padding:0.45rem 0;
-    border-bottom:1px solid #f0f4f0;
+    display:flex; align-items:center; padding:0.5rem 0;
+    border-bottom:1px solid #f0f0ea;
 }
+.yiq-row-label {
+    font-size:0.9rem; font-weight:700; color:#0d1a0d; flex:1;
+}
+.yiq-row-val {
+    font-size:0.97rem; font-weight:800; color:#0d1a0d;
+}
+div[data-testid="metric-container"] {
+    background:#fffbf4; border:1.5px solid #fde8b0;
+    border-radius:12px; padding:1.1rem;
+    box-shadow:0 1px 6px rgba(0,0,0,0.04);
+}
+div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+    color:#d4840a !important; border-bottom-color:#d4840a !important; font-weight:800 !important;
+}
+div[data-testid="stTabs"] button[role="tab"] { font-weight:600 !important; color:#5a4a2a !important; }
 </style>
 """, unsafe_allow_html=True)
 

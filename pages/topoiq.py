@@ -17,6 +17,7 @@ from pvmath_auth import (
     show_paywall,
     increment_usage, is_over_limit, remaining, FREE_LIMIT, STRIPE_LINK, PRICE_LABEL
 )
+from pvmath_styles import inject_styles
 
 # ── optional heavy deps — graceful fallback ──────────────────────────────────
 try:
@@ -246,125 +247,65 @@ def _normalize_for_display(Z):
     return rgb
 
 
+inject_styles(accent="#1565c0", accent_light="#d4e8f8")
+
 st.markdown("""
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
 <style>
-    html, body, [class*="css"] {
-        font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif !important;
-        font-size: 16px !important;
-    }
-    /* ── Global font size lift ── */
-    [data-testid="stMarkdown"] p,
-    [data-testid="stMarkdown"] li,
-    [data-testid="stMarkdown"] span  { font-size: 1rem !important; line-height: 1.7 !important; }
-    [data-testid="stRadio"] label span  { font-size: 1rem !important; }
-    [data-testid="stCheckbox"] label span { font-size: 1rem !important; }
-    [data-testid="stSelectbox"] label,
-    [data-testid="stTextInput"] label,
-    [data-testid="stNumberInput"] label,
-    [data-testid="stFileUploader"] label { font-size: 0.97rem !important; font-weight: 600 !important; color: #1a2a4a !important; }
-    [data-testid="stSelectbox"] div[data-baseweb="select"] span,
-    [data-testid="stTextInput"] input   { font-size: 0.97rem !important; }
-    [data-testid="stMetric"] label      { font-size: 0.78rem !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; color: #666 !important; }
-    [data-testid="stMetricValue"]       { font-size: 1.6rem !important; font-weight: 700 !important; }
-    [data-testid="stExpander"] summary p { font-size: 0.97rem !important; font-weight: 600 !important; }
-    [data-testid="stAlert"] p           { font-size: 0.97rem !important; }
-    button[data-testid="stBaseButton-secondary"],
-    button[data-testid="stBaseButton-primary"] { font-size: 0.97rem !important; }
-    footer { visibility: hidden !important; height: 0 !important; }
-    #MainMenu { visibility: hidden !important; }
-    header { visibility: hidden !important; }
-    [data-testid="stToolbar"]       { display: none !important; }
-    [data-testid="stDeployButton"]  { display: none !important; }
-    [data-testid="stStatusWidget"]  { display: none !important; }
-    [data-testid="stDecoration"]    { display: none !important; }
-    #stDecoration                   { display: none !important; }
-    [class*="viewerBadge"]          { display: none !important; }
-    [class*="StatusWidget"]         { display: none !important; }
-    [class*="deployButton"]         { display: none !important; }
-    [class*="styles_viewerBadge"]   { display: none !important; }
-    iframe[title="streamlitApp"]    { display: none !important; }
-    [style*="position: fixed"][style*="bottom"][style*="right"],
-    [style*="position:fixed"][style*="bottom"][style*="right"] { display: none !important; }
-    </style>
-    <script>
-    (function() {
-      function killBadge() {
-        document.querySelectorAll('*').forEach(function(el) {
-          try {
-            var s = window.getComputedStyle(el);
-            var cl = el.className ? el.className.toString().toLowerCase() : '';
-            if (
-              (s.position === 'fixed' && parseInt(s.bottom) >= 0 && parseInt(s.right) >= 0 && el.tagName !== 'BODY') ||
-              cl.includes('badge') || cl.includes('viewer')
-            ) {
-              el.style.setProperty('display', 'none', 'important');
-              el.style.setProperty('visibility', 'hidden', 'important');
-            }
-          } catch(e) {}
-        });
-      }
-      killBadge();
-      new MutationObserver(killBadge).observe(document.documentElement, {childList:true, subtree:true});
-    })();
-    </script>
-    <style>
 
     .pvmath-header {
         display: flex; align-items: center; gap: 0.75rem;
-        padding: 0.5rem 0 1rem 0; border-bottom: 1px solid #e8ede8; margin-bottom: 1.2rem;
+        padding: 0.5rem 0 1rem 0; border-bottom: 1.5px solid #d4e8f8; margin-bottom: 1.2rem;
     }
     .pvmath-logo-mark {
         width: 40px; height: 40px; border-radius: 10px;
         background: linear-gradient(135deg, #1565c0, #42a5f5);
         display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
-    .pvmath-app-name { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; color: #1565c0; }
-    .pvmath-app-sub  { font-size: 0.88rem; color: #888; font-weight: 500; }
-    .pvmath-tagline  { font-size: 0.95rem; color: #5a7a5a; margin-top: 0.15rem; font-weight: 400; line-height: 1.5; }
+    .pvmath-app-name { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; color: #0d1a0d; }
+    .pvmath-app-sub  { font-size: 0.88rem; color: #4a6a8a; font-weight: 600; }
+    .pvmath-tagline  { font-size: 0.97rem; color: #1a2a4a; margin-top: 0.15rem; font-weight: 500; line-height: 1.6; }
 
     .section-hdr {
-        font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
-        letter-spacing: 0.13em; color: #1565c0;
+        font-size: 0.72rem; font-weight: 800; text-transform: uppercase;
+        letter-spacing: 0.14em; color: #1565c0;
         display: flex; align-items: center; gap: 0.5rem;
-        margin: 1.4rem 0 0.75rem 0; padding-bottom: 0.45rem;
-        border-bottom: 2px solid #dce8f5;
+        margin: 1.6rem 0 0.85rem 0; padding-bottom: 0.5rem;
+        border-bottom: 2.5px solid #d4e8f8;
     }
 
     .accuracy-card {
         background: #f0f7ff; border: 1px solid #c5daf5;
-        border-left: 3px solid #1565c0;
-        border-radius: 8px; padding: 0.9rem 1.1rem; margin-top: 0.8rem;
-        font-size: 0.82rem;
+        border-left: 4px solid #1565c0;
+        border-radius: 9px; padding: 0.9rem 1.1rem; margin-top: 0.8rem;
+        font-size: 0.88rem;
     }
-    .accuracy-card h4 { color: #1565c0; margin-bottom: 0.35rem; font-size: 0.85rem; font-weight: 700; }
-    .accuracy-card p  { color: #334; margin: 0.12rem 0; line-height: 1.5; }
+    .accuracy-card h4 { color: #0d47a1; margin-bottom: 0.35rem; font-size: 0.88rem; font-weight: 800; }
+    .accuracy-card p  { color: #1a2a3a; margin: 0.12rem 0; line-height: 1.6; font-weight: 500; }
 
     div[data-testid="metric-container"] {
-        background: #fff; border: 1px solid #e2ede2;
-        border-radius: 10px; padding: 1rem;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        background: #f4f8ff; border: 1.5px solid #c8dcf5;
+        border-radius: 12px; padding: 1.1rem;
+        box-shadow: 0 1px 6px rgba(0,0,0,0.05);
     }
 
     div[data-testid="stButton"] > button {
         font-family: 'Inter', sans-serif !important;
-        font-weight: 600 !important; letter-spacing: 0.01em;
-        border-radius: 8px !important;
+        font-weight: 700 !important; letter-spacing: -0.01em;
+        border-radius: 9px !important;
     }
     div[data-testid="stButton"] > button[kind="primary"] {
-        background: linear-gradient(135deg, #1d9e52, #145f34) !important;
+        background: linear-gradient(135deg, #1565c0, #0d47a1) !important;
         border: none !important; color: #fff !important;
     }
     div[data-testid="stButton"] > button[kind="primary"]:hover {
-        background: linear-gradient(135deg, #27ae60, #1d9e52) !important;
-        box-shadow: 0 0 20px rgba(29,158,82,0.3) !important;
+        background: linear-gradient(135deg, #1976d2, #1565c0) !important;
+        box-shadow: 0 0 20px rgba(21,101,192,0.3) !important;
     }
 
     div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
-        color: #1d9e52 !important; border-bottom-color: #1d9e52 !important; font-weight: 700 !important;
+        color: #1565c0 !important; border-bottom-color: #1565c0 !important; font-weight: 800 !important;
     }
+    div[data-testid="stTabs"] button[role="tab"] { font-weight: 600 !important; color: #2a3a5a !important; }
     div[data-testid="stTabs"] button[role="tab"] { font-weight: 500 !important; }
 
     div[data-testid="stDownloadButton"] > button {
