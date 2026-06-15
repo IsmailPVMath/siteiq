@@ -248,4 +248,10 @@ def inject_styles(accent: str = "#1d9e52", accent_light: str = "#e2ede2"):
         accent_light: Light tint of the accent used for borders / backgrounds.
     """
     css = _BASE_CSS.format(accent=accent, accent_light=accent_light)
-    st.markdown(css + _BADGE_KILLER, unsafe_allow_html=True)
+    full_html = css + _BADGE_KILLER
+    # st.html() (Streamlit 1.31+) reliably injects raw HTML without markdown rendering.
+    # Falls back to st.markdown() for older versions.
+    if hasattr(st, "html"):
+        st.html(full_html)
+    else:
+        st.markdown(full_html, unsafe_allow_html=True)
