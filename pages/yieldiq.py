@@ -421,22 +421,61 @@ def build_pdf(project_name, lat, lon, dc_kwp, gcr_1p, gcr_2p, base_loss,
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# SHARED PROJECT CONTEXT
+# ─────────────────────────────────────────────────────────────────────────────
+_proj      = st.session_state.get("pvm_project", {})
+_proj_lat  = _proj.get("lat")
+_proj_lon  = _proj.get("lon")
+_proj_name = _proj.get("name", "")
+_proj_ctry = _proj.get("country", "")
+_has_proj  = bool(_proj_lat and _proj_lon)
+
+if _has_proj:
+    st.markdown(f"""
+    <div style="background:#e8f5ee;border:1px solid #b8ddc8;border-radius:8px;
+                padding:0.65rem 1rem;margin-bottom:0.9rem;font-size:0.89rem;color:#1a3a1a;">
+      <strong>📋 Project:</strong>&nbsp; {_proj_name}
+      &nbsp;·&nbsp; {_proj_ctry}
+      &nbsp;·&nbsp; {_proj_lat:.5f}°N, {_proj_lon:.5f}°E
+    </div>
+    """, unsafe_allow_html=True)
+else:
+    st.info(
+        "💡 **Tip:** Set up a project in the **📋 Project** page to auto-fill location and name across all modules.",
+        icon=None,
+    )
+
+# ─────────────────────────────────────────────────────────────────────────────
 # INPUT FORM
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown('<div class="yiq-section">📍 Project Inputs</div>', unsafe_allow_html=True)
 
 with st.form("yieldiq_form"):
-    c1, c2 = st.columns([1.4, 0.6])
-    with c1:
-        location_raw = st.text_input(
-            "Site Location",
-            placeholder="Paste coordinates (lat, lon) or a Google Maps URL",
-            help="Right-click any point on Google Maps → 'What's here?' → copy the coordinates."
+    if _has_proj:
+        # Location locked to shared project — show as read-only display
+        st.markdown(
+            f"**Site Location** — from Project: "
+            f"`{_proj_lat:.5f}°N, {_proj_lon:.5f}°E`",
+            help="Change site location in the Project page."
         )
-    with c2:
-        project_name = st.text_input(
-            "Project Name", placeholder="e.g. Mannheim Solar 50 MWp"
-        )
+        location_raw = ""   # unused when _has_proj is True
+        c1_name = st.columns(1)[0]
+        with c1_name:
+            project_name = st.text_input(
+                "Project Name", value=_proj_name, placeholder="e.g. Mannheim Solar 50 MWp"
+            )
+    else:
+        c1, c2 = st.columns([1.4, 0.6])
+        with c1:
+            location_raw = st.text_input(
+                "Site Location",
+                placeholder="Paste coordinates (lat, lon) or a Google Maps URL",
+                help="Right-click any point on Google Maps → 'What's here?' → copy the coordinates."
+            )
+        with c2:
+            project_name = st.text_input(
+                "Project Name", placeholder="e.g. Mannheim Solar 50 MWp"
+            )
 
     c3, c4, c5, c6, c7 = st.columns(5)
     with c3:
@@ -480,15 +519,18 @@ Tracker (SAT) shading modelled with backtracking — approx. 40 % of fixed-tilt 
 # RUN ANALYSIS
 # ─────────────────────────────────────────────────────────────────────────────
 if submitted:
-    lat, lon = parse_location(location_raw)
-    if lat is None:
-        st.error("❌ Could not parse location. Paste coordinates as '48.137, 11.576' or a Google Maps URL.")
-        st.stop()
-    if not -90 <= lat <= 90 or not -180 <= lon <= 180:
-        st.error("❌ Coordinates out of range. Check lat/lon order.")
-        st.stop()
+    if _has_proj:
+        lat, lon = _proj_lat, _proj_lon
+    else:
+        lat, lon = parse_location(location_raw)
+        if lat is None:
+            st.error("❌ Could not parse location. Paste coordinates as '48.137, 11.576' or a Google Maps URL.")
+            st.stop()
+        if not -90 <= lat <= 90 or not -180 <= lon <= 180:
+            st.error("❌ Coordinates out of range. Check lat/lon order.")
+            st.stop()
     if not project_name.strip():
-        project_name = f"YieldIQ Site {lat:.3f}°, {lon:.3f}°"
+        project_name = _proj_name or f"YieldIQ Site {lat:.3f}°, {lon:.3f}°"
 
     if is_over_limit(_uid, "yieldiq"):
         show_paywall("YieldIQ")

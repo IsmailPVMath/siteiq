@@ -67,9 +67,10 @@ with st.sidebar:
 
 # ── Navigation ────────────────────────────────────────────────────────────────
 _pages = [
-    st.Page("pages/siteiq.py",  title="SiteIQ",  icon="🌍"),
-    st.Page("pages/topoiq.py",  title="TopoIQ",  icon="⛰️"),
-    st.Page("pages/yieldiq.py", title="YieldIQ", icon="⚡"),
+    st.Page("pages/project.py", title="Project",  icon="📋"),
+    st.Page("pages/siteiq.py",  title="SiteIQ",   icon="🌍"),
+    st.Page("pages/topoiq.py",  title="TopoIQ",   icon="⛰️"),
+    st.Page("pages/yieldiq.py", title="YieldIQ",  icon="⚡"),
 ]
 # LayoutIQ — admin only
 _ADMIN = {"ismailpasha747@gmail.com"}

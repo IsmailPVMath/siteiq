@@ -813,11 +813,33 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
 
 # ─── UI Layout ────────────────────────────────────────────────────────────────
 
+# ── Shared project context ──────────────────────────────────────────────────
+_proj       = st.session_state.get("pvm_project", {})
+_proj_name  = _proj.get("name", "")
+_proj_ctry  = _proj.get("country", "")
+_proj_lat   = _proj.get("lat")
+_proj_lon   = _proj.get("lon")
+_has_proj   = bool(_proj_lat and _proj_lon)
+
+if _has_proj:
+    st.markdown(f"""
+    <div style="background:#e8f5ee;border:1px solid #b8ddc8;border-radius:8px;
+                padding:0.65rem 1rem;margin-bottom:0.9rem;font-size:0.89rem;color:#1a3a1a;">
+      <strong>📋 Project:</strong>&nbsp; {_proj_name}
+      &nbsp;·&nbsp; {_proj_ctry}
+      &nbsp;·&nbsp; {_proj_lat:.5f}°N, {_proj_lon:.5f}°E
+    </div>
+    """, unsafe_allow_html=True)
+    # Pre-centre the map on the project location (only if no map interaction yet)
+    if "map_center" not in st.session_state:
+        st.session_state["map_center"] = [_proj_lat, _proj_lon]
+        st.session_state["map_zoom"]   = 13
+
 pd_col1, pd_col2 = st.columns(2)
 with pd_col1:
-    project_name = st.text_input("Project Name", placeholder="e.g. Bavaria North – Site A")
+    project_name = st.text_input("Project Name", value=_proj_name, placeholder="e.g. Bavaria North – Site A")
 with pd_col2:
-    project_country_input = st.text_input("Project located in (Country)", placeholder="e.g. Italy, Germany, Spain…")
+    project_country_input = st.text_input("Project located in (Country)", value=_proj_ctry, placeholder="e.g. Italy, Germany, Spain…")
 
 st.divider()
 

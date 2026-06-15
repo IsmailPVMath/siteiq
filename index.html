@@ -373,7 +373,34 @@
     <div class="section-header">
       <div class="section-label" data-i18n="how.label">Workflow</div>
       <h2 class="section-title" data-i18n="how.title">How each module works.</h2>
-      <p class="section-sub" data-i18n="how.sub">Three tools, three workflows &mdash; each designed to eliminate manual steps.</p>
+      <p class="section-sub" data-i18n="how.sub">Set up your project once &mdash; then run SiteIQ, TopoIQ, and YieldIQ with shared location and project data.</p>
+    </div>
+
+    <!-- Shared Project Setup block -->
+    <div style="background:linear-gradient(135deg,#e8f5ee,#f4faf6);border:1.5px solid #b8ddc8;border-radius:14px;padding:1.8rem 2rem;margin-bottom:3rem;">
+      <div style="display:flex;align-items:flex-start;gap:1.2rem;flex-wrap:wrap;">
+        <div style="font-size:2rem;flex-shrink:0;">&#128203;</div>
+        <div style="flex:1;min-width:200px;">
+          <h3 style="margin:0 0 0.45rem 0;font-size:1rem;font-weight:800;color:#1a2e1a;" data-i18n="how.setup.title">Step 1 &mdash; Project Setup (Common to All Modules)</h3>
+          <p style="margin:0 0 1rem 0;font-size:0.88rem;color:#3a5a3a;line-height:1.6;" data-i18n="how.setup.p">Enter project name, country, and site location once. Choose Quick Mode for rapid screening or Full Mode to draw the site boundary and unlock all three modules. Location and project details carry over automatically &mdash; no re-entry needed.</p>
+          <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:0.5rem;background:#fff;border:1px solid #c8e8d4;border-radius:8px;padding:0.45rem 0.9rem;">
+              <span style="font-size:1rem;">&#9889;</span>
+              <div>
+                <div style="font-size:0.8rem;font-weight:800;color:#1a2e1a;" data-i18n="how.setup.quick.title">Quick Mode &mdash; Pin Drop</div>
+                <div style="font-size:0.74rem;color:#5a7a5a;" data-i18n="how.setup.quick.p">Enables SiteIQ + YieldIQ &middot; Under 2 minutes</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.5rem;background:#fff;border:1px solid #c8e8d4;border-radius:8px;padding:0.45rem 0.9rem;">
+              <span style="font-size:1rem;">&#128506;</span>
+              <div>
+                <div style="font-size:0.8rem;font-weight:800;color:#1a2e1a;" data-i18n="how.setup.full.title">Full Mode &mdash; Site Boundary</div>
+                <div style="font-size:0.74rem;color:#5a7a5a;" data-i18n="how.setup.full.p">Enables all 3 modules incl. TopoIQ terrain</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- SiteIQ steps -->
@@ -387,9 +414,9 @@
         <a href="https://siteiq.pvmath.com" target="_blank" style="margin-left:auto;background:var(--coral-lt);color:var(--coral);font-size:0.78rem;font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;" data-i18n="how.launch">Open in App &rarr;</a>
       </div>
       <div class="steps">
-        <div class="step"><div class="step-num coral">1</div><h3 data-i18n="siteiq.s1.h">Locate Your Site</h3><p data-i18n="siteiq.s1.p">Search by place name, paste Google Maps or lat/lon coordinates, or upload a KML/KMZ file. The satellite map centres on your site instantly.</p></div>
-        <div class="step"><div class="step-num coral">2</div><h3 data-i18n="siteiq.s2.h">Set Project Parameters</h3><p data-i18n="siteiq.s2.p">Enter project name, country, and estimated site area in hectares. SiteIQ fetches GHI, irradiation, terrain overview, flood risk, and regulatory flags automatically.</p></div>
-        <div class="step"><div class="step-num coral">3</div><h3 data-i18n="siteiq.s3.h">Download PDF Report</h3><p data-i18n="siteiq.s3.p">Get a client-ready PDF with solar resource data, monthly irradiation chart, terrain summary, and a go/no-go verdict. Ready for your next client meeting.</p></div>
+        <div class="step"><div class="step-num coral">2</div><h3 data-i18n="siteiq.s1.h">Choose Project Type &amp; Area</h3><p data-i18n="siteiq.s1.p">Select land use (Standard or Agri-PV) and mounting system (Fixed Tilt or Single-Axis Tracker). Enter site area in hectares. SiteIQ fetches GHI, irradiation, terrain overview, flood risk, and regulatory flags automatically.</p></div>
+        <div class="step"><div class="step-num coral">3</div><h3 data-i18n="siteiq.s2.h">Review Site Assessment</h3><p data-i18n="siteiq.s2.p">Instant results: annual GHI and irradiation, monthly irradiation chart, slope assessment, flood risk indicator, regulatory flags, and estimated capacity range. A go/no-go verdict with colour-coded ratings.</p></div>
+        <div class="step"><div class="step-num coral">4</div><h3 data-i18n="siteiq.s3.h">Download PDF Report</h3><p data-i18n="siteiq.s3.p">Get a client-ready PDF with solar resource data, monthly irradiation chart, terrain summary, and a go/no-go verdict. Ready for your next client meeting.</p></div>
       </div>
     </div>
 
@@ -401,14 +428,14 @@
         <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#1565c0,#0d47a1);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:0.85rem;flex-shrink:0;">T</div>
         <div>
           <div style="font-size:1.1rem;font-weight:800;color:#1565c0;letter-spacing:-0.02em;" data-i18n="how.topoiq.title">TopoIQ &mdash; Terrain Extraction</div>
-          <div style="font-size:0.78rem;color:var(--muted);" data-i18n="how.topoiq.sub">Module 02 &middot; Live Now</div>
+          <div style="font-size:0.78rem;color:var(--muted);" data-i18n="how.topoiq.sub">Module 02 &middot; Live Now &middot; Full Mode Only</div>
         </div>
         <a href="https://siteiq.pvmath.com" target="_blank" style="margin-left:auto;background:#e8f0fb;color:#1565c0;font-size:0.78rem;font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;" data-i18n="how.launch">Open in App &rarr;</a>
       </div>
       <div class="steps">
-        <div class="step"><div class="step-num blue">1</div><h3 data-i18n="topoiq.s1.h">Draw Your Boundary</h3><p data-i18n="topoiq.s1.p">Navigate to your site on the satellite map. Use the polygon tool to draw the exact site boundary &mdash; click to place vertices, double-click or hit Finish to close. Or upload a DXF/KML file.</p></div>
-        <div class="step"><div class="step-num blue">2</div><h3 data-i18n="topoiq.s2.h">Extract Terrain Data</h3><p data-i18n="topoiq.s2.p">TopoIQ fetches Copernicus GLO-30 satellite DEM for your site boundary, computes elevation profiles, slope heatmaps, and contour lines at your chosen interval automatically.</p></div>
-        <div class="step"><div class="step-num blue">3</div><h3 data-i18n="topoiq.s3.h">Export DXF &amp; PDF</h3><p data-i18n="topoiq.s3.p">Download a DXF terrain file with contour lines at your chosen spacing &mdash; ready for detailed 3D study in any CAD software &mdash; plus a PDF terrain report with elevation and slope maps.</p></div>
+        <div class="step"><div class="step-num blue">2</div><h3 data-i18n="topoiq.s1.h">Site Boundary from Project Setup</h3><p data-i18n="topoiq.s1.p">Your site boundary drawn in Full Mode is loaded automatically. Adjust contour line spacing and profile line positions. No re-drawing needed if you already set up your project.</p></div>
+        <div class="step"><div class="step-num blue">3</div><h3 data-i18n="topoiq.s2.h">Extract Terrain Data</h3><p data-i18n="topoiq.s2.p">TopoIQ fetches Copernicus GLO-30 satellite DEM for your site boundary, computes elevation profiles, slope heatmaps, and contour lines at your chosen interval automatically.</p></div>
+        <div class="step"><div class="step-num blue">4</div><h3 data-i18n="topoiq.s3.h">Export DXF &amp; PDF</h3><p data-i18n="topoiq.s3.p">Download a DXF terrain file with contour lines at your chosen spacing &mdash; ready for detailed 3D study in any CAD software &mdash; plus a PDF terrain report with elevation and slope maps.</p></div>
       </div>
     </div>
 
@@ -425,9 +452,9 @@
         <a href="https://siteiq.pvmath.com" target="_blank" style="margin-left:auto;background:#fef3e2;color:#d4840a;font-size:0.78rem;font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;" data-i18n="how.launch">Open in App &rarr;</a>
       </div>
       <div class="steps">
-        <div class="step"><div class="step-num" style="background:#d4840a;">1</div><h3 data-i18n="yieldiq.s1.h">Enter Site &amp; System Parameters</h3><p data-i18n="yieldiq.s1.p">Paste coordinates or a Google Maps link. Select your mounting type (Fixed Tilt or Single-Axis Tracker), module wattage, system losses, and DC capacity in MWp.</p></div>
-        <div class="step"><div class="step-num" style="background:#d4840a;">2</div><h3 data-i18n="yieldiq.s2.h">Compare 4 Configurations</h3><p data-i18n="yieldiq.s2.p">YieldIQ runs 1P Fixed, 2P Fixed, 1P Tracker, and 2P Tracker simultaneously using PVGIS JRC data. Results include specific yield, performance ratio, capacity factor, and GCR-based shading losses.</p></div>
-        <div class="step"><div class="step-num" style="background:#d4840a;">3</div><h3 data-i18n="yieldiq.s3.h">Download Yield Report</h3><p data-i18n="yieldiq.s3.p">Get a PDF comparing all 4 configurations with monthly energy charts in MWh, tracker gain analysis, and a pre-layout disclaimer. Ready for internal review before committing to a full layout.</p></div>
+        <div class="step"><div class="step-num" style="background:#d4840a;">2</div><h3 data-i18n="yieldiq.s1.h">Set System Parameters</h3><p data-i18n="yieldiq.s1.p">Enter DC capacity (MWp), ground cover ratios for 1P and 2P configurations, and base system losses. Site location is used from Project Setup &mdash; no coordinate entry needed.</p></div>
+        <div class="step"><div class="step-num" style="background:#d4840a;">3</div><h3 data-i18n="yieldiq.s2.h">Compare 4 Configurations</h3><p data-i18n="yieldiq.s2.p">YieldIQ runs 1P Fixed, 2P Fixed, 1P Tracker, and 2P Tracker simultaneously using PVGIS JRC data. Results include specific yield, performance ratio, capacity factor, and GCR-based shading losses.</p></div>
+        <div class="step"><div class="step-num" style="background:#d4840a;">4</div><h3 data-i18n="yieldiq.s3.h">Download Yield Report</h3><p data-i18n="yieldiq.s3.p">Get a PDF comparing all 4 configurations with monthly energy charts in MWh, tracker gain analysis, and a pre-layout disclaimer. Ready for internal review before committing to a full layout.</p></div>
       </div>
     </div>
   </div>
@@ -688,18 +715,22 @@ var T = {
     'yieldiq.f5':'Tracker vs fixed-tilt comparison','yieldiq.f6':'Preliminary yield PDF report',
     'yieldiq.btn':'Open in App →',
     'how.label':'Workflow','how.title':'How each module works.',
-    'how.sub':'Three tools, three workflows — each designed to eliminate manual steps.',
+    'how.sub':'Set up your project once — then run SiteIQ, TopoIQ, and YieldIQ with shared location and project data.',
+    'how.setup.title':'Step 1 — Project Setup (Common to All Modules)',
+    'how.setup.p':'Enter project name, country, and site location once. Choose Quick Mode for rapid screening or Full Mode to draw the site boundary and unlock all three modules. Location and project details carry over automatically — no re-entry needed.',
+    'how.setup.quick.title':'Quick Mode — Pin Drop','how.setup.quick.p':'Enables SiteIQ + YieldIQ · Under 2 minutes',
+    'how.setup.full.title':'Full Mode — Site Boundary','how.setup.full.p':'Enables all 3 modules incl. TopoIQ terrain',
     'how.siteiq.title':'SiteIQ — Site Screening','how.siteiq.sub':'Module 01 · Live Now',
-    'how.topoiq.title':'TopoIQ — Terrain Extraction','how.topoiq.sub':'Module 02 · Live Now',
+    'how.topoiq.title':'TopoIQ — Terrain Extraction','how.topoiq.sub':'Module 02 · Live Now · Full Mode Only',
     'how.yieldiq.title':'YieldIQ — Energy Yield Estimation','how.yieldiq.sub':'Module 03 · Live Now',
-    'yieldiq.s1.h':'Enter Site & System Parameters','yieldiq.s1.p':'Paste coordinates or a Google Maps link. Select your mounting type (Fixed Tilt or Single-Axis Tracker), module wattage, system losses, and DC capacity in MWp.',
+    'yieldiq.s1.h':'Set System Parameters','yieldiq.s1.p':'Enter DC capacity (MWp), ground cover ratios for 1P and 2P configurations, and base system losses. Site location is used from Project Setup — no coordinate entry needed.',
     'yieldiq.s2.h':'Compare 4 Configurations','yieldiq.s2.p':'YieldIQ runs 1P Fixed, 2P Fixed, 1P Tracker, and 2P Tracker simultaneously using PVGIS JRC data. Results include specific yield, performance ratio, capacity factor, and GCR-based shading losses.',
     'yieldiq.s3.h':'Download Yield Report','yieldiq.s3.p':'Get a PDF comparing all 4 configurations with monthly energy charts in MWh, tracker gain analysis, and a pre-layout disclaimer. Ready for internal review before committing to a full layout.',
     'how.launch':'Open in App →',
-    'siteiq.s1.h':'Locate Your Site','siteiq.s1.p':'Search by place name, paste Google Maps or lat/lon coordinates, or upload a KML/KMZ file. The satellite map centres on your site instantly.',
-    'siteiq.s2.h':'Set Project Parameters','siteiq.s2.p':'Enter project name, country, and estimated site area in hectares. SiteIQ fetches GHI, irradiation, terrain overview, flood risk, and regulatory flags automatically.',
+    'siteiq.s1.h':'Choose Project Type & Area','siteiq.s1.p':'Select land use (Standard or Agri-PV) and mounting system (Fixed Tilt or Single-Axis Tracker). Enter site area in hectares. SiteIQ fetches GHI, irradiation, terrain overview, flood risk, and regulatory flags automatically.',
+    'siteiq.s2.h':'Review Site Assessment','siteiq.s2.p':'Instant results: annual GHI and irradiation, monthly irradiation chart, slope assessment, flood risk indicator, regulatory flags, and estimated capacity range. A go/no-go verdict with colour-coded ratings.',
     'siteiq.s3.h':'Download PDF Report','siteiq.s3.p':'Get a client-ready PDF with solar resource data, monthly irradiation chart, terrain summary, and a go/no-go verdict. Ready for your next client meeting.',
-    'topoiq.s1.h':'Draw Your Boundary','topoiq.s1.p':'Navigate to your site on the satellite map. Use the polygon tool to draw the exact site boundary — click to place vertices, double-click or hit Finish to close. Or upload a DXF/KML file.',
+    'topoiq.s1.h':'Site Boundary from Project Setup','topoiq.s1.p':'Your site boundary drawn in Full Mode is loaded automatically. Adjust contour line spacing and profile line positions. No re-drawing needed if you already set up your project.',
     'topoiq.s2.h':'Extract Terrain Data','topoiq.s2.p':'TopoIQ fetches Copernicus GLO-30 satellite DEM for your site boundary, computes elevation profiles, slope heatmaps, and contour lines at your chosen interval automatically.',
     'topoiq.s3.h':'Export DXF & PDF','topoiq.s3.p':'Download a DXF terrain file with contour lines at your chosen spacing — ready for detailed 3D study in any CAD software — plus a PDF terrain report with elevation and slope maps.',
     'why.label':'Why PVMath','why.title':'Engineering-grade data.<br>Not estimates.',
@@ -790,18 +821,22 @@ var T = {
     'yieldiq.f5':'Tracker vs. Festaufständerung','yieldiq.f6':'Vorläufiger PDF-Ertragsbericht',
     'yieldiq.btn':'In der App öffnen →',
     'how.label':'Arbeitsablauf','how.title':'So funktioniert jedes Modul.',
-    'how.sub':'Drei Tools, drei Abläufe — jedes für die Eliminierung manueller Schritte entwickelt.',
+    'how.sub':'Projekt einmalig einrichten — dann SiteIQ, TopoIQ und YieldIQ mit gemeinsamen Standort- und Projektdaten nutzen.',
+    'how.setup.title':'Schritt 1 — Projekteinrichtung (Alle Module)',
+    'how.setup.p':'Projektname, Land und Standort einmalig eingeben. Quick-Modus für schnelle Vorprüfung oder Vollmodus zum Einzeichnen der Standortgrenze und Freischalten aller drei Module wählen. Standort und Projektdaten werden automatisch übernommen — kein erneutes Eingeben nötig.',
+    'how.setup.quick.title':'Quick-Modus — Pin setzen','how.setup.quick.p':'Aktiviert SiteIQ + YieldIQ · Unter 2 Minuten',
+    'how.setup.full.title':'Vollmodus — Standortgrenze','how.setup.full.p':'Aktiviert alle 3 Module inkl. TopoIQ-Gelände',
     'how.siteiq.title':'SiteIQ — Standortprüfung','how.siteiq.sub':'Modul 01 · Jetzt Live',
-    'how.topoiq.title':'TopoIQ — Geländeextraktion','how.topoiq.sub':'Modul 02 · Jetzt Live',
+    'how.topoiq.title':'TopoIQ — Geländeextraktion','how.topoiq.sub':'Modul 02 · Jetzt Live · Nur Vollmodus',
     'how.yieldiq.title':'YieldIQ — Energieertragsprognose','how.yieldiq.sub':'Modul 03 · Jetzt Live',
-    'yieldiq.s1.h':'Standort & Systemparameter eingeben','yieldiq.s1.p':'Koordinaten oder Google Maps Link einfügen. Montagesystem (Festwinkel oder Einachsiger Tracker), Modulleistung, Systemverluste und DC-Leistung in MWp auswählen.',
+    'yieldiq.s1.h':'Systemparameter eingeben','yieldiq.s1.p':'DC-Leistung (MWp), Bodenbedeckungsgrade für 1P- und 2P-Konfigurationen sowie Basisverluste eingeben. Der Standort wird aus der Projekteinrichtung übernommen — keine Koordinateneingabe nötig.',
     'yieldiq.s2.h':'4 Konfigurationen vergleichen','yieldiq.s2.p':'YieldIQ berechnet 1P Fest, 2P Fest, 1P Tracker und 2P Tracker gleichzeitig mit PVGIS JRC-Daten. Ergebnisse umfassen spezifischen Ertrag, Performance Ratio, Kapazitätsfaktor und GCR-basierte Verschattungsverluste.',
     'yieldiq.s3.h':'Ertragsreport herunterladen','yieldiq.s3.p':'PDF mit Vergleich aller 4 Konfigurationen, monatlichen Energiediagrammen in MWh, Tracker-Gewinnanalyse und Vorab-Hinweis. Bereit für interne Prüfung vor dem vollständigen Layout-Entwurf.',
     'how.launch':'In der App öffnen →',
-    'siteiq.s1.h':'Standort festlegen','siteiq.s1.p':'Nach Ortsname suchen, Google Maps- oder Lat/Lon-Koordinaten einfügen oder eine KML/KMZ-Datei hochladen. Die Satellitenkarte zentriert sich sofort auf Ihren Standort.',
-    'siteiq.s2.h':'Projektparameter eingeben','siteiq.s2.p':'Projektname, Land und geschätzte Standortfläche in Hektar eingeben. SiteIQ ruft automatisch GHI, Einstrahlung, Geländeübersicht, Hochwasserrisiko und Regulierungshinweise ab.',
+    'siteiq.s1.h':'Projekttyp & Fläche wählen','siteiq.s1.p':'Landnutzung (Standard oder Agri-PV) und Montagesystem (Festwinkel oder Einachsiger Tracker) auswählen. Standortfläche in Hektar eingeben. SiteIQ ruft automatisch GHI, Einstrahlung, Geländeübersicht, Hochwasserrisiko und Regulierungshinweise ab.',
+    'siteiq.s2.h':'Standortbewertung einsehen','siteiq.s2.p':'Sofortige Ergebnisse: Jahres-GHI und Einstrahlung, monatliches Einstrahlungsdiagramm, Neigungsbewertung, Hochwasserrisiko-Indikator, Regulierungshinweise und geschätzter Kapazitätsbereich. Go/No-Go-Empfehlung mit farbcodierten Bewertungen.',
     'siteiq.s3.h':'PDF-Bericht herunterladen','siteiq.s3.p':'Kundenfähigen PDF mit Solarressourcendaten, monatlichem Einstrahlungsdiagramm, Geländezusammenfassung und Go/No-Go-Empfehlung erhalten. Bereit für das nächste Kundengespräch.',
-    'topoiq.s1.h':'Standortgrenze einzeichnen','topoiq.s1.p':'Zum Standort auf der Satellitenkarte navigieren. Polygon-Tool zum Einzeichnen der Standortgrenze verwenden — Klicken für Eckpunkte, Doppelklick zum Schließen. Oder DXF/KML hochladen.',
+    'topoiq.s1.h':'Standortgrenze aus Projekteinrichtung','topoiq.s1.p':'Die im Vollmodus eingezeichnete Standortgrenze wird automatisch geladen. Höhenlinienschrittweite und Profillinienpositionen anpassen. Kein erneutes Einzeichnen erforderlich, wenn das Projekt bereits eingerichtet wurde.',
     'topoiq.s2.h':'Geländedaten extrahieren','topoiq.s2.p':'TopoIQ ruft Copernicus GLO-30 Satelliten-DEM für Ihre Standortgrenze ab und berechnet Höhenprofile, Neigungskarten und Höhenlinien im gewählten Abstand automatisch.',
     'topoiq.s3.h':'DXF & PDF exportieren','topoiq.s3.p':'DXF-Geländedatei mit Höhenlinien im gewählten Abstand herunterladen — bereit für 3D-Studium in jeder CAD-Software — plus PDF-Geländebericht mit Höhen- und Neigungskarten.',
     'why.label':'Warum PVMath','why.title':'Ingenieurqualitätsdaten.<br>Keine Schätzungen.',
