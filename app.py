@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as _components
 from pvmath_auth import render_auth_page, sign_out
 
 st.set_page_config(
@@ -27,28 +26,15 @@ pg = st.navigation(_pages, position="hidden")
 if not render_auth_page("PVMath"):
     st.stop()
 
-# ── Force-show sidebar via JS (beats auth-page CSS display:none!important) ────
-# CSS overrides alone lose to !important from the auth stylesheet that lingers in
-# the SPA DOM. Inline styles set via JS with the 'important' flag win over all
-# stylesheet rules — including !important ones.
-_components.html("""
-<script>
-(function forceSidebar() {
-  var p = window.parent.document;
-  var sidebar = p.querySelector('section[data-testid="stSidebar"]');
-  var ctrl    = p.querySelector('[data-testid="collapsedControl"]');
-  if (sidebar) {
-    sidebar.style.setProperty('display',     'flex',    'important');
-    sidebar.style.setProperty('visibility',  'visible', 'important');
-  }
-  if (ctrl) {
-    ctrl.style.setProperty('display',    'flex',    'important');
-    ctrl.style.setProperty('visibility', 'visible', 'important');
-  }
-  if (!sidebar) { setTimeout(forceSidebar, 60); }
-})();
-</script>
-""", height=0)
+# ── Make sidebar content visible again (auth page uses visibility:hidden on
+# sidebar content — not display:none on the element — so CSS can reliably undo it)
+st.markdown("""
+<style>
+section[data-testid="stSidebar"] > div > div { visibility: visible !important; }
+section[data-testid="stSidebar"]              { display: flex !important; }
+[data-testid="collapsedControl"]              { display: flex !important; }
+</style>
+""", unsafe_allow_html=True)
 
 # ── Sidebar (full control — logo + logout at top, nav links below) ────────────
 _proj      = st.session_state.get("pvm_project", {})
