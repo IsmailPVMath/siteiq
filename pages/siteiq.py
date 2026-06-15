@@ -625,6 +625,21 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
     LGRAY  = colors.HexColor("#f8f9fa")
     story  = []
 
+    C_GREEN  = colors.HexColor("#1a5c2e")
+    C_LGREEN = colors.HexColor("#e8f5e9")
+    C_YELLOW = colors.HexColor("#f9a825")
+    C_LYELLOW= colors.HexColor("#fff9e6")
+    C_ORANGE = colors.HexColor("#e65100")
+    C_LORANG = colors.HexColor("#fff3e0")
+    C_RED    = colors.HexColor("#c62828")
+    C_LRED   = colors.HexColor("#ffebee")
+
+    def lp(text, color=colors.black, bold=False, size=8):
+        fn = "Helvetica-Bold" if bold else "Helvetica"
+        return Paragraph(text, ParagraphStyle("lp", parent=styles["Normal"],
+                         fontSize=size, fontName=fn, textColor=color,
+                         leading=10, spaceAfter=0))
+
     story.append(Paragraph("SiteIQ by PVMath",
         ParagraphStyle("T", parent=styles["Heading1"], fontSize=22, textColor=GREEN, spaceAfter=4)))
     story.append(Paragraph("Site Screening Report",
@@ -700,23 +715,48 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
     story.append(mt)
     story.append(Spacer(1, 0.5*cm))
 
+    # ── Monthly Irradiation Table ─────────────────────────────────────────────
+    monthly_data = solar.get("monthly", [])
+    if monthly_data:
+        story.append(Paragraph("MONTHLY SOLAR IRRADIATION (kWh/m²)",
+            ParagraphStyle("H2", parent=styles["Heading2"], fontSize=12, textColor=GREEN)))
+
+        months_abbr = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+        ghi_vals = [row.get("GHI (kWh/m²)", 0) for row in monthly_data[:12]]
+        max_ghi  = max(ghi_vals) if ghi_vals else 1
+
+        # Header row
+        hdr = [lp(m, colors.white, bold=True, size=8) for m in months_abbr]
+        # Value row with background intensity scaled to value
+        def ghi_bg(val):
+            ratio = val / max_ghi if max_ghi else 0
+            r = int(232 - ratio * (232 - 26))
+            g = int(245 - ratio * (245 - 92))
+            b = int(238 - ratio * (238 - 46))
+            return colors.Color(r/255, g/255, b/255)
+
+        val_cells = [lp(f"{v:.0f}", colors.HexColor("#1a2e1a"), bold=True, size=9) for v in ghi_vals]
+        col_w = [1.42*cm] * 12
+        monthly_tbl = Table([hdr, val_cells], colWidths=col_w)
+        bg_cmds = [("BACKGROUND", (i,0), (i,0), GREEN) for i in range(12)]
+        bg_cmds += [("BACKGROUND", (i,1), (i,1), ghi_bg(ghi_vals[i])) for i in range(12)]
+        monthly_tbl.setStyle(TableStyle([
+            ("GRID",         (0,0),(-1,-1), 0.5, colors.lightgrey),
+            ("ALIGN",        (0,0),(-1,-1), "CENTER"),
+            ("TOPPADDING",   (0,0),(-1,-1), 5),
+            ("BOTTOMPADDING",(0,0),(-1,-1), 5),
+        ] + bg_cmds))
+        story.append(monthly_tbl)
+        story.append(Spacer(1, 0.3*cm))
+        story.append(Paragraph(
+            f"Peak month: {months_abbr[ghi_vals.index(max_ghi)]} ({max_ghi:.0f} kWh/m²)  |  "
+            f"Annual total: {sum(ghi_vals):.0f} kWh/m²",
+            ParagraphStyle("sub", parent=styles["Normal"], fontSize=8, textColor=colors.grey)
+        ))
+        story.append(Spacer(1, 0.5*cm))
+
     story.append(Paragraph("RATING SCALE",
         ParagraphStyle("H2", parent=styles["Heading2"], fontSize=12, textColor=GREEN)))
-
-    C_GREEN  = colors.HexColor("#1a5c2e")
-    C_LGREEN = colors.HexColor("#e8f5e9")
-    C_YELLOW = colors.HexColor("#f9a825")
-    C_LYELLOW= colors.HexColor("#fff9e6")
-    C_ORANGE = colors.HexColor("#e65100")
-    C_LORANG = colors.HexColor("#fff3e0")
-    C_RED    = colors.HexColor("#c62828")
-    C_LRED   = colors.HexColor("#ffebee")
-
-    def lp(text, color=colors.black, bold=False, size=8):
-        fn = "Helvetica-Bold" if bold else "Helvetica"
-        return Paragraph(text, ParagraphStyle("lp", parent=styles["Normal"],
-                         fontSize=size, fontName=fn, textColor=color,
-                         leading=10, spaceAfter=0))
 
     legend_rows = [
         [lp("Rating", colors.white, bold=True), lp("Meaning", colors.white, bold=True), lp("Action", colors.white, bold=True)],
