@@ -739,35 +739,27 @@ def load_boundary_file(uploaded):
 
 # ─── Main UI ─────────────────────────────────────────────────────────────────
 
-_siq = {k: st.session_state.get(k) for k in
-        ["siteiq_project_name", "siteiq_country", "siteiq_lat", "siteiq_lon", "siteiq_area_ha"]}
+# ── Pre-populate from shared pvm_project ──────────────────────────────────
+_proj = st.session_state.get("pvm_project", {})
+if _proj.get("name") and not st.session_state.get("topo_project_name"):
+    st.session_state["topo_project_name"] = _proj["name"]
+if _proj.get("country") and not st.session_state.get("topo_country"):
+    st.session_state["topo_country"] = _proj["country"]
+if _proj.get("lat") and _proj.get("lon") and not st.session_state.get("topo_center"):
+    st.session_state["topo_center"] = [_proj["lat"], _proj["lon"]]
+    st.session_state["topo_zoom"] = 14
 
-if _siq["siteiq_lat"] and _siq["siteiq_lon"]:
-    _pname   = _siq["siteiq_project_name"] or "Unnamed Project"
-    _country = _siq["siteiq_country"] or ""
-    _label   = f"{_pname}" + (f" · {_country}" if _country else "")
-    st.markdown(
-        f'<div style="background:linear-gradient(90deg,#1565c0,#0d47a1);'
-        f'border-radius:10px;padding:0.7rem 1.1rem;margin-bottom:0.8rem;'
-        f'display:flex;align-items:center;justify-content:space-between;">'
-        f'<span style="color:white;font-size:0.92rem;">'
-        f'<i class="fa-solid fa-link" style="margin-right:0.5rem;"></i>'
-        f'<b>SiteIQ project available:</b> {_label} &nbsp;'
-        f'<span style="opacity:0.75;font-size:0.82rem;">({_siq["siteiq_lat"]:.4f}°, {_siq["siteiq_lon"]:.4f}°)</span>'
-        f'</span></div>',
-        unsafe_allow_html=True
-    )
-    if st.button("📥 Load this site into TopoIQ", use_container_width=True):
-        st.session_state["topo_center"]      = [_siq["siteiq_lat"], _siq["siteiq_lon"]]
-        st.session_state["topo_zoom"]        = 14
-        st.session_state["topo_project_name"] = _pname
-        st.session_state["topo_country"]      = _country
-        st.rerun()
+# Full Mode project with drawn polygon — skip re-entry
+_preloaded_polygon = (
+    _proj["polygon_coords"]
+    if (_proj.get("mode") == "full" and _proj.get("polygon_coords"))
+    else None
+)
 
 topo_project_name = st.session_state.get("topo_project_name", "")
 topo_country      = st.session_state.get("topo_country", "")
 
-with st.expander("✏️ Set project name for report", expanded=not bool(topo_project_name)):
+with st.expander("✏️ Project details", expanded=not bool(topo_project_name)):
     _pn_col1, _pn_col2 = st.columns(2)
     topo_project_name = _pn_col1.text_input("Project Name", value=topo_project_name,
                                              placeholder="e.g. Bavaria North – Site A")

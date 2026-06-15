@@ -33,6 +33,11 @@ if _uid_for_load and "pvm_project" not in st.session_state:
     if _loaded:
         st.session_state["pvm_project"] = _loaded
 
+# ── On first login, always land on Project Setup ──────────────────────────────
+if not st.session_state.get("_landed_on_project"):
+    st.session_state["_landed_on_project"] = True
+    st.switch_page("pages/project.py")
+
 
 # ── Sidebar (full control — logo + logout at top, nav links below) ────────────
 _proj      = st.session_state.get("pvm_project", {})
