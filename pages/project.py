@@ -128,47 +128,6 @@ if proj.get("lat") is not None and proj.get("lon") is not None:
         st.session_state["proj_map_center"] = [proj["lat"], proj["lon"]]
         st.session_state["proj_map_zoom"]   = 13
 
-# Compact status bar + equal launch buttons — shown only after a project has been saved
-if proj.get("lat") is not None:
-    _is_quick = proj.get("mode") == "quick"
-    topo_ok   = (not _is_quick) and bool(proj.get("polygon_coords"))
-    mode_str  = "Quick Mode" if _is_quick else "Full Mode"
-    area_str  = f" · {proj.get('area_ha')} ha" if proj.get("area_ha") else ""
-
-    st.markdown(f"""
-    <div style="background:#f0faf5;border:1.5px solid #b2dfca;border-radius:10px;
-                padding:0.65rem 1rem;margin-bottom:0.6rem;">
-      <span style="color:#1d9e52;font-size:0.8rem;">●</span>
-      &nbsp;<strong style="color:#1a2e1a;font-size:0.9rem;">{proj.get('name', 'Project')}</strong>
-      <span style="color:#5a7a5a;font-size:0.85rem;">
-        &nbsp;·&nbsp;{proj.get('country', '')}
-        &nbsp;·&nbsp;{mode_str}{area_str}
-      </span>
-    </div>
-    """, unsafe_allow_html=True)
-
-    _nc1, _nc2, _nc3 = st.columns(3)
-    with _nc1:
-        if st.button("🌍 SiteIQ", use_container_width=True):
-            st.switch_page("pages/siteiq.py")
-    with _nc2:
-        if st.button("⚡ YieldIQ", use_container_width=True):
-            st.switch_page("pages/yieldiq.py")
-    with _nc3:
-        if _is_quick:
-            _topo_lbl = "⛰️ TopoIQ — Full Mode only"
-        elif not topo_ok:
-            _topo_lbl = "⛰️ TopoIQ — needs boundary"
-        else:
-            _topo_lbl = "⛰️ TopoIQ"
-        if st.button(_topo_lbl, use_container_width=True, disabled=not topo_ok):
-            st.switch_page("pages/topoiq.py")
-
-    if _is_quick:
-        st.caption("TopoIQ is only available in Full Mode with a drawn site boundary.")
-    elif not topo_ok:
-        st.caption("TopoIQ requires a drawn site boundary. Update project below to add one.")
-    st.divider()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SETUP FORM — always visible so project can be updated at any time
@@ -257,8 +216,11 @@ if True:
     # Pre-fill from existing project so Proceed works without re-interacting with map
     lat = proj.get("lat")
     lon = proj.get("lon")
-    # Read polygon from session draft first (survives reruns), else from saved project
-    polygon_coords = st.session_state.get("proj_polygon_draft", proj.get("polygon_coords"))
+    # Read polygon: use draft if present; but if user hit "Clear" use None, not saved polygon
+    if st.session_state.get("proj_polygon_cleared"):
+        polygon_coords = None
+    else:
+        polygon_coords = st.session_state.get("proj_polygon_draft", proj.get("polygon_coords"))
 
     # ── Coordinate / Google Maps inputs (used to centre map in Full Mode too) ──
     _coord_center = None  # [lat, lon] to jump map to
@@ -374,6 +336,7 @@ if True:
                         st.session_state["proj_pin_lat"] = _clat
                         st.session_state["proj_pin_lon"] = _clon
                         polygon_found = True
+                        st.session_state.pop("proj_polygon_cleared", None)  # new draw overrides clear
                         break
                 # If the Draw toolbar delete was used in THIS interaction (empty list returned
                 # but we had a draft), clear it so the polygon disappears.
@@ -382,6 +345,7 @@ if True:
                     st.session_state.pop("proj_polygon_draft", None)
                     st.session_state.pop("proj_pin_lat", None)
                     st.session_state.pop("proj_pin_lon", None)
+                    st.session_state["proj_polygon_cleared"] = True
                     polygon_coords = None
                     st.rerun()
 
@@ -400,6 +364,7 @@ if True:
                             st.session_state.pop("proj_polygon_draft", None)
                             st.session_state.pop("proj_pin_lat", None)
                             st.session_state.pop("proj_pin_lon", None)
+                            st.session_state["proj_polygon_cleared"] = True
                             st.rerun()
             else:
                 st.markdown(
@@ -481,10 +446,55 @@ if True:
                 save_project(_uid, _proj_data)
             # Clear per-module map state so they recentre on new project location
             for key in ["map_center", "map_zoom", "map_lat", "map_lon", "last_map_search",
-                        "proj_polygon_draft"]:
+                        "proj_polygon_draft", "proj_polygon_cleared"]:
                 st.session_state.pop(key, None)
             st.toast(f"✅ Project saved — {proj_name.strip()} · {mode_val.title()} Mode", icon="✅")
             st.rerun()
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STATUS BAR + MODULE BUTTONS — shown below Save button after project is saved
+# ─────────────────────────────────────────────────────────────────────────────
+_saved = st.session_state.get("pvm_project", {})
+if _saved.get("lat") is not None:
+    _is_quick = _saved.get("mode") == "quick"
+    topo_ok   = (not _is_quick) and bool(_saved.get("polygon_coords"))
+    mode_str  = "Quick Mode" if _is_quick else "Full Mode"
+    area_str  = f" · {_saved.get('area_ha')} ha" if _saved.get("area_ha") else ""
+
+    st.markdown("")
+    st.markdown(f"""
+    <div style="background:#f0faf5;border:1.5px solid #b2dfca;border-radius:10px;
+                padding:0.65rem 1rem;margin-bottom:0.6rem;">
+      <span style="color:#1d9e52;font-size:0.8rem;">●</span>
+      &nbsp;<strong style="color:#1a2e1a;font-size:0.9rem;">{_saved.get('name', 'Project')}</strong>
+      <span style="color:#5a7a5a;font-size:0.85rem;">
+        &nbsp;·&nbsp;{_saved.get('country', '')}
+        &nbsp;·&nbsp;{mode_str}{area_str}
+      </span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    _nc1, _nc2, _nc3 = st.columns(3)
+    with _nc1:
+        if st.button("🌍 SiteIQ", use_container_width=True, key="sb_siteiq"):
+            st.switch_page("pages/siteiq.py")
+    with _nc2:
+        if st.button("⚡ YieldIQ", use_container_width=True, key="sb_yieldiq"):
+            st.switch_page("pages/yieldiq.py")
+    with _nc3:
+        if _is_quick:
+            _topo_lbl = "⛰️ TopoIQ — Full Mode only"
+        elif not topo_ok:
+            _topo_lbl = "⛰️ TopoIQ — needs boundary"
+        else:
+            _topo_lbl = "⛰️ TopoIQ"
+        if st.button(_topo_lbl, use_container_width=True, disabled=not topo_ok, key="sb_topoiq"):
+            st.switch_page("pages/topoiq.py")
+
+    if _is_quick:
+        st.caption("TopoIQ is only available in Full Mode with a drawn site boundary.")
+    elif not topo_ok:
+        st.caption("TopoIQ requires a drawn site boundary. Update project below to add one.")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # FOOTER
