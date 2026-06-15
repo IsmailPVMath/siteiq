@@ -506,19 +506,32 @@ def render_auth_page(app_name: str = "PVMath"):
                 with cola:
                     if st.button("Verify →", key="btn_otp_verify"):
                         if otp_input.strip() == _otp_code:
-                            with st.spinner("Verified! Logging in…"):
-                                result = sign_in(_otp_email, _otp_pass)
-                            if result["success"]:
-                                for k in ["pvm_otp_state", "pvm_otp_email",
-                                          "pvm_otp_password", "pvm_otp_code",
-                                          "pvm_otp_expiry", "pvm_otp_attempts"]:
+                            # Use pre-stored token from auto-confirm, or sign in fresh
+                            _pre_token = st.session_state.get("pvm_otp_token", "")
+                            _pre_uid   = st.session_state.get("pvm_otp_uid", "")
+                            if _pre_token and _pre_uid:
+                                for k in ["pvm_otp_state", "pvm_otp_email", "pvm_otp_password",
+                                          "pvm_otp_code", "pvm_otp_expiry", "pvm_otp_attempts",
+                                          "pvm_otp_token", "pvm_otp_uid"]:
                                     st.session_state.pop(k, None)
-                                st.session_state["pvm_user_id"]      = result["user"].get("id")
-                                st.session_state["pvm_email"]        = result["user"].get("email")
-                                st.session_state["pvm_access_token"] = result.get("access_token", "")
+                                st.session_state["pvm_user_id"]      = _pre_uid
+                                st.session_state["pvm_email"]        = _otp_email
+                                st.session_state["pvm_access_token"] = _pre_token
                                 st.rerun()
                             else:
-                                st.error("Login error — please contact support.")
+                                with st.spinner("Verified! Logging in…"):
+                                    result = sign_in(_otp_email, _otp_pass)
+                                if result["success"]:
+                                    for k in ["pvm_otp_state", "pvm_otp_email",
+                                              "pvm_otp_password", "pvm_otp_code",
+                                              "pvm_otp_expiry", "pvm_otp_attempts"]:
+                                        st.session_state.pop(k, None)
+                                    st.session_state["pvm_user_id"]      = result["user"].get("id")
+                                    st.session_state["pvm_email"]        = result["user"].get("email")
+                                    st.session_state["pvm_access_token"] = result.get("access_token", "")
+                                    st.rerun()
+                                else:
+                                    st.error("Login error — please contact support.")
                         else:
                             st.session_state["pvm_otp_attempts"] += 1
                             left = 5 - st.session_state["pvm_otp_attempts"]
@@ -760,29 +773,25 @@ def render_auth_page(app_name: str = "PVMath"):
                     with st.spinner("Creating your account…"):
                         result = sign_up(reg_email, reg_pass)
                     if result["success"]:
-                        # If Supabase auto-confirmed (email confirm disabled), log in directly.
-                        # OTP flow re-enabled once Brevo account is activated.
+                        # Send OTP for email verification (via Brevo API)
+                        _otp = generate_otp()
+                        st.session_state["pvm_otp_state"]    = "pending"
+                        st.session_state["pvm_otp_email"]    = reg_email
+                        st.session_state["pvm_otp_password"] = reg_pass
+                        st.session_state["pvm_otp_code"]     = _otp
+                        st.session_state["pvm_otp_expiry"]   = time.time() + 600
+                        st.session_state["pvm_otp_attempts"] = 0
+                        # Store access_token from auto-confirm so verify step can skip sign_in
                         if result.get("access_token"):
-                            st.session_state["pvm_user_id"]      = result["user"].get("id")
-                            st.session_state["pvm_email"]        = result["user"].get("email")
-                            st.session_state["pvm_access_token"] = result["access_token"]
+                            st.session_state["pvm_otp_token"] = result["access_token"]
+                            st.session_state["pvm_otp_uid"]   = result["user"].get("id")
+                        with st.spinner("Sending verification code…"):
+                            _send = send_otp_email(reg_email, _otp)
+                        if _send["success"]:
                             st.rerun()
                         else:
-                            # Supabase email confirmation ON — send OTP
-                            _otp = generate_otp()
-                            st.session_state["pvm_otp_state"]    = "pending"
-                            st.session_state["pvm_otp_email"]    = reg_email
-                            st.session_state["pvm_otp_password"] = reg_pass
-                            st.session_state["pvm_otp_code"]     = _otp
-                            st.session_state["pvm_otp_expiry"]   = time.time() + 600
-                            st.session_state["pvm_otp_attempts"] = 0
-                            with st.spinner("Sending verification code…"):
-                                _send = send_otp_email(reg_email, _otp)
-                            if _send["success"]:
-                                st.rerun()
-                            else:
-                                st.error(f"Account created but could not send code: {_send['error']}")
-                                st.info("Please contact support or check your SMTP settings.")
+                            st.error(f"Account created but could not send code: {_send['error']}")
+                            st.info("Please contact support or check your SMTP settings.")
                     else:
                         err = result.get("error", "")
                         if "already registered" in err.lower() or "already been registered" in err.lower():
