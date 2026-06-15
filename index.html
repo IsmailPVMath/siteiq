@@ -334,9 +334,9 @@
         <div class="module-pill pill-live" data-i18n="pill.live">Live Now</div>
         <div class="module-num">Module 02</div>
         <div class="module-name blue">TopoIQ</div>
-        <p class="module-desc" data-i18n="topoiq.desc">Satellite terrain extraction for solar site engineering. Draw your PV Area boundary, get elevation and slope heatmaps, contour lines, and DXF terrain files ready for detailed 3D study in your CAD software.</p>
+        <p class="module-desc" data-i18n="topoiq.desc">Satellite terrain extraction for solar site engineering. Draw your site boundary, get elevation and slope heatmaps, contour lines, and DXF terrain files ready for detailed 3D study in your CAD software.</p>
         <ul class="module-features">
-          <li data-i18n="topoiq.f1">PV Area boundary drawing on satellite map</li>
+          <li data-i18n="topoiq.f1">Site boundary drawing on satellite map</li>
           <li data-i18n="topoiq.f2">Copernicus GLO-30 DEM (~30m native, 5m grid)</li>
           <li data-i18n="topoiq.f3">Elevation &amp; solar-grade slope maps</li>
           <li data-i18n="topoiq.f4">Contour lines at custom spacing</li>
@@ -407,7 +407,7 @@
       </div>
       <div class="steps">
         <div class="step"><div class="step-num blue">1</div><h3 data-i18n="topoiq.s1.h">Draw Your Boundary</h3><p data-i18n="topoiq.s1.p">Navigate to your site on the satellite map. Use the polygon tool to draw the exact site boundary &mdash; click to place vertices, double-click or hit Finish to close. Or upload a DXF/KML file.</p></div>
-        <div class="step"><div class="step-num blue">2</div><h3 data-i18n="topoiq.s2.h">Extract Terrain Data</h3><p data-i18n="topoiq.s2.p">TopoIQ fetches Copernicus GLO-30 satellite DEM for your PV Area, computes elevation profiles, slope heatmaps, and contour lines at your chosen interval automatically.</p></div>
+        <div class="step"><div class="step-num blue">2</div><h3 data-i18n="topoiq.s2.h">Extract Terrain Data</h3><p data-i18n="topoiq.s2.p">TopoIQ fetches Copernicus GLO-30 satellite DEM for your site boundary, computes elevation profiles, slope heatmaps, and contour lines at your chosen interval automatically.</p></div>
         <div class="step"><div class="step-num blue">3</div><h3 data-i18n="topoiq.s3.h">Export DXF &amp; PDF</h3><p data-i18n="topoiq.s3.p">Download a DXF terrain file with contour lines at your chosen spacing &mdash; ready for detailed 3D study in any CAD software &mdash; plus a PDF terrain report with elevation and slope maps.</p></div>
       </div>
     </div>
@@ -678,8 +678,8 @@ var T = {
     'siteiq.f1':'Satellite map with coordinate input','siteiq.f2':'Annual & monthly GHI / irradiation',
     'siteiq.f3':'Terrain & slope overview','siteiq.f4':'Regulatory flags (protected areas)',
     'siteiq.f5':'Flood risk indicator','siteiq.f6':'PDF report — client-ready','siteiq.btn':'Open in App →',
-    'topoiq.desc':'Satellite terrain extraction for solar site engineering. Draw your PV Area boundary, get elevation and slope heatmaps, contour lines, and DXF terrain files ready for detailed 3D study in your CAD software.',
-    'topoiq.f1':'PV Area boundary drawing on satellite map','topoiq.f2':'Copernicus GLO-30 DEM (~30m native, 5m grid)',
+    'topoiq.desc':'Satellite terrain extraction for solar site engineering. Draw your site boundary, get elevation and slope heatmaps, contour lines, and DXF terrain files ready for detailed 3D study in your CAD software.',
+    'topoiq.f1':'Site boundary drawing on satellite map','topoiq.f2':'Copernicus GLO-30 DEM (~30m native, 5m grid)',
     'topoiq.f3':'Elevation & solar-grade slope maps','topoiq.f4':'Contour lines at custom spacing',
     'topoiq.f5':'DXF terrain file export','topoiq.f6':'PDF terrain report','topoiq.btn':'Open in App →',
     'yieldiq.desc':'Quick pre-layout energy yield estimation using PVGIS JRC data. Get preliminary yield estimates before committing to full PV layout design.',
@@ -700,7 +700,7 @@ var T = {
     'siteiq.s2.h':'Set Project Parameters','siteiq.s2.p':'Enter project name, country, and estimated site area in hectares. SiteIQ fetches GHI, irradiation, terrain overview, flood risk, and regulatory flags automatically.',
     'siteiq.s3.h':'Download PDF Report','siteiq.s3.p':'Get a client-ready PDF with solar resource data, monthly irradiation chart, terrain summary, and a go/no-go verdict. Ready for your next client meeting.',
     'topoiq.s1.h':'Draw Your Boundary','topoiq.s1.p':'Navigate to your site on the satellite map. Use the polygon tool to draw the exact site boundary — click to place vertices, double-click or hit Finish to close. Or upload a DXF/KML file.',
-    'topoiq.s2.h':'Extract Terrain Data','topoiq.s2.p':'TopoIQ fetches Copernicus GLO-30 satellite DEM for your PV Area, computes elevation profiles, slope heatmaps, and contour lines at your chosen interval automatically.',
+    'topoiq.s2.h':'Extract Terrain Data','topoiq.s2.p':'TopoIQ fetches Copernicus GLO-30 satellite DEM for your site boundary, computes elevation profiles, slope heatmaps, and contour lines at your chosen interval automatically.',
     'topoiq.s3.h':'Export DXF & PDF','topoiq.s3.p':'Download a DXF terrain file with contour lines at your chosen spacing — ready for detailed 3D study in any CAD software — plus a PDF terrain report with elevation and slope maps.',
     'why.label':'Why PVMath','why.title':'Engineering-grade data.<br>Not estimates.',
     'why.c1.h':'Industry-Standard Solar Data','why.c1.p':'GHI and irradiation from PVGIS (EC JRC) — the same data source used by engineers in bankable pre-feasibility studies worldwide.',
@@ -780,8 +780,8 @@ var T = {
     'siteiq.f1':'Satellitenkarte mit Koordinateneingabe','siteiq.f2':'Jährliche & monatliche GHI / Einstrahlung',
     'siteiq.f3':'Gelände- & Neigungsübersicht','siteiq.f4':'Regulierungshinweise (Schutzgebiete)',
     'siteiq.f5':'Hochwasserrisiko-Indikator','siteiq.f6':'PDF-Bericht — kundenfähig','siteiq.btn':'In der App öffnen →',
-    'topoiq.desc':'Satellitengestützte Geländeextraktion für die solare Standortplanung. PV-Flächengrenze zeichnen, Höhen- und Neigungsdiagramme, Höhenlinien und DXF-Geländedateien für das 3D-Studium in Ihrer CAD-Software erhalten.',
-    'topoiq.f1':'PV-Flächengrenze auf Satellitenkarte','topoiq.f2':'Copernicus GLO-30 DEM (~30m nativ, 5m Raster)',
+    'topoiq.desc':'Satellitengestützte Geländeextraktion für die solare Standortplanung. Standortgrenze einzeichnen, Höhen- und Neigungsdiagramme, Höhenlinien und DXF-Geländedateien für das 3D-Studium in Ihrer CAD-Software erhalten.',
+    'topoiq.f1':'Standortgrenze auf Satellitenkarte','topoiq.f2':'Copernicus GLO-30 DEM (~30m nativ, 5m Raster)',
     'topoiq.f3':'Höhen- & solare Neigungskarten','topoiq.f4':'Höhenlinien mit individuellem Abstand',
     'topoiq.f5':'DXF-Geländedatei-Export','topoiq.f6':'PDF-Geländebericht','topoiq.btn':'In der App öffnen →',
     'yieldiq.desc':'Schnelle Energieertragschätzung vor dem Layout mit PVGIS JRC-Daten. Vorläufige Ertragszahlen vor dem vollständigen PV-Layout.',
@@ -801,8 +801,8 @@ var T = {
     'siteiq.s1.h':'Standort festlegen','siteiq.s1.p':'Nach Ortsname suchen, Google Maps- oder Lat/Lon-Koordinaten einfügen oder eine KML/KMZ-Datei hochladen. Die Satellitenkarte zentriert sich sofort auf Ihren Standort.',
     'siteiq.s2.h':'Projektparameter eingeben','siteiq.s2.p':'Projektname, Land und geschätzte Standortfläche in Hektar eingeben. SiteIQ ruft automatisch GHI, Einstrahlung, Geländeübersicht, Hochwasserrisiko und Regulierungshinweise ab.',
     'siteiq.s3.h':'PDF-Bericht herunterladen','siteiq.s3.p':'Kundenfähigen PDF mit Solarressourcendaten, monatlichem Einstrahlungsdiagramm, Geländezusammenfassung und Go/No-Go-Empfehlung erhalten. Bereit für das nächste Kundengespräch.',
-    'topoiq.s1.h':'PV-Fläche einzeichnen','topoiq.s1.p':'Zum Standort auf der Satellitenkarte navigieren. Polygon-Tool zum Einzeichnen der PV-Flächengrenze verwenden — Klicken für Eckpunkte, Doppelklick zum Schließen. Oder DXF/KML hochladen.',
-    'topoiq.s2.h':'Geländedaten extrahieren','topoiq.s2.p':'TopoIQ ruft Copernicus GLO-30 Satelliten-DEM für Ihre PV-Fläche ab und berechnet Höhenprofile, Neigungskarten und Höhenlinien im gewählten Abstand automatisch.',
+    'topoiq.s1.h':'Standortgrenze einzeichnen','topoiq.s1.p':'Zum Standort auf der Satellitenkarte navigieren. Polygon-Tool zum Einzeichnen der Standortgrenze verwenden — Klicken für Eckpunkte, Doppelklick zum Schließen. Oder DXF/KML hochladen.',
+    'topoiq.s2.h':'Geländedaten extrahieren','topoiq.s2.p':'TopoIQ ruft Copernicus GLO-30 Satelliten-DEM für Ihre Standortgrenze ab und berechnet Höhenprofile, Neigungskarten und Höhenlinien im gewählten Abstand automatisch.',
     'topoiq.s3.h':'DXF & PDF exportieren','topoiq.s3.p':'DXF-Geländedatei mit Höhenlinien im gewählten Abstand herunterladen — bereit für 3D-Studium in jeder CAD-Software — plus PDF-Geländebericht mit Höhen- und Neigungskarten.',
     'why.label':'Warum PVMath','why.title':'Ingenieurqualitätsdaten.<br>Keine Schätzungen.',
     'why.c1.h':'Branchenstandard-Solardaten','why.c1.p':'GHI und Einstrahlung von PVGIS (EC JRC) — dieselbe Datenquelle, die Ingenieure weltweit in bankfähigen Vor-Machbarkeitsstudien verwenden.',
