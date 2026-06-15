@@ -750,8 +750,9 @@ if _proj.get("lat") and _proj.get("lon") and not st.session_state.get("topo_cent
     st.session_state["topo_zoom"] = 14
 
 # Full Mode project with drawn polygon — skip re-entry
+# project.py stores polygon as [[lat,lon],...]; topoiq internally uses (lon,lat) — convert
 _preloaded_polygon = (
-    _proj["polygon_coords"]
+    [(c[1], c[0]) for c in _proj["polygon_coords"]]
     if (_proj.get("mode") == "full" and _proj.get("polygon_coords"))
     else None
 )
