@@ -17,7 +17,7 @@ from streamlit_folium import st_folium
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, KeepTogether
 from reportlab.graphics.shapes import Drawing, Rect, String, Line
 from reportlab.graphics import renderPDF
 from reportlab.lib.units import cm
@@ -430,13 +430,13 @@ def overall_verdict(slope_lbl, solar_lbl, land_use="Standard", mount_type="Fixed
     else:
         label = mount_type
     if reds >= 1:
-        return "❌ NOT RECOMMENDED",        "One or more critical issues identified. High risk to project viability."
+        return "❌ CRITICAL",     "One or more parameters exceed viability threshold. High risk — reconsider site or system type."
     elif yellows >= 2:
-        return "⚠️ PROCEED WITH CAUTION",   "Multiple moderate concerns. Detailed study recommended before committing."
+        return "⚠️ CHALLENGING",  "Multiple moderate concerns. Detailed study mandatory before commitment."
     elif yellows == 1:
-        return "⚠️ CONDITIONAL GO",         f"Site shows promise but has considerations to address in detailed {label} design."
+        return "⚠️ ACCEPTABLE",   f"Site is viable with noted considerations. Address constraints in detailed {label} design."
     else:
-        return "✅ RECOMMENDED FOR STUDY",  f"Strong {label} potential. Proceed to detailed feasibility study."
+        return "✅ EXCELLENT",    f"Strong {label} potential. All parameters in ideal range — proceed to detailed feasibility study."
 
 
 def get_next_steps(project_country, land_use="Standard"):
@@ -667,8 +667,8 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
     # ── Monthly Irradiation Bar Chart ────────────────────────────────────────
     monthly_data = solar.get("monthly", [])
     if monthly_data:
-        story.append(Paragraph("MONTHLY SOLAR IRRADIATION (kWh/m²)",
-            ParagraphStyle("H2", parent=styles["Heading2"], fontSize=12, textColor=GREEN)))
+        _chart_header = Paragraph("MONTHLY SOLAR IRRADIATION (kWh/m²)",
+            ParagraphStyle("H2", parent=styles["Heading2"], fontSize=12, textColor=GREEN))
 
         months_abbr = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
         ghi_vals = [row.get("GHI (kWh/m²)", 0) for row in monthly_data[:12]]
@@ -729,56 +729,80 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
         d.add(Line(_pad_l, _pad_b, _chart_w - _pad_r, _pad_b,
                    strokeColor=colors.HexColor("#1d9e52"), strokeWidth=1))
 
-        story.append(d)
-        story.append(Spacer(1, 0.2*cm))
-        story.append(Paragraph(
+        _sub = Paragraph(
             f"Peak month: {months_abbr[ghi_vals.index(max_ghi)]} ({max_ghi:.0f} kWh/m²)  |  "
             f"Annual total: {sum(ghi_vals):.0f} kWh/m²",
             ParagraphStyle("sub", parent=styles["Normal"], fontSize=8, textColor=colors.grey)
-        ))
+        )
+        story.append(KeepTogether([_chart_header, Spacer(1, 0.15*cm), d, Spacer(1, 0.2*cm), _sub]))
         story.append(Spacer(1, 0.5*cm))
-
-    story.append(Paragraph("RATING SCALE",
-        ParagraphStyle("H2", parent=styles["Heading2"], fontSize=12, textColor=GREEN)))
-
-    legend_rows = [
-        [lp("Rating", colors.white, bold=True), lp("Meaning", colors.white, bold=True), lp("Action", colors.white, bold=True)],
-        [lp("EXCELLENT / GOOD", C_GREEN,  bold=True), lp("Parameter is within ideal range for this project type"),    lp("Proceed — no major concerns")],
-        [lp("ACCEPTABLE",       C_YELLOW, bold=True), lp("Feasible range but with constraints"),                      lp("Proceed — monitor this factor")],
-        [lp("CHALLENGING",      C_ORANGE, bold=True), lp("Near the feasibility limit — significant effort required"), lp("Detailed study mandatory before commitment")],
-        [lp("CRITICAL",         C_RED,    bold=True), lp("Exceeds viable threshold for this system type"),            lp("High risk — reconsider site or system")],
-        [lp("LOW FLOOD RISK",   C_GREEN,  bold=True), lp("Elevated terrain — flood exposure likely low"),             lp("Verify at local flood portal")],
-        [lp("LOW-MOD FLOOD",    C_YELLOW, bold=True), lp("Moderate terrain — watercourse proximity check needed"),    lp("Cross-check official flood maps")],
-        [lp("MODERATE FLOOD",   C_ORANGE, bold=True), lp("Low-lying terrain — flood exposure possible"),              lp("Manual flood risk check required")],
-        [lp("HIGH FLOOD RISK",  C_RED,    bold=True), lp("Very low elevation — high flood exposure likely"),          lp("Flood zone study required before proceeding")],
-    ]
-    lt = Table(legend_rows, colWidths=[4*cm, 8.5*cm, 4.5*cm])
-    lt.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0), (-1,0),  GREEN),
-        ("GRID",          (0,0), (-1,-1), 0.5, colors.lightgrey),
-        ("TOPPADDING",    (0,0), (-1,-1), 6),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 6),
-        ("LEFTPADDING",   (0,0), (-1,-1), 6),
-        ("RIGHTPADDING",  (0,0), (-1,-1), 4),
-        ("VALIGN",        (0,0), (-1,-1), "TOP"),
-        ("ROWBACKGROUNDS",(0,1),(-1,-1), [colors.white, LGRAY]),
-        ("BACKGROUND", (0,1), (0,1), C_LGREEN),
-        ("BACKGROUND", (0,2), (0,2), C_LYELLOW),
-        ("BACKGROUND", (0,3), (0,3), C_LYELLOW),
-        ("BACKGROUND", (0,4), (0,4), C_LRED),
-        ("BACKGROUND", (0,5), (0,5), C_LGREEN),
-        ("BACKGROUND", (0,6), (0,6), C_LYELLOW),
-        ("BACKGROUND", (0,7), (0,7), C_LORANG),
-        ("BACKGROUND", (0,8), (0,8), C_LRED),
-    ]))
-    story.append(lt)
-    story.append(Spacer(1, 0.5*cm))
 
     story.append(Paragraph("RECOMMENDED NEXT STEPS",
         ParagraphStyle("H2", parent=styles["Heading2"], fontSize=12, textColor=GREEN)))
     for step in get_next_steps(project_country or country, land_use):
         story.append(Paragraph(step, styles["Normal"]))
         story.append(Spacer(1, 0.2*cm))
+
+    story.append(Spacer(1, 0.3*cm))
+
+    # ── Rating Legend — two compact tables side by side ───────────────────────
+    story.append(Paragraph("RATING LEGEND",
+        ParagraphStyle("H2", parent=styles["Heading2"], fontSize=11, textColor=GREEN)))
+
+    # Performance ratings table
+    perf_rows = [
+        [lp("Performance Rating", colors.white, bold=True, size=8), lp("Action", colors.white, bold=True, size=8)],
+        [lp("✅ EXCELLENT / GOOD", C_GREEN,  bold=True, size=8), lp("All parameters ideal — proceed", size=8)],
+        [lp("⚠️ ACCEPTABLE",       C_YELLOW, bold=True, size=8), lp("Viable with constraints — monitor", size=8)],
+        [lp("⚠️ CHALLENGING",      C_ORANGE, bold=True, size=8), lp("Near limit — detailed study required", size=8)],
+        [lp("❌ CRITICAL",         C_RED,    bold=True, size=8), lp("Exceeds threshold — reconsider site", size=8)],
+    ]
+    pt = Table(perf_rows, colWidths=[4.5*cm, 5.5*cm])
+    pt.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0), (-1,0),  GREEN),
+        ("GRID",          (0,0), (-1,-1), 0.5, colors.lightgrey),
+        ("TOPPADDING",    (0,0), (-1,-1), 5),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+        ("LEFTPADDING",   (0,0), (-1,-1), 6),
+        ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
+        ("ROWBACKGROUNDS",(0,1),(-1,-1), [colors.white, LGRAY]),
+        ("BACKGROUND",    (0,1), (0,1), C_LGREEN),
+        ("BACKGROUND",    (0,2), (0,2), C_LYELLOW),
+        ("BACKGROUND",    (0,3), (0,3), C_LORANG),
+        ("BACKGROUND",    (0,4), (0,4), C_LRED),
+    ]))
+
+    # Flood risk table
+    flood_rows = [
+        [lp("Flood Risk Rating", colors.white, bold=True, size=8), lp("Action", colors.white, bold=True, size=8)],
+        [lp("🟢 LOW RISK",       C_GREEN,  bold=True, size=8), lp("Verify at local flood portal", size=8)],
+        [lp("🟡 LOW-MODERATE",   C_YELLOW, bold=True, size=8), lp("Cross-check official flood maps", size=8)],
+        [lp("🟠 MODERATE RISK",  C_ORANGE, bold=True, size=8), lp("Manual flood risk check required", size=8)],
+        [lp("🔴 HIGH RISK",      C_RED,    bold=True, size=8), lp("Flood zone study before proceeding", size=8)],
+    ]
+    ft = Table(flood_rows, colWidths=[4.5*cm, 5.5*cm])
+    ft.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0), (-1,0),  GREEN),
+        ("GRID",          (0,0), (-1,-1), 0.5, colors.lightgrey),
+        ("TOPPADDING",    (0,0), (-1,-1), 5),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+        ("LEFTPADDING",   (0,0), (-1,-1), 6),
+        ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
+        ("ROWBACKGROUNDS",(0,1),(-1,-1), [colors.white, LGRAY]),
+        ("BACKGROUND",    (0,1), (0,1), C_LGREEN),
+        ("BACKGROUND",    (0,2), (0,2), C_LYELLOW),
+        ("BACKGROUND",    (0,3), (0,3), C_LORANG),
+        ("BACKGROUND",    (0,4), (0,4), C_LRED),
+    ]))
+
+    # Side-by-side in a wrapper table
+    legend_wrapper = Table([[pt, Spacer(0.5*cm, 1), ft]], colWidths=[10*cm, 0.5*cm, 10*cm])
+    legend_wrapper.setStyle(TableStyle([
+        ("VALIGN", (0,0), (-1,-1), "TOP"),
+        ("LEFTPADDING",  (0,0), (-1,-1), 0),
+        ("RIGHTPADDING", (0,0), (-1,-1), 0),
+    ]))
+    story.append(legend_wrapper)
 
     story.append(Spacer(1, 0.4*cm))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.lightgrey))
