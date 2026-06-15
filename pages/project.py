@@ -421,7 +421,7 @@ if show_form:
     st.markdown("")
     save_c1, save_c2 = st.columns([1, 3])
     with save_c1:
-        save_clicked = st.button("✅ Save Project", type="primary", use_container_width=True)
+        save_clicked = st.button("Proceed →", type="primary", use_container_width=True)
 
     if save_clicked:
         if not lat or not lon:

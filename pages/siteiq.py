@@ -18,6 +18,8 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+from reportlab.graphics.shapes import Drawing, Rect, String, Line
+from reportlab.graphics import renderPDF
 from reportlab.lib.units import cm
 
 # ── User ID ──
@@ -632,32 +634,37 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
 
     story.append(Paragraph("KEY METRICS",
         ParagraphStyle("H2", parent=styles["Heading2"], fontSize=12, textColor=GREEN)))
+    _density = (0.18 if land_use=='Agri-PV' and mount_type=='Single-Axis Tracker'
+                else 0.20 if land_use=='Agri-PV'
+                else 0.35 if mount_type=='Single-Axis Tracker' else 0.40)
     rows = [
-        ["Metric", "Value", "Rating"],
-        ["Annual GHI",         f"{solar.get('annual_ghi','—')} kWh/m²/yr",   solar_lbl.split("—")[0].strip()],
-        ["Annual Yield",       f"{solar.get('annual_yield','—')} kWh/kWp/yr","—"],
-        ["Optimal Tilt",       f"{solar.get('optimal_tilt','—')}°",           "—"],
-        ["Max Terrain Slope",  f"{terrain.get('max_slope_pct','—')}%",        slope_lbl.split("—")[0].strip()],
-        ["Elevation (centre)", f"{terrain.get('center_elev','—')} m asl",     "—"],
-        ["Est. Capacity",      f"{cap_mw} MWp",                               f"Density basis: {0.18 if land_use=='Agri-PV' and mount_type=='Single-Axis Tracker' else 0.20 if land_use=='Agri-PV' else 0.35 if mount_type=='Single-Axis Tracker' else 0.40} MW/ha"],
-        ["Est. Annual Output", f"{cap_mwh:,.0f} MWh/yr",                      "Indicative only"],
-        ["EEG Status",         eeg_status,                                    eeg_note],
+        [lp("Metric", colors.white, bold=True, size=9),
+         lp("Value",  colors.white, bold=True, size=9),
+         lp("Rating", colors.white, bold=True, size=9)],
+        [lp("Annual GHI"),         lp(f"{solar.get('annual_ghi','—')} kWh/m²/yr"),   lp(solar_lbl.split("—")[0].strip())],
+        [lp("Annual Yield"),       lp(f"{solar.get('annual_yield','—')} kWh/kWp/yr"),lp("—")],
+        [lp("Optimal Tilt"),       lp(f"{solar.get('optimal_tilt','—')}°"),           lp("—")],
+        [lp("Max Terrain Slope"),  lp(f"{terrain.get('max_slope_pct','—')}%"),        lp(slope_lbl.split("—")[0].strip())],
+        [lp("Elevation (centre)"), lp(f"{terrain.get('center_elev','—')} m asl"),     lp("—")],
+        [lp("Est. Capacity"),      lp(f"{cap_mw} MWp"),                               lp(f"Density: {_density} MW/ha")],
+        [lp("Est. Annual Output"), lp(f"{cap_mwh:,.0f} MWh/yr"),                      lp("Indicative only")],
+        [lp("EEG / Incentive"),    lp(eeg_status),                                    lp(eeg_note)],
     ]
-    mt = Table(rows, colWidths=[6*cm, 6*cm, 5*cm])
+    mt = Table(rows, colWidths=[4.5*cm, 5.5*cm, 7*cm])
     mt.setStyle(TableStyle([
-        ("BACKGROUND",   (0,0),(-1,0), GREEN),
-        ("TEXTCOLOR",    (0,0),(-1,0), colors.white),
-        ("FONTNAME",     (0,0),(-1,0), "Helvetica-Bold"),
-        ("FONTSIZE",     (0,0),(-1,-1), 9),
-        ("GRID",         (0,0),(-1,-1), 0.5, colors.lightgrey),
+        ("BACKGROUND",    (0,0),(-1,0), GREEN),
+        ("FONTSIZE",      (0,0),(-1,-1), 9),
+        ("GRID",          (0,0),(-1,-1), 0.5, colors.lightgrey),
         ("ROWBACKGROUNDS",(0,1),(-1,-1), [colors.white, LGRAY]),
-        ("TOPPADDING",   (0,0),(-1,-1), 5),
-        ("BOTTOMPADDING",(0,0),(-1,-1), 5),
+        ("TOPPADDING",    (0,0),(-1,-1), 6),
+        ("BOTTOMPADDING", (0,0),(-1,-1), 6),
+        ("LEFTPADDING",   (0,0),(-1,-1), 6),
+        ("VALIGN",        (0,0),(-1,-1), "TOP"),
     ]))
     story.append(mt)
     story.append(Spacer(1, 0.5*cm))
 
-    # ── Monthly Irradiation Table ─────────────────────────────────────────────
+    # ── Monthly Irradiation Bar Chart ────────────────────────────────────────
     monthly_data = solar.get("monthly", [])
     if monthly_data:
         story.append(Paragraph("MONTHLY SOLAR IRRADIATION (kWh/m²)",
@@ -667,29 +674,63 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
         ghi_vals = [row.get("GHI (kWh/m²)", 0) for row in monthly_data[:12]]
         max_ghi  = max(ghi_vals) if ghi_vals else 1
 
-        # Header row
-        hdr = [lp(m, colors.white, bold=True, size=8) for m in months_abbr]
-        # Value row with background intensity scaled to value
-        def ghi_bg(val):
-            ratio = val / max_ghi if max_ghi else 0
-            r = int(232 - ratio * (232 - 26))
-            g = int(245 - ratio * (245 - 92))
-            b = int(238 - ratio * (238 - 46))
-            return colors.Color(r/255, g/255, b/255)
+        # ── ReportLab bar chart drawing ───────────────────────────────────────
+        from reportlab.lib.units import cm as _cm
+        _chart_w  = 17 * _cm   # full page width
+        _chart_h  = 5  * _cm   # bar area height
+        _pad_l    = 1.2* _cm   # left padding for y-axis labels
+        _pad_b    = 1.2* _cm   # bottom for month labels
+        _pad_r    = 0.3* _cm
+        _pad_t    = 0.3* _cm
+        _n        = len(ghi_vals)
+        _bar_area_w = _chart_w - _pad_l - _pad_r
+        _bar_area_h = _chart_h - _pad_b - _pad_t
+        _bar_w    = _bar_area_w / _n * 0.62
+        _gap      = _bar_area_w / _n
 
-        val_cells = [lp(f"{v:.0f}", colors.HexColor("#1a2e1a"), bold=True, size=9) for v in ghi_vals]
-        col_w = [1.42*cm] * 12
-        monthly_tbl = Table([hdr, val_cells], colWidths=col_w)
-        bg_cmds = [("BACKGROUND", (i,0), (i,0), GREEN) for i in range(12)]
-        bg_cmds += [("BACKGROUND", (i,1), (i,1), ghi_bg(ghi_vals[i])) for i in range(12)]
-        monthly_tbl.setStyle(TableStyle([
-            ("GRID",         (0,0),(-1,-1), 0.5, colors.lightgrey),
-            ("ALIGN",        (0,0),(-1,-1), "CENTER"),
-            ("TOPPADDING",   (0,0),(-1,-1), 5),
-            ("BOTTOMPADDING",(0,0),(-1,-1), 5),
-        ] + bg_cmds))
-        story.append(monthly_tbl)
-        story.append(Spacer(1, 0.3*cm))
+        d = Drawing(_chart_w, _chart_h)
+
+        # Grid lines (4 horizontal)
+        for _gi, _gv in enumerate([0.25, 0.5, 0.75, 1.0]):
+            _gy = _pad_b + _bar_area_h * _gv
+            d.add(Line(_pad_l, _gy, _chart_w - _pad_r, _gy,
+                       strokeColor=colors.HexColor("#e0e8e0"), strokeWidth=0.5))
+            _gl = f"{int(max_ghi * _gv)}"
+            d.add(String(_pad_l - 4, _gy - 3, _gl,
+                         fontSize=6, fillColor=colors.HexColor("#4a6a4a"),
+                         textAnchor="end"))
+
+        # Bars + month labels + value labels
+        for _i, (_m, _v) in enumerate(zip(months_abbr, ghi_vals)):
+            _ratio   = _v / max_ghi if max_ghi else 0
+            _bh      = _bar_area_h * _ratio
+            _bx      = _pad_l + _i * _gap + (_gap - _bar_w) / 2
+            _by      = _pad_b
+
+            # Gradient-ish: darker green for higher months
+            _g_int   = int(26 + (1 - _ratio) * (140 - 26))
+            _bar_col = colors.Color(26/255, _g_int/255, 46/255)
+
+            d.add(Rect(_bx, _by, _bar_w, _bh,
+                       fillColor=_bar_col, strokeColor=None))
+
+            # Month label below bar
+            d.add(String(_bx + _bar_w/2, _pad_b - 10, _m,
+                         fontSize=7, fillColor=colors.HexColor("#1a2e1a"),
+                         textAnchor="middle"))
+
+            # Value label on top of bar (only if bar is tall enough)
+            if _bh > 10:
+                d.add(String(_bx + _bar_w/2, _by + _bh + 2, f"{int(_v)}",
+                             fontSize=6.5, fillColor=colors.HexColor("#0d1a0d"),
+                             textAnchor="middle"))
+
+        # Baseline
+        d.add(Line(_pad_l, _pad_b, _chart_w - _pad_r, _pad_b,
+                   strokeColor=colors.HexColor("#1d9e52"), strokeWidth=1))
+
+        story.append(d)
+        story.append(Spacer(1, 0.2*cm))
         story.append(Paragraph(
             f"Peak month: {months_abbr[ghi_vals.index(max_ghi)]} ({max_ghi:.0f} kWh/m²)  |  "
             f"Annual total: {sum(ghi_vals):.0f} kWh/m²",
