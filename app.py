@@ -26,13 +26,15 @@ pg = st.navigation(_pages, position="hidden")
 if not render_auth_page("PVMath"):
     st.stop()
 
-# ── Make sidebar content visible again (auth page uses visibility:hidden on
-# sidebar content — not display:none on the element — so CSS can reliably undo it)
+# ── Restore sidebar after auth (auth page collapses it to width:0)
 st.markdown("""
 <style>
-section[data-testid="stSidebar"] > div > div { visibility: visible !important; }
-section[data-testid="stSidebar"]              { display: flex !important; }
-[data-testid="collapsedControl"]              { display: flex !important; }
+section[data-testid="stSidebar"] {
+    width: var(--sidebar-width, 21rem) !important;
+    min-width: 14rem !important;
+    overflow: visible !important;
+}
+[data-testid="collapsedControl"] { display: flex !important; }
 </style>
 """, unsafe_allow_html=True)
 

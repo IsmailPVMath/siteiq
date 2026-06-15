@@ -419,8 +419,8 @@ def render_auth_page(app_name: str = "PVMath"):
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
         html,body,[class*="css"]{font-family:'Inter',sans-serif!important;background:#f5f7f5!important;}
         [data-testid="stAppViewContainer"],[data-testid="stMain"],.main,.stApp{background:#f5f7f5!important;}
-        section[data-testid="stSidebar"] > div > div { visibility:hidden!important; }
-        [data-testid="stSidebarNav"]{display:none!important;}
+        section[data-testid="stSidebar"]{width:0!important;min-width:0!important;overflow:hidden!important;padding:0!important;}
+        [data-testid="collapsedControl"]{display:none!important;}
         #MainMenu,footer,header{visibility:hidden!important;}
         .block-container{padding-top:0!important;max-width:100%!important;}
         .stButton>button{
@@ -607,11 +607,12 @@ def render_auth_page(app_name: str = "PVMath"):
     }
 
 
-    /* Hide sidebar CONTENT during auth (not the element — removing display:none
-       from a sticky SPA stylesheet is unreliable; hiding content is reversible) */
-    section[data-testid="stSidebar"] > div > div { visibility: hidden !important; }
-    [data-testid="stSidebarNav"]     { display: none !important; }
-    [data-testid="stSidebarNavLink"] { display: none !important; }
+    /* Collapse sidebar to zero-width during auth (reversible via width override after login) */
+    section[data-testid="stSidebar"] {
+        width: 0 !important; min-width: 0 !important;
+        overflow: hidden !important; padding: 0 !important;
+    }
+    [data-testid="collapsedControl"] { display: none !important; }
 
     /* Full page centering */
     .block-container {
