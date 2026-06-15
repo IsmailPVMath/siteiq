@@ -120,7 +120,7 @@ st.markdown("""
 proj = st.session_state.get("pvm_project", {})
 
 # Pre-seed pin state from saved project so "Proceed" works without re-clicking map
-if proj.get("lat") and proj.get("lon"):
+if proj.get("lat") is not None and proj.get("lon") is not None:
     if "proj_pin_lat" not in st.session_state:
         st.session_state["proj_pin_lat"] = proj["lat"]
         st.session_state["proj_pin_lon"] = proj["lon"]
@@ -129,7 +129,7 @@ if proj.get("lat") and proj.get("lon"):
         st.session_state["proj_map_zoom"]   = 13
 
 # Compact status bar + equal launch buttons if project already exists
-if proj.get("lat"):
+if proj.get("lat") is not None:
     topo_ok  = proj.get("mode") == "full" and proj.get("polygon_coords")
     mode_str = "Quick Mode" if proj.get("mode") == "quick" else "Full Mode"
     area_str = f" · {proj.get('area_ha')} ha" if proj.get("area_ha") else ""
@@ -278,7 +278,7 @@ if True:
         )
         if maps_raw:
             lat, lon = parse_google_maps_url(maps_raw)
-            if lat and lon:
+            if lat is not None and lon is not None:
                 st.success(f"📌 Extracted: {lat:.5f}°N, {lon:.5f}°E")
                 if is_full:
                     _coord_center = [lat, lon]
@@ -367,7 +367,7 @@ if True:
             if polygon_coords and len(polygon_coords) >= 3:
                 lat = st.session_state.get("proj_pin_lat")
                 lon = st.session_state.get("proj_pin_lon")
-                if lat and lon:
+                if lat is not None and lon is not None:
                     area_from_poly = polygon_area_ha(polygon_coords)
                     st.success(f"✅ Boundary drawn · Centroid: {lat:.5f}°N, {lon:.5f}°E · Area: **{area_from_poly} ha**")
             else:

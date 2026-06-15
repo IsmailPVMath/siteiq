@@ -308,7 +308,6 @@ st.markdown("""
         color: #1565c0 !important; border-bottom-color: #1565c0 !important; font-weight: 800 !important;
     }
     div[data-testid="stTabs"] button[role="tab"] { font-weight: 600 !important; color: #2a3a5a !important; }
-    div[data-testid="stTabs"] button[role="tab"] { font-weight: 500 !important; }
 
     div[data-testid="stDownloadButton"] > button {
         font-family: 'Inter', sans-serif !important;
@@ -327,8 +326,6 @@ st.markdown("""
     div[data-testid="stExpander"] {
         border: 1px solid #e2ede2 !important; border-radius: 10px !important;
     }
-
-    section[data-testid="stSidebar"] { background: #f5f7f5 !important; }
 </style>
 """, unsafe_allow_html=True)
 

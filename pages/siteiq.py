@@ -110,8 +110,7 @@ st.markdown("""
         border: 1px solid #e2ede2 !important; border-radius: 10px !important;
     }
 
-    /* ── Sidebar ── */
-    section[data-testid="stSidebar"] { background: #f5f7f5 !important; }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -361,7 +360,7 @@ def assess_eeg(lat, lon, land_use="Standard", project_country=""):
     in_nl = any(x in c for x in ["netherlands","nederland","holland"])
     in_us = any(x in c for x in ["usa","united states","america","us"])
     in_in = any(x in c for x in ["india","bharat","indian"])
-    in_au = any(x in c for x in ["australia","australian"])
+    in_au = any(x in c for x in ["australia","australian","oz"])
     in_uk = any(x in c for x in ["uk","united kingdom","england","britain"])
     in_jp = any(x in c for x in ["japan","japanese"])
     in_br = any(x in c for x in ["brazil","brasil","brazilian"])
@@ -912,7 +911,7 @@ _proj_name  = _proj.get("name", "")
 _proj_ctry  = _proj.get("country", "")
 _proj_lat   = _proj.get("lat")
 _proj_lon   = _proj.get("lon")
-_has_proj   = bool(_proj_lat and _proj_lon)
+_has_proj   = _proj_lat is not None and _proj_lon is not None
 
 if _has_proj:
     st.markdown(f"""
@@ -1104,7 +1103,7 @@ with left:
             maps_url = st.text_input("Paste Google Maps link or coordinates", placeholder="17.1401, 78.4802  or  https://maps.google.com/...")
             if maps_url:
                 lat, lon = parse_google_maps_url(maps_url)
-                if lat and lon:
+                if lat is not None and lon is not None:
                     st.success(f"📌 Extracted: {lat:.5f}°N, {lon:.5f}°E")
                 else:
                     st.warning("Could not extract coordinates — try right-clicking a point in Google Maps and copying the coordinates directly.")
@@ -1118,7 +1117,7 @@ with left:
                     lat, lon, kml_area = parse_kmz_bytes(data)
                 else:
                     lat, lon, kml_area = parse_kml_bytes(data)
-                if lat and lon:
+                if lat is not None and lon is not None:
                     st.success(f"📌 Centroid: {lat:.5f}°N, {lon:.5f}°E  |  Area: {kml_area} ha")
                 else:
                     st.error("Could not read coordinates from file. Ensure it contains polygon geometry.")

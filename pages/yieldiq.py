@@ -482,7 +482,7 @@ _proj_lon  = _proj.get("lon")
 _proj_name = _proj.get("name", "")
 _proj_ctry = _proj.get("country", "")
 _proj_area = _proj.get("area_ha")
-_has_proj  = bool(_proj_lat and _proj_lon)
+_has_proj  = _proj_lat is not None and _proj_lon is not None
 
 # Capacity density table (MW/ha)
 _DENSITY = {
@@ -714,9 +714,9 @@ if submitted:
         row_cols[5].markdown(
             f'<div style="padding:6px 0;font-weight:600;">'
             f'{r["spec_y"] * dc_kwp / 1000:,.1f} MWh/yr</div>', unsafe_allow_html=True)
+        _pr_str = f'{r["pr"]:.1f}%' if r["pr"] else "—"
         row_cols[6].markdown(
-            f'<div style="padding:6px 0;">'
-            f'{r["pr"]:.1f}%' if r["pr"] else '—</div>',
+            f'<div style="padding:6px 0;">{_pr_str}</div>',
             unsafe_allow_html=True)
         row_cols[7].markdown(
             f'<div style="padding:6px 0;">{r["cf"]:.1f}%</div>',

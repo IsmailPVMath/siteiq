@@ -22,7 +22,7 @@ import streamlit as st
 # ── Config ────────────────────────────────────────────────────
 FREE_LIMIT   = 5
 STRIPE_LINK  = "https://buy.stripe.com/YOUR_LINK_HERE"
-PRICE_LABEL  = "€99 / month"
+PRICE_LABEL  = "€49 / month"
 
 # ── Supabase helpers (direct REST — no supabase-py) ───────────
 def _sb_url() -> str:
