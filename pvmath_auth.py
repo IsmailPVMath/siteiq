@@ -773,25 +773,20 @@ def render_auth_page(app_name: str = "PVMath"):
                     with st.spinner("Creating your account…"):
                         result = sign_up(reg_email, reg_pass)
                     if result["success"]:
-                        # Send OTP for email verification (via Brevo API)
-                        _otp = generate_otp()
-                        st.session_state["pvm_otp_state"]    = "pending"
-                        st.session_state["pvm_otp_email"]    = reg_email
-                        st.session_state["pvm_otp_password"] = reg_pass
-                        st.session_state["pvm_otp_code"]     = _otp
-                        st.session_state["pvm_otp_expiry"]   = time.time() + 600
-                        st.session_state["pvm_otp_attempts"] = 0
-                        # Store access_token from auto-confirm so verify step can skip sign_in
+                        # OTP disabled — Brevo not yet activated. Re-enable once confirmed.
+                        # Direct login using token from Supabase auto-confirm.
                         if result.get("access_token"):
-                            st.session_state["pvm_otp_token"] = result["access_token"]
-                            st.session_state["pvm_otp_uid"]   = result["user"].get("id")
-                        with st.spinner("Sending verification code…"):
-                            _send = send_otp_email(reg_email, _otp)
-                        if _send["success"]:
-                            st.rerun()
+                            st.session_state["pvm_user_id"]      = result["user"].get("id")
+                            st.session_state["pvm_email"]        = result["user"].get("email") or reg_email
+                            st.session_state["pvm_access_token"] = result["access_token"]
                         else:
-                            st.error(f"Account created but could not send code: {_send['error']}")
-                            st.info("Please contact support or check your SMTP settings.")
+                            # Fallback: sign in with password
+                            _r = sign_in(reg_email, reg_pass)
+                            if _r["success"]:
+                                st.session_state["pvm_user_id"]      = _r["user"].get("id")
+                                st.session_state["pvm_email"]        = _r["user"].get("email")
+                                st.session_state["pvm_access_token"] = _r.get("access_token", "")
+                        st.rerun()
                     else:
                         err = result.get("error", "")
                         if "already registered" in err.lower() or "already been registered" in err.lower():
