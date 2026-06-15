@@ -783,187 +783,215 @@ left, right = st.columns([1, 1.4])
 with left:
     st.markdown('<div class="section-hdr"><i class="fa-solid fa-draw-polygon" style="color:#1565c0;"></i> Site Boundary</div>', unsafe_allow_html=True)
 
-    input_method = st.radio("Input method", [
-        "✏️ Draw Site Boundary on Map",
-        "📁 Upload KML / KMZ / DXF / DWG",
-    ], horizontal=True)
-
-    polygon_coords = None
-
-    if input_method == "✏️ Draw Site Boundary on Map":
-
-        nav_tab1, nav_tab2 = st.tabs(["🔍 Search by Name", "📍 Enter Coordinates"])
-
-        with nav_tab1:
-            search_q = st.text_input("Place name", placeholder="e.g. Rajasthan India or Andalusia Spain",
-                                     label_visibility="collapsed")
-            if search_q and search_q != st.session_state.get("topo_last_search", ""):
-                try:
-                    r = requests.get(
-                        "https://nominatim.openstreetmap.org/search",
-                        params={"q": search_q, "format": "json", "limit": 1},
-                        headers={"User-Agent": "TopoIQ/1.0 (pvmath.com; contact@pvmath.de)"},
-                        timeout=10
-                    )
-                    data = r.json()
-                    if data:
-                        st.session_state["topo_center"] = [float(data[0]["lat"]), float(data[0]["lon"])]
-                        st.session_state["topo_zoom"] = 15
-                        st.session_state["topo_last_search"] = search_q
-                        st.rerun()
-                    else:
-                        st.warning("Location not found — try a different name.")
-                except Exception:
-                    st.warning("Search unavailable — try coordinates instead.")
-                st.session_state["topo_last_search"] = search_q
-
-        with nav_tab2:
-            c1, c2 = st.columns(2)
-            with c1:
-                lat_in = st.text_input("Latitude", placeholder="e.g. 26.8467",
-                                       key="coord_lat")
-            with c2:
-                lon_in = st.text_input("Longitude", placeholder="e.g. 80.9462",
-                                       key="coord_lon")
-
-            coord_key = f"{lat_in}|{lon_in}"
-            if lat_in and lon_in and coord_key != st.session_state.get("topo_last_coord", ""):
-                try:
-                    lat_f = float(lat_in.strip())
-                    lon_f = float(lon_in.strip())
-                    if -90 <= lat_f <= 90 and -180 <= lon_f <= 180:
-                        st.session_state["topo_center"] = [lat_f, lon_f]
-                        st.session_state["topo_zoom"] = 15
-                        st.session_state["topo_last_coord"] = coord_key
-                        st.rerun()
-                    else:
-                        st.error("Latitude must be −90 to 90, Longitude −180 to 180.")
-                except ValueError:
-                    st.caption("Type valid decimal numbers (e.g. 26.8467, 80.9462)")
-
-            latlon_paste = st.text_input("Or paste as  lat, lon", placeholder="26.8467, 80.9462",
-                                         key="coord_paste")
-            if latlon_paste and latlon_paste != st.session_state.get("topo_last_paste", ""):
-                try:
-                    parts = latlon_paste.replace(";", ",").split(",")
-                    lat_f, lon_f = float(parts[0].strip()), float(parts[1].strip())
-                    if -90 <= lat_f <= 90 and -180 <= lon_f <= 180:
-                        st.session_state["topo_center"] = [lat_f, lon_f]
-                        st.session_state["topo_zoom"] = 15
-                        st.session_state["topo_last_paste"] = latlon_paste
-                        st.rerun()
-                    else:
-                        st.error("Coordinates out of range.")
-                except Exception:
-                    st.caption("Format: latitude, longitude  (decimal degrees)")
-
-        center = st.session_state.get("topo_center", [30.0, 10.0])
-        zoom   = st.session_state.get("topo_zoom", 3)
-
+    if _preloaded_polygon:
+        # ── Boundary loaded from Full Mode project — no need to redraw ────
+        _lons_p = [c[0] for c in _preloaded_polygon]
+        _lats_p = [c[1] for c in _preloaded_polygon]
+        _lon_c  = (min(_lons_p) + max(_lons_p)) / 2
+        _lat_c  = (min(_lats_p) + max(_lats_p)) / 2
         st.markdown(
-            '<div style="background:rgba(255,193,7,0.08);border:1px solid rgba(255,193,7,0.35);'
-            'border-radius:8px;padding:0.5rem 0.9rem;font-size:0.82rem;color:#ddd;margin-bottom:0.4rem;">'
-            '<i class="fa-solid fa-pen-to-square" style="color:#ffc107;margin-right:0.5rem;"></i>'
-            '<strong>How to draw:</strong> &nbsp;'
-            '① Click the <strong>polygon tool</strong> (pentagon icon) in the left toolbar. &nbsp;'
-            '② Click each corner of your site boundary — all 4 sides show live as you go. &nbsp;'
-            '③ Click <strong>[Finish]</strong> in the toolbar when done — all lines including the closing one will appear.'
-            '</div>',
+            f'<div style="background:#e8f5ee;border:1.5px solid #b8ddc8;border-radius:10px;'
+            f'padding:0.75rem 1rem;margin-bottom:0.6rem;">'
+            f'<span style="font-weight:700;color:#145f34;font-size:0.88rem;">'
+            f'<i class="fa-solid fa-circle-check"></i> Site boundary loaded from project</span><br>'
+            f'<span style="font-size:0.8rem;color:#3a5a3a;">'
+            f'{len(_preloaded_polygon)-1} vertices &nbsp;·&nbsp; '
+            f'Centre {_lat_c:.4f}°, {_lon_c:.4f}°</span>'
+            f'</div>',
             unsafe_allow_html=True
         )
-
-        m = folium.Map(location=center, zoom_start=zoom,
-                       tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
-                       attr="Google Satellite")
-
-        _style = {"color": "#ffeb3b", "weight": 5, "opacity": 1.0,
-                  "fillColor": "#ffeb3b", "fillOpacity": 0.10}
-        Draw(
-            export=False,
-            draw_options={
-                "polyline": False,
-                "polygon": {
-                    "allowIntersection": False,
-                    "showArea": True,
-                    "shapeOptions": _style,
-                },
-                "rectangle": False,
-                "circle": False,
-                "marker": False,
-                "circlemarker": False,
-            },
-            edit_options={"edit": False, "remove": True}
-        ).add_to(m)
-
-        map_data = st_folium(m, width=None, height=430,
-                             returned_objects=["all_drawings"])
-
-        polygon_coords = None
-        if map_data and map_data.get("all_drawings"):
-            for feat in map_data["all_drawings"]:
-                geom = feat.get("geometry", {})
-                if geom.get("type") == "LineString":
-                    pts = [(c[0], c[1]) for c in geom["coordinates"]]
-                    if len(pts) >= 3:
-                        if pts[0] != pts[-1]:
-                            pts.append(pts[0])
-                        polygon_coords = pts
-                        break
-                elif geom.get("type") == "Polygon":
-                    polygon_coords = [(c[0], c[1]) for c in geom["coordinates"][0]]
-                    break
-
-        if polygon_coords:
-            st.success(f"✅ Site boundary captured — {len(polygon_coords)-1} vertices")
-        else:
-            st.caption("Draw your site boundary on the map above to enable analysis.")
+        _m_prev = folium.Map(location=[_lat_c, _lon_c], zoom_start=14,
+                             tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+                             attr="Google Satellite")
+        folium.Polygon(
+            locations=[(c[1], c[0]) for c in _preloaded_polygon],
+            color="#22c55e", fill=True, fill_opacity=0.25, weight=3
+        ).add_to(_m_prev)
+        st_folium(_m_prev, width=None, height=350, returned_objects=[])
+        polygon_coords = _preloaded_polygon
 
     else:
-        f = st.file_uploader(
-            "Upload boundary file",
-            type=["kml", "kmz", "dxf", "dwg"],
-            help="KML / KMZ from Google Earth · DXF or DWG from any CAD software"
-        )
-        if f:
-            raw, ftype = load_boundary_file(f)
+        input_method = st.radio("Input method", [
+            "✏️ Draw Site Boundary on Map",
+            "📁 Upload KML / KMZ / DXF / DWG",
+        ], horizontal=True)
 
-            if ftype == "dwg_unsupported":
-                st.warning(
-                    "**DWG file could not be read directly.**\n\n"
-                    "In your CAD software: **File → Save As → AutoCAD DXF** (takes ~5 seconds). "
-                    "Then re-upload the `.dxf` file here."
-                )
-                all_polys = {}
-            elif ftype in ("kml",):
-                all_polys = parse_kml_all_polygons(raw)
-            elif ftype in ("dxf", "dwg_ok"):
-                all_polys = parse_dxf_polygons(raw)
-            else:
-                all_polys = {}
+        polygon_coords = None
 
-            if not all_polys:
-                st.error("No closed polygon found in file. Check the file contains a site boundary polyline or polygon.")
-            elif len(all_polys) == 1:
-                polygon_coords = list(all_polys.values())[0]
-                st.success(f"Boundary loaded — {len(polygon_coords)} vertices")
-            else:
-                st.info(f"Found {len(all_polys)} polygons/boundaries in file. Select the site boundary:")
-                chosen = st.selectbox("Select boundary", list(all_polys.keys()))
-                polygon_coords = all_polys[chosen]
-                st.success(f"Selected: **{chosen}** — {len(polygon_coords)} vertices")
+        if input_method == "✏️ Draw Site Boundary on Map":
+
+            nav_tab1, nav_tab2 = st.tabs(["🔍 Search by Name", "📍 Enter Coordinates"])
+
+            with nav_tab1:
+                search_q = st.text_input("Place name", placeholder="e.g. Rajasthan India or Andalusia Spain",
+                                         label_visibility="collapsed")
+                if search_q and search_q != st.session_state.get("topo_last_search", ""):
+                    try:
+                        r = requests.get(
+                            "https://nominatim.openstreetmap.org/search",
+                            params={"q": search_q, "format": "json", "limit": 1},
+                            headers={"User-Agent": "TopoIQ/1.0 (pvmath.com; contact@pvmath.de)"},
+                            timeout=10
+                        )
+                        data = r.json()
+                        if data:
+                            st.session_state["topo_center"] = [float(data[0]["lat"]), float(data[0]["lon"])]
+                            st.session_state["topo_zoom"] = 15
+                            st.session_state["topo_last_search"] = search_q
+                            st.rerun()
+                        else:
+                            st.warning("Location not found — try a different name.")
+                    except Exception:
+                        st.warning("Search unavailable — try coordinates instead.")
+                    st.session_state["topo_last_search"] = search_q
+
+            with nav_tab2:
+                c1, c2 = st.columns(2)
+                with c1:
+                    lat_in = st.text_input("Latitude", placeholder="e.g. 26.8467",
+                                           key="coord_lat")
+                with c2:
+                    lon_in = st.text_input("Longitude", placeholder="e.g. 80.9462",
+                                           key="coord_lon")
+
+                coord_key = f"{lat_in}|{lon_in}"
+                if lat_in and lon_in and coord_key != st.session_state.get("topo_last_coord", ""):
+                    try:
+                        lat_f = float(lat_in.strip())
+                        lon_f = float(lon_in.strip())
+                        if -90 <= lat_f <= 90 and -180 <= lon_f <= 180:
+                            st.session_state["topo_center"] = [lat_f, lon_f]
+                            st.session_state["topo_zoom"] = 15
+                            st.session_state["topo_last_coord"] = coord_key
+                            st.rerun()
+                        else:
+                            st.error("Latitude must be −90 to 90, Longitude −180 to 180.")
+                    except ValueError:
+                        st.caption("Type valid decimal numbers (e.g. 26.8467, 80.9462)")
+
+                latlon_paste = st.text_input("Or paste as  lat, lon", placeholder="26.8467, 80.9462",
+                                             key="coord_paste")
+                if latlon_paste and latlon_paste != st.session_state.get("topo_last_paste", ""):
+                    try:
+                        parts = latlon_paste.replace(";", ",").split(",")
+                        lat_f, lon_f = float(parts[0].strip()), float(parts[1].strip())
+                        if -90 <= lat_f <= 90 and -180 <= lon_f <= 180:
+                            st.session_state["topo_center"] = [lat_f, lon_f]
+                            st.session_state["topo_zoom"] = 15
+                            st.session_state["topo_last_paste"] = latlon_paste
+                            st.rerun()
+                        else:
+                            st.error("Coordinates out of range.")
+                    except Exception:
+                        st.caption("Format: latitude, longitude  (decimal degrees)")
+
+            center = st.session_state.get("topo_center", [30.0, 10.0])
+            zoom   = st.session_state.get("topo_zoom", 3)
+
+            st.markdown(
+                '<div style="background:rgba(255,193,7,0.08);border:1px solid rgba(255,193,7,0.35);'
+                'border-radius:8px;padding:0.5rem 0.9rem;font-size:0.82rem;color:#ddd;margin-bottom:0.4rem;">'
+                '<i class="fa-solid fa-pen-to-square" style="color:#ffc107;margin-right:0.5rem;"></i>'
+                '<strong>How to draw:</strong> &nbsp;'
+                '① Click the <strong>polygon tool</strong> (pentagon icon) in the left toolbar. &nbsp;'
+                '② Click each corner of your site boundary — all 4 sides show live as you go. &nbsp;'
+                '③ Click <strong>[Finish]</strong> in the toolbar when done — all lines including the closing one will appear.'
+                '</div>',
+                unsafe_allow_html=True
+            )
+
+            m = folium.Map(location=center, zoom_start=zoom,
+                           tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+                           attr="Google Satellite")
+
+            _style = {"color": "#ffeb3b", "weight": 5, "opacity": 1.0,
+                      "fillColor": "#ffeb3b", "fillOpacity": 0.10}
+            Draw(
+                export=False,
+                draw_options={
+                    "polyline": False,
+                    "polygon": {
+                        "allowIntersection": False,
+                        "showArea": True,
+                        "shapeOptions": _style,
+                    },
+                    "rectangle": False,
+                    "circle": False,
+                    "marker": False,
+                    "circlemarker": False,
+                },
+                edit_options={"edit": False, "remove": True}
+            ).add_to(m)
+
+            map_data = st_folium(m, width=None, height=430,
+                                 returned_objects=["all_drawings"])
+
+            polygon_coords = None
+            if map_data and map_data.get("all_drawings"):
+                for feat in map_data["all_drawings"]:
+                    geom = feat.get("geometry", {})
+                    if geom.get("type") == "LineString":
+                        pts = [(c[0], c[1]) for c in geom["coordinates"]]
+                        if len(pts) >= 3:
+                            if pts[0] != pts[-1]:
+                                pts.append(pts[0])
+                            polygon_coords = pts
+                            break
+                    elif geom.get("type") == "Polygon":
+                        polygon_coords = [(c[0], c[1]) for c in geom["coordinates"][0]]
+                        break
 
             if polygon_coords:
-                lons = [c[0] for c in polygon_coords]
-                lats = [c[1] for c in polygon_coords]
-                m2 = folium.Map(location=[np.mean(lats), np.mean(lons)],
-                                zoom_start=13,
-                                tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
-                                attr="Google Satellite")
-                folium.Polygon(
-                    locations=[(c[1], c[0]) for c in polygon_coords],
-                    color="#42a5f5", fill=True, fill_opacity=0.25, weight=2
-                ).add_to(m2)
-                st_folium(m2, width=None, height=300, returned_objects=[])
+                st.success(f"✅ Site boundary captured — {len(polygon_coords)-1} vertices")
+            else:
+                st.caption("Draw your site boundary on the map above to enable analysis.")
+
+        else:
+            f = st.file_uploader(
+                "Upload boundary file",
+                type=["kml", "kmz", "dxf", "dwg"],
+                help="KML / KMZ from Google Earth · DXF or DWG from any CAD software"
+            )
+            if f:
+                raw, ftype = load_boundary_file(f)
+
+                if ftype == "dwg_unsupported":
+                    st.warning(
+                        "**DWG file could not be read directly.**\n\n"
+                        "In your CAD software: **File → Save As → AutoCAD DXF** (takes ~5 seconds). "
+                        "Then re-upload the `.dxf` file here."
+                    )
+                    all_polys = {}
+                elif ftype in ("kml",):
+                    all_polys = parse_kml_all_polygons(raw)
+                elif ftype in ("dxf", "dwg_ok"):
+                    all_polys = parse_dxf_polygons(raw)
+                else:
+                    all_polys = {}
+
+                if not all_polys:
+                    st.error("No closed polygon found in file. Check the file contains a site boundary polyline or polygon.")
+                elif len(all_polys) == 1:
+                    polygon_coords = list(all_polys.values())[0]
+                    st.success(f"Boundary loaded — {len(polygon_coords)} vertices")
+                else:
+                    st.info(f"Found {len(all_polys)} polygons/boundaries in file. Select the site boundary:")
+                    chosen = st.selectbox("Select boundary", list(all_polys.keys()))
+                    polygon_coords = all_polys[chosen]
+                    st.success(f"Selected: **{chosen}** — {len(polygon_coords)} vertices")
+
+                if polygon_coords:
+                    lons = [c[0] for c in polygon_coords]
+                    lats = [c[1] for c in polygon_coords]
+                    m2 = folium.Map(location=[np.mean(lats), np.mean(lons)],
+                                    zoom_start=13,
+                                    tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+                                    attr="Google Satellite")
+                    folium.Polygon(
+                        locations=[(c[1], c[0]) for c in polygon_coords],
+                        color="#42a5f5", fill=True, fill_opacity=0.25, weight=2
+                    ).add_to(m2)
+                    st_folium(m2, width=None, height=300, returned_objects=[])
 
     st.markdown('<div class="section-hdr" style="margin-top:1rem;"><i class="fa-solid fa-sliders" style="color:#1565c0;"></i> Settings</div>', unsafe_allow_html=True)
     sc1, sc2 = st.columns(2)
