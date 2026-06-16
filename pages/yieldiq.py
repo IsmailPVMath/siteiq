@@ -173,9 +173,27 @@ def call_pvgis(lat: float, lon: float, total_loss_pct: float, tracker: bool,
         "mountingplace": "free",
         "outputformat": "json",
         "browser": 0,
-        "trackingtype": 1 if tracker else 0,
     }
-    if not tracker:
+    # IMPORTANT: PVGIS's PVcalc tool (this endpoint) has NO "trackingtype"
+    # parameter — that field only exists on PVGIS's separate hourly/seriescalc
+    # endpoint. PVcalc's own tracking controls are different flags entirely
+    # (confirmed against PVGIS's official "API non-interactive service" docs):
+    #   fixed=1 (default)         → flat-tilt fixed system
+    #   inclined_axis=1 + inclinedaxisangle=0  → single horizontal-axis N-S
+    #                                             tracker (= standard SAT)
+    #   vertical_axis / twoaxis   → other tracking types, unused here
+    # The old code sent "trackingtype": 1 for trackers, which PVcalc silently
+    # ignores (unrecognized param) — it then fell back to its own default
+    # fixed=1, angle=0° (since optimalinclination/optimalangles were only set
+    # on the non-tracker branch), i.e. every "tracker" call was actually
+    # returning a flat, non-optimized FIXED-tilt result. That's the real
+    # cause of trackers consistently showing lower yield than fixed tilt.
+    if tracker:
+        params["fixed"]            = 0   # disable PVGIS's default fixed calc
+        params["inclined_axis"]    = 1
+        params["inclinedaxisangle"] = 0  # axis itself is horizontal (true SAT)
+    else:
+        params["fixed"]            = 1
         params["optimalinclination"] = 1
         params["optimalangles"]      = 1
     if raddatabase:
@@ -193,8 +211,17 @@ def call_pvgis(lat: float, lon: float, total_loss_pct: float, tracker: bool,
     monthly_d  = out.get("monthly", {})
     radiation_db = data.get("inputs", {}).get("meteo_data", {}).get("radiation_db")
 
-    # PVGIS always uses "fixed" as the key in PVcalc outputs regardless of tracking type
-    key = "fixed" if "fixed" in totals_d else next(iter(totals_d), None)
+    # PVcalc nests results under a key matching whichever system type was
+    # actually requested: "fixed" for fixed=1, "inclined_axis" for the
+    # single-axis tracker config requested above. With fixed=0 explicitly set
+    # for trackers, "fixed" should no longer appear in the response at all —
+    # but we still check the tracker-specific key FIRST as a safety net,
+    # since blindly preferring "fixed" (the old behavior) is exactly what
+    # caused tracker calls to silently read back fixed-tilt results before.
+    if tracker:
+        key = "inclined_axis" if "inclined_axis" in totals_d else next(iter(totals_d), None)
+    else:
+        key = "fixed" if "fixed" in totals_d else next(iter(totals_d), None)
     if not key:
         raise ValueError("Unexpected PVGIS response structure")
 
@@ -244,7 +271,7 @@ def run_all_configs(lat, lon, gcr_1p, gcr_2p, base_loss):
     # configs below. Left unpinned, PVGIS auto-selects per-call (PVGIS-SARAH2
     # where it has coverage, otherwise it errors/falls back on its own) — and
     # that auto-selection is not guaranteed to land on the same database for
-    # trackingtype=0 (Fixed) vs trackingtype=1 (Tracker) calls at the same
+    # fixed=1 (Fixed) vs inclined_axis=1 (Tracker) calls at the same
     # coordinates. Comparing Fixed vs Tracker yield is only meaningful if
     # both numbers came from the same underlying radiation data, so we probe
     # once, fall back to PVGIS-ERA5 (true global coverage) on failure exactly
