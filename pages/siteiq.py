@@ -243,38 +243,56 @@ def get_flood_risk(lat, lon, elevation):
     return risk, detail, portal, portal_name
 
 
-def get_solar_data(lat, lon):
-    try:
-        r = requests.get(
-            "https://re.jrc.ec.europa.eu/api/v5_2/PVcalc",
-            params={
-                "lat": lat, "lon": lon,
-                "peakpower": 1, "loss": 14,
-                "outputformat": "json",
-                "mountingplace": "free",
-                "optimalangles": 1,
-            },
-            timeout=20
-        )
-        data = r.json()
-        totals  = data["outputs"]["totals"]["fixed"]
-        monthly = data["outputs"]["monthly"]["fixed"]
-        tilt    = data["inputs"]["mounting_system"]["fixed"]["slope"].get("value", "—")
+def _fetch_pvgis(lat, lon, raddatabase=None):
+    """One PVcalc call. raddatabase=None lets PVGIS auto-pick (PVGIS-SARAH2),
+    which only covers roughly -66° to 66° longitude (Europe/Africa/most of Asia)
+    — most of India (68-97°E) falls outside it and the call fails/errors."""
+    params = {
+        "lat": lat, "lon": lon,
+        "peakpower": 1, "loss": 14,
+        "outputformat": "json",
+        "mountingplace": "free",
+        "optimalangles": 1,
+    }
+    if raddatabase:
+        params["raddatabase"] = raddatabase
+    r = requests.get(
+        "https://re.jrc.ec.europa.eu/api/v5_2/PVcalc",
+        params=params, timeout=20
+    )
+    data = r.json()
+    totals  = data["outputs"]["totals"]["fixed"]
+    monthly = data["outputs"]["monthly"]["fixed"]
+    tilt    = data["inputs"]["mounting_system"]["fixed"]["slope"].get("value", "—")
 
-        months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
-        monthly_ghi = [
-            {"Month": months[i], "GHI (kWh/m²)": round(m.get("H(i)_m", 0), 1)}
-            for i, m in enumerate(monthly[:12])
-        ]
-        return {
-            "success": True,
-            "annual_ghi":   round(totals.get("H(i)_y", 0), 1),
-            "annual_yield": round(totals.get("E_y", 0), 1),
-            "optimal_tilt": tilt,
-            "monthly":      monthly_ghi,
-        }
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+    months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+    monthly_ghi = [
+        {"Month": months[i], "GHI (kWh/m²)": round(m.get("H(i)_m", 0), 1)}
+        for i, m in enumerate(monthly[:12])
+    ]
+    return {
+        "success": True,
+        "annual_ghi":   round(totals.get("H(i)_y", 0), 1),
+        "annual_yield": round(totals.get("E_y", 0), 1),
+        "optimal_tilt": tilt,
+        "monthly":      monthly_ghi,
+    }
+
+
+def get_solar_data(lat, lon):
+    # PVGIS auto-selects PVGIS-SARAH2 by default, which doesn't cover most of
+    # India, the Americas, or Australia/Oceania. Falling back to PVGIS-ERA5
+    # (true global coverage, coarser resolution) is what actually fixes those
+    # regions — previously a failed call here silently became "0 kWh/m²/yr —
+    # Poor resource", which read as a real (and very wrong) site assessment
+    # for sunny locations like Rajasthan instead of "data unavailable".
+    try:
+        return _fetch_pvgis(lat, lon)
+    except Exception as e1:
+        try:
+            return _fetch_pvgis(lat, lon, raddatabase="PVGIS-ERA5")
+        except Exception as e2:
+            return {"success": False, "error": f"{e1} / ERA5 fallback: {e2}"}
 
 
 def _point_in_polygon(plat, plon, poly):
@@ -1085,8 +1103,48 @@ with left:
     lat = lon = None
     kml_area = None
 
-    if _has_proj:
-        # ── Project context: location already set — show pinned map, no re-entry ──
+    _proj_polygon_ll = (
+        _proj["polygon_coords"]
+        if (_proj.get("mode") == "full" and _proj.get("polygon_coords"))
+        else None
+    )  # project.py stores this as [[lat,lon], ...]
+
+    if _has_proj and _proj_polygon_ll:
+        # ── Full Mode project with a drawn boundary — show the actual polygon,
+        # same as TopoIQ's "boundary loaded from project" preview, instead of
+        # collapsing it to a single point. Read-only here (same as TopoIQ's
+        # preloaded view) — go to Project Setup to redraw or clear it.
+        lat = _proj_lat
+        lon = _proj_lon
+        _lons_p = [c[1] for c in _proj_polygon_ll]
+        _lats_p = [c[0] for c in _proj_polygon_ll]
+        _lon_c  = (min(_lons_p) + max(_lons_p)) / 2
+        _lat_c  = (min(_lats_p) + max(_lats_p)) / 2
+
+        st.markdown(
+            f'<div style="background:#e8f5ee;border:1.5px solid #b8ddc8;border-radius:10px;'
+            f'padding:0.75rem 1rem;margin-bottom:0.6rem;">'
+            f'<span style="font-weight:700;color:#145f34;font-size:0.88rem;">'
+            f'<i class="fa-solid fa-circle-check"></i> Site boundary loaded from project</span><br>'
+            f'<span style="font-size:0.8rem;color:#3a5a3a;">'
+            f'{len(_proj_polygon_ll)-1} vertices &nbsp;·&nbsp; '
+            f'Centre {_lat_c:.4f}°, {_lon_c:.4f}°</span>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+        m = folium.Map(location=[_lat_c, _lon_c], zoom_start=14,
+                       tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+                       attr="Google Satellite")
+        folium.Polygon(
+            locations=[(c[0], c[1]) for c in _proj_polygon_ll],
+            color="#22c55e", fill=True, fill_opacity=0.25, weight=3
+        ).add_to(m)
+        st_folium(m, width=None, height=340, returned_objects=[])
+        st.caption("To edit or clear this boundary, go to Project Setup and redraw it there.")
+        st.success(f"📌 {lat:.5f}°N, {lon:.5f}°E")
+
+    elif _has_proj:
+        # ── Project context, point/quick mode only — show pinned map ──
         lat = st.session_state.get("map_lat", _proj_lat)
         lon = st.session_state.get("map_lon", _proj_lon)
         center = st.session_state.get("map_center", [lat, lon])
@@ -1292,7 +1350,13 @@ with right:
             terrain = get_terrain_data(lat, lon, polygon=_proj_polygon)
 
         s_lbl, _, s_detail = assess_slope(terrain["max_slope_pct"] if terrain["success"] else 0, _mount_type)
-        g_lbl, _, g_detail = assess_solar(solar["annual_ghi"]       if solar["success"]   else 0)
+        if solar["success"]:
+            g_lbl, _, g_detail = assess_solar(solar["annual_ghi"])
+        else:
+            # Don't report a fabricated "0 kWh/m² — Poor" verdict when the PVGIS
+            # call itself failed — that reads as a real (and possibly very wrong)
+            # site assessment. Surface it as a data error instead.
+            g_lbl, g_detail = "⚠️ Data unavailable", "Solar resource data could not be retrieved for this location — try again or check PVGIS coverage."
         country, eeg_status, eeg_note = assess_eeg(lat, lon, _land_use, project_country_input)
         cap_mw, cap_mwh = site_capacity(area_ha, _land_use, _mount_type)
         verdict, verdict_txt = overall_verdict(s_lbl, g_lbl, _land_use, _mount_type)
