@@ -508,61 +508,54 @@ else:
         icon=None,
     )
 
-# ── Capacity scenario selector (shown when project area is known) ─────────────
+# ── Capacity picker (shown when project area is known) ────────────────────────
+# Previously this rendered all 4 land-use/mounting combinations side by side
+# in one table. Laypeople read "highest MWp in the table" as "best system" —
+# but capacity density and energy yield are different metrics, and the table
+# invited exactly that mix-up. Now the user picks ONE combination up front and
+# sees only that result, which removes the misleading comparison entirely.
 _default_dc_kwp = 10_000.0
 _scenario_label = "Custom"
 
 if _has_proj and _proj_area:
-    st.markdown('<div class="yiq-section">📐 Site Capacity — 4 Scenarios for Your Area</div>',
+    st.markdown('<div class="yiq-section">📐 Site Capacity for Your Area</div>',
                 unsafe_allow_html=True)
 
-    _scenarios = []
-    for (lu, mt), dens in _DENSITY.items():
-        _mwp = round(_proj_area * dens, 1)
-        _scenarios.append({
-            "label":   f"{lu} · {mt}",
-            "land_use": lu, "mount": mt,
-            "density": dens,
-            "mwp":     _mwp,
-            "kwp":     _mwp * 1000,
-        })
+    _pick_c1, _pick_c2 = st.columns(2)
+    with _pick_c1:
+        _pick_lu = st.radio("Land Use", ["Standard", "Agri-PV"],
+                             key="yiq_pick_landuse", horizontal=True)
+    with _pick_c2:
+        _pick_mt = st.radio("Mounting", ["Fixed Tilt", "Single-Axis Tracker"],
+                             key="yiq_pick_mount", horizontal=True)
 
-    # Show table of 4 scenarios
-    _col_h = ["Scenario", "Land Use", "Mounting", "Density (MW/ha)", f"Est. Capacity for {_proj_area} ha"]
-    _tbl_data = [_col_h] + [
-        [f"{'⭐ ' if i==0 else ''}{s['label']}",
-         s["land_use"], s["mount"],
-         f"{s['density']} MW/ha",
-         f"**{s['mwp']} MWp**"]
-        for i, s in enumerate(_scenarios)
-    ]
+    _pick_density = _DENSITY[(_pick_lu, _pick_mt)]
+    _pick_mwp     = round(_proj_area * _pick_density, 1)
+    _default_dc_kwp = _pick_mwp * 1000
+    _scenario_label = f"{_pick_lu} · {_pick_mt}"
 
     st.markdown(f"""
-    <table style="width:100%;border-collapse:collapse;font-size:0.88rem;margin-bottom:1rem;">
-      <thead>
-        <tr style="background:#145f34;color:#fff;">
-          {''.join(f'<th style="padding:0.5rem 0.7rem;text-align:left;">{h}</th>' for h in _col_h)}
-        </tr>
-      </thead>
-      <tbody>
-        {''.join(
-          f'<tr style="background:{"#f0faf5" if i%2==0 else "#fff"};{"border:2px solid #1d9e52;" if i==0 else ""}">'
-          + f'<td style="padding:0.45rem 0.7rem;font-weight:700;color:#145f34;">{s["label"]}</td>'
-          + f'<td style="padding:0.45rem 0.7rem;">{s["land_use"]}</td>'
-          + f'<td style="padding:0.45rem 0.7rem;">{s["mount"]}</td>'
-          + f'<td style="padding:0.45rem 0.7rem;text-align:center;">{s["density"]}</td>'
-          + f'<td style="padding:0.45rem 0.7rem;font-weight:800;font-size:1rem;color:#0d5c0d;">{s["mwp"]} MWp</td>'
-          + '</tr>'
-          for i, s in enumerate(_scenarios)
-        )}
-      </tbody>
-    </table>
+    <div style="display:flex;align-items:center;gap:1.2rem;background:#f0faf5;
+                border:1px solid #b8ddc8;border-radius:8px;padding:0.7rem 1rem;
+                margin-bottom:0.7rem;">
+      <div>
+        <div style="font-size:0.7rem;font-weight:700;color:#5a7a5a;text-transform:uppercase;
+                    letter-spacing:0.06em;">Density</div>
+        <div style="font-size:1rem;font-weight:800;color:#145f34;">{_pick_density} MW/ha</div>
+      </div>
+      <div style="width:1px;height:32px;background:#b8ddc8;"></div>
+      <div>
+        <div style="font-size:0.7rem;font-weight:700;color:#5a7a5a;text-transform:uppercase;
+                    letter-spacing:0.06em;">Est. Capacity for {_proj_area} ha</div>
+        <div style="font-size:1.3rem;font-weight:800;color:#0d5c0d;">{_pick_mwp} MWp</div>
+      </div>
+    </div>
     """, unsafe_allow_html=True)
 
     st.markdown(
         '<div style="font-size:0.82rem;color:#7a6a2a;background:#fff8e1;'
         'border-left:3px solid #d4840a;border-radius:6px;padding:0.55rem 0.8rem;'
-        'margin:-0.4rem 0 0.9rem 0;">'
+        'margin:0 0 0.9rem 0;">'
         '⚠️ <strong>This is installable capacity (MWp), not energy performance.</strong> '
         'Fixed Tilt fits more MWp per hectare than Tracker because trackers need wider '
         'row spacing to avoid self-shading while rotating — lower density, not lower output. '
@@ -570,17 +563,6 @@ if _has_proj and _proj_area:
         'kWh/kWp/yr, in the results below after running the analysis).'
         '</div>', unsafe_allow_html=True
     )
-
-    _scenario_options = [f"{s['label']} — {s['mwp']} MWp" for s in _scenarios] + ["Custom value"]
-    _sel = st.selectbox("Use capacity from scenario:", _scenario_options, index=0,
-                        key="yiq_scenario_sel",
-                        help="Select a scenario to auto-fill the DC capacity below, or enter a custom value.")
-    if _sel != "Custom value":
-        _idx = _scenario_options.index(_sel)
-        _default_dc_kwp = _scenarios[_idx]["kwp"]
-        _scenario_label = _sel
-    else:
-        _default_dc_kwp = 10_000.0
 
 # ─────────────────────────────────────────────────────────────────────────────
 # INPUT FORM
