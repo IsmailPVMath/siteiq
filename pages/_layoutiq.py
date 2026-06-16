@@ -484,7 +484,7 @@ def build_pdf(project_name, layout, bom, chart_bytes, module_label,
         [lp("CONFIG",     lbl), lp(f"{'1P' if n_portrait==1 else '2P'} Portrait — " +
                               ("SAT N-S axis" if mounting_type=='sat' else f"Fixed Tilt · Azimuth {azimuth}°"), bod),
          lp("PITCH / SETBACK", lbl), lp(f"{pitch} m pitch · {setback} m setback", bod)],
-    ], colWidths=["2.5cm","6.5cm","3cm","6cm"])
+    ], colWidths=[2.5*cm, 6.5*cm, 3*cm, 6*cm])
     info.setStyle(TableStyle([
         ("BACKGROUND",    (0,0),(-1,-1), colors.HexColor("#f5f3ff")),
         ("BOX",           (0,0),(-1,-1), 0.5, colors.HexColor("#c4b5fd")),
@@ -504,7 +504,7 @@ def build_pdf(project_name, layout, bom, chart_bytes, module_label,
     bom_rows = [[lp("Item", lbl), lp("Value", lbl)]]
     for k, v in bom.items():
         bom_rows.append([lp(k, bod), lp(v, bod)])
-    bom_tbl = Table(bom_rows, colWidths=["9cm","9cm"])
+    bom_tbl = Table(bom_rows, colWidths=[9*cm, 9*cm])
     bom_tbl.setStyle(TableStyle([
         ("BACKGROUND",    (0,0),(-1, 0), colors.HexColor("#ede9f6")),
         ("BOX",           (0,0),(-1,-1), 0.5, colors.HexColor("#c4b5fd")),

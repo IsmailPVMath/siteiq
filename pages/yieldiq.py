@@ -357,7 +357,7 @@ def build_pdf(project_name, lat, lon, dc_kwp, gcr_1p, gcr_2p, base_loss,
          lp("GCR — 2P",   lbl), lp(f"{gcr_2p:.2f}", bod)],
         [lp("BASE LOSSES", lbl), lp(f"{base_loss:.1f}% (excl. row shading)", bod),
          lp("DATA SOURCE", lbl), lp("PVGIS JRC (EU Commission)", bod)],
-    ], colWidths=["3cm","6cm","3cm","6cm"])
+    ], colWidths=[3*cm, 6*cm, 3*cm, 6*cm])
     info.setStyle(TableStyle([
         ("BACKGROUND",    (0,0),(-1,-1), LGRAY),
         ("BOX",           (0,0),(-1,-1), 0.5, BORDER),
@@ -400,7 +400,7 @@ def build_pdf(project_name, lat, lon, dc_kwp, gcr_1p, gcr_2p, base_loss,
         _cfg_row_colors.append(
             colors.HexColor("#f0faf4") if is_tracker else colors.HexColor("#fff4ee")
         )
-    res_tbl = Table(rows, colWidths=["3cm","1.4cm","1.7cm","1.7cm","3cm","2.8cm","1.5cm","1.5cm"])
+    res_tbl = Table(rows, colWidths=[3*cm, 1.4*cm, 1.7*cm, 1.7*cm, 3*cm, 2.8*cm, 1.5*cm, 1.5*cm])
     _tbl_style = [
         ("BACKGROUND",    (0,0),(-1, 0), AMBER),
         ("BOX",           (0,0),(-1,-1), 0.5, BORDER),
