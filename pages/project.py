@@ -492,10 +492,15 @@ if True:
         st.markdown(f"**Site Area** — auto-calculated from boundary: **{area_from_poly} ha**")
         area_ha_final = area_from_poly
     else:
+        # Clamp the stored value into [min_value, max_value] before handing it to
+        # st.number_input — a stale/oversized area_ha (e.g. from a mis-drawn huge
+        # polygon saved earlier in Full Mode) would otherwise raise an uncaught
+        # StreamlitValueAboveMaxError and crash the whole page on load.
+        _area_default = max(0.5, min(float(proj.get("area_ha", 10.0)), 50_000.0))
         area_ha_final = st.number_input(
             "Site Area (ha)",
             min_value=0.5, max_value=50_000.0,
-            value=float(proj.get("area_ha", 10.0)),
+            value=_area_default,
             step=1.0,
             help="Approximate gross site area. Used for capacity estimate in SiteIQ.",
         )

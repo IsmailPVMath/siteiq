@@ -21,10 +21,22 @@
 ## Live Assets
 | Asset | URL |
 |---|---|
-| Live app | https://pvmath-siteiq.streamlit.app |
+| Live app (SiteIQ) | https://siteiq.pvmath.com (Railway, custom domain) |
+| Live app (TopoIQ) | https://topoiq.pvmath.com (same Railway deployment, second custom domain) |
 | GitHub repo | https://github.com/IsmailPVMath/siteiq (branch: main) |
-| Website (to deploy) | pvmath.com → GitHub Pages → index.html |
+| Website | https://pvmath.com → GitHub Pages → index.html |
 | Local dev folder | ~/Desktop/solarscout/ |
+
+**Hosting note:** the app moved from Streamlit Community Cloud to **Railway** (Streamlit Cloud doesn't support a true custom top-level domain — only a `*.streamlit.app` subdomain rename — which is why Railway is used now). Domain registrar is **Namecheap**; DNS records for `pvmath.com`:
+| Type | Host | Value |
+|---|---|---|
+| A | @ | 185.199.111.153 (+ the other 3 GitHub Pages IPs — website) |
+| CNAME | siteiq | `<railway-generated>.up.railway.app` |
+| CNAME | topoiq | `<railway-generated>.up.railway.app` (different generated host, same underlying deployment) |
+| CNAME | www | ismailpvmath.github.io |
+| TXT | _railway-verify.siteiq / _railway-verify.topoiq | Railway domain-verification tokens |
+
+These `siteiq`/`topoiq` CNAMEs are true reverse-proxy records (Railway terminates the connection directly) — no redirect, no stripped query strings.
 
 ---
 
@@ -46,7 +58,9 @@
 - **Solar data:** EU PVGIS API (JRC)
 - **Terrain data:** OpenTopoData — eudem25m for Europe (34–72°N, −25–45°E), srtm30m globally
 - **PDF:** ReportLab — use Paragraph objects for all table cells (plain strings don't wrap)
-- **Deployment:** Streamlit Cloud (GitHub integration, auto-deploy on push to main)
+- **Deployment:** Railway (GitHub integration, auto-deploy on push to main), exposed via two custom domains (siteiq.pvmath.com, topoiq.pvmath.com) — see Hosting note above
+- **Auth/DB:** Supabase (email/password auth, `user_projects` + `usage_tracking` tables, REST API via `pvmath_auth.py` — no supabase-py SDK)
+- **Email (OTP/notifications):** Brevo HTTP API (`BREVO_API_KEY` Railway env var), SMTP fallback for local/Streamlit dev
 
 ---
 
@@ -134,9 +148,9 @@ st.rerun()  # force map to redraw after geocoding
 ---
 
 ## App Access Control
-- Streamlit Cloud → Settings → Sharing → whitelist specific emails
-- "Manage app" button (bottom-right) is only visible to the logged-in account owner — users cannot see it
-- Future: implement `streamlit-authenticator` for login-gated access
+- Implemented: Supabase email/password auth (`pvmath_auth.py`, `render_auth_page()`), gates the whole app — no anonymous access.
+- Admin allowlist is hardcoded in `app.py` (`_ADMIN = {"ismailpasha747@gmail.com"}`) — controls visibility of the in-progress LayoutIQ page.
+- Session persistence across hard refresh works via a `?s=<refresh_token>` URL param, exchanged for a fresh Supabase session on load. Streamlit's own multipage navigation can strip this param from the visible URL on page transitions — `app.py` re-asserts it from `st.session_state["pvm_refresh_token"]` as the last step of every script run to compensate.
 
 ---
 
@@ -146,7 +160,7 @@ cd ~/Desktop/solarscout
 git add -A
 git commit -m "your message"
 git push origin main
-# Streamlit Cloud auto-deploys on push
+# Railway auto-deploys on push (GitHub integration)
 ```
 
 ---
@@ -163,6 +177,7 @@ git push origin main
 - Geocoding blocked by Nominatim — old User-Agent `"SolarScout/1.0"`. Fix: updated to `"SiteIQ/1.0 (pvmath.com; contact@pvmath.com)"`.
 - Google Maps coordinate paste failing — only handled URLs. Fix: added plain coord regex `r'^(-?\d{1,3}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)'`.
 - Agricultural zoning shown for Standard projects — `get_next_steps()` was not conditional. Fix: added `agri` flag check.
+- Every refresh logged the user out, on every browser, every time — not a DNS/redirect issue (confirmed via DNS check, real CNAME to Railway). Root cause: Streamlit's own multipage `st.navigation()` strips query params from the visible URL on page transitions, and the Supabase refresh token only ever lived in that URL param. Fix: refresh token now also kept in `st.session_state["pvm_refresh_token"]`, re-asserted into `st.query_params["s"]` as the last line of `app.py` on every run.
 
 ---
 

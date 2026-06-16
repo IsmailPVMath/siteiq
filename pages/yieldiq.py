@@ -559,6 +559,18 @@ if _has_proj and _proj_area:
     </table>
     """, unsafe_allow_html=True)
 
+    st.markdown(
+        '<div style="font-size:0.82rem;color:#7a6a2a;background:#fff8e1;'
+        'border-left:3px solid #d4840a;border-radius:6px;padding:0.55rem 0.8rem;'
+        'margin:-0.4rem 0 0.9rem 0;">'
+        '⚠️ <strong>This is installable capacity (MWp), not energy performance.</strong> '
+        'Fixed Tilt fits more MWp per hectare than Tracker because trackers need wider '
+        'row spacing to avoid self-shading while rotating — lower density, not lower output. '
+        'Trackers produce <strong>more energy per installed kWp</strong> (see Specific Yield, '
+        'kWh/kWp/yr, in the results below after running the analysis).'
+        '</div>', unsafe_allow_html=True
+    )
+
     _scenario_options = [f"{s['label']} — {s['mwp']} MWp" for s in _scenarios] + ["Custom value"]
     _sel = st.selectbox("Use capacity from scenario:", _scenario_options, index=0,
                         key="yiq_scenario_sel",

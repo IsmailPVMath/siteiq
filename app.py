@@ -194,6 +194,16 @@ st.markdown(f"""
     font-weight: 700 !important;
     font-size: 0.82rem !important;
   }}
+  /* Belt-and-suspenders for the "Signed in as" box — a prior inline-style
+     !important fix was reported as still unreadable live. Re-declaring the
+     same colors via a real stylesheet rule (higher in the cascade than
+     nothing, and immune to any markdown-sanitizer quirk that might strip an
+     inline style attribute) guarantees white text on the dark card even if
+     the inline styles on the <span>/<strong> below ever get dropped. */
+  .pvm-signedin-box, .pvm-signedin-box * {{
+    color: #ffffff !important;
+    opacity: 1 !important;
+  }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -268,11 +278,12 @@ with st.sidebar:
             st.markdown('<div class="pvm-bottom-anchor"></div>', unsafe_allow_html=True)
             st.markdown(f"""
             <div style="margin-top:0.8rem;padding-top:0.8rem;border-top:1px solid #1d3a1d;">
-              <div style="font-size:0.74rem;color:#ffffff !important;padding:0.3rem 0.6rem;
-                          background:#16241a;border-radius:6px;line-height:1.4;
-                          border:1px solid #4ade80;margin-bottom:0.5rem;">
-                <span style="color:#ffffff !important;">Signed in as</span><br>
-                <strong style="color:#ffffff !important;word-break:break-all;">{email}</strong>
+              <div class="pvm-signedin-box" style="font-size:0.78rem;color:#ffffff;padding:0.4rem 0.6rem;
+                          background:#16241a;border-radius:6px;line-height:1.45;
+                          border:1px solid #4ade80;margin-bottom:0.5rem;
+                          overflow-wrap:break-word;word-break:normal;">
+                <span style="color:#ffffff;opacity:0.85;">Signed in as</span><br>
+                <strong style="color:#ffffff;font-size:0.82rem;overflow-wrap:break-word;">{email}</strong>
               </div>
             </div>
             """, unsafe_allow_html=True)
