@@ -76,7 +76,7 @@ _a1, _a2, _a3 = st.columns(3)
 with _a1:
     if st.button("+ New Project", use_container_width=True, type="primary"):
         for _k in [
-            "pvm_project", "pvm_project_row_id", "proj_mode_sel",
+            "pvm_project", "pvm_project_row_id", "pvm_saved_snapshot", "proj_mode_sel",
             "proj_pin_lat", "proj_pin_lon",
             "proj_map_center", "proj_map_zoom", "proj_last_search",
             "proj_polygon_draft", "proj_polygon_cleared", "proj_edit_mode",

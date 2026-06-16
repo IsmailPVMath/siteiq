@@ -68,7 +68,7 @@ _pages = [
     st.Page("pages/topoiq.py",  title="TopoIQ"),
     st.Page("pages/yieldiq.py", title="YieldIQ"),
 ]
-_ADMIN = {"ismailpasha747@gmail.com"}
+_ADMIN = {"ismailpasha747@gmail.com", "ismail.p@pvmath.de"}
 _user_email = st.session_state.get("pvm_email", "").lower().strip()
 if _user_email in _ADMIN:
     _pages.append(st.Page("pages/_layoutiq.py", title="LayoutIQ"))
@@ -86,6 +86,7 @@ if _uid_for_load and "pvm_project" not in st.session_state:
     if _loaded:
         st.session_state["pvm_project"] = _loaded
         st.session_state["pvm_project_row_id"] = _loaded_row_id
+        st.session_state["pvm_saved_snapshot"] = dict(_loaded)
 
 
 # ── Sidebar ─────────────────────────────────────────────────────────────────
@@ -402,7 +403,7 @@ with _tb_r:
         st.markdown('<div class="pvm-newproj-anchor"></div>', unsafe_allow_html=True)
         if st.button("+ New Project", key="topbar_new_project", use_container_width=True):
             for _k in [
-                "pvm_project", "pvm_project_row_id", "proj_mode_sel",
+                "pvm_project", "pvm_project_row_id", "pvm_saved_snapshot", "proj_mode_sel",
                 "proj_pin_lat", "proj_pin_lon",
                 "proj_map_center", "proj_map_zoom", "proj_last_search",
                 "proj_polygon_draft", "proj_polygon_cleared", "proj_edit_mode",

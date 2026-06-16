@@ -109,6 +109,7 @@ for _i in range(0, len(_rows), _COLS):
                 if st.button("Open →", key=f"open_{_key}", use_container_width=True):
                     st.session_state["pvm_project"] = _pdata
                     st.session_state["pvm_project_row_id"] = _row_id
+                    st.session_state["pvm_saved_snapshot"] = dict(_pdata)
                     for _k in ["map_center", "map_zoom", "map_lat", "map_lon", "last_map_search",
                                "proj_polygon_draft", "proj_polygon_cleared",
                                "proj_pin_lat", "proj_pin_lon"]:
@@ -128,6 +129,7 @@ for _i in range(0, len(_rows), _COLS):
                         if st.session_state.get("pvm_project_row_id") == _row_id:
                             st.session_state.pop("pvm_project", None)
                             st.session_state.pop("pvm_project_row_id", None)
+                            st.session_state.pop("pvm_saved_snapshot", None)
                         st.rerun()
                 with _nc:
                     if st.button("Cancel", key=f"nodel_{_key}", use_container_width=True):
