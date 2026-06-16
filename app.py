@@ -10,6 +10,7 @@ st.set_page_config(
 
 # ── Navigation (position="hidden" = we build sidebar manually) ────────────────
 _pages = [
+    st.Page("pages/overview.py",     title="Overview"),
     st.Page("pages/project.py",      title="Project"),
     st.Page("pages/my_projects.py",  title="My Projects"),
     st.Page("pages/siteiq.py",  title="SiteIQ"),
@@ -159,8 +160,48 @@ st.markdown(f"""
     background: #eafaf0 !important;
     color: #145f34 !important;
   }}
+  /* Cross-browser fix: Streamlit has its OWN native responsive auto-collapse
+     for narrow viewports, completely separate from our pvm_sidebar_open
+     toggle above. On some browsers (different default window size, browser
+     chrome eating horizontal space, zoom/DPI) that native mechanism fires and
+     slides/hides the ENTIRE sidebar off-canvas — taking our own custom toggle
+     button down with it, since it lives inside the same <section>. The only
+     way back was Streamlit's native re-expand control, which we deliberately
+     hid above — leaving no escape hatch in those browsers. Force the sidebar
+     to always stay on-canvas regardless of whatever internal state/attribute
+     Streamlit uses to mark it "collapsed", so our own toggle is always
+     reachable. A second, independent fail-safe button is also rendered in
+     the main content area (outside the sidebar entirely) below.*/
+  section[data-testid="stSidebar"] {{
+    transform: none !important;
+    -webkit-transform: none !important;
+    margin-left: 0 !important;
+    left: 0 !important;
+    visibility: visible !important;
+    position: relative !important;
+  }}
+  section[data-testid="stSidebar"][aria-expanded="false"] {{
+    width: {_sb_width} !important;
+    min-width: {_sb_width} !important;
+    display: block !important;
+  }}
+  /* Fail-safe "Show sidebar" button rendered in the MAIN content area —
+     reachable even if the sidebar's own DOM subtree is fully hidden/off-canvas. */
+  div[data-testid="stVerticalBlock"]:has(div.pvm-mainshow-anchor) div[data-testid="stButton"] > button {{
+    background: #145f34 !important;
+    color: #ffffff !important;
+    border: 1px solid #145f34 !important;
+    font-weight: 700 !important;
+    font-size: 0.82rem !important;
+  }}
 </style>
 """, unsafe_allow_html=True)
+
+if not _sb_open:
+    st.markdown('<div class="pvm-mainshow-anchor"></div>', unsafe_allow_html=True)
+    if st.button("☰  Show sidebar", key="pvm_mainshow_sidebar"):
+        st.session_state["pvm_sidebar_open"] = True
+        st.rerun()
 
 with st.sidebar:
     email = st.session_state.get("pvm_email", "")
@@ -210,7 +251,7 @@ with st.sidebar:
 
         # ── Top nav group: Overview ──────────────────────────────────────
         st.markdown('<div class="pvm-group-label">Overview</div>', unsafe_allow_html=True)
-        st.page_link("pages/project.py", label="Overview")
+        st.page_link("pages/overview.py", label="Overview")
         st.page_link("pages/my_projects.py", label="My Projects")
 
         # ── Modules group ────────────────────────────────────────────────
@@ -227,11 +268,11 @@ with st.sidebar:
             st.markdown('<div class="pvm-bottom-anchor"></div>', unsafe_allow_html=True)
             st.markdown(f"""
             <div style="margin-top:0.8rem;padding-top:0.8rem;border-top:1px solid #1d3a1d;">
-              <div style="font-size:0.74rem;color:#bcead0;padding:0.3rem 0.6rem;
+              <div style="font-size:0.74rem;color:#ffffff !important;padding:0.3rem 0.6rem;
                           background:#16241a;border-radius:6px;line-height:1.4;
-                          border:1px solid #2d4a2d;margin-bottom:0.5rem;">
-                Signed in as<br>
-                <strong style="color:#ffffff;word-break:break-all;">{email}</strong>
+                          border:1px solid #4ade80;margin-bottom:0.5rem;">
+                <span style="color:#ffffff !important;">Signed in as</span><br>
+                <strong style="color:#ffffff !important;word-break:break-all;">{email}</strong>
               </div>
             </div>
             """, unsafe_allow_html=True)

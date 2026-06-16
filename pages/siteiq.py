@@ -1329,6 +1329,18 @@ with right:
                 unsafe_allow_html=True
             )
 
+        if _proj.get("mode") == "full" and _proj.get("polygon_coords"):
+            st.caption(
+                "⚡ Capacity estimated from your drawn site boundary area — "
+                f"**{area_ha} ha**."
+            )
+        else:
+            st.caption(
+                f"⚡ Capacity estimated from a manually entered area (**{area_ha} ha**), "
+                "not a drawn boundary — treat this as a rough figure. Draw a site "
+                "boundary in Project Setup (Full Mode) for a boundary-derived capacity estimate."
+            )
+
         if terrain.get("success"):
             if terrain.get("boundary_sampled"):
                 st.caption(

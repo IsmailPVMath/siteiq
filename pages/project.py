@@ -531,17 +531,39 @@ if True:
             # row — otherwise insert a new row so it shows up as a new entry
             # in My Projects rather than overwriting an existing project.
             _uid = st.session_state.get("pvm_user_id", "")
+            _persist_ok = True
             if _uid:
                 _existing_row_id = st.session_state.get("pvm_project_row_id")
                 _row_id = save_project(_uid, _proj_data, row_id=_existing_row_id)
                 if _row_id:
                     st.session_state["pvm_project_row_id"] = _row_id
+                else:
+                    # save_project() returned None — the Supabase write did NOT
+                    # go through (failed insert/update). Previously this was
+                    # silently swallowed and the UI still showed a green
+                    # "saved" toast, which is exactly why new projects weren't
+                    # showing up in My Projects. Surface it instead of lying.
+                    _persist_ok = False
             # Clear per-module map state so they recentre on new project location
             for key in ["map_center", "map_zoom", "map_lat", "map_lon", "last_map_search",
                         "proj_polygon_draft", "proj_polygon_cleared"]:
                 st.session_state.pop(key, None)
-            st.toast(f"✅ Project saved — {proj_name.strip()} · {mode_val.title()} Mode", icon="✅")
+            if _persist_ok:
+                st.toast(f"✅ Project saved — {proj_name.strip()} · {mode_val.title()} Mode", icon="✅")
+            else:
+                st.session_state["pvm_save_failed"] = True
             st.rerun()
+
+    if st.session_state.pop("pvm_save_failed", False):
+        st.error(
+            "⚠️ Saved to this session, but the project could NOT be written to your "
+            "account database — it will not appear in My Projects and won't survive a "
+            "refresh. This usually means the `user_projects` table in Supabase is "
+            "missing an INSERT policy for authenticated users, or still has a UNIQUE "
+            "constraint on `user_id` blocking more than one saved project per account. "
+            "Check the Supabase table editor / RLS policies, or share the error from "
+            "Streamlit Cloud logs."
+        )
 
 # ─────────────────────────────────────────────────────────────────────────────
 # STATUS BAR + MODULE BUTTONS — shown below Save button after project is saved
