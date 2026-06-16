@@ -1,5 +1,5 @@
 import streamlit as st
-from pvmath_auth import render_auth_page, sign_out, load_project, STRIPE_LINK, PRICE_LABEL
+from pvmath_auth import render_auth_page, sign_out, load_latest_project, STRIPE_LINK, PRICE_LABEL
 
 st.set_page_config(
     page_title="PVMath — Solar Site Intelligence",
@@ -10,7 +10,8 @@ st.set_page_config(
 
 # ── Navigation (position="hidden" = we build sidebar manually) ────────────────
 _pages = [
-    st.Page("pages/project.py", title="Project"),
+    st.Page("pages/project.py",      title="Project"),
+    st.Page("pages/my_projects.py",  title="My Projects"),
     st.Page("pages/siteiq.py",  title="SiteIQ"),
     st.Page("pages/topoiq.py",  title="TopoIQ"),
     st.Page("pages/yieldiq.py", title="YieldIQ"),
@@ -29,9 +30,10 @@ if not render_auth_page("PVMath"):
 # ── Restore project context if session was cleared (back button / refresh) ────
 _uid_for_load = st.session_state.get("pvm_user_id", "")
 if _uid_for_load and "pvm_project" not in st.session_state:
-    _loaded = load_project(_uid_for_load)
+    _loaded, _loaded_row_id = load_latest_project(_uid_for_load)
     if _loaded:
         st.session_state["pvm_project"] = _loaded
+        st.session_state["pvm_project_row_id"] = _loaded_row_id
 
 
 # ── Sidebar ─────────────────────────────────────────────────────────────────
@@ -78,25 +80,46 @@ st.markdown(f"""
   section[data-testid="stSidebar"] div[data-testid="stVerticalBlockBorderWrapper"]:has(div.pvm-bottom-anchor) {{
     margin-top: auto !important;
   }}
+  /* NOTE: st.page_link() renders [data-testid="stPageLink"] in current Streamlit
+     versions, NOT [data-testid="stSidebarNavLink"] (that testid belongs to the
+     native auto-generated nav, which we hide via position="hidden"). Targeting
+     only the old testid meant this color rule never matched — Overview / SiteIQ /
+     TopoIQ / YieldIQ silently fell back to default dim/illegible link styling.
+     Both selectors are kept so this keeps working if Streamlit changes again. */
+  [data-testid="stPageLink"],
   [data-testid="stSidebarNavLink"] {{
     border-radius: 6px !important;
-    color: #e6f5e6 !important;
     padding: 0.45rem 0.7rem !important;
     margin-bottom: 2px !important;
     transition: background 0.15s !important;
   }}
-  [data-testid="stSidebarNavLink"]:hover {{
-    background: #1d3a1d !important;
-    color: #fff !important;
-  }}
-  [data-testid="stSidebarNavLink"][aria-current="page"] {{
-    background: #1d9e52 !important;
-    color: #fff !important;
-  }}
-  [data-testid="stSidebarNavLink"] span {{
+  [data-testid="stPageLink"] *,
+  [data-testid="stSidebarNavLink"] * {{
+    color: #e6f5e6 !important;
     font-weight: 600 !important;
     font-size: 0.92rem !important;
-    color: inherit !important;
+  }}
+  [data-testid="stPageLink"]:hover,
+  [data-testid="stSidebarNavLink"]:hover {{
+    background: #1d3a1d !important;
+  }}
+  [data-testid="stPageLink"]:hover *,
+  [data-testid="stSidebarNavLink"]:hover * {{
+    color: #fff !important;
+  }}
+  [data-testid="stPageLink"][aria-current="page"],
+  [data-testid="stSidebarNavLink"][aria-current="page"] {{
+    background: #1d9e52 !important;
+  }}
+  [data-testid="stPageLink"][aria-current="page"] *,
+  [data-testid="stSidebarNavLink"][aria-current="page"] * {{
+    color: #fff !important;
+  }}
+  /* Disabled module links (e.g. TopoIQ before a boundary exists) — visibly
+     muted, but still readable, instead of disappearing into the background. */
+  [data-testid="stPageLink"][aria-disabled="true"] *,
+  [data-testid="stPageLink"]:has([disabled]) * {{
+    color: #6fa085 !important;
   }}
   .pvm-group-label {{
     font-size: 0.66rem; font-weight: 700; text-transform: uppercase;
@@ -188,6 +211,7 @@ with st.sidebar:
         # ── Top nav group: Overview ──────────────────────────────────────
         st.markdown('<div class="pvm-group-label">Overview</div>', unsafe_allow_html=True)
         st.page_link("pages/project.py", label="Overview")
+        st.page_link("pages/my_projects.py", label="My Projects")
 
         # ── Modules group ────────────────────────────────────────────────
         st.markdown('<div class="pvm-group-label">Modules</div>', unsafe_allow_html=True)
@@ -252,7 +276,8 @@ with _tb_r:
         st.markdown('<div class="pvm-newproj-anchor"></div>', unsafe_allow_html=True)
         if st.button("+ New Project", key="topbar_new_project", use_container_width=True):
             for _k in [
-                "pvm_project", "proj_mode_sel", "proj_pin_lat", "proj_pin_lon",
+                "pvm_project", "pvm_project_row_id", "proj_mode_sel",
+                "proj_pin_lat", "proj_pin_lon",
                 "proj_map_center", "proj_map_zoom", "proj_last_search",
                 "proj_polygon_draft", "proj_polygon_cleared", "proj_edit_mode",
                 "map_center", "map_zoom", "map_lat", "map_lon", "last_map_search",

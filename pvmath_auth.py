@@ -362,37 +362,92 @@ def remaining(user_id: str, app: str) -> int:
 
 
 # ── Project persistence ───────────────────────────────────────
-def save_project(user_id: str, project: dict) -> bool:
-    """Upsert project data to Supabase user_projects table."""
-    import json
+# Each saved project is its own row in user_projects (user_id, project_data, +
+# whatever id/timestamp columns Supabase already provides). save_project()
+# either INSERTs a new row (row_id=None — brand new project) or PATCHes an
+# existing one (row_id given — re-saving a project the user already opened),
+# so a user can accumulate many projects instead of one save overwriting the
+# last. This is what backs the "My Projects" dashboard.
+def save_project(user_id: str, project: dict, row_id: str | None = None) -> str | None:
+    """Insert a new project row, or update an existing one if row_id is given.
+    Returns the row's id on success, or None on failure."""
     try:
         base = f"{_sb_url()}/rest/v1/user_projects"
-        payload = {"user_id": user_id, "project_data": project}
-        r = _req.post(
-            base, json=payload,
-            headers={**_db_hdr(), "Prefer": "resolution=merge-duplicates,return=minimal"},
-            timeout=10,
+        if row_id:
+            r = _req.patch(
+                base,
+                json={"project_data": project},
+                params={"user_id": f"eq.{user_id}", "id": f"eq.{row_id}"},
+                headers={**_db_hdr(), "Prefer": "return=minimal"},
+                timeout=10,
+            )
+            return row_id if r.status_code in (200, 204) else None
+        else:
+            r = _req.post(
+                base,
+                json={"user_id": user_id, "project_data": project},
+                headers={**_db_hdr(), "Prefer": "return=representation"},
+                timeout=10,
+            )
+            if r.status_code in (200, 201):
+                rows = r.json()
+                if rows and isinstance(rows, list):
+                    return rows[0].get("id")
+            return None
+    except Exception:
+        return None
+
+
+def list_projects(user_id: str) -> list:
+    """Return every saved project for this user, newest first (best effort —
+    sorts by whichever timestamp column the table happens to have)."""
+    try:
+        r = _req.get(
+            f"{_sb_url()}/rest/v1/user_projects",
+            params={"user_id": f"eq.{user_id}", "select": "*"},
+            headers=_db_hdr(), timeout=10,
         )
-        return r.status_code in (200, 201, 204)
+        if r.status_code != 200:
+            return []
+        rows = r.json()
+        if not isinstance(rows, list):
+            return []
+        for _key in ("updated_at", "created_at", "inserted_at"):
+            if rows and _key in rows[0]:
+                rows.sort(key=lambda row: row.get(_key) or "", reverse=True)
+                break
+        return rows
+    except Exception:
+        return []
+
+
+def delete_project(user_id: str, row_id: str) -> bool:
+    """Delete one saved project row (scoped to this user)."""
+    try:
+        r = _req.delete(
+            f"{_sb_url()}/rest/v1/user_projects",
+            params={"user_id": f"eq.{user_id}", "id": f"eq.{row_id}"},
+            headers=_db_hdr(), timeout=10,
+        )
+        return r.status_code in (200, 204)
     except Exception:
         return False
 
 
+def load_latest_project(user_id: str):
+    """Return (project_data, row_id) for the most recently saved project, or
+    (None, None). Used to restore session state after a refresh/back button."""
+    rows = list_projects(user_id)
+    if rows and rows[0].get("project_data"):
+        return rows[0]["project_data"], rows[0].get("id")
+    return None, None
+
+
 def load_project(user_id: str) -> dict | None:
-    """Load the most recent project from Supabase. Returns dict or None."""
-    try:
-        r = _req.get(
-            f"{_sb_url()}/rest/v1/user_projects",
-            params={"user_id": f"eq.{user_id}", "select": "project_data"},
-            headers=_db_hdr(), timeout=10,
-        )
-        if r.status_code == 200:
-            rows = r.json()
-            if rows and isinstance(rows, list) and rows[0].get("project_data"):
-                return rows[0]["project_data"]
-    except Exception:
-        pass
-    return None
+    """Back-compat wrapper — returns just the project dict for the most
+    recently saved project."""
+    data, _ = load_latest_project(user_id)
+    return data
 
 
 # ── Password reset form ───────────────────────────────────────

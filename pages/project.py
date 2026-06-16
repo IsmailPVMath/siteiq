@@ -525,10 +525,17 @@ if True:
             }
             st.session_state["pvm_project"] = _proj_data
             st.session_state["proj_edit_mode"] = False
-            # Persist to Supabase so project survives browser back / refresh
+            # Persist to Supabase so project survives browser back / refresh.
+            # If we already have a row id (this project was opened from My
+            # Projects, or saved before in this session), update that same
+            # row — otherwise insert a new row so it shows up as a new entry
+            # in My Projects rather than overwriting an existing project.
             _uid = st.session_state.get("pvm_user_id", "")
             if _uid:
-                save_project(_uid, _proj_data)
+                _existing_row_id = st.session_state.get("pvm_project_row_id")
+                _row_id = save_project(_uid, _proj_data, row_id=_existing_row_id)
+                if _row_id:
+                    st.session_state["pvm_project_row_id"] = _row_id
             # Clear per-module map state so they recentre on new project location
             for key in ["map_center", "map_zoom", "map_lat", "map_lon", "last_map_search",
                         "proj_polygon_draft", "proj_polygon_cleared"]:
