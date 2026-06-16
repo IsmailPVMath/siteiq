@@ -728,6 +728,22 @@ def render_auth_page(app_name: str = "PVMath"):
         transform: translateY(-1px) !important;
     }
 
+    /* st.form_submit_button renders separately from st.button — match the same style
+       so the Log In button inside the form looks identical to every other button. */
+    [data-testid="stFormSubmitButton"] > button {
+        background: linear-gradient(135deg, #1d9e52, #145f34) !important;
+        color: #fff !important; border: none !important;
+        border-radius: 9px !important; font-weight: 700 !important;
+        font-size: 0.92rem !important; padding: 0.72rem 1rem !important;
+        width: 100% !important; transition: all .2s !important;
+        letter-spacing: 0.01em !important;
+        box-shadow: 0 2px 10px rgba(29,158,82,.25) !important;
+    }
+    [data-testid="stFormSubmitButton"] > button:hover {
+        box-shadow: 0 6px 20px rgba(29,158,82,.4) !important;
+        transform: translateY(-1px) !important;
+    }
+
     /* Inputs */
     .stTextInput > div > input {
         background: #ffffff !important;
@@ -876,10 +892,38 @@ def render_auth_page(app_name: str = "PVMath"):
             st.markdown('<div class="auth-title">Welcome back</div>', unsafe_allow_html=True)
             st.markdown('<div class="auth-sub">Log in to access your PVMath tools.</div>', unsafe_allow_html=True)
 
-            login_email = st.text_input("Email address", key="login_email", placeholder="you@company.com")
-            login_pass  = st.text_input("Password", key="login_pass", type="password", placeholder="Your password")
+            # NOTE: wrapped in st.form so the Enter key submits the login (Streamlit
+            # only treats Enter as "click the button" for widgets inside a real
+            # st.form — plain st.text_input + st.button never responds to Enter).
+            with st.form("login_form", clear_on_submit=False):
+                login_email = st.text_input("Email address", key="login_email", placeholder="you@company.com")
+                login_pass  = st.text_input("Password", key="login_pass", type="password", placeholder="Your password")
+                login_submitted = st.form_submit_button("Log In →")
 
-            if st.button("Log In →", key="btn_login"):
+            # Tell the browser's own password manager what these fields are, so it
+            # offers to save + autofill them next time. Streamlit doesn't set
+            # autocomplete/name on its <input> tags by default, which is why
+            # Chrome/Safari/Edge never remembered the email here before.
+            st.markdown("""
+            <script>
+            (function () {
+              function tagLoginFields() {
+                document.querySelectorAll('[data-testid="stForm"] input[type="text"]').forEach(function(el){
+                  el.setAttribute('autocomplete', 'username');
+                  el.setAttribute('name', 'email');
+                });
+                document.querySelectorAll('[data-testid="stForm"] input[type="password"]').forEach(function(el){
+                  el.setAttribute('autocomplete', 'current-password');
+                  el.setAttribute('name', 'password');
+                });
+              }
+              tagLoginFields();
+              new MutationObserver(tagLoginFields).observe(document.body, {childList: true, subtree: true});
+            })();
+            </script>
+            """, unsafe_allow_html=True)
+
+            if login_submitted:
                 if not login_email or not login_pass:
                     st.error("Please enter your email and password.")
                 else:
