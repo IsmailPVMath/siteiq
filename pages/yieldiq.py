@@ -154,10 +154,16 @@ CONFIG_ORDER  = ["1P Fixed", "2P Fixed", "1P Tracker", "2P Tracker"]
 CHART_COLORS  = ["#e85d04", "#c24a00", "#1d9e52", "#145f34"]  # Fixed: orange / Tracker: green
 
 
-def call_pvgis(lat: float, lon: float, total_loss_pct: float, tracker: bool) -> dict:
+def call_pvgis(lat: float, lon: float, total_loss_pct: float, tracker: bool,
+               raddatabase: str = None) -> dict:
     """
     Call PVGIS PVcalc with peakpower=1 kWp.
     Returns specific yield (kWh/kWp/yr), monthly values, PR, CF, optimal tilt.
+
+    raddatabase: pin an explicit radiation database (e.g. "PVGIS-ERA5"). If
+    left None, PVGIS auto-selects one (PVGIS-SARAH2 where it has coverage).
+    Auto-selection is resolved ONCE per site by run_all_configs() and then
+    passed in explicitly here for every config — see note there on why.
     """
     params = {
         "lat": round(lat, 5), "lon": round(lon, 5),
@@ -172,6 +178,8 @@ def call_pvgis(lat: float, lon: float, total_loss_pct: float, tracker: bool) -> 
     if not tracker:
         params["optimalinclination"] = 1
         params["optimalangles"]      = 1
+    if raddatabase:
+        params["raddatabase"] = raddatabase
 
     resp = requests.get(
         PVGIS_URL, params=params, timeout=30,
@@ -183,6 +191,7 @@ def call_pvgis(lat: float, lon: float, total_loss_pct: float, tracker: bool) -> 
     out        = data["outputs"]
     totals_d   = out.get("totals",  {})
     monthly_d  = out.get("monthly", {})
+    radiation_db = data.get("inputs", {}).get("meteo_data", {}).get("radiation_db")
 
     # PVGIS always uses "fixed" as the key in PVcalc outputs regardless of tracking type
     key = "fixed" if "fixed" in totals_d else next(iter(totals_d), None)
@@ -218,6 +227,7 @@ def call_pvgis(lat: float, lon: float, total_loss_pct: float, tracker: bool) -> 
         "pr":       pr,
         "cf":       cf,
         "opt_tilt": opt_tilt,
+        "radiation_db": radiation_db,
     }
 
 
@@ -230,10 +240,36 @@ def run_all_configs(lat, lon, gcr_1p, gcr_2p, base_loss):
         "2P Tracker": (gcr_2p, True),
     }
 
+    # Resolve ONE radiation database for this site and reuse it for all 4
+    # configs below. Left unpinned, PVGIS auto-selects per-call (PVGIS-SARAH2
+    # where it has coverage, otherwise it errors/falls back on its own) — and
+    # that auto-selection is not guaranteed to land on the same database for
+    # trackingtype=0 (Fixed) vs trackingtype=1 (Tracker) calls at the same
+    # coordinates. Comparing Fixed vs Tracker yield is only meaningful if
+    # both numbers came from the same underlying radiation data, so we probe
+    # once, fall back to PVGIS-ERA5 (true global coverage) on failure exactly
+    # like siteiq.py's get_solar_data() already does, and pin that result for
+    # every config in this run.
+    raddatabase = None
+    try:
+        probe = call_pvgis(lat, lon, base_loss, False)
+        raddatabase = probe.get("radiation_db")
+    except Exception:
+        try:
+            probe = call_pvgis(lat, lon, base_loss, False, raddatabase="PVGIS-ERA5")
+            raddatabase = probe.get("radiation_db") or "PVGIS-ERA5"
+        except Exception:
+            raddatabase = None  # let each call auto-select as a last resort
+
     def _call(name, gcr, tracker):
         shade      = gcr_shading(gcr, tracker)
         total_loss = min(base_loss + shade, 30.0)
-        res = call_pvgis(lat, lon, total_loss, tracker)
+        try:
+            res = call_pvgis(lat, lon, total_loss, tracker, raddatabase=raddatabase)
+        except Exception:
+            # Pinned database rejected this call (rare) — fall back to letting
+            # PVGIS auto-select rather than losing the config entirely.
+            res = call_pvgis(lat, lon, total_loss, tracker)
         res["gcr"]        = gcr
         res["shading"]    = shade
         res["total_loss"] = round(total_loss, 1)
@@ -422,7 +458,7 @@ def build_pdf(project_name, lat, lon, dc_kwp, gcr_1p, gcr_2p, base_loss,
         if fix in results and trk in results:
             g    = results[trk]["spec_y"] - results[fix]["spec_y"]
             gpct = g / results[fix]["spec_y"] * 100
-            gain_lines.append(f"Tracker gain ({pref}): +{g:,.0f} kWh/kWp/yr (+{gpct:.1f}%) over Fixed Tilt")
+            gain_lines.append(f"Tracker gain ({pref}): {g:+,.0f} kWh/kWp/yr ({gpct:+.1f}%) over Fixed Tilt")
     if gain_lines:
         story.append(lp(" | ".join(gain_lines), bod))
         story.append(Spacer(1, 0.4*cm))
@@ -725,8 +761,8 @@ if submitted:
             gpct = g / results[fix]["spec_y"] * 100
             gain_cols[i].metric(
                 f"Tracker Gain ({pref})",
-                f"+{g:,.0f} kWh/kWp/yr",
-                f"+{gpct:.1f}% vs Fixed"
+                f"{g:+,.0f} kWh/kWp/yr",
+                f"{gpct:+.1f}% vs Fixed"
             )
 
     # ── Optimal tilt ──────────────────────────────────────────────────────────

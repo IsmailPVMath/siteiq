@@ -539,9 +539,29 @@ if True:
             _persist_ok = True
             if _uid:
                 _existing_row_id = st.session_state.get("pvm_project_row_id")
+                # pvm_project_row_id lingers in session_state after a save and
+                # is only ever cleared by the Overview page's "+ New Project"
+                # button. If the user instead just edits the name/location
+                # fields in place on THIS page and saves again — e.g. Project
+                # 5 in Germany, then straight into Project 6 in Austria
+                # without going back to Overview first — that stale row id
+                # caused every subsequent save to PATCH the same row instead
+                # of inserting a new one, so only the latest project ever
+                # showed up in My Projects. Compare against the identity of
+                # whatever project that row id was last saved as: if the
+                # name/lat/lon no longer match, this is a different project,
+                # so force a fresh insert instead of overwriting it.
+                _prev_snapshot = st.session_state.get("pvm_saved_snapshot")
+                if _existing_row_id and _prev_snapshot and (
+                    _prev_snapshot.get("name") != _proj_data["name"]
+                    or _prev_snapshot.get("lat") != _proj_data["lat"]
+                    or _prev_snapshot.get("lon") != _proj_data["lon"]
+                ):
+                    _existing_row_id = None
                 _row_id = save_project(_uid, _proj_data, row_id=_existing_row_id)
                 if _row_id:
                     st.session_state["pvm_project_row_id"] = _row_id
+                    st.session_state["pvm_saved_snapshot"] = dict(_proj_data)
                 else:
                     # save_project() returned None — the Supabase write did NOT
                     # go through (failed insert/update). Previously this was

@@ -264,9 +264,12 @@ def generate_pdf_report(
             ("LEFTPADDING",   (0,0), (-1,-1), 7),
             ("ALIGN",         (1,1), (1,-1), "CENTER"),
         ]
+        # Color only column 1 ("% of Site Area") with the slope ramp — column 0
+        # ("Slope Range" labels) stays plain/white, matching the header's own
+        # styling for that column.
         for _i, (_bg, _fg) in enumerate(_bin_colors, start=1):
-            _bins_style.append(("BACKGROUND", (0,_i), (-1,_i), _bg))
-            _bins_style.append(("TEXTCOLOR",  (0,_i), (-1,_i), _fg))
+            _bins_style.append(("BACKGROUND", (1,_i), (1,_i), _bg))
+            _bins_style.append(("TEXTCOLOR",  (1,_i), (1,_i), _fg))
         bins_tbl.setStyle(TableStyle(_bins_style))
         story.append(bins_tbl)
         story.append(Spacer(1, 5*mm))
