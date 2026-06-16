@@ -331,6 +331,23 @@ st.markdown("""
     div[data-testid="stExpander"] {
         border: 1px solid #e2ede2 !important; border-radius: 10px !important;
     }
+
+    /* ── Compact "settings bar" sliders (Grid spacing / Minor / Major contour) ── */
+    div[data-testid="stVerticalBlock"]:has(div.pvm-topo-settings) div[data-testid="stSlider"] {
+        padding-top: 0.1rem !important;
+        margin-bottom: 0 !important;
+    }
+    div[data-testid="stVerticalBlock"]:has(div.pvm-topo-settings) div[data-testid="stSlider"] label p {
+        font-size: 0.78rem !important;
+        font-weight: 600 !important;
+        white-space: nowrap;
+    }
+    div[data-testid="stVerticalBlock"]:has(div.pvm-topo-settings) div[data-testid="stSlider"] [data-baseweb="slider"] {
+        margin-top: 0.15rem !important;
+    }
+    div[data-testid="stVerticalBlock"]:has(div.pvm-topo-settings) div[data-testid="column"] {
+        padding-left: 0.4rem !important; padding-right: 0.4rem !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -1011,11 +1028,12 @@ with left:
                     st_folium(m2, width=None, height=300, returned_objects=[])
 
     st.markdown('<div class="section-hdr" style="margin-top:1rem;"><i class="fa-solid fa-sliders" style="color:#1565c0;"></i> Settings</div>', unsafe_allow_html=True)
-    sc1, sc2 = st.columns(2)
-    grid_spacing = sc1.selectbox("Grid spacing", [5, 3, 10], index=0,
-                                  help="5m = preliminary design, 3m = detailed study")
-    contour_minor = sc2.selectbox("Minor contour (m)", [0.5, 0.25, 1.0], index=0)
-    contour_major = st.selectbox("Major contour (m)", [1.0, 2.0, 5.0], index=0)
+    st.markdown('<div class="pvm-topo-settings"></div>', unsafe_allow_html=True)
+    sc1, sc2, sc3 = st.columns(3)
+    grid_spacing = sc1.slider("Grid spacing (m)", min_value=3, max_value=10, value=5, step=1,
+                               help="Smaller = finer mesh, more detail, slower processing")
+    contour_minor = sc2.slider("Minor contour (m)", min_value=0.1, max_value=2.0, value=0.5, step=0.1)
+    contour_major = sc3.slider("Major contour (m)", min_value=0.5, max_value=10.0, value=1.0, step=0.5)
 
     _topo_user = st.session_state.get("pvm_user_id", "guest")
     _topo_left = remaining(_topo_user, "topoiq")
@@ -1085,6 +1103,14 @@ with right:
                 polygon_coords, grid_m=float(grid_spacing)
             )
             slope = compute_slope(Z, float(grid_spacing))
+
+        if X.shape[0] < 2 or X.shape[1] < 2:
+            st.error(
+                f"This boundary is too small for a {grid_spacing}m grid — it only fits "
+                f"{X.shape[0]}×{X.shape[1]} point(s). Use a smaller grid spacing (lower the "
+                f"Grid spacing slider) or draw a larger boundary, then run again."
+            )
+            st.stop()
 
         z_valid = Z[~np.isnan(Z)]
         s_valid = slope[~np.isnan(slope) & ~np.isnan(Z)]

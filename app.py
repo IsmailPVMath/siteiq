@@ -212,16 +212,21 @@ with st.sidebar:
                 st.rerun()
 
 # ── Top-right "+ New Project" action (replaces the old redundant top-bar) ─────
+# NOTE: styling must be anchored with a marker INSIDE the same container as the
+# button (via :has()) — a <div> opened in one st.markdown call and closed in a
+# later one never actually wraps the button (each st.markdown call is its own
+# isolated HTML fragment), so that old approach silently failed to style/scope
+# anything reliably.
 st.markdown("""
 <style>
-div[data-testid="stButton"].pvm-newproj-btn > button {
+div[data-testid="stVerticalBlock"]:has(div.pvm-newproj-anchor) div[data-testid="stButton"] > button {
     font-size: 0.82rem !important; font-weight: 700 !important;
     padding: 0.3rem 0.9rem !important; border-radius: 20px !important;
     border: 1px solid #1d9e52 !important;
     background: #1d9e52 !important; color: #fff !important;
     line-height: 1.4 !important; height: auto !important;
 }
-div[data-testid="stButton"].pvm-newproj-btn > button:hover {
+div[data-testid="stVerticalBlock"]:has(div.pvm-newproj-anchor) div[data-testid="stButton"] > button:hover {
     background: #168442 !important; border-color: #168442 !important;
 }
 </style>
@@ -229,16 +234,16 @@ div[data-testid="stButton"].pvm-newproj-btn > button:hover {
 
 _tb_l, _tb_r = st.columns([8, 2])
 with _tb_r:
-    st.markdown('<div class="pvm-newproj-btn">', unsafe_allow_html=True)
-    if st.button("+ New Project", key="topbar_new_project", use_container_width=True):
-        for _k in [
-            "pvm_project", "proj_mode_sel", "proj_pin_lat", "proj_pin_lon",
-            "proj_map_center", "proj_map_zoom", "proj_last_search",
-            "proj_polygon_draft", "proj_polygon_cleared", "proj_edit_mode",
-            "map_center", "map_zoom", "map_lat", "map_lon", "last_map_search",
-        ]:
-            st.session_state.pop(_k, None)
-        st.switch_page("pages/project.py")
-    st.markdown('</div>', unsafe_allow_html=True)
+    with st.container():
+        st.markdown('<div class="pvm-newproj-anchor"></div>', unsafe_allow_html=True)
+        if st.button("+ New Project", key="topbar_new_project", use_container_width=True):
+            for _k in [
+                "pvm_project", "proj_mode_sel", "proj_pin_lat", "proj_pin_lon",
+                "proj_map_center", "proj_map_zoom", "proj_last_search",
+                "proj_polygon_draft", "proj_polygon_cleared", "proj_edit_mode",
+                "map_center", "map_zoom", "map_lat", "map_lon", "last_map_search",
+            ]:
+                st.session_state.pop(_k, None)
+            st.switch_page("pages/project.py")
 
 pg.run()
