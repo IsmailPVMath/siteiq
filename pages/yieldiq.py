@@ -435,7 +435,7 @@ def build_pdf(project_name, lat, lon, dc_kwp, gcr_1p, gcr_2p, base_loss,
     story.append(Spacer(1, 0.15*cm))
     hdr_row = [lp(h, lbl) for h in [
         "Configuration","GCR","Shading\nLoss","Total\nLoss",
-        "Specific Yield\n(kWh/kWp/yr)","Annual Energy\n(MWh/yr)","PR (%)","CF (%)"
+        "POA Irrad.\n(kWh/m²/yr)","Specific Yield\n(kWh/kWp/yr)","Annual Energy\n(MWh/yr)","PR (%)","CF (%)"
     ]]
     rows = [hdr_row]
     _cfg_row_colors = []  # track row background per cfg
@@ -450,11 +450,15 @@ def build_pdf(project_name, lat, lon, dc_kwp, gcr_1p, gcr_2p, base_loss,
         cfg_style = S("cf", fontSize=9,
                       fontName="Helvetica-Bold" if is_best else "Helvetica",
                       textColor=GREEN_DK if is_tracker else colors.HexColor("#c24a00"))
+        # POA (plane-of-array / in-plane irradiance, PVGIS field H(i)_y) — shown
+        # alongside specific yield so a tracker's higher yield can be traced
+        # back to genuinely higher captured irradiance, not just lower losses.
         rows.append([
             lp(cfg + (" ★" if is_best else ""), cfg_style),
             lp(f"{r['gcr']:.2f}", bod),
             lp(f"{r['shading']:.1f}%", bod),
             lp(f"{r['total_loss']:.1f}%", bod),
+            lp(f"{r['h_y']:,.0f}", bod),
             lp(f"{r['spec_y']:,.0f}", sy_style),
             lp(f"{r['spec_y'] * dc_kwp / 1000:,.1f}", bod),
             lp(f"{r['pr']:.1f}%" if r["pr"] else "—", bod),
@@ -463,7 +467,7 @@ def build_pdf(project_name, lat, lon, dc_kwp, gcr_1p, gcr_2p, base_loss,
         _cfg_row_colors.append(
             colors.HexColor("#f0faf4") if is_tracker else colors.HexColor("#fff4ee")
         )
-    res_tbl = Table(rows, colWidths=[3*cm, 1.4*cm, 1.7*cm, 1.7*cm, 3*cm, 2.8*cm, 1.5*cm, 1.5*cm])
+    res_tbl = Table(rows, colWidths=[2.6*cm, 1.3*cm, 1.5*cm, 1.5*cm, 1.7*cm, 2.6*cm, 2.4*cm, 1.3*cm, 1.3*cm])
     _tbl_style = [
         ("BACKGROUND",    (0,0),(-1, 0), AMBER),
         ("BOX",           (0,0),(-1,-1), 0.5, BORDER),
@@ -732,10 +736,11 @@ if submitted:
     st.markdown('<div class="yiq-section">📊 Configuration Comparison</div>', unsafe_allow_html=True)
 
     # Column headers
-    hdr_cols = st.columns([1.6, 0.7, 1.0, 1.0, 1.4, 1.4, 0.8, 0.8])
+    _COL_W = [1.5, 0.7, 1.0, 1.0, 1.1, 1.4, 1.4, 0.8, 0.8]
+    hdr_cols = st.columns(_COL_W)
     for col, txt in zip(hdr_cols, [
         "Configuration","GCR","Shading Loss","Total Loss",
-        "Specific Yield","Annual Energy","PR","CF"
+        "POA Irrad.","Specific Yield","Annual Energy","PR","CF"
     ]):
         col.markdown(
             f"<div style='font-size:0.77rem;font-weight:700;color:#6a8a6a;"
@@ -752,7 +757,7 @@ if submitted:
         best_badge = (' <span style="background:#e8f5e9;color:#2e7d32;font-size:0.62rem;'
                       'font-weight:700;padding:1px 7px;border-radius:10px;">BEST</span>'
                       if is_best else "")
-        row_cols = st.columns([1.6, 0.7, 1.0, 1.0, 1.4, 1.4, 0.8, 0.8])
+        row_cols = st.columns(_COL_W)
         row_cols[0].markdown(
             f'<div style="padding:6px 0;font-weight:700;font-size:0.95rem;">'
             f'{cfg}{best_badge}</div>', unsafe_allow_html=True)
@@ -765,17 +770,23 @@ if submitted:
         row_cols[3].markdown(
             f'<div style="padding:6px 0;color:#5a7a5a;">{r["total_loss"]:.1f}%</div>',
             unsafe_allow_html=True)
+        # POA = plane-of-array / in-plane irradiance (PVGIS field H(i)_y).
+        # Shown so a tracker's higher yield can be traced back to genuinely
+        # higher captured irradiance, not just lower shading/loss.
         row_cols[4].markdown(
+            f'<div style="padding:6px 0;color:#3a5a3a;">{r["h_y"]:,.0f} kWh/m²</div>',
+            unsafe_allow_html=True)
+        row_cols[5].markdown(
             f'<div style="padding:6px 0;font-weight:700;color:#1565c0;font-size:1.05rem;">'
             f'{r["spec_y"]:,.0f} kWh/kWp</div>', unsafe_allow_html=True)
-        row_cols[5].markdown(
+        row_cols[6].markdown(
             f'<div style="padding:6px 0;font-weight:600;">'
             f'{r["spec_y"] * dc_kwp / 1000:,.1f} MWh/yr</div>', unsafe_allow_html=True)
         _pr_str = f'{r["pr"]:.1f}%' if r["pr"] else "—"
-        row_cols[6].markdown(
+        row_cols[7].markdown(
             f'<div style="padding:6px 0;">{_pr_str}</div>',
             unsafe_allow_html=True)
-        row_cols[7].markdown(
+        row_cols[8].markdown(
             f'<div style="padding:6px 0;">{r["cf"]:.1f}%</div>',
             unsafe_allow_html=True)
 
