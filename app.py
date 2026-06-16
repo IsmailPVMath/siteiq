@@ -71,10 +71,6 @@ if _uid_for_load and "pvm_project" not in st.session_state:
 # is a tiny, low-contrast icon whose position changes across Streamlit versions —
 # users were losing the sidebar with no way to bring it back. Our own button is
 # always rendered, always labelled, and always works the same way.
-_proj      = st.session_state.get("pvm_project", {})
-_proj_mode = _proj.get("mode", "")
-_topo_ok   = _proj_mode == "full" and bool(_proj.get("polygon_coords"))
-
 st.session_state.setdefault("pvm_sidebar_open", True)
 _sb_open  = st.session_state["pvm_sidebar_open"]
 _sb_width = "250px" if _sb_open else "60px"
@@ -296,12 +292,21 @@ with st.sidebar:
         st.page_link("pages/my_projects.py", label="My Projects")
 
         # ── Modules group ────────────────────────────────────────────────
-        st.markdown('<div class="pvm-group-label">Modules</div>', unsafe_allow_html=True)
-        st.page_link("pages/siteiq.py",  label="SiteIQ")
-        # TopoIQ — greyed out unless project is in Full Mode with a drawn boundary
-        st.page_link("pages/topoiq.py",  label="TopoIQ", disabled=not _topo_ok)
-        st.page_link("pages/yieldiq.py", label="YieldIQ")
+        # SiteIQ / TopoIQ / YieldIQ are intentionally NOT linked here anymore.
+        # Each module reads its site/boundary from st.session_state["pvm_project"],
+        # which is only committed once the user clicks "Save Project" on the
+        # Project page — the per-project "🌍 SiteIQ / ⚡ YieldIQ / ⛰️ TopoIQ"
+        # buttons rendered there (pages/project.py) only appear AFTER that save,
+        # so they always carry a fully-committed project across. A sidebar link
+        # could be clicked at any time, including right after drawing a boundary
+        # but before saving — Streamlit then navigates away before that draft is
+        # ever written to pvm_project, so the destination module finds no
+        # boundary and falls back to a blank "draw your own" state. That looked
+        # like a broken/old page to users who'd just drawn one. Removing the
+        # sidebar shortcuts and keeping a single, always-correct entry point
+        # (Project page -> Save -> module button) fixes that for good.
         if _user_email in _ADMIN:
+            st.markdown('<div class="pvm-group-label">Modules</div>', unsafe_allow_html=True)
             st.page_link("pages/_layoutiq.py", label="LayoutIQ")
 
         # ── Bottom-pinned group: account / settings / membership / logout ──
