@@ -238,23 +238,36 @@ def generate_pdf_report(
     if slope_bins:
         story.append(Paragraph("Slope Distribution", hdr_style))
         _bin_labels = ["0% – 2.5%", "2.5% – 5%", "5% – 7.5%", "7.5% – 10%", "&gt; 10%"]
+        # Same green→yellow→orange→red ramp as the Slope Map colormap (0-15% range),
+        # sampled at each bin's representative slope so the table reads as an
+        # extension of the map's legend rather than a plain blue/white table.
+        _bin_colors = [
+            (colors.HexColor("#1b5e20"), colors.white),     # 0–2.5%   dark green
+            (colors.HexColor("#66bb6a"), colors.white),     # 2.5–5%   light green
+            (colors.HexColor("#d4e157"), colors.HexColor("#1a1a1a")),  # 5–7.5%   yellow-green
+            (colors.HexColor("#ffa726"), colors.HexColor("#1a1a1a")),  # 7.5–10%  orange
+            (colors.HexColor("#c62828"), colors.white),     # >10%     red
+        ]
         bins_data = [["Slope Range", "% of Site Area"]]
         for _lbl, _pct in zip(_bin_labels, slope_bins):
             bins_data.append([Paragraph(_lbl, body_style), f"{_pct:.1f}%"])
         bins_tbl = Table(bins_data, colWidths=[usable*0.6, usable*0.4])
-        bins_tbl.setStyle(TableStyle([
+        _bins_style = [
             ("FONTNAME",      (0,0), (-1,0), "Helvetica-Bold"),
-            ("FONTNAME",      (0,1), (-1,-1), "Helvetica"),
+            ("FONTNAME",      (0,1), (-1,-1), "Helvetica-Bold"),
             ("FONTSIZE",      (0,0), (-1,-1), 9),
             ("BACKGROUND",    (0,0), (-1,0), MID_BLUE),
             ("TEXTCOLOR",     (0,0), (-1,0), colors.white),
-            ("ROWBACKGROUNDS",(0,1), (-1,-1), [colors.white, LIGHT_BG]),
             ("GRID",          (0,0), (-1,-1), 0.3, colors.HexColor("#cccccc")),
             ("TOPPADDING",    (0,0), (-1,-1), 4),
             ("BOTTOMPADDING", (0,0), (-1,-1), 4),
             ("LEFTPADDING",   (0,0), (-1,-1), 7),
             ("ALIGN",         (1,1), (1,-1), "CENTER"),
-        ]))
+        ]
+        for _i, (_bg, _fg) in enumerate(_bin_colors, start=1):
+            _bins_style.append(("BACKGROUND", (0,_i), (-1,_i), _bg))
+            _bins_style.append(("TEXTCOLOR",  (0,_i), (-1,_i), _fg))
+        bins_tbl.setStyle(TableStyle(_bins_style))
         story.append(bins_tbl)
         story.append(Spacer(1, 5*mm))
 
@@ -1219,7 +1232,12 @@ with right:
         if HAS_SCIPY:
             dy, dx = np.gradient(Z, grid_spacing, grid_spacing)
             slope_pct = np.sqrt(dx**2 + dy**2) * 100
-            Sm = np.ma.masked_invalid(np.flipud(slope_pct))
+            # grid_lats runs north→south (np.arange(p_n, p_s, -step_lat)), so row 0
+            # of slope_pct is already the northernmost row — matplotlib's default
+            # imshow origin ("upper") plots row 0 at the top, which is correct as-is.
+            # A previous np.flipud() here flipped north/south, making the map
+            # upside-down relative to the satellite boundary view above it.
+            Sm = np.ma.masked_invalid(slope_pct)
             fig2, ax2 = plt.subplots(figsize=(10, 6.2))
             fig2.patch.set_facecolor("#0e1117")
             ax2.set_facecolor("#0e1117")
