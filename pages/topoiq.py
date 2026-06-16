@@ -46,7 +46,8 @@ def generate_pdf_report(
     pct_over5, pct_over10,
     slope_img_buf,
     verdict_label, verdict_detail,
-    project_name="", country=""
+    project_name="", country="",
+    slope_bins=None
 ):
     try:
         from reportlab.lib.pagesizes import A4
@@ -193,8 +194,27 @@ def generate_pdf_report(
     img_w = usable
 
     if slope_img_buf:
+        # Size the image box from its ACTUAL pixel aspect ratio rather than a
+        # hardcoded constant (0.62). matplotlib's bbox_inches="tight" trims the
+        # saved PNG to its content bounding box, which does not reliably keep
+        # the figure's nominal figsize ratio (10x6.2in) — the colorbar/title
+        # eat a different proportion of width vs height each render. Forcing
+        # a mismatched fixed height stretched/squashed the chart in the PDF
+        # (looked "inverted"/garbled) even though it displayed fine on-screen
+        # via st.image's own aspect-preserving use_container_width=True.
         slope_img_buf.seek(0)
-        slope_img = RLImage(slope_img_buf, width=img_w, height=img_w * 0.62)
+        img_h = img_w * 0.62
+        try:
+            _pil_probe = Image.open(slope_img_buf)
+            _iw, _ih = _pil_probe.size
+            if _iw > 0 and _ih > 0:
+                _ratio = _ih / _iw
+                if 0.25 <= _ratio <= 1.3:   # sanity clamp against a corrupt/odd image
+                    img_h = img_w * _ratio
+        except Exception:
+            pass
+        slope_img_buf.seek(0)
+        slope_img = RLImage(slope_img_buf, width=img_w, height=img_h)
         img_tbl = Table([[slope_img]], colWidths=[img_w], hAlign="CENTER")
         img_tbl.setStyle(TableStyle([
             ("LEFTPADDING",  (0,0), (-1,-1), 0),
@@ -214,6 +234,29 @@ def generate_pdf_report(
             "green = flat (&lt;3%), red = steep (&gt;10%).", _cap_style
         ))
     story.append(Spacer(1, 5*mm))
+
+    if slope_bins:
+        story.append(Paragraph("Slope Distribution", hdr_style))
+        _bin_labels = ["0% – 2.5%", "2.5% – 5%", "5% – 7.5%", "7.5% – 10%", "&gt; 10%"]
+        bins_data = [["Slope Range", "% of Site Area"]]
+        for _lbl, _pct in zip(_bin_labels, slope_bins):
+            bins_data.append([Paragraph(_lbl, body_style), f"{_pct:.1f}%"])
+        bins_tbl = Table(bins_data, colWidths=[usable*0.6, usable*0.4])
+        bins_tbl.setStyle(TableStyle([
+            ("FONTNAME",      (0,0), (-1,0), "Helvetica-Bold"),
+            ("FONTNAME",      (0,1), (-1,-1), "Helvetica"),
+            ("FONTSIZE",      (0,0), (-1,-1), 9),
+            ("BACKGROUND",    (0,0), (-1,0), MID_BLUE),
+            ("TEXTCOLOR",     (0,0), (-1,0), colors.white),
+            ("ROWBACKGROUNDS",(0,1), (-1,-1), [colors.white, LIGHT_BG]),
+            ("GRID",          (0,0), (-1,-1), 0.3, colors.HexColor("#cccccc")),
+            ("TOPPADDING",    (0,0), (-1,-1), 4),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+            ("LEFTPADDING",   (0,0), (-1,-1), 7),
+            ("ALIGN",         (1,1), (1,-1), "CENTER"),
+        ]))
+        story.append(bins_tbl)
+        story.append(Spacer(1, 5*mm))
 
     story.append(HRFlowable(width="100%", thickness=0.5,
                              color=colors.HexColor("#cccccc")))
@@ -1223,6 +1266,14 @@ with right:
 
         with st.spinner("Generating PDF report…"):
             pdf_slope_buf_for_pdf = pdf_slope_buf if HAS_SCIPY else None
+            _n_slope = len(s_valid)
+            _slope_bins = (
+                float((s_valid <= 2.5).sum() / _n_slope * 100),
+                float(((s_valid > 2.5) & (s_valid <= 5)).sum() / _n_slope * 100),
+                float(((s_valid > 5) & (s_valid <= 7.5)).sum() / _n_slope * 100),
+                float(((s_valid > 7.5) & (s_valid <= 10)).sum() / _n_slope * 100),
+                float((s_valid > 10).sum() / _n_slope * 100),
+            ) if _n_slope else None
             pdf_bytes = generate_pdf_report(
                 fname=fname, lat_c=lat_c, lon_c=lon_c,
                 area_ha=area_ha, grid_spacing=grid_spacing,
@@ -1233,6 +1284,7 @@ with right:
                 slope_img_buf=pdf_slope_buf_for_pdf,
                 verdict_label=verdict_label,
                 verdict_detail=verdict_detail,
+                slope_bins=_slope_bins,
                 project_name=st.session_state.get("topo_project_name", ""),
                 country=st.session_state.get("topo_country", ""),
             )
