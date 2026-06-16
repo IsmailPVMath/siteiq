@@ -124,6 +124,18 @@ st.markdown(f"""
     justify-content: center !important;
     font-weight: 700 !important;
   }}
+  /* Show/Hide sidebar control — made as visually prominent (solid white) as
+     "Manage Membership" so it can never be mistaken for missing/invisible. */
+  div[data-testid="stVerticalBlock"]:has(div.pvm-sb-toggle) div[data-testid="stButton"] > button {{
+    background: #ffffff !important;
+    color: #145f34 !important;
+    border: 1px solid #ffffff !important;
+    font-weight: 700 !important;
+  }}
+  div[data-testid="stVerticalBlock"]:has(div.pvm-sb-toggle) div[data-testid="stButton"] > button:hover {{
+    background: #eafaf0 !important;
+    color: #145f34 !important;
+  }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -142,11 +154,11 @@ with st.sidebar:
           </svg>
         </div>
         """, unsafe_allow_html=True)
-        st.markdown('<div class="pvm-toggle-row">', unsafe_allow_html=True)
-        if st.button("›", key="pvm_sb_show", use_container_width=True, help="Show sidebar"):
-            st.session_state["pvm_sidebar_open"] = True
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+        with st.container():
+            st.markdown('<div class="pvm-sb-toggle"></div>', unsafe_allow_html=True)
+            if st.button("›", key="pvm_sb_show", use_container_width=True, help="Show sidebar"):
+                st.session_state["pvm_sidebar_open"] = True
+                st.rerun()
 
     else:
         # ── Brand header ──────────────────────────────────────────────────
@@ -167,9 +179,11 @@ with st.sidebar:
         </div>
         """, unsafe_allow_html=True)
 
-        if st.button("‹  Hide sidebar", key="pvm_sb_hide", use_container_width=True):
-            st.session_state["pvm_sidebar_open"] = False
-            st.rerun()
+        with st.container():
+            st.markdown('<div class="pvm-sb-toggle"></div>', unsafe_allow_html=True)
+            if st.button("‹  Hide sidebar", key="pvm_sb_hide", use_container_width=True):
+                st.session_state["pvm_sidebar_open"] = False
+                st.rerun()
 
         # ── Top nav group: Overview ──────────────────────────────────────
         st.markdown('<div class="pvm-group-label">Overview</div>', unsafe_allow_html=True)
