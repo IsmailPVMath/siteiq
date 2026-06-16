@@ -4,8 +4,11 @@ Shared project context for SiteIQ, TopoIQ, and YieldIQ.
 Stores to st.session_state["pvm_project"].
 """
 
+import io
 import math
 import re
+import zipfile
+import xml.etree.ElementTree as ET
 import requests
 import streamlit as st
 import folium
@@ -71,6 +74,46 @@ def centroid_of(coords):
     lats = [c[0] for c in coords]
     lons = [c[1] for c in coords]
     return sum(lats) / len(lats), sum(lons) / len(lons)
+
+
+def parse_kml_polygon(data: bytes):
+    """Extract the full boundary polygon (not just centroid) from raw KML bytes.
+    Returns (coords [[lat, lon], ...], centroid_lat, centroid_lon, area_ha) or
+    (None, None, None, None) if no usable polygon is found."""
+    try:
+        root = ET.fromstring(data)
+        coords_el = root.find('.//{http://www.opengis.net/kml/2.2}coordinates')
+        if coords_el is None:
+            coords_el = root.find('.//coordinates')
+        if coords_el is None or not coords_el.text:
+            return None, None, None, None
+        coords = []
+        for token in coords_el.text.strip().split():
+            parts = token.split(',')
+            if len(parts) >= 2:
+                coords.append([float(parts[1]), float(parts[0])])  # KML is lon,lat → [lat, lon]
+        if len(coords) < 3:
+            return None, None, None, None
+        # Drop a closing vertex that duplicates the first (common in KML rings)
+        if coords[0] == coords[-1] and len(coords) > 3:
+            coords = coords[:-1]
+        clat, clon = centroid_of(coords)
+        area = polygon_area_ha(coords)
+        return coords, clat, clon, area
+    except Exception:
+        return None, None, None, None
+
+
+def parse_kmz_polygon(data: bytes):
+    """KMZ is a zipped KML — unzip and delegate to parse_kml_polygon()."""
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as z:
+            kml_name = next((n for n in z.namelist() if n.lower().endswith('.kml')), None)
+            if kml_name:
+                return parse_kml_polygon(z.read(kml_name))
+    except Exception:
+        pass
+    return None, None, None, None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -207,7 +250,7 @@ if True:
     _map_label = "🗺️ Draw on Map" if is_full else "🗺️ Search / Click on Map"
     loc_method = st.radio(
         "Input method",
-        [_map_label, "📐 Coordinates (Lat / Lon)", "🔗 Google Maps Link"],
+        [_map_label, "📐 Coordinates (Lat / Lon)", "🔗 Google Maps Link", "📁 KML / KMZ Upload"],
         horizontal=True,
         label_visibility="collapsed",
     )
@@ -228,9 +271,9 @@ if True:
     if loc_method == "📐 Coordinates (Lat / Lon)":
         _c1, _c2 = st.columns(2)
         with _c1:
-            lat = st.number_input("Latitude",  value=proj.get("lat", 48.5665), format="%.5f", key="proj_lat_in")
+            lat = st.number_input("↕️ Latitude",  value=proj.get("lat", 48.5665), format="%.5f", key="proj_lat_in")
         with _c2:
-            lon = st.number_input("Longitude", value=proj.get("lon", 12.1521), format="%.5f", key="proj_lon_in")
+            lon = st.number_input("↔️ Longitude", value=proj.get("lon", 12.1521), format="%.5f", key="proj_lon_in")
         if is_full:
             _coord_center = [lat, lon]
             st.markdown(
@@ -254,6 +297,48 @@ if True:
                     _coord_center = [lat, lon]
             else:
                 st.warning("Could not parse. Try pasting coordinates as '48.137, 11.576'.")
+
+    elif loc_method == "📁 KML / KMZ Upload":
+        kml_file = st.file_uploader(
+            "Upload site boundary file",
+            type=["kml", "kmz"],
+            label_visibility="collapsed",
+            help="Export a polygon boundary from Google Earth, QGIS, or your GIS tool as .kml or .kmz.",
+        )
+        if kml_file is not None:
+            _raw = kml_file.read()
+            if kml_file.name.lower().endswith(".kmz"):
+                _kcoords, _klat, _klon, _karea = parse_kmz_polygon(_raw)
+            else:
+                _kcoords, _klat, _klon, _karea = parse_kml_polygon(_raw)
+
+            if _kcoords:
+                lat, lon = _klat, _klon
+                if is_full:
+                    polygon_coords = _kcoords
+                    st.session_state["proj_polygon_draft"] = _kcoords
+                    st.session_state.pop("proj_polygon_cleared", None)
+                    st.session_state["proj_pin_lat"] = _klat
+                    st.session_state["proj_pin_lon"] = _klon
+                    _coord_center = [_klat, _klon]
+                    st.success(
+                        f"✅ Boundary imported from **{kml_file.name}** — "
+                        f"{len(_kcoords)} vertices · centroid {_klat:.5f}°N, {_klon:.5f}°E · "
+                        f"area **{_karea} ha**"
+                    )
+                else:
+                    st.session_state["proj_pin_lat"] = _klat
+                    st.session_state["proj_pin_lon"] = _klon
+                    _coord_center = [_klat, _klon]
+                    st.success(
+                        f"📌 Pin set from **{kml_file.name}** centroid: "
+                        f"{_klat:.5f}°N, {_klon:.5f}°E  (file boundary area: {_karea} ha)"
+                    )
+            else:
+                st.warning(
+                    "Could not extract a polygon from this file. Make sure it contains a "
+                    "boundary (Polygon/LinearRing), not just a point marker."
+                )
 
     # ── MAP ───────────────────────────────────────────────────────────────────
     if _is_map or (is_full and _coord_center):

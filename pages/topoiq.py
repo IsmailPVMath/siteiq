@@ -838,10 +838,10 @@ with left:
             with nav_tab2:
                 c1, c2 = st.columns(2)
                 with c1:
-                    lat_in = st.text_input("Latitude", placeholder="e.g. 26.8467",
+                    lat_in = st.text_input("↕️ Latitude", placeholder="e.g. 26.8467",
                                            key="coord_lat")
                 with c2:
-                    lon_in = st.text_input("Longitude", placeholder="e.g. 80.9462",
+                    lon_in = st.text_input("↔️ Longitude", placeholder="e.g. 80.9462",
                                            key="coord_lon")
 
                 coord_key = f"{lat_in}|{lon_in}"

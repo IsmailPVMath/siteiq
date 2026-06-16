@@ -20,7 +20,7 @@ import requests as _req
 import streamlit as st
 
 # ── Config ────────────────────────────────────────────────────
-FREE_LIMIT   = 5
+FREE_LIMIT   = 10
 STRIPE_LINK  = "https://buy.stripe.com/YOUR_LINK_HERE"
 PRICE_LABEL  = "€49 / month"
 
@@ -824,7 +824,7 @@ def render_auth_page(app_name: str = "PVMath"):
         with tab_register:
             st.markdown("""
             <div class="free-badge">
-              ✦ &nbsp;5 free analyses per module — no credit card required
+              ✦ &nbsp;10 free analyses per module — no credit card required
             </div>
             """, unsafe_allow_html=True)
 
@@ -957,7 +957,7 @@ def show_paywall(app_label: str):
         Free trial complete
       </div>
       <div style="font-size:0.88rem;color:#5a7a5a;line-height:1.6;margin-bottom:1.5rem;max-width:340px;margin-left:auto;margin-right:auto;">
-        You've used your 5 free {app_label} analyses. Upgrade to Professional for unlimited access to all modules.
+        You've used your 10 free {app_label} analyses. Upgrade to Professional for unlimited access to all modules.
       </div>
       <a href="{STRIPE_LINK}" target="_blank" style="
           display:inline-block;

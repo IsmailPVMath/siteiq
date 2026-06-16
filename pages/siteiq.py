@@ -830,24 +830,24 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
 
     story.append(Spacer(1, 0.3*cm))
 
-    # ── Rating Legend — two compact tables side by side ───────────────────────
+    # ── Rating Legend — small, stacked one below the other for readability ────
     story.append(section_hdr("RATING LEGEND"))
 
     # Performance ratings table
     perf_rows = [
-        [lp("Performance Rating", colors.white, bold=True, size=8), lp("Action", colors.white, bold=True, size=8)],
-        [lp("EXCELLENT / GOOD", C_GREEN,  bold=True, size=8), lp("All parameters ideal — proceed", MUTED, size=8)],
-        [lp("ACCEPTABLE",       C_YELLOW, bold=True, size=8), lp("Viable with constraints — monitor", MUTED, size=8)],
-        [lp("CHALLENGING",      C_ORANGE, bold=True, size=8), lp("Near limit — detailed study required", MUTED, size=8)],
-        [lp("CRITICAL",         C_RED,    bold=True, size=8), lp("Exceeds threshold — reconsider site", MUTED, size=8)],
+        [lp("Performance Rating", colors.white, bold=True, size=7), lp("Action", colors.white, bold=True, size=7)],
+        [lp("EXCELLENT / GOOD", C_GREEN,  bold=True, size=7), lp("All parameters ideal — proceed", MUTED, size=7)],
+        [lp("ACCEPTABLE",       C_YELLOW, bold=True, size=7), lp("Viable with constraints — monitor", MUTED, size=7)],
+        [lp("CHALLENGING",      C_ORANGE, bold=True, size=7), lp("Near limit — detailed study required", MUTED, size=7)],
+        [lp("CRITICAL",         C_RED,    bold=True, size=7), lp("Exceeds threshold — reconsider site", MUTED, size=7)],
     ]
-    pt = Table(perf_rows, colWidths=[4.5*cm, 5.5*cm])
+    pt = Table(perf_rows, colWidths=[3.8*cm, 6.2*cm])
     pt.setStyle(TableStyle([
         ("BACKGROUND",    (0,0), (-1,0),  ORANGE),
         ("GRID",          (0,0), (-1,-1), 0.5, colors.lightgrey),
-        ("TOPPADDING",    (0,0), (-1,-1), 5),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
-        ("LEFTPADDING",   (0,0), (-1,-1), 6),
+        ("TOPPADDING",    (0,0), (-1,-1), 3),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+        ("LEFTPADDING",   (0,0), (-1,-1), 4),
         ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
         ("ROWBACKGROUNDS",(0,1),(-1,-1), [colors.white, LGRAY]),
         ("BACKGROUND",    (0,1), (0,1), C_LGREEN),
@@ -858,19 +858,19 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
 
     # Flood risk table
     flood_rows = [
-        [lp("Flood Risk Rating", colors.white, bold=True, size=8), lp("Action", colors.white, bold=True, size=8)],
-        [lp("LOW RISK",       C_GREEN,  bold=True, size=8), lp("Verify at local flood portal", MUTED, size=8)],
-        [lp("LOW-MODERATE",   C_YELLOW, bold=True, size=8), lp("Cross-check official flood maps", MUTED, size=8)],
-        [lp("MODERATE RISK",  C_ORANGE, bold=True, size=8), lp("Manual flood risk check required", MUTED, size=8)],
-        [lp("HIGH RISK",      C_RED,    bold=True, size=8), lp("Flood zone study before proceeding", MUTED, size=8)],
+        [lp("Flood Risk Rating", colors.white, bold=True, size=7), lp("Action", colors.white, bold=True, size=7)],
+        [lp("LOW RISK",       C_GREEN,  bold=True, size=7), lp("Verify at local flood portal", MUTED, size=7)],
+        [lp("LOW-MODERATE",   C_YELLOW, bold=True, size=7), lp("Cross-check official flood maps", MUTED, size=7)],
+        [lp("MODERATE RISK",  C_ORANGE, bold=True, size=7), lp("Manual flood risk check required", MUTED, size=7)],
+        [lp("HIGH RISK",      C_RED,    bold=True, size=7), lp("Flood zone study before proceeding", MUTED, size=7)],
     ]
-    ft = Table(flood_rows, colWidths=[4.5*cm, 5.5*cm])
+    ft = Table(flood_rows, colWidths=[3.8*cm, 6.2*cm])
     ft.setStyle(TableStyle([
         ("BACKGROUND",    (0,0), (-1,0),  ORANGE),
         ("GRID",          (0,0), (-1,-1), 0.5, colors.lightgrey),
-        ("TOPPADDING",    (0,0), (-1,-1), 5),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
-        ("LEFTPADDING",   (0,0), (-1,-1), 6),
+        ("TOPPADDING",    (0,0), (-1,-1), 3),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+        ("LEFTPADDING",   (0,0), (-1,-1), 4),
         ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
         ("ROWBACKGROUNDS",(0,1),(-1,-1), [colors.white, LGRAY]),
         ("BACKGROUND",    (0,1), (0,1), C_LGREEN),
@@ -879,14 +879,10 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
         ("BACKGROUND",    (0,4), (0,4), C_LRED),
     ]))
 
-    # Side-by-side in a wrapper table
-    legend_wrapper = Table([[pt, Spacer(0.5*cm, 1), ft]], colWidths=[10*cm, 0.5*cm, 10*cm])
-    legend_wrapper.setStyle(TableStyle([
-        ("VALIGN", (0,0), (-1,-1), "TOP"),
-        ("LEFTPADDING",  (0,0), (-1,-1), 0),
-        ("RIGHTPADDING", (0,0), (-1,-1), 0),
-    ]))
-    story.append(legend_wrapper)
+    # Stacked vertically — performance legend, then flood risk legend below
+    story.append(pt)
+    story.append(Spacer(1, 0.3*cm))
+    story.append(ft)
 
     story.append(Spacer(1, 0.4*cm))
     story.append(HRFlowable(width="100%", thickness=1, color=BORDER))
@@ -1032,9 +1028,9 @@ with left:
             with nav2:
                 _c1, _c2 = st.columns(2)
                 with _c1:
-                    _lat_in = st.text_input("Latitude",  placeholder="e.g. 26.8467", key="siq_clat")
+                    _lat_in = st.text_input("↕️ Latitude",  placeholder="e.g. 26.8467", key="siq_clat")
                 with _c2:
-                    _lon_in = st.text_input("Longitude", placeholder="e.g. 80.9462", key="siq_clon")
+                    _lon_in = st.text_input("↔️ Longitude", placeholder="e.g. 80.9462", key="siq_clon")
                 _coord_key = f"{_lat_in}|{_lon_in}"
                 if _lat_in and _lon_in and _coord_key != st.session_state.get("siq_last_coord", ""):
                     try:
@@ -1095,8 +1091,8 @@ with left:
                 st.info("Search a location or click the map to pin your site.")
 
         elif method == "📐 Coordinates (Lat / Lon)":
-            lat = st.number_input("Latitude",  value=48.5665, format="%.5f")
-            lon = st.number_input("Longitude", value=12.1521, format="%.5f")
+            lat = st.number_input("↕️ Latitude",  value=48.5665, format="%.5f")
+            lon = st.number_input("↔️ Longitude", value=12.1521, format="%.5f")
 
         elif method == "🔗 Google Maps Link":
             st.caption("Paste a Google Maps URL **or** right-click any point in Google Maps → click the coordinates at the top → paste here.")
