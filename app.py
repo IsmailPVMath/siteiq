@@ -133,9 +133,12 @@ st.markdown(f"""
     color: #e6f5e6 !important;
     border: 1px solid #2d4a2d !important;
     border-radius: 6px !important;
-    font-size: 0.85rem !important;
+    font-size: 0.78rem !important;
     font-weight: 600 !important;
-    padding: 0.4rem 0.8rem !important;
+    padding: 0.28rem 0.7rem !important;
+    min-height: 0 !important;
+    height: auto !important;
+    line-height: 1.3 !important;
     justify-content: flex-start !important;
   }}
   section[data-testid="stSidebar"] .stButton > button:hover,
@@ -282,8 +285,8 @@ with st.sidebar:
                           background:#16241a;border-radius:6px;line-height:1.45;
                           border:1px solid #4ade80;margin-bottom:0.5rem;
                           overflow-wrap:break-word;word-break:normal;">
-                <span style="color:#ffffff;opacity:0.85;">Signed in as</span><br>
-                <strong style="color:#ffffff;font-size:0.82rem;overflow-wrap:break-word;">{email}</strong>
+                <span style="color:#ffffff;font-size:0.78rem;font-weight:600;">Signed in as</span><br>
+                <span style="color:#ffffff;font-size:0.78rem;font-weight:600;overflow-wrap:break-word;">{email}</span>
               </div>
             </div>
             """, unsafe_allow_html=True)
