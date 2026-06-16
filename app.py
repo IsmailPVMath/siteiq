@@ -1,5 +1,5 @@
 import streamlit as st
-from pvmath_auth import render_auth_page, sign_out, load_latest_project, STRIPE_LINK, PRICE_LABEL
+from pvmath_auth import render_auth_page, sign_out, load_latest_project, STRIPE_LINK
 
 st.set_page_config(
     page_title="PVMath — Solar Site Intelligence",
@@ -294,11 +294,26 @@ with st.sidebar:
             if st.button("Settings", key="pvm_settings_toggle", use_container_width=True):
                 st.session_state["pvm_show_settings"] = not st.session_state.get("pvm_show_settings", False)
             if st.session_state.get("pvm_show_settings"):
-                st.caption(f"Email: {email}")
-                st.caption("Additional account settings are coming soon.")
+                # Plain white text to match the rest of the sidebar — st.caption()
+                # renders in Streamlit's default muted grey, which looked
+                # inconsistent/illegible against the dark sidebar background.
+                st.markdown(
+                    f'<div style="font-size:0.8rem;color:#ffffff;line-height:1.6;'
+                    f'padding:0.1rem 0.1rem 0.4rem 0.1rem;">'
+                    f'Email: {email}<br>'
+                    f'Additional account settings are coming soon.'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
 
-            st.link_button("Manage Membership", STRIPE_LINK, use_container_width=True,
-                            help=f"Upgrade to Pro — {PRICE_LABEL}")
+            # "Manage Membership" just opens STRIPE_LINK — no price is hardcoded
+            # here anymore (it was stale at €49 and the popover tooltip overlapped
+            # surrounding sidebar content on touch/focus, looking broken). Once
+            # STRIPE_LINK points to a real Stripe Customer Portal session, Stripe
+            # itself will show the user's current plan and the correct upgrade
+            # path (e.g. Pro -> Developer) — that should live in Stripe's config,
+            # not be duplicated/hardcoded in the app.
+            st.link_button("Manage Membership", STRIPE_LINK, use_container_width=True)
 
             if st.button("Log out", key="sidebar_logout", use_container_width=True):
                 sign_out()

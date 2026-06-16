@@ -30,7 +30,7 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
 from pvmath_auth import (
     show_paywall, increment_usage, is_over_limit,
-    remaining, FREE_LIMIT, STRIPE_LINK, PRICE_LABEL,
+    remaining, FREE_LIMIT, STRIPE_LINK,
 )
 from pvmath_styles import inject_styles
 
@@ -99,7 +99,7 @@ _left = remaining(_uid, "yieldiq")
 if _left is not None and _left <= 2:
     st.warning(
         f"⚠️ {_left} free analysis{'es' if _left != 1 else ''} remaining on YieldIQ. "
-        f"[Upgrade — {PRICE_LABEL}]({STRIPE_LINK})"
+        f"[Upgrade to Professional]({STRIPE_LINK})"
     )
 
 # ─────────────────────────────────────────────────────────────────────────────

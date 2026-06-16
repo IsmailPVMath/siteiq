@@ -15,7 +15,7 @@ from streamlit_folium import st_folium
 from datetime import datetime
 from pvmath_auth import (
     show_paywall,
-    increment_usage, is_over_limit, remaining, FREE_LIMIT, STRIPE_LINK, PRICE_LABEL
+    increment_usage, is_over_limit, remaining, FREE_LIMIT, STRIPE_LINK
 )
 from pvmath_styles import inject_styles
 
@@ -1098,7 +1098,7 @@ with left:
              style="display:inline-block;background:linear-gradient(135deg,#1d9e52,#145f34);
                     color:#fff;font-weight:700;font-size:0.95rem;padding:0.75rem 2rem;
                     border-radius:9px;text-decoration:none;letter-spacing:0.01em;">
-            Upgrade — {PRICE_LABEL} →
+            Upgrade to Professional →
           </a>
           <div style="margin-top:1rem;font-size:0.78rem;color:#999;">
             Questions? <a href="mailto:contact@pvmath.de" style="color:#1d9e52;">contact@pvmath.de</a>

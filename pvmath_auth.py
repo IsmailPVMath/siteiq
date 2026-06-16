@@ -1087,7 +1087,7 @@ def show_paywall(app_label: str):
           color:#fff;text-decoration:none;padding:0.8rem 2rem;
           border-radius:9px;font-weight:700;font-size:0.95rem;
           box-shadow:0 4px 16px rgba(29,158,82,.3);
-      ">Upgrade — {PRICE_LABEL} →</a>
+      ">Upgrade to Professional →</a>
       <div style="font-size:0.75rem;color:#5a7a5a;margin-top:1rem;">
         Cancel anytime &nbsp;·&nbsp; All modules included &nbsp;·&nbsp; VAT invoice provided
       </div>
