@@ -327,3 +327,17 @@ with _tb_r:
             st.switch_page("pages/project.py")
 
 pg.run()
+
+# ── Re-assert the session token into the URL, AFTER navigation ────────────────
+# Streamlit's own multipage router (st.navigation + page_link/switch_page) can
+# silently strip query params from the visible browser URL on a page switch —
+# this is a known Streamlit front-end behavior, not something our code does.
+# Since "s" (the Supabase refresh token) is the ONLY thing that lets a hard
+# refresh restore the session, losing it from the address bar after navigating
+# anywhere in the app meant every subsequent refresh forced a fresh login. Re-
+# writing it here, as the very last thing this script does, makes sure the URL
+# always carries the current token by the time the page settles — regardless
+# of what page-routing did to it during this run.
+_rt = st.session_state.get("pvm_refresh_token", "")
+if _rt and st.query_params.get("s") != _rt:
+    st.query_params["s"] = _rt

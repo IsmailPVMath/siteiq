@@ -130,26 +130,37 @@ def sign_out():
 
 
 def _refresh_session(refresh_token: str) -> dict:
-    """Exchange a stored refresh token for a new Supabase session."""
+    """Exchange a stored refresh token for a new Supabase session.
+
+    Distinguishes a genuine "this token is dead" rejection from a transient
+    network/timeout error reaching Supabase. The caller uses this to decide
+    whether it's safe to wipe the stored token from the URL — wiping it on a
+    transient hiccup permanently locks the user out on every future refresh,
+    since there's nothing left to retry with.
+    """
     try:
         r = _req.post(
             f"{_sb_url()}/auth/v1/token?grant_type=refresh_token",
             json={"refresh_token": refresh_token},
             headers=_auth_hdr(), timeout=15,
         )
-        if r.status_code == 200:
-            data = r.json()
-            user = data.get("user", {})
-            return {
-                "success":       True,
-                "user_id":       user.get("id", ""),
-                "email":         user.get("email", ""),
-                "access_token":  data.get("access_token", ""),
-                "refresh_token": data.get("refresh_token", refresh_token),
-            }
     except Exception:
-        pass
-    return {"success": False}
+        # Couldn't even reach Supabase — not proof the token is invalid.
+        return {"success": False, "retry": True}
+
+    if r.status_code == 200:
+        data = r.json()
+        user = data.get("user", {})
+        return {
+            "success":       True,
+            "user_id":       user.get("id", ""),
+            "email":         user.get("email", ""),
+            "access_token":  data.get("access_token", ""),
+            "refresh_token": data.get("refresh_token", refresh_token),
+        }
+    # Supabase responded and explicitly rejected the token (expired / already
+    # rotated / revoked) — this one really is dead.
+    return {"success": False, "retry": False}
 
 
 def resend_confirmation(email: str) -> dict:
@@ -518,11 +529,19 @@ def render_auth_page(app_name: str = "PVMath"):
                 st.session_state["pvm_user_id"]      = _restored["user_id"]
                 st.session_state["pvm_email"]        = _restored["email"]
                 st.session_state["pvm_access_token"] = _restored["access_token"]
+                # Keep an in-memory copy too — Streamlit's multipage navigation
+                # can silently strip "s" from the visible URL on a page switch
+                # (frontend-only; known Streamlit behavior), so app.py re-asserts
+                # it from this session_state copy at the end of every script run.
+                st.session_state["pvm_refresh_token"] = _restored["refresh_token"]
                 # Update param with rotated refresh token
                 st.query_params["s"] = _restored["refresh_token"]
-            else:
-                # Token expired — clear it
+            elif not _restored.get("retry"):
+                # Supabase explicitly rejected the token — it's genuinely dead.
                 st.query_params.clear()
+            # else: transient network/timeout error — leave "s" in the URL
+            # untouched. Wiping it here on a hiccup is what was forcing a full
+            # re-login on every refresh, even when the token was still good.
 
     # Already logged in?
     if st.session_state.get("pvm_user_id"):
@@ -660,6 +679,7 @@ def render_auth_page(app_name: str = "PVMath"):
                                     st.session_state["pvm_email"]        = result["user"].get("email")
                                     st.session_state["pvm_access_token"] = result.get("access_token", "")
                                     if result.get("refresh_token"):
+                                        st.session_state["pvm_refresh_token"] = result["refresh_token"]
                                         st.query_params["s"] = result["refresh_token"]
                                     st.rerun()
                                 else:
@@ -924,6 +944,7 @@ def render_auth_page(app_name: str = "PVMath"):
                             st.session_state["pvm_email"]        = result["user"].get("email") or reg_email
                             st.session_state["pvm_access_token"] = result["access_token"]
                             if result.get("refresh_token"):
+                                st.session_state["pvm_refresh_token"] = result["refresh_token"]
                                 st.query_params["s"] = result["refresh_token"]
                         else:
                             # Fallback: sign in with password
@@ -933,6 +954,7 @@ def render_auth_page(app_name: str = "PVMath"):
                                 st.session_state["pvm_email"]        = _r["user"].get("email")
                                 st.session_state["pvm_access_token"] = _r.get("access_token", "")
                                 if _r.get("refresh_token"):
+                                    st.session_state["pvm_refresh_token"] = _r["refresh_token"]
                                     st.query_params["s"] = _r["refresh_token"]
                         st.rerun()
                     else:
@@ -989,6 +1011,7 @@ def render_auth_page(app_name: str = "PVMath"):
                         st.session_state["pvm_email"]        = result["user"].get("email")
                         st.session_state["pvm_access_token"] = result.get("access_token", "")
                         if result.get("refresh_token"):
+                            st.session_state["pvm_refresh_token"] = result["refresh_token"]
                             st.query_params["s"] = result["refresh_token"]
                         st.rerun()
                     elif result.get("error") == "email_not_confirmed":
