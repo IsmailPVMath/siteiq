@@ -1,5 +1,5 @@
 import streamlit as st
-from pvmath_auth import render_auth_page, sign_out, load_project
+from pvmath_auth import render_auth_page, sign_out, load_project, STRIPE_LINK, PRICE_LABEL
 
 st.set_page_config(
     page_title="PVMath — Solar Site Intelligence",
@@ -54,6 +54,17 @@ with st.sidebar:
       section[data-testid="stSidebar"] * {{
         font-family: 'Inter', sans-serif !important;
       }}
+      /* Make the sidebar's main vertical block a column flex container so the
+         last-rendered group (account/settings/logout) can be pinned to the bottom. */
+      section[data-testid="stSidebar"] > div:first-child {{
+        height: 100% !important;
+      }}
+      section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] {{
+        height: 100%;
+      }}
+      section[data-testid="stSidebar"] div[data-testid="stVerticalBlockBorderWrapper"]:has(div.pvm-bottom-anchor) {{
+        margin-top: auto !important;
+      }}
       /* Collapse toggle button */
       [data-testid="stSidebarCollapseButton"] {{
         background: #1a2e1a !important;
@@ -84,8 +95,14 @@ with st.sidebar:
         font-size: 0.92rem !important;
         color: inherit !important;
       }}
-      /* Logout button */
-      section[data-testid="stSidebar"] .stButton > button {{
+      .pvm-group-label {{
+        font-size: 0.6rem; font-weight: 800; text-transform: uppercase;
+        letter-spacing: 0.14em; color: #4ade80;
+        margin: 1.1rem 0 0.4rem 0.1rem;
+      }}
+      /* Generic sidebar buttons (logout, settings, membership) */
+      section[data-testid="stSidebar"] .stButton > button,
+      section[data-testid="stSidebar"] .stLinkButton > a {{
         background: #1a2e1a !important;
         color: #c8e6c9 !important;
         border: 1px solid #2d4a2d !important;
@@ -93,15 +110,29 @@ with st.sidebar:
         font-size: 0.82rem !important;
         font-weight: 600 !important;
         padding: 0.35rem 0.8rem !important;
+        justify-content: flex-start !important;
       }}
-      section[data-testid="stSidebar"] .stButton > button:hover {{
-        background: #e53935 !important;
+      section[data-testid="stSidebar"] .stButton > button:hover,
+      section[data-testid="stSidebar"] .stLinkButton > a:hover {{
+        background: #1d3a1d !important;
         color: #fff !important;
-        border-color: #e53935 !important;
+        border-color: #2d4a2d !important;
+      }}
+      div[data-testid="stPopover"] > div > button {{
+        background: #1a2e1a !important;
+        color: #c8e6c9 !important;
+        border: 1px solid #2d4a2d !important;
+        border-radius: 8px !important;
+        font-size: 0.82rem !important;
+        font-weight: 600 !important;
+      }}
+      div[data-testid="stPopover"] > div > button:hover {{
+        background: #1d3a1d !important;
+        color: #fff !important;
       }}
     </style>
-    <div style="padding:0.8rem 0 0.9rem 0;border-bottom:1px solid #1d3a1d;margin-bottom:0.8rem;">
-      <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.7rem;">
+    <div style="padding:0.8rem 0 0.9rem 0;border-bottom:1px solid #1d3a1d;margin-bottom:0.4rem;">
+      <div style="display:flex;align-items:center;gap:0.6rem;">
         <svg width="34" height="34" viewBox="0 0 46 46" xmlns="http://www.w3.org/2000/svg">
           <rect width="46" height="46" rx="10" fill="#145f34"/>
           <path d="M0 10 Q0 0 10 0 H36 Q46 0 46 10 V14 H0 Z" fill="#1d9e52"/>
@@ -113,77 +144,76 @@ with st.sidebar:
           <div style="font-size:0.63rem;color:#4ade80;font-weight:700;letter-spacing:0.06em;">SOLAR SITE INTELLIGENCE</div>
         </div>
       </div>
-      <div style="font-size:0.71rem;color:#a5c8a5;padding:0.3rem 0.6rem;
-                  background:#1a2e1a;border-radius:6px;line-height:1.4;border:1px solid #2d4a2d;">
-        <span style="opacity:0.65;">Logged in as</span><br>
-        <strong style="color:#e8f5e8;word-break:break-all;">{email}</strong>
-      </div>
     </div>
     """, unsafe_allow_html=True)
 
-    if st.button("Log out", key="sidebar_logout", use_container_width=True):
-        sign_out()
-        st.rerun()
+    # ── Top nav group: Overview ────────────────────────────────────────────
+    st.markdown('<div class="pvm-group-label" style="margin-top:0.2rem;">Overview</div>',
+                unsafe_allow_html=True)
+    st.page_link("pages/project.py", label="Overview", icon="🏠")
 
-    st.markdown("""
-    <div style="margin-top:1.2rem;margin-bottom:0.5rem;">
-      <div style="font-size:0.6rem;font-weight:800;text-transform:uppercase;
-                  letter-spacing:0.14em;color:#4ade80;">Modules</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.page_link("pages/project.py",  label="Project",  icon="📋")
-    st.page_link("pages/siteiq.py",   label="SiteIQ",   icon="🌍")
-
+    # ── Modules group ──────────────────────────────────────────────────────
+    st.markdown('<div class="pvm-group-label">Modules</div>', unsafe_allow_html=True)
+    st.page_link("pages/siteiq.py",  label="SiteIQ",  icon="🌍")
     # TopoIQ — greyed out unless project is in Full Mode with a drawn boundary
-    st.page_link("pages/topoiq.py",   label="TopoIQ",   icon="⛰️", disabled=not _topo_ok)
-
-    st.page_link("pages/yieldiq.py",  label="YieldIQ",  icon="⚡")
+    st.page_link("pages/topoiq.py",  label="TopoIQ",  icon="⛰️", disabled=not _topo_ok)
+    st.page_link("pages/yieldiq.py", label="YieldIQ", icon="⚡")
     if _user_email in _ADMIN:
         st.page_link("pages/_layoutiq.py", label="LayoutIQ", icon="📐")
 
-# ── Top-bar: account chip + sign-out (always visible even if sidebar collapsed) ──
-_tb_email = st.session_state.get("pvm_email", "")
-if _tb_email:
-    st.markdown("""
-    <style>
-    .pvm-topbar {
-        display: flex; justify-content: flex-end; align-items: center;
-        gap: 0.6rem; padding: 0.3rem 0 0.5rem 0; margin-bottom: 0.2rem;
-    }
-    .pvm-topbar-email {
-        font-size: 0.78rem; font-weight: 600; color: #4a6a4a;
-        background: #f0faf5; border: 1px solid #b2dfca;
-        border-radius: 20px; padding: 0.22rem 0.75rem;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        max-width: 220px;
-    }
-    /* Style the sign-out button inline with the chip */
-    div[data-testid="stButton"].pvm-signout-btn > button {
-        font-size: 0.78rem !important; font-weight: 600 !important;
-        padding: 0.2rem 0.75rem !important; border-radius: 20px !important;
-        border: 1px solid #e0d0c0 !important;
-        background: #fff8f5 !important; color: #8a4a2a !important;
-        line-height: 1.4 !important; height: auto !important;
-    }
-    div[data-testid="stButton"].pvm-signout-btn > button:hover {
-        background: #e53935 !important; color: #fff !important;
-        border-color: #e53935 !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+    # ── Bottom-pinned group: account / settings / membership / logout ───────
+    with st.container():
+        st.markdown('<div class="pvm-bottom-anchor"></div>', unsafe_allow_html=True)
+        st.markdown(f"""
+        <div style="margin-top:0.8rem;padding-top:0.8rem;border-top:1px solid #1d3a1d;">
+          <div style="font-size:0.71rem;color:#a5c8a5;padding:0.3rem 0.6rem;
+                      background:#1a2e1a;border-radius:6px;line-height:1.4;
+                      border:1px solid #2d4a2d;margin-bottom:0.5rem;">
+            <span style="opacity:0.65;">Logged in as</span><br>
+            <strong style="color:#e8f5e8;word-break:break-all;">{email}</strong>
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-    _tb_l, _tb_r = st.columns([7, 3])
-    with _tb_r:
-        _chip_col, _btn_col = st.columns([3, 2])
-        with _chip_col:
-            st.markdown(f'<div class="pvm-topbar-email">👤 {_tb_email}</div>',
-                        unsafe_allow_html=True)
-        with _btn_col:
-            st.markdown('<div class="pvm-signout-btn">', unsafe_allow_html=True)
-            if st.button("Sign out", key="topbar_signout"):
-                sign_out()
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+        with st.popover("⚙️ Settings", use_container_width=True):
+            st.caption(f"**Email**\n\n{email}")
+            st.caption("More account settings are coming soon.")
+
+        st.link_button("💳 Manage Membership", STRIPE_LINK, use_container_width=True,
+                        help=f"Upgrade to Pro — {PRICE_LABEL}")
+
+        if st.button("🚪 Log out", key="sidebar_logout", use_container_width=True):
+            sign_out()
+            st.rerun()
+
+# ── Top-right "+ New Project" action (replaces the old redundant top-bar) ─────
+st.markdown("""
+<style>
+div[data-testid="stButton"].pvm-newproj-btn > button {
+    font-size: 0.82rem !important; font-weight: 700 !important;
+    padding: 0.3rem 0.9rem !important; border-radius: 20px !important;
+    border: 1px solid #1d9e52 !important;
+    background: #1d9e52 !important; color: #fff !important;
+    line-height: 1.4 !important; height: auto !important;
+}
+div[data-testid="stButton"].pvm-newproj-btn > button:hover {
+    background: #168442 !important; border-color: #168442 !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+_tb_l, _tb_r = st.columns([8, 2])
+with _tb_r:
+    st.markdown('<div class="pvm-newproj-btn">', unsafe_allow_html=True)
+    if st.button("+ New Project", key="topbar_new_project", use_container_width=True):
+        for _k in [
+            "pvm_project", "proj_mode_sel", "proj_pin_lat", "proj_pin_lon",
+            "proj_map_center", "proj_map_zoom", "proj_last_search",
+            "proj_polygon_draft", "proj_polygon_cleared", "proj_edit_mode",
+            "map_center", "map_zoom", "map_lat", "map_lon", "last_map_search",
+        ]:
+            st.session_state.pop(_k, None)
+        st.switch_page("pages/project.py")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 pg.run()

@@ -208,6 +208,23 @@ def generate_pdf_report(
         ("BOTTOMPADDING",(0,0), (-1,-1), 0),
     ]))
     story.append(img_tbl)
+    story.append(Spacer(1, 2*mm))
+
+    _cap_style = ParagraphStyle(
+        "mapcap", fontName="Helvetica", fontSize=6.5,
+        textColor=colors.HexColor("#999"), alignment=TA_CENTER, leading=8.5
+    )
+    cap_tbl = Table([[
+        Paragraph("Elevation Map — ground height (m) across the site grid, from the DEM.", _cap_style),
+        Paragraph("Slope Map — steepness (%) derived from elevation; green = flat, red = steep.", _cap_style),
+    ]], colWidths=[img_w, img_w], hAlign="CENTER")
+    cap_tbl.setStyle(TableStyle([
+        ("LEFTPADDING",  (0,0), (-1,-1), 0),
+        ("RIGHTPADDING", (0,0), (-1,-1), 3),
+        ("TOPPADDING",   (0,0), (-1,-1), 0),
+        ("BOTTOMPADDING",(0,0), (-1,-1), 0),
+    ]))
+    story.append(cap_tbl)
     story.append(Spacer(1, 5*mm))
 
     story.append(HRFlowable(width="100%", thickness=0.5,

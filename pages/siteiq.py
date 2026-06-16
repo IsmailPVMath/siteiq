@@ -277,18 +277,112 @@ def get_solar_data(lat, lon):
         return {"success": False, "error": str(e)}
 
 
-def get_terrain_data(lat, lon, radius_km=0.5):
-    delta = radius_km / 111.0
-    points = [
-        (lat,         lon),
-        (lat + delta, lon),
-        (lat - delta, lon),
-        (lat,         lon + delta),
-        (lat,         lon - delta),
-    ]
-    locations = "|".join(f"{p[0]},{p[1]}" for p in points)
+def _point_in_polygon(plat, plon, poly):
+    """Ray-casting point-in-polygon test. poly = [[lat, lon], ...]."""
+    n = len(poly)
+    inside = False
+    j = n - 1
+    for i in range(n):
+        lat_i, lon_i = poly[i]
+        lat_j, lon_j = poly[j]
+        if (lon_i > plon) != (lon_j > plon):
+            x = (lat_j - lat_i) * (plon - lon_i) / ((lon_j - lon_i) or 1e-15) + lat_i
+            if plat < x:
+                inside = not inside
+        j = i
+    return inside
+
+
+def _haversine_m(lat1, lon1, lat2, lon2):
+    R = 6_371_000
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlmb = math.radians(lon2 - lon1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dlmb / 2) ** 2
+    return 2 * R * math.asin(math.sqrt(a))
+
+
+def get_terrain_data(lat, lon, polygon=None, radius_km=0.5):
+    """
+    Slope/elevation screening.
+    - If `polygon` (the drawn site boundary, [[lat,lon],...]) is supplied, samples a grid
+      of points across the ACTUAL boundary — same spirit as TopoIQ's full-grid analysis,
+      just coarser — so the verdict reflects the whole site, not just the pin.
+    - Otherwise (Quick Mode, pin only), samples a denser 8-direction ring around the pin
+      (9 points total, up from the old 4-direction/5-point cross) for the best estimate
+      obtainable from a single point.
+    """
     in_europe = 34 <= lat <= 72 and -25 <= lon <= 45
     dataset   = "eudem25m" if in_europe else "srtm30m"
+
+    if polygon and len(polygon) >= 3:
+        lats = [p[0] for p in polygon]
+        lons = [p[1] for p in polygon]
+        lat_min, lat_max = min(lats), max(lats)
+        lon_min, lon_max = min(lons), max(lons)
+
+        GRID_N = 7
+        grid_pts = []
+        for i in range(GRID_N):
+            for j in range(GRID_N):
+                glat = lat_min + (lat_max - lat_min) * (i + 0.5) / GRID_N
+                glon = lon_min + (lon_max - lon_min) * (j + 0.5) / GRID_N
+                if _point_in_polygon(glat, glon, polygon):
+                    grid_pts.append((glat, glon))
+
+        if len(grid_pts) < 4:
+            clat, clon = sum(lats) / len(lats), sum(lons) / len(lons)
+            grid_pts = list(polygon) + [(clat, clon)]
+
+        grid_pts = grid_pts[:40]  # keep the API request size reasonable
+        locations = "|".join(f"{p[0]},{p[1]}" for p in grid_pts)
+        try:
+            r = requests.get(
+                f"https://api.opentopodata.org/v1/{dataset}",
+                params={"locations": locations}, timeout=20
+            )
+            results = r.json().get("results", [])
+            pts = [(grid_pts[i][0], grid_pts[i][1], res["elevation"])
+                   for i, res in enumerate(results) if res.get("elevation") is not None]
+            if len(pts) < 4:
+                return {"success": False, "error": "Insufficient data"}
+
+            slopes = []
+            for i, (la1, lo1, z1) in enumerate(pts):
+                nearest = sorted(
+                    ((j, _haversine_m(la1, lo1, pts[j][0], pts[j][1])) for j in range(len(pts)) if j != i),
+                    key=lambda x: x[1]
+                )[:3]
+                for j, d in nearest:
+                    if d > 0:
+                        slopes.append(abs(pts[j][2] - z1) / d * 100)
+
+            if not slopes:
+                return {"success": False, "error": "Insufficient data"}
+
+            zs = [p[2] for p in pts]
+            return {
+                "success":          True,
+                "center_elev":      round(zs[len(zs) // 2], 1),
+                "max_slope_pct":    round(max(slopes), 1),
+                "elevation_range":  round(max(zs) - min(zs), 1),
+                "sample_points":    len(pts),
+                "pct_over5":        round(100 * sum(1 for s in slopes if s > 5) / len(slopes)),
+                "pct_over10":       round(100 * sum(1 for s in slopes if s > 10) / len(slopes)),
+                "boundary_sampled": True,
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    # ── Quick Mode: denser 8-direction ring around the pin ────────────────────
+    delta  = radius_km / 111.0
+    dist_m = radius_km * 1000.0
+    dirs = [
+        (1, 0), (-1, 0), (0, 1), (0, -1),
+        (0.7071, 0.7071), (0.7071, -0.7071), (-0.7071, 0.7071), (-0.7071, -0.7071),
+    ]
+    points = [(lat, lon)] + [(lat + dy * delta, lon + dx * delta) for dy, dx in dirs]
+    locations = "|".join(f"{p[0]},{p[1]}" for p in points)
     try:
         r = requests.get(
             f"https://api.opentopodata.org/v1/{dataset}",
@@ -298,13 +392,15 @@ def get_terrain_data(lat, lon, radius_km=0.5):
         results = r.json().get("results", [])
         elevs = [res["elevation"] for res in results if res.get("elevation") is not None]
         if len(elevs) >= 5:
-            ns = abs(elevs[1] - elevs[2]) / (2 * radius_km * 1000) * 100
-            ew = abs(elevs[3] - elevs[4]) / (2 * radius_km * 1000) * 100
+            center = elevs[0]
+            slopes = [abs(e - center) / dist_m * 100 for e in elevs[1:]]
             return {
-                "success":         True,
-                "center_elev":     round(elevs[0], 1),
-                "max_slope_pct":   round(max(ns, ew), 1),
-                "elevation_range": round(max(elevs) - min(elevs), 1),
+                "success":          True,
+                "center_elev":      round(center, 1),
+                "max_slope_pct":    round(max(slopes), 1),
+                "elevation_range":  round(max(elevs) - min(elevs), 1),
+                "sample_points":    len(elevs),
+                "boundary_sampled": False,
             }
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -747,6 +843,23 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
         ("VALIGN",        (0,0),(-1,-1), "MIDDLE"),
     ]))
     story.append(mt)
+
+    if terrain.get("success"):
+        if terrain.get("boundary_sampled"):
+            _slope_note = (
+                f"Slope assessed from {terrain.get('sample_points','—')} sample points across the drawn site "
+                f"boundary — {terrain.get('pct_over5','—')}% of points &gt;5% slope, "
+                f"{terrain.get('pct_over10','—')}% &gt;10%. Run TopoIQ for full-resolution, area-weighted terrain stats."
+            )
+        else:
+            _slope_note = (
+                f"Slope estimated from {terrain.get('sample_points','—')} elevation samples within a 500m radius "
+                "of the pin (no site boundary drawn). Run TopoIQ for full-resolution terrain analysis."
+            )
+        story.append(Spacer(1, 0.15*cm))
+        story.append(Paragraph(_slope_note,
+            ParagraphStyle("SlopeNote", parent=styles["Normal"], fontSize=7, textColor=MUTED, leading=10)))
+
     story.append(Spacer(1, 0.5*cm))
 
     # ── Monthly Irradiation Bar Chart ────────────────────────────────────────
@@ -1175,7 +1288,8 @@ with right:
         with st.spinner("Fetching solar resource data from EU PVGIS…"):
             solar = get_solar_data(lat, lon)
         with st.spinner("Analysing terrain & slope…"):
-            terrain = get_terrain_data(lat, lon)
+            _proj_polygon = _proj.get("polygon_coords") if _proj.get("mode") == "full" else None
+            terrain = get_terrain_data(lat, lon, polygon=_proj_polygon)
 
         s_lbl, _, s_detail = assess_slope(terrain["max_slope_pct"] if terrain["success"] else 0, _mount_type)
         g_lbl, _, g_detail = assess_solar(solar["annual_ghi"]       if solar["success"]   else 0)
@@ -1214,6 +1328,20 @@ with right:
                 f'</div>',
                 unsafe_allow_html=True
             )
+
+        if terrain.get("success"):
+            if terrain.get("boundary_sampled"):
+                st.caption(
+                    f"📐 Slope assessed from {terrain.get('sample_points','—')} sample points across your drawn "
+                    f"site boundary — {terrain.get('pct_over5','—')}% of points >5% slope, "
+                    f"{terrain.get('pct_over10','—')}% >10%. Run TopoIQ for full-resolution, area-weighted terrain stats."
+                )
+            else:
+                st.caption(
+                    f"📍 Slope estimated from {terrain.get('sample_points','—')} elevation samples within a 500m "
+                    "radius of the pin. Draw a site boundary in Project Setup for boundary-based sampling, or run "
+                    "TopoIQ for full-resolution terrain analysis."
+                )
 
         st.divider()
 
