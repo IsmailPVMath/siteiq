@@ -71,10 +71,6 @@ if _uid_for_load and "pvm_project" not in st.session_state:
 # is a tiny, low-contrast icon whose position changes across Streamlit versions —
 # users were losing the sidebar with no way to bring it back. Our own button is
 # always rendered, always labelled, and always works the same way.
-_proj      = st.session_state.get("pvm_project", {})
-_proj_mode = _proj.get("mode", "")
-_topo_ok   = _proj_mode == "full" and bool(_proj.get("polygon_coords"))
-
 st.session_state.setdefault("pvm_sidebar_open", True)
 _sb_open  = st.session_state["pvm_sidebar_open"]
 _sb_width = "250px" if _sb_open else "60px"
@@ -296,12 +292,15 @@ with st.sidebar:
         st.page_link("pages/my_projects.py", label="My Projects")
 
         # ── Modules group ────────────────────────────────────────────────
-        st.markdown('<div class="pvm-group-label">Modules</div>', unsafe_allow_html=True)
-        st.page_link("pages/siteiq.py",  label="SiteIQ")
-        # TopoIQ — greyed out unless project is in Full Mode with a drawn boundary
-        st.page_link("pages/topoiq.py",  label="TopoIQ", disabled=not _topo_ok)
-        st.page_link("pages/yieldiq.py", label="YieldIQ")
+        # SiteIQ / TopoIQ / YieldIQ direct links removed on purpose: jumping in
+        # straight from the sidebar bypasses the "Continue to <Module>" buttons
+        # at the bottom of pages/project.py, which are what actually save the
+        # drawn/uploaded site boundary into session_state before switching page.
+        # A sidebar shortcut landed users on a blank, un-pre-filled module page
+        # that looked like a stale/broken duplicate of the one they just set up.
+        # The only supported way into a module is now via Project -> Continue.
         if _user_email in _ADMIN:
+            st.markdown('<div class="pvm-group-label">Modules</div>', unsafe_allow_html=True)
             st.page_link("pages/_layoutiq.py", label="LayoutIQ")
 
         # ── Bottom-pinned group: account / settings / membership / logout ──

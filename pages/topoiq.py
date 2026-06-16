@@ -1358,21 +1358,27 @@ with right:
 
     else:
         st.caption("Draw or upload your site boundary on the left, then click Run Terrain Analysis.")
+        wc1, wc2 = st.columns(2)
         _wcards = [
-            ("#1565c0", "SATELLITE DEM", "Copernicus GLO-30 · ~2.4m resolution · Global coverage"),
-            ("#1d9e52", "CIVIL 3D READY", "LandXML TIN surface · import directly, no conversion"),
-            ("#b8960c", "DXF CONTOURS", "Major & minor contour lines · configurable intervals"),
-            ("#7b4fc9", "XYZ POINT CLOUD", "Easting / Northing / Elevation CSV for any tool"),
-            ("#1d9e52", "SLOPE ANALYSIS", "Mean slope · % area over threshold · tracker suitability"),
-            ("#c0622a", "ACCURACY REPORT", "Source · resolution · RMSE · vegetation warnings"),
+            (wc1, "#1a2a3a", "#0f1e2a", "#2a4060", "#5b9bd5",
+             "SATELLITE DEM", "Copernicus GLO-30 · ~2.4m resolution · Global coverage"),
+            (wc2, "#1a3a2a", "#0f2a1e", "#2a6040", "#4caf82",
+             "CIVIL 3D READY", "LandXML TIN surface · import directly, no conversion"),
+            (wc1, "#2a2a1a", "#1e1e0f", "#5a5a20", "#d4c44a",
+             "DXF CONTOURS", "Major & minor contour lines · configurable intervals"),
+            (wc2, "#2a1a3a", "#1e0f2a", "#5a3a80", "#a87fd4",
+             "XYZ POINT CLOUD", "Easting / Northing / Elevation CSV for any tool"),
+            (wc1, "#1a3a2a", "#0f2a1e", "#2a6040", "#4caf82",
+             "SLOPE ANALYSIS", "Mean slope · % area over threshold · tracker suitability"),
+            (wc2, "#2a1a1a", "#1e0f0f", "#6a2a2a", "#d47a4a",
+             "ACCURACY REPORT", "Source · resolution · RMSE · vegetation warnings"),
         ]
-        for _tc, _title, _desc in _wcards:
-            st.markdown(
-                f'<div style="background:#fafafa;border:1px solid #e2e2e2;'
-                f'border-left:3px solid {_tc};border-radius:6px;'
-                f'padding:0.55rem 0.85rem;margin-bottom:0.5rem;">'
-                f'<span style="font-weight:700;color:#222;font-size:0.82rem;">{_title}</span>'
-                f'<span style="color:#666;font-size:0.78rem;"> &nbsp;·&nbsp; {_desc}</span>'
+        for _col, _bg1, _bg2, _bd, _tc, _title, _desc in _wcards:
+            _col.markdown(
+                f'<div style="background:linear-gradient(135deg,{_bg1},{_bg2});'
+                f'border:1px solid {_bd};border-radius:10px;padding:1rem;margin-bottom:0.75rem;">'
+                f'<div style="color:{_tc};font-weight:700;font-size:0.9rem;">{_title}</div>'
+                f'<div style="color:#ccc;font-size:0.78rem;margin-top:0.3rem;">{_desc}</div>'
                 f'</div>',
                 unsafe_allow_html=True
             )
