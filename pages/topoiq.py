@@ -44,7 +44,7 @@ def generate_pdf_report(
     fname, lat_c, lon_c, area_ha, grid_spacing,
     z_min, z_max, z_range, mean_slope, max_slope,
     pct_over5, pct_over10,
-    elev_img_buf, slope_img_buf,
+    slope_img_buf,
     verdict_label, verdict_detail,
     project_name="", country=""
 ):
@@ -189,42 +189,30 @@ def generate_pdf_report(
     story.append(v_tbl)
     story.append(Spacer(1, 5*mm))
 
-    story.append(Paragraph("Visual Maps", hdr_style))
-    img_w = (usable - 6*mm) / 2
+    story.append(Paragraph("Slope Map", hdr_style))
+    img_w = usable
 
-    imgs = []
-    for buf_img in [elev_img_buf, slope_img_buf]:
-        if buf_img:
-            buf_img.seek(0)
-            imgs.append(RLImage(buf_img, width=img_w, height=img_w * 0.82))
-        else:
-            imgs.append(Spacer(img_w, img_w * 0.82))
+    if slope_img_buf:
+        slope_img_buf.seek(0)
+        slope_img = RLImage(slope_img_buf, width=img_w, height=img_w * 0.62)
+        img_tbl = Table([[slope_img]], colWidths=[img_w], hAlign="CENTER")
+        img_tbl.setStyle(TableStyle([
+            ("LEFTPADDING",  (0,0), (-1,-1), 0),
+            ("RIGHTPADDING", (0,0), (-1,-1), 0),
+            ("TOPPADDING",   (0,0), (-1,-1), 0),
+            ("BOTTOMPADDING",(0,0), (-1,-1), 0),
+        ]))
+        story.append(img_tbl)
+        story.append(Spacer(1, 2*mm))
 
-    img_tbl = Table([imgs], colWidths=[img_w, img_w], hAlign="CENTER")
-    img_tbl.setStyle(TableStyle([
-        ("LEFTPADDING",  (0,0), (-1,-1), 0),
-        ("RIGHTPADDING", (0,0), (-1,-1), 3),
-        ("TOPPADDING",   (0,0), (-1,-1), 0),
-        ("BOTTOMPADDING",(0,0), (-1,-1), 0),
-    ]))
-    story.append(img_tbl)
-    story.append(Spacer(1, 2*mm))
-
-    _cap_style = ParagraphStyle(
-        "mapcap", fontName="Helvetica", fontSize=6.5,
-        textColor=colors.HexColor("#999"), alignment=TA_CENTER, leading=8.5
-    )
-    cap_tbl = Table([[
-        Paragraph("Elevation Map — ground height (m) across the site grid, from the DEM.", _cap_style),
-        Paragraph("Slope Map — steepness (%) derived from elevation; green = flat, red = steep.", _cap_style),
-    ]], colWidths=[img_w, img_w], hAlign="CENTER")
-    cap_tbl.setStyle(TableStyle([
-        ("LEFTPADDING",  (0,0), (-1,-1), 0),
-        ("RIGHTPADDING", (0,0), (-1,-1), 3),
-        ("TOPPADDING",   (0,0), (-1,-1), 0),
-        ("BOTTOMPADDING",(0,0), (-1,-1), 0),
-    ]))
-    story.append(cap_tbl)
+        _cap_style = ParagraphStyle(
+            "mapcap", fontName="Helvetica", fontSize=7,
+            textColor=colors.HexColor("#999"), alignment=TA_CENTER, leading=9
+        )
+        story.append(Paragraph(
+            "Slope Map — steepness (%) derived from elevation across the site grid; "
+            "green = flat (&lt;3%), red = steep (&gt;10%).", _cap_style
+        ))
     story.append(Spacer(1, 5*mm))
 
     story.append(HRFlowable(width="100%", thickness=0.5,
@@ -376,50 +364,72 @@ def tile2deg(x, y, zoom):
     lat = math.degrees(math.atan(math.sinh(math.pi * (1 - 2 * y / n))))
     return lat, lon
 
+TILE_PX = 256  # terrarium tiles are always 256x256
+
 def fetch_terrarium_tile(x, y, zoom):
-    url = f"https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{zoom}/{x}/{y}.png"
-    r = requests.get(url, timeout=15)
-    if r.status_code != 200:
-        return None, None
-    img = Image.open(io.BytesIO(r.content)).convert("RGB")
-    arr = np.array(img, dtype=np.float32)
-    elev = arr[:, :, 0] * 256.0 + arr[:, :, 1] + arr[:, :, 2] / 256.0 - 32768.0
+    """Fetch one terrarium DEM tile. Bounds are always returned (computed purely from
+    tile indices) so a failed/corrupt fetch can still be placed correctly in the mosaic —
+    this is what keeps the grid georeferenced even when some tiles 404 or time out."""
     lat_n, lon_w = tile2deg(x, y, zoom)
     lat_s, lon_e = tile2deg(x + 1, y + 1, zoom)
     bounds = {"lat_n": lat_n, "lat_s": lat_s, "lon_w": lon_w, "lon_e": lon_e}
+    url = f"https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{zoom}/{x}/{y}.png"
+    try:
+        r = requests.get(url, timeout=15)
+        if r.status_code != 200:
+            return None, bounds
+        img = Image.open(io.BytesIO(r.content)).convert("RGB")
+        if img.size != (TILE_PX, TILE_PX):
+            return None, bounds
+        arr = np.array(img, dtype=np.float32)
+        elev = arr[:, :, 0] * 256.0 + arr[:, :, 1] + arr[:, :, 2] / 256.0 - 32768.0
+        # Reject physically implausible values — corrupt/blank tiles decode to the
+        # terrarium zero-point (~-32768m); real land elevation runs roughly
+        # -420m (Dead Sea) to +8849m (Everest). Treat anything outside that as nodata.
+        elev = np.where((elev < -500) | (elev > 9000), np.nan, elev)
+    except Exception:
+        return None, bounds
     return elev, bounds
 
 
 def get_dem_for_bbox(south, north, west, east, zoom=14):
     x_min, y_min = deg2tile(north, west, zoom)
     x_max, y_max = deg2tile(south, east, zoom)
-    tiles = []
     total = (x_max - x_min + 1) * (y_max - y_min + 1)
     prog = st.progress(0, text="Downloading terrain tiles…")
     count = 0
+    tile_rows   = []
+    bounds_grid = []
+    any_success = False
     for ty in range(y_min, y_max + 1):
-        row = []
+        row_imgs, row_bounds = [], []
         for tx in range(x_min, x_max + 1):
             elev, bounds = fetch_terrarium_tile(tx, ty, zoom)
             if elev is not None:
-                row.append((elev, bounds))
+                any_success = True
+            else:
+                # Placeholder keeps every row/column the same width so the mosaic
+                # never shifts out of alignment — missing data becomes NaN, not a
+                # silently mis-positioned tile.
+                elev = np.full((TILE_PX, TILE_PX), np.nan, dtype=np.float32)
+            row_imgs.append(elev)
+            row_bounds.append(bounds)
             count += 1
             prog.progress(count / total, text=f"Downloading tile {count}/{total}…")
-        if row:
-            tiles.append(row)
+        tile_rows.append(row_imgs)
+        bounds_grid.append(row_bounds)
     prog.empty()
-    if not tiles:
+    if not any_success:
         return None, None, None, None, None
 
-    mosaic_rows = []
-    for row in tiles:
-        mosaic_rows.append(np.concatenate([t[0] for t in row], axis=1))
-    mosaic = np.concatenate(mosaic_rows, axis=0)
+    mosaic = np.concatenate(
+        [np.concatenate(row, axis=1) for row in tile_rows], axis=0
+    )
 
-    lat_n_all = tiles[0][0][1]["lat_n"]
-    lat_s_all = tiles[-1][0][1]["lat_s"]
-    lon_w_all = tiles[0][0][1]["lon_w"]
-    lon_e_all = tiles[0][-1][1]["lon_e"]
+    lat_n_all = bounds_grid[0][0]["lat_n"]
+    lat_s_all = bounds_grid[-1][0]["lat_s"]
+    lon_w_all = bounds_grid[0][0]["lon_w"]
+    lon_e_all = bounds_grid[0][-1]["lon_e"]
     return mosaic, lat_n_all, lat_s_all, lon_w_all, lon_e_all
 
 
@@ -1130,75 +1140,56 @@ with right:
         )
 
         st.divider()
-        st.markdown('<div class="section-hdr"><i class="fa-solid fa-layer-group" style="color:#1565c0;"></i> Visual Maps</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-hdr"><i class="fa-solid fa-layer-group" style="color:#1565c0;"></i> Slope Map</div>', unsafe_allow_html=True)
 
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         import matplotlib.colors as mcolors
 
-        map_col1, map_col2 = st.columns(2)
-
-        with map_col1:
-            Zm = np.ma.masked_invalid(np.flipud(Z))
-            fig, ax = plt.subplots(figsize=(6, 5))
-            fig.patch.set_facecolor("#0e1117")
-            ax.set_facecolor("#0e1117")
-            im = ax.imshow(Zm, cmap="RdYlGn_r", interpolation="bilinear", aspect="auto")
-            cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-            cbar.set_label("Elevation (m)", color="white", fontsize=9)
-            cbar.ax.yaxis.set_tick_params(color="white", labelsize=8)
-            plt.setp(cbar.ax.yaxis.get_ticklabels(), color="white")
-            ax.set_title(f"Elevation · {grid_spacing}m grid", color="white", fontsize=10, pad=6)
-            ax.set_xticks([]); ax.set_yticks([])
-            for spine in ax.spines.values():
+        if HAS_SCIPY:
+            dy, dx = np.gradient(Z, grid_spacing, grid_spacing)
+            slope_pct = np.sqrt(dx**2 + dy**2) * 100
+            Sm = np.ma.masked_invalid(np.flipud(slope_pct))
+            fig2, ax2 = plt.subplots(figsize=(10, 6.2))
+            fig2.patch.set_facecolor("#0e1117")
+            ax2.set_facecolor("#0e1117")
+            _slope_colors = [
+                (0.000, "#1b5e20"),
+                (0.167, "#388e3c"),
+                (0.200, "#66bb6a"),
+                (0.333, "#d4e157"),
+                (0.500, "#ffa726"),
+                (0.667, "#f44336"),
+                (1.000, "#7f0000"),
+            ]
+            cmap_slope = mcolors.LinearSegmentedColormap.from_list(
+                "solar_slope",
+                [(pos, col) for pos, col in _slope_colors], N=512
+            )
+            im2 = ax2.imshow(Sm, cmap=cmap_slope, vmin=0, vmax=15,
+                             interpolation="bilinear", aspect="auto")
+            cbar2 = fig2.colorbar(im2, ax=ax2, fraction=0.04, pad=0.03)
+            cbar2.set_label("Slope (%)", color="white", fontsize=10)
+            cbar2.ax.yaxis.set_tick_params(color="white", labelsize=9)
+            plt.setp(cbar2.ax.yaxis.get_ticklabels(), color="white")
+            ax2.set_title(f"Slope · {grid_spacing}m grid  (green<3%, red>10%)",
+                          color="white", fontsize=11, pad=8)
+            ax2.set_xticks([]); ax2.set_yticks([])
+            for spine in ax2.spines.values():
                 spine.set_edgecolor("#333")
             plt.tight_layout(pad=0.5)
-            pdf_elev_buf = io.BytesIO()
-            fig.savefig(pdf_elev_buf, format="png", dpi=150, bbox_inches="tight", facecolor="#0e1117")
-            pdf_elev_buf.seek(0); plt.close(fig)
-            st.image(pdf_elev_buf, use_container_width=True)
-
-        with map_col2:
-            if HAS_SCIPY:
-                dy, dx = np.gradient(Z, grid_spacing, grid_spacing)
-                slope_pct = np.sqrt(dx**2 + dy**2) * 100
-                Sm = np.ma.masked_invalid(np.flipud(slope_pct))
-                fig2, ax2 = plt.subplots(figsize=(6, 5))
-                fig2.patch.set_facecolor("#0e1117")
-                ax2.set_facecolor("#0e1117")
-                _slope_colors = [
-                    (0.000, "#1b5e20"),
-                    (0.167, "#388e3c"),
-                    (0.200, "#66bb6a"),
-                    (0.333, "#d4e157"),
-                    (0.500, "#ffa726"),
-                    (0.667, "#f44336"),
-                    (1.000, "#7f0000"),
-                ]
-                cmap_slope = mcolors.LinearSegmentedColormap.from_list(
-                    "solar_slope",
-                    [(pos, col) for pos, col in _slope_colors], N=512
-                )
-                im2 = ax2.imshow(Sm, cmap=cmap_slope, vmin=0, vmax=15,
-                                 interpolation="bilinear", aspect="auto")
-                cbar2 = fig2.colorbar(im2, ax=ax2, fraction=0.046, pad=0.04)
-                cbar2.set_label("Slope (%)", color="white", fontsize=9)
-                cbar2.ax.yaxis.set_tick_params(color="white", labelsize=8)
-                plt.setp(cbar2.ax.yaxis.get_ticklabels(), color="white")
-                ax2.set_title(f"Slope · {grid_spacing}m grid  (green<3%, red>10%)",
-                              color="white", fontsize=10, pad=6)
-                ax2.set_xticks([]); ax2.set_yticks([])
-                for spine in ax2.spines.values():
-                    spine.set_edgecolor("#333")
-                plt.tight_layout(pad=0.5)
-                pdf_slope_buf = io.BytesIO()
-                fig2.savefig(pdf_slope_buf, format="png", dpi=150, bbox_inches="tight", facecolor="#0e1117")
-                pdf_slope_buf.seek(0); plt.close(fig2)
-                st.image(pdf_slope_buf, use_container_width=True)
-            else:
-                pdf_slope_buf = None
-                st.info("Install scipy for slope map.")
+            pdf_slope_buf = io.BytesIO()
+            fig2.savefig(pdf_slope_buf, format="png", dpi=150, bbox_inches="tight", facecolor="#0e1117")
+            pdf_slope_buf.seek(0); plt.close(fig2)
+            st.image(pdf_slope_buf, use_container_width=True)
+            st.caption(
+                "Slope is derived from elevation — green = flat (<3%), red = steep (>10%). "
+                "Steeper zones need more grading or favor fixed tilt over tracker."
+            )
+        else:
+            pdf_slope_buf = None
+            st.info("Install scipy for slope map.")
 
         st.divider()
         st.markdown('<div class="section-hdr"><i class="fa-solid fa-download" style="color:#1565c0;"></i> Download Outputs</div>', unsafe_allow_html=True)
@@ -1213,7 +1204,6 @@ with right:
                 z_range=float(z_valid.max()-z_valid.min()),
                 mean_slope=mean_slope, max_slope=float(s_valid.max()),
                 pct_over5=pct_over5, pct_over10=pct_over10,
-                elev_img_buf=pdf_elev_buf,
                 slope_img_buf=pdf_slope_buf_for_pdf,
                 verdict_label=verdict_label,
                 verdict_detail=verdict_detail,
