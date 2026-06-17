@@ -236,6 +236,29 @@ def call_pvgis(lat: float, lon: float, total_loss_pct: float, tracker: bool,
     pr = round(spec_y / h_y * 100, 1) if h_y else None
     cf = round(spec_y / 8760 * 100,  1)
 
+    # PVGIS computes its OWN physics-based loss components on top of the
+    # "loss" % we send in (which only covers what we tell it — wiring,
+    # inverter, soiling, mismatch, row shading). These three are added
+    # automatically by the model based on technology/location/mounting:
+    #   l_aoi   — angle-of-incidence reflection loss (%)
+    #   l_spec  — spectral mismatch loss (%) — can be "not calculated" for
+    #             some technologies, hence the float() guard below
+    #   l_tg    — temperature & low-irradiance loss (%) — this is the real,
+    #             physics-derived "Temperature" loss line item, not a guess
+    #   l_total — true total loss (%), i.e. our input loss + l_aoi + l_spec
+    #             + l_tg combined. More accurate than self-tracking total_loss
+    #             since it includes effects PVGIS models that we don't.
+    def _safe_float(v):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    l_aoi   = _safe_float(tot.get("l_aoi"))
+    l_spec  = _safe_float(tot.get("l_spec"))
+    l_tg    = _safe_float(tot.get("l_tg"))
+    l_total = _safe_float(tot.get("l_total"))
+
     # Optimal tilt (fixed only)
     opt_tilt = None
     if not tracker:
@@ -255,11 +278,23 @@ def call_pvgis(lat: float, lon: float, total_loss_pct: float, tracker: bool,
         "cf":       cf,
         "opt_tilt": opt_tilt,
         "radiation_db": radiation_db,
+        "l_aoi":    round(l_aoi, 1) if l_aoi is not None else None,
+        "l_spec":   round(l_spec, 1) if l_spec is not None else None,
+        "l_tg":     round(l_tg, 1) if l_tg is not None else None,
+        "l_total":  round(l_total, 1) if l_total is not None else None,
     }
 
 
-def run_all_configs(lat, lon, gcr_1p, gcr_2p, base_loss):
-    """Run 4 PVGIS calls concurrently. Returns dict keyed by config name."""
+def run_all_configs(lat, lon, gcr_1p, gcr_2p, soiling_loss, other_loss):
+    """Run 4 PVGIS calls concurrently. Returns dict keyed by config name.
+
+    soiling_loss + other_loss together form the same combined "system loss %"
+    that used to be a single base_loss input — split in two now so Soiling
+    can be shown as its own line item (PVGIS has no native soiling output,
+    so this is the only honest way to surface it: as a user-specified input,
+    not a number we invent).
+    """
+    base_loss = soiling_loss + other_loss
     cfg_params = {
         "1P Fixed":   (gcr_1p, False),
         "2P Fixed":   (gcr_2p, False),
@@ -297,10 +332,12 @@ def run_all_configs(lat, lon, gcr_1p, gcr_2p, base_loss):
             # Pinned database rejected this call (rare) — fall back to letting
             # PVGIS auto-select rather than losing the config entirely.
             res = call_pvgis(lat, lon, total_loss, tracker)
-        res["gcr"]        = gcr
-        res["shading"]    = shade
-        res["total_loss"] = round(total_loss, 1)
-        res["tracker"]    = tracker
+        res["gcr"]          = gcr
+        res["shading"]      = shade
+        res["total_loss"]   = round(total_loss, 1)
+        res["tracker"]      = tracker
+        res["soiling_loss"] = soiling_loss
+        res["other_loss"]   = other_loss
         return name, res
 
     results = {}
@@ -309,7 +346,102 @@ def run_all_configs(lat, lon, gcr_1p, gcr_2p, base_loss):
         for fut in concurrent.futures.as_completed(futs):
             name, res = fut.result()
             results[name] = res
-    return results
+    return results, raddatabase
+
+
+def get_ghi(lat, lon, raddatabase=None) -> float | None:
+    """True horizontal-plane GHI (kWh/m²/yr) via PVGIS's PVcalc — the same
+    endpoint already verified for spec_y/H(i)_y. Requesting a horizontal
+    (angle=0) fixed plane makes H(i)_y equal GHI by definition, so this
+    reuses proven parsing logic instead of an untested endpoint.
+    """
+    params = {
+        "lat": round(lat, 5), "lon": round(lon, 5),
+        "peakpower": 1, "loss": 14, "pvtechchoice": "crystSi",
+        "mountingplace": "free", "outputformat": "json", "browser": 0,
+        "fixed": 1, "angle": 0, "aspect": 0,
+        "optimalinclination": 0, "optimalangles": 0,
+    }
+    if raddatabase:
+        params["raddatabase"] = raddatabase
+    try:
+        resp = requests.get(
+            PVGIS_URL, params=params, timeout=30,
+            headers={"User-Agent": "YieldIQ/1.0 (pvmath.com; contact@pvmath.com)"}
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        totals_d = data["outputs"].get("totals", {})
+        key = "fixed" if "fixed" in totals_d else next(iter(totals_d), None)
+        if not key:
+            return None
+        return round(float(totals_d[key].get("H(i)_y", 0)), 1)
+    except Exception:
+        return None
+
+
+def get_dni_dhi(lat, lon, raddatabase=None) -> tuple:
+    """Best-effort annual DNI/DHI (kWh/m²/yr) via PVGIS's MRcalc endpoint.
+
+    UNVERIFIED: this sandbox cannot reach PVGIS's live API, so the exact
+    JSON field names below are inferred from PVGIS's published parameter
+    docs (input params "mr_dni", "horirrad", "d2g"), not confirmed against
+    a real response. Parsing is intentionally defensive — any KeyError/
+    shape mismatch returns (None, None) rather than a silently-wrong number.
+    Treat these two values as experimental until checked against a live
+    PVGIS call.
+    """
+    params = {
+        "lat": round(lat, 5), "lon": round(lon, 5),
+        "horirrad": 1, "mr_dni": 1, "d2g": 1,
+        "outputformat": "json",
+    }
+    if raddatabase:
+        params["raddatabase"] = raddatabase
+    try:
+        resp = requests.get(
+            "https://re.jrc.ec.europa.eu/api/v5_2/MRcalc", params=params, timeout=30,
+            headers={"User-Agent": "YieldIQ/1.0 (pvmath.com; contact@pvmath.com)"}
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        monthly = data["outputs"].get("monthly", [])
+        if not monthly:
+            return None, None
+
+        def _sum_key(candidates):
+            total = 0.0
+            found = False
+            for row in monthly:
+                for k in candidates:
+                    if k in row:
+                        total += float(row[k])
+                        found = True
+                        break
+            return round(total, 1) if found else None
+
+        ghi_h = _sum_key(["H(h)_m", "H(h)", "Hh_m"])
+        dni   = _sum_key(["Hb(n)_m", "Hb(n)", "DNI_m", "Hbn_m"])
+        d2g   = None
+        # diffuse-to-global ratio is monthly; weight by that month's GHI
+        if ghi_h:
+            dhi_total, dhi_found = 0.0, False
+            for row in monthly:
+                ghi_m = None
+                for k in ["H(h)_m", "H(h)", "Hh_m"]:
+                    if k in row:
+                        ghi_m = float(row[k]); break
+                ratio_m = None
+                for k in ["d2g", "Kd"]:
+                    if k in row:
+                        ratio_m = float(row[k]); break
+                if ghi_m is not None and ratio_m is not None:
+                    dhi_total += ghi_m * ratio_m
+                    dhi_found = True
+            d2g = round(dhi_total, 1) if dhi_found else None
+        return dni, d2g
+    except Exception:
+        return None, None
 
 
 def make_monthly_chart(results: dict, dc_kwp: float) -> bytes:
@@ -350,8 +482,8 @@ def make_monthly_chart(results: dict, dc_kwp: float) -> bytes:
     return buf.getvalue()
 
 
-def build_pdf(project_name, lat, lon, dc_kwp, gcr_1p, gcr_2p, base_loss,
-              results, chart_bytes, best_sy) -> bytes:
+def build_pdf(project_name, lat, lon, dc_kwp, gcr_1p, gcr_2p, soiling_loss, other_loss,
+              results, chart_bytes, best_sy, ghi=None, dni=None, dhi=None) -> bytes:
     """Generate ReportLab PDF report."""
     buf  = io.BytesIO()
     doc  = SimpleDocTemplate(buf, pagesize=A4,
@@ -418,7 +550,7 @@ def build_pdf(project_name, lat, lon, dc_kwp, gcr_1p, gcr_2p, base_loss,
          lp("DATE",        lbl), lp(str(date.today()), bod)],
         [lp("GCR — 1P",   lbl), lp(f"{gcr_1p:.2f}", bod),
          lp("GCR — 2P",   lbl), lp(f"{gcr_2p:.2f}", bod)],
-        [lp("BASE LOSSES", lbl), lp(f"{base_loss:.1f}% (excl. row shading)", bod),
+        [lp("SOILING / OTHER LOSSES", lbl), lp(f"{soiling_loss:.1f}% / {other_loss:.1f}% (excl. row shading)", bod),
          lp("DATA SOURCE", lbl), lp("PVGIS JRC (EU Commission)", bod)],
     ], colWidths=[3*cm, 6*cm, 3*cm, 6*cm])
     info.setStyle(TableStyle([
@@ -430,8 +562,85 @@ def build_pdf(project_name, lat, lon, dc_kwp, gcr_1p, gcr_2p, base_loss,
     ]))
     story += [info, Spacer(1, 0.5*cm)]
 
+    # ── Solar Resource ────────────────────────────────────────────────────────
+    story.append(section_hdr("SOLAR RESOURCE"))
+    story.append(Spacer(1, 0.15*cm))
+    res_tbl_data = [
+        [lp("GHI (Horizontal)", lbl), lp("DNI (Direct Normal)", lbl), lp("DHI (Diffuse Horizontal)", lbl)],
+        [lp(f"{ghi:,.0f} kWh/m²/yr" if ghi else "—", bod),
+         lp(f"{dni:,.0f} kWh/m²/yr" if dni else "—", bod),
+         lp(f"{dhi:,.0f} kWh/m²/yr" if dhi else "—", bod)],
+    ]
+    resource_tbl = Table(res_tbl_data, colWidths=[5.57*cm, 5.57*cm, 5.57*cm])
+    resource_tbl.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0),(-1,0), LGRAY),
+        ("BOX",           (0,0),(-1,-1), 0.5, BORDER),
+        ("INNERGRID",     (0,0),(-1,-1), 0.3, BORDER),
+        ("TOPPADDING",    (0,0),(-1,-1), 6),
+        ("BOTTOMPADDING", (0,0),(-1,-1), 6),
+        ("LEFTPADDING",   (0,0),(-1,-1), 8),
+    ]))
+    story += [resource_tbl]
+    if dni is None or dhi is None:
+        story.append(Spacer(1, 0.1*cm))
+        story.append(lp(
+            "DNI/DHI not available for this location/response — shown as — rather than an "
+            "unverified estimate. GHI is sourced from the same verified PVGIS endpoint used for "
+            "the yield calculation below.", note
+        ))
+    story.append(Spacer(1, 0.45*cm))
+
+    # ── Performance (POA) ─────────────────────────────────────────────────────
+    story.append(section_hdr("PERFORMANCE — PLANE-OF-ARRAY IRRADIANCE"))
+    story.append(Spacer(1, 0.15*cm))
+    _poa_fixed = results.get("1P Fixed", {}).get("h_y")
+    _poa_track = results.get("1P Tracker", {}).get("h_y")
+    perf_tbl = Table([
+        [lp("POA — Fixed Tilt (1P)", lbl), lp("POA — Single-Axis Tracker (1P)", lbl)],
+        [lp(f"{_poa_fixed:,.0f} kWh/m²/yr" if _poa_fixed else "—", bod),
+         lp(f"{_poa_track:,.0f} kWh/m²/yr" if _poa_track else "—", bod)],
+    ], colWidths=[8.36*cm, 8.36*cm])
+    perf_tbl.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0),(-1,0), LGRAY),
+        ("BOX",           (0,0),(-1,-1), 0.5, BORDER),
+        ("INNERGRID",     (0,0),(-1,-1), 0.3, BORDER),
+        ("TOPPADDING",    (0,0),(-1,-1), 6),
+        ("BOTTOMPADDING", (0,0),(-1,-1), 6),
+        ("LEFTPADDING",   (0,0),(-1,-1), 8),
+    ]))
+    story += [perf_tbl, Spacer(1, 0.45*cm)]
+
+    # ── Losses Breakdown (best-performing config) ────────────────────────────
+    best_cfg = next((c for c in CONFIG_ORDER if c in results and results[c]["spec_y"] == best_sy), None)
+    if best_cfg:
+        _b = results[best_cfg]
+        story.append(section_hdr(f"LOSSES BREAKDOWN — {best_cfg} (BEST CONFIG)"))
+        story.append(Spacer(1, 0.15*cm))
+        loss_tbl = Table([
+            [lp("Shading", lbl), lp("Temperature", lbl), lp("Soiling", lbl), lp("Total Loss", lbl)],
+            [lp(f"{_b['shading']:.1f}%", bod),
+             lp(f"{_b['l_tg']:.1f}%" if _b.get("l_tg") is not None else "—", bod),
+             lp(f"{_b['soiling_loss']:.1f}%", bod),
+             lp(f"{_b['l_total']:.1f}%" if _b.get("l_total") is not None else f"{_b['total_loss']:.1f}%", bod)],
+        ], colWidths=[4.18*cm, 4.18*cm, 4.18*cm, 4.18*cm])
+        loss_tbl.setStyle(TableStyle([
+            ("BACKGROUND",    (0,0),(-1,0), LGRAY),
+            ("BOX",           (0,0),(-1,-1), 0.5, BORDER),
+            ("INNERGRID",     (0,0),(-1,-1), 0.3, BORDER),
+            ("TOPPADDING",    (0,0),(-1,-1), 6),
+            ("BOTTOMPADDING", (0,0),(-1,-1), 6),
+            ("LEFTPADDING",   (0,0),(-1,-1), 8),
+        ]))
+        story += [loss_tbl, Spacer(1, 0.15*cm)]
+        story.append(lp(
+            "Temperature loss is PVGIS's own physics-based derate (not estimated). Total Loss is "
+            "PVGIS's true combined figure where available (shading + soiling + other system losses "
+            "+ temperature + angle-of-incidence + spectral).", note
+        ))
+        story.append(Spacer(1, 0.3*cm))
+
     # ── Results table ─────────────────────────────────────────────────────────
-    story.append(section_hdr("CONFIGURATION COMPARISON"))
+    story.append(section_hdr("RESULTS — CONFIGURATION COMPARISON"))
     story.append(Spacer(1, 0.15*cm))
     hdr_row = [lp(h, lbl) for h in [
         "Configuration","GCR","Shading\nLoss","Total\nLoss",
@@ -662,7 +871,7 @@ with st.form("yieldiq_form"):
                 "Project Name", placeholder="e.g. Mannheim Solar 50 MWp"
             )
 
-    c3, c4, c5, c6, c7 = st.columns(5)
+    c3, c4, c5, c6, c7, c8 = st.columns(6)
     with c3:
         dc_kwp = st.number_input(
             "Target DC Capacity (kWp)", min_value=1.0, max_value=5_000_000.0,
@@ -682,12 +891,19 @@ with st.form("yieldiq_form"):
             help="Ground Cover Ratio for 2-portrait configurations. Typical: 0.35–0.50"
         )
     with c6:
-        base_loss = st.number_input(
-            "Base Losses (%)", min_value=5.0, max_value=25.0,
-            value=14.0, step=0.5,
-            help="System losses excluding row shading: temperature, wiring, inverter, soiling, etc."
+        soiling_loss = st.number_input(
+            "Soiling Loss (%)", min_value=0.0, max_value=10.0,
+            value=2.0, step=0.5,
+            help="Dust/dirt accumulation loss. Typical: 1–3% (temperate), 3–6% (arid/desert sites)."
         )
     with c7:
+        other_loss = st.number_input(
+            "Other System Losses (%)", min_value=3.0, max_value=20.0,
+            value=12.0, step=0.5,
+            help="Wiring, inverter, mismatch, availability — excludes row shading, soiling and "
+                 "PVGIS's own temperature/AOI/spectral derates (those are computed automatically)."
+        )
+    with c8:
         st.markdown("<div style='height:1.85rem'></div>", unsafe_allow_html=True)
         submitted = st.form_submit_button(
             "⚡ Run Yield Analysis", use_container_width=True, type="primary"
@@ -723,17 +939,63 @@ if submitted:
 
     with st.spinner("Fetching PVGIS yield data for all 4 configurations…"):
         try:
-            results = run_all_configs(lat, lon, gcr_1p, gcr_2p, base_loss)
+            results, raddatabase = run_all_configs(lat, lon, gcr_1p, gcr_2p, soiling_loss, other_loss)
         except Exception as e:
             st.error(f"❌ PVGIS API error: {e}. Check coordinates or try again in a moment.")
             st.stop()
 
+    with st.spinner("Fetching solar resource data (GHI/DNI/DHI)…"):
+        ghi        = get_ghi(lat, lon, raddatabase=raddatabase)
+        dni, dhi   = get_dni_dhi(lat, lon, raddatabase=raddatabase)
+
     increment_usage(_uid, "yieldiq")
 
-    best_sy = max(results[c]["spec_y"] for c in CONFIG_ORDER if c in results)
+    best_sy  = max(results[c]["spec_y"] for c in CONFIG_ORDER if c in results)
+    best_cfg = next(c for c in CONFIG_ORDER if c in results and results[c]["spec_y"] == best_sy)
 
-    # ── Section: Comparison Table ─────────────────────────────────────────────
-    st.markdown('<div class="yiq-section">📊 Configuration Comparison</div>', unsafe_allow_html=True)
+    # ── Section: Solar Resource ────────────────────────────────────────────────
+    st.markdown('<div class="yiq-section">🌞 Solar Resource</div>', unsafe_allow_html=True)
+    res_cols = st.columns(3)
+    res_cols[0].metric("GHI (Horizontal)", f"{ghi:,.0f} kWh/m²/yr" if ghi else "—")
+    res_cols[1].metric("DNI (Direct Normal)", f"{dni:,.0f} kWh/m²/yr" if dni else "—")
+    res_cols[2].metric("DHI (Diffuse Horizontal)", f"{dhi:,.0f} kWh/m²/yr" if dhi else "—")
+    if dni is None or dhi is None:
+        st.caption(
+            "⚠️ DNI/DHI unavailable for this location/PVGIS response — shown as \"—\" rather than "
+            "an unverified estimate. GHI is sourced from the same verified PVGIS endpoint as the "
+            "yield calculation above."
+        )
+
+    # ── Section: Performance (POA) ─────────────────────────────────────────────
+    st.markdown('<div class="yiq-section">📐 Performance — Plane-of-Array Irradiance</div>', unsafe_allow_html=True)
+    perf_cols = st.columns(2)
+    if "1P Fixed" in results:
+        perf_cols[0].metric("POA — Fixed Tilt (1P)", f"{results['1P Fixed']['h_y']:,.0f} kWh/m²/yr")
+    if "1P Tracker" in results:
+        perf_cols[1].metric("POA — Single-Axis Tracker (1P)", f"{results['1P Tracker']['h_y']:,.0f} kWh/m²/yr")
+
+    # ── Section: Losses Breakdown (for best-performing config) ────────────────
+    st.markdown(
+        f'<div class="yiq-section">📉 Losses Breakdown — {best_cfg} (best config)</div>',
+        unsafe_allow_html=True
+    )
+    _best = results[best_cfg]
+    loss_cols = st.columns(4)
+    loss_cols[0].metric("Shading", f"{_best['shading']:.1f}%")
+    loss_cols[1].metric("Temperature", f"{_best['l_tg']:.1f}%" if _best.get("l_tg") is not None else "—")
+    loss_cols[2].metric("Soiling", f"{_best['soiling_loss']:.1f}%")
+    loss_cols[3].metric(
+        "Total Loss",
+        f"{_best['l_total']:.1f}%" if _best.get("l_total") is not None else f"{_best['total_loss']:.1f}%"
+    )
+    st.caption(
+        "Temperature loss is PVGIS's own physics-based derate (not estimated). "
+        "Total Loss is PVGIS's true combined figure (shading + soiling + other system losses + "
+        "temperature + angle-of-incidence + spectral) where available."
+    )
+
+    # ── Section: Results — Configuration Comparison ───────────────────────────
+    st.markdown('<div class="yiq-section">📊 Results — Configuration Comparison</div>', unsafe_allow_html=True)
 
     # Column headers
     _COL_W = [1.5, 0.7, 1.0, 1.0, 1.1, 1.4, 1.4, 0.8, 0.8]
@@ -819,8 +1081,8 @@ if submitted:
     # ── PDF download (generated once, shown immediately) ──────────────────────
     st.markdown("---")
     pdf_bytes = build_pdf(
-        project_name, lat, lon, dc_kwp, gcr_1p, gcr_2p, base_loss,
-        results, chart_bytes, best_sy
+        project_name, lat, lon, dc_kwp, gcr_1p, gcr_2p, soiling_loss, other_loss,
+        results, chart_bytes, best_sy, ghi, dni, dhi
     )
     safe_name = re.sub(r"[^\w\- ]", "", project_name).strip().replace(" ", "_")
     st.download_button(

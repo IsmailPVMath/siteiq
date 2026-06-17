@@ -1320,7 +1320,7 @@ with left:
             Upgrade to Professional →
           </a>
           <div style="margin-top:1rem;font-size:0.78rem;color:#999;">
-            Questions? <a href="mailto:contact@pvmath.de" style="color:#1d9e52;">contact@pvmath.de</a>
+            Questions? <a href="mailto:contact@pvmath.com" style="color:#1d9e52;">contact@pvmath.com</a>
           </div>
         </div>
         """, unsafe_allow_html=True)
