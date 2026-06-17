@@ -1049,7 +1049,7 @@ def render_auth_page(app_name: str = "PVMath"):
         <div class="auth-footer">
           <a href="https://pvmath.com" target="_blank">pvmath.com</a>
           &nbsp;·&nbsp; Solar Site Intelligence
-          &nbsp;·&nbsp; <a href="mailto:contact@pvmath.de">contact@pvmath.de</a>
+          &nbsp;·&nbsp; <a href="mailto:contact@pvmath.com">contact@pvmath.com</a>
         </div>
         """, unsafe_allow_html=True)
 
