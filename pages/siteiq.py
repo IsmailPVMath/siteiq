@@ -1508,14 +1508,23 @@ with right:
             # Altair directly so we can pin the real Jan-Dec sort order, and use
             # a fixed, shorter height so the chart doesn't dominate the page.
             _month_order = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+            # Same seasonal rainbow palette as the PDF's bar chart (_MONTH_COLORS
+            # in build_pdf()) — winter red -> summer green -> winter red — so the
+            # on-screen chart and the PDF report match instead of looking like
+            # two different charts.
+            _month_colors = ["#f87171","#fb923c","#facc15","#a3e635","#4ade80","#22c55e",
+                              "#22c55e","#4ade80","#a3e635","#facc15","#fb923c","#f87171"]
             _chart_df = pd.DataFrame(solar["monthly"])
             _irr_chart = (
                 alt.Chart(_chart_df)
-                .mark_bar(color="#1d9e52", cornerRadiusTopLeft=3, cornerRadiusTopRight=3)
+                .mark_bar(cornerRadiusTopLeft=3, cornerRadiusTopRight=3)
                 .encode(
                     x=alt.X("Month:N", sort=_month_order, title=None,
                             axis=alt.Axis(labelAngle=0)),
                     y=alt.Y("GHI (kWh/m²):Q", title=None),
+                    color=alt.Color("Month:N", sort=_month_order,
+                                     scale=alt.Scale(domain=_month_order, range=_month_colors),
+                                     legend=None),
                     tooltip=["Month", "GHI (kWh/m²)"],
                 )
                 .properties(height=220)

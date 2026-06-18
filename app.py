@@ -385,11 +385,15 @@ with st.sidebar:
 # isolated HTML fragment), so that old approach silently failed to style/scope
 # anything reliably.
 #
-# Skipped on the Overview page only: Overview renders its own "+ New Project"
-# button inline (alongside "View My Projects" / "Continue last project"), so
-# this top-bar copy was a second, redundant button stacked on top of it. Every
-# other page still gets this one — it's their only "+ New Project" entry point.
-if pg.title != "Overview":
+# Skipped on Overview: it renders its own "+ New Project" button inline
+# (alongside "View My Projects" / "Continue last project"), so this top-bar
+# copy was a second, redundant button stacked on top of it.
+# Skipped on Project (Project Setup): the page IS the "create a new project"
+# flow itself — a "+ New Project" button up top there reset the form fields
+# the user was actively filling in, which read as broken/confusing rather
+# than useful. Every other page still gets this one — it's their only
+# "+ New Project" entry point.
+if pg.title not in ("Overview", "Project"):
     st.markdown("""
     <style>
     div[data-testid="stVerticalBlock"]:has(div.pvm-newproj-anchor) div[data-testid="stButton"] > button {
