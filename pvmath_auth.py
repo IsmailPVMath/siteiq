@@ -647,6 +647,7 @@ def render_auth_page(app_name: str = "PVMath"):
                 # (frontend-only; known Streamlit behavior), so app.py re-asserts
                 # it from this session_state copy at the end of every script run.
                 st.session_state["pvm_refresh_token"] = _restored["refresh_token"]
+                st.session_state["pvm_token_refreshed_at"] = time.time()
                 # Update param with rotated refresh token
                 st.query_params["s"] = _restored["refresh_token"]
             elif not _restored.get("retry"):
@@ -655,6 +656,46 @@ def render_auth_page(app_name: str = "PVMath"):
             # else: transient network/timeout error — leave "s" in the URL
             # untouched. Wiping it here on a hiccup is what was forcing a full
             # re-login on every refresh, even when the token was still good.
+
+    # ── Proactively refresh a stale access token ──────────────────────────
+    # _db_hdr() (used by every /rest/v1 call — list_projects, get_usage,
+    # save_project, increment_usage, is_admin, get_profile, ...) sends
+    # pvm_access_token as the bearer token. Supabase access tokens expire
+    # after ~1 hour, but pvm_user_id/pvm_email stay in session_state
+    # indefinitely (this is a long-running Streamlit session, no full page
+    # reload between page switches). Once the token goes stale, every DB
+    # read/write gets silently rejected — and get_usage()/list_projects()
+    # swallow that failure and return 0/[] with no visible error, which is
+    # exactly what made Overview show "0 projects / 0 analyses" for an
+    # account that, per direct Supabase inspection, genuinely had both.
+    # The earlier Save Project fix only refreshed when pvm_user_id was
+    # EMPTY — it never covered "uid present, token just expired", which is
+    # the far more common case in a tab that's been open for a while. This
+    # closes that gap by refreshing proactively, well before the 1-hour
+    # mark, instead of waiting for a symptom to show up.
+    if st.session_state.get("pvm_user_id"):
+        _last_refresh = st.session_state.get("pvm_token_refreshed_at")
+        if _last_refresh is None:
+            # First time we've seen this session with a token already in
+            # place (e.g. right after login, or a session that started
+            # before this fix shipped) — assume it's fresh rather than
+            # spending a network round-trip on every single page load.
+            st.session_state["pvm_token_refreshed_at"] = time.time()
+        elif time.time() - _last_refresh > 2700:  # 45 min — safely under
+            # Supabase's default 1-hour access-token lifetime, so we rotate
+            # it before any /rest/v1 call in this session starts failing.
+            _rt = st.session_state.get("pvm_refresh_token", "") or st.query_params.get("s", "")
+            if _rt:
+                _refreshed = _refresh_session(_rt)
+                if _refreshed.get("success"):
+                    st.session_state["pvm_access_token"]      = _refreshed["access_token"]
+                    st.session_state["pvm_refresh_token"]     = _refreshed["refresh_token"]
+                    st.session_state["pvm_token_refreshed_at"] = time.time()
+                    st.query_params["s"] = _refreshed["refresh_token"]
+                # else: leave the existing token in place. Failing to refresh
+                # isn't proof the token is dead (could be a transient network
+                # hiccup) — better to keep using what we have than to hard-fail
+                # an otherwise-working session over one missed refresh.
 
     # Already logged in?
     if st.session_state.get("pvm_user_id"):
