@@ -15,7 +15,8 @@ from streamlit_folium import st_folium
 from datetime import datetime
 from pvmath_auth import (
     show_paywall,
-    increment_usage, is_over_limit, remaining, FREE_LIMIT, STRIPE_LINK
+    increment_usage, is_over_limit, remaining, FREE_LIMIT, STRIPE_LINK,
+    get_plan, plan_limit, plan_label
 )
 from pvmath_styles import inject_styles
 
@@ -1098,17 +1099,26 @@ with left:
     _topo_left = remaining(_topo_user, "topoiq")
 
     if is_over_limit(_topo_user, "topoiq"):
+        _topo_plan = get_plan(_topo_user)
+        _topo_limit = plan_limit(_topo_plan)
+        if _topo_plan == "free":
+            _topo_pw_title = "Free Trial Complete"
+            _topo_pw_body = (f"You've used all <b>{_topo_limit} free analyses</b> in TopoIQ.<br>"
+                              f"Upgrade to run more terrain extractions.")
+        else:
+            _topo_pw_title = "Monthly Limit Reached"
+            _topo_pw_body = (f"You've used all <b>{_topo_limit} {plan_label(_topo_plan)} analyses</b> "
+                              f"in TopoIQ this month.<br>Your limit resets next month.")
         st.markdown(f"""
         <div style="background:#fff;border:1.5px solid #e2ede2;border-radius:14px;
                     padding:1.8rem 1.6rem;text-align:center;margin-top:0.5rem;
                     font-family:'Inter',sans-serif;">
           <div style="font-size:2rem;margin-bottom:0.5rem;">🔒</div>
           <div style="font-size:1.2rem;font-weight:800;color:#1565c0;margin-bottom:0.4rem;">
-            Free Trial Complete
+            {_topo_pw_title}
           </div>
           <div style="color:#555;font-size:0.88rem;margin-bottom:1.2rem;line-height:1.6;">
-            You've used all <b>{FREE_LIMIT} free analyses</b> in TopoIQ.<br>
-            Upgrade to run unlimited terrain extractions.
+            {_topo_pw_body}
           </div>
           <a href="{STRIPE_LINK}" target="_blank"
              style="display:inline-block;background:linear-gradient(135deg,#1d9e52,#145f34);
