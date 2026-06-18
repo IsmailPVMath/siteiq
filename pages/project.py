@@ -603,10 +603,23 @@ if True:
                         "proj_polygon_draft", "proj_polygon_cleared"]:
                 st.session_state.pop(key, None)
             if _persist_ok:
-                st.toast(f"✅ Project saved — {proj_name.strip()} · {mode_val.title()} Mode", icon="✅")
+                # NOTE: calling st.toast() here and then st.rerun() on the very
+                # next line was why "Save Project" appeared to do nothing — the
+                # rerun aborts this script run (via Streamlit's RerunException)
+                # before the toast element reliably reaches the frontend, so it
+                # either never shows or flashes for a fraction of a second.
+                # Fix: stash the message and render the toast AFTER the rerun
+                # instead, same pattern already used below for save failures.
+                st.session_state["pvm_save_success_msg"] = (
+                    f"✅ Project saved — {proj_name.strip()} · {mode_val.title()} Mode"
+                )
             else:
                 st.session_state["pvm_save_failed"] = True
             st.rerun()
+
+    _save_success_msg = st.session_state.pop("pvm_save_success_msg", None)
+    if _save_success_msg:
+        st.toast(_save_success_msg, icon="✅")
 
     if st.session_state.pop("pvm_save_failed", False):
         _fail_reason = st.session_state.pop("pvm_save_fail_reason", "db")
