@@ -41,6 +41,36 @@ try:
 except ImportError:
     HAS_SHAPELY = False
 
+# Largest site boundary TopoIQ will process — larger polygons exhaust tile
+# downloads and grid memory on Railway's single Streamlit worker.
+MAX_SITE_AREA_HA = 10_000
+
+
+def boundary_area_ha(polygon_coords):
+    """Approximate polygon area (ha). Vertices are (lon, lat) tuples."""
+    if not polygon_coords or len(polygon_coords) < 3:
+        return 0.0
+    lats = [c[1] for c in polygon_coords]
+    mean_lat = sum(lats) / len(lats)
+    lat_m = 111320.0
+    lon_m = 111320.0 * math.cos(math.radians(mean_lat))
+    pts = [(c[0] * lon_m, c[1] * lat_m) for c in polygon_coords]
+    n = len(pts)
+    area_m2 = abs(sum(
+        pts[i][0] * pts[(i + 1) % n][1] - pts[(i + 1) % n][0] * pts[i][1]
+        for i in range(n)
+    )) / 2.0
+    return round(area_m2 / 10_000, 2)
+
+
+def _area_limit_message(area_ha: float) -> str:
+    return (
+        f"Site boundary is {area_ha:,.0f} ha — TopoIQ supports sites up to "
+        f"{MAX_SITE_AREA_HA:,} ha. Draw or upload a smaller boundary, or "
+        f"split the site into sections."
+    )
+
+
 def generate_pdf_report(
     fname, lat_c, lon_c, area_ha, grid_spacing,
     z_min, z_max, z_range, mean_slope, max_slope,
@@ -883,6 +913,7 @@ with left:
         _lats_p = [c[1] for c in _preloaded_polygon]
         _lon_c  = (min(_lons_p) + max(_lons_p)) / 2
         _lat_c  = (min(_lats_p) + max(_lats_p)) / 2
+        _preload_area_ha = boundary_area_ha(_preloaded_polygon)
         st.markdown(
             f'<div style="background:#e8f5ee;border:1.5px solid #b8ddc8;border-radius:10px;'
             f'padding:0.75rem 1rem;margin-bottom:0.6rem;">'
@@ -890,10 +921,13 @@ with left:
             f'<i class="fa-solid fa-circle-check"></i> Site boundary loaded from project</span><br>'
             f'<span style="font-size:0.8rem;color:#3a5a3a;">'
             f'{len(_preloaded_polygon)-1} vertices &nbsp;·&nbsp; '
+            f'{_preload_area_ha:,.1f} ha &nbsp;·&nbsp; '
             f'Centre {_lat_c:.4f}°, {_lon_c:.4f}°</span>'
             f'</div>',
             unsafe_allow_html=True
         )
+        if _preload_area_ha > MAX_SITE_AREA_HA:
+            st.error(_area_limit_message(_preload_area_ha))
         _m_prev = folium.Map(location=[_lat_c, _lon_c], zoom_start=14,
                              tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
                              attr="Google Satellite")
@@ -1036,7 +1070,14 @@ with left:
                         break
 
             if polygon_coords:
-                st.success(f"✅ Site boundary captured — {len(polygon_coords)-1} vertices")
+                _drawn_area_ha = boundary_area_ha(polygon_coords)
+                if _drawn_area_ha > MAX_SITE_AREA_HA:
+                    st.error(_area_limit_message(_drawn_area_ha))
+                else:
+                    st.success(
+                        f"✅ Site boundary captured — {len(polygon_coords)-1} vertices · "
+                        f"{_drawn_area_ha:,.1f} ha"
+                    )
             else:
                 st.caption("Draw your site boundary on the map above to enable analysis.")
 
@@ -1067,12 +1108,26 @@ with left:
                     st.error("No closed polygon found in file. Check the file contains a site boundary polyline or polygon.")
                 elif len(all_polys) == 1:
                     polygon_coords = list(all_polys.values())[0]
-                    st.success(f"Boundary loaded — {len(polygon_coords)} vertices")
+                    _upload_area_ha = boundary_area_ha(polygon_coords)
+                    if _upload_area_ha > MAX_SITE_AREA_HA:
+                        st.error(_area_limit_message(_upload_area_ha))
+                    else:
+                        st.success(
+                            f"Boundary loaded — {len(polygon_coords)} vertices · "
+                            f"{_upload_area_ha:,.1f} ha"
+                        )
                 else:
                     st.info(f"Found {len(all_polys)} polygons/boundaries in file. Select the site boundary:")
                     chosen = st.selectbox("Select boundary", list(all_polys.keys()))
                     polygon_coords = all_polys[chosen]
-                    st.success(f"Selected: **{chosen}** — {len(polygon_coords)} vertices")
+                    _upload_area_ha = boundary_area_ha(polygon_coords)
+                    if _upload_area_ha > MAX_SITE_AREA_HA:
+                        st.error(_area_limit_message(_upload_area_ha))
+                    else:
+                        st.success(
+                            f"Selected: **{chosen}** — {len(polygon_coords)} vertices · "
+                            f"{_upload_area_ha:,.1f} ha"
+                        )
 
                 if polygon_coords:
                     lons = [c[0] for c in polygon_coords]
@@ -1094,6 +1149,13 @@ with left:
                                help="Smaller = finer mesh, more detail, slower processing")
     contour_minor = sc2.slider("Minor contour (m)", min_value=0.1, max_value=2.0, value=0.5, step=0.1)
     contour_major = sc3.slider("Major contour (m)", min_value=0.5, max_value=10.0, value=1.0, step=0.5)
+
+    _site_area_ha = boundary_area_ha(polygon_coords) if polygon_coords else None
+    _area_over_limit = (
+        _site_area_ha is not None and _site_area_ha > MAX_SITE_AREA_HA
+    )
+    if _area_over_limit:
+        st.error(_area_limit_message(_site_area_ha))
 
     _topo_user = st.session_state.get("pvm_user_id", "guest")
     _topo_left = remaining(_topo_user, "topoiq")
@@ -1137,13 +1199,19 @@ with left:
             st.warning(f"⚠️ {_topo_left} free analysis remaining after this run.")
         run = st.button("⛰ Run Terrain Analysis", type="primary",
                         use_container_width=True,
-                        disabled=(polygon_coords is None))
+                        disabled=(polygon_coords is None or _area_over_limit))
         if polygon_coords is None:
             st.caption("Draw or upload a site boundary to enable analysis.")
+        elif _area_over_limit:
+            st.caption(f"Reduce the boundary below {MAX_SITE_AREA_HA:,} ha to run analysis.")
 
 # ─── Results ──────────────────────────────────────────────────────────────────
 with right:
     if run and polygon_coords:
+        _run_area_ha = boundary_area_ha(polygon_coords)
+        if _run_area_ha > MAX_SITE_AREA_HA:
+            st.error(_area_limit_message(_run_area_ha))
+            st.stop()
         increment_usage(st.session_state.get("pvm_user_id", "guest"), "topoiq")
         lons_p = [c[0] for c in polygon_coords]
         lats_p = [c[1] for c in polygon_coords]
@@ -1154,8 +1222,7 @@ with right:
 
         m_per_deg_lat = 111320.0
         m_per_deg_lon = 111320.0 * math.cos(math.radians(lat_c))
-        area_ha = ((north - south) * m_per_deg_lat *
-                   (east  - west)  * m_per_deg_lon) / 10000
+        area_ha = _run_area_ha
 
         with st.spinner("Fetching satellite terrain data…"):
             mosaic, lat_n, lat_s, lon_w, lon_e = get_dem_for_bbox(
