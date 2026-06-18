@@ -675,15 +675,19 @@ def render_auth_page(app_name: str = "PVMath"):
     # mark, instead of waiting for a symptom to show up.
     if st.session_state.get("pvm_user_id"):
         _last_refresh = st.session_state.get("pvm_token_refreshed_at")
-        if _last_refresh is None:
-            # First time we've seen this session with a token already in
-            # place (e.g. right after login, or a session that started
-            # before this fix shipped) — assume it's fresh rather than
-            # spending a network round-trip on every single page load.
-            st.session_state["pvm_token_refreshed_at"] = time.time()
-        elif time.time() - _last_refresh > 2700:  # 45 min — safely under
-            # Supabase's default 1-hour access-token lifetime, so we rotate
-            # it before any /rest/v1 call in this session starts failing.
+        # _last_refresh is None covers two cases that both need a refresh
+        # right now rather than being assumed fresh: a brand-new login (rare
+        # — those call sites already hand us a brand-new token), and — far
+        # more commonly — a session that was already open with an already-
+        # stale token at the moment this fix was deployed. Treating "unknown
+        # age" as "assume fresh" was the bug in the first version of this
+        # check: it just started the clock from a token that might already
+        # be dead, papering over the exact symptom for another 45 minutes
+        # instead of fixing it immediately. So: unknown age or >45 min old
+        # both trigger an actual refresh attempt; only the complete absence
+        # of a refresh token to retry with falls back to just stamping time.
+        if _last_refresh is None or time.time() - _last_refresh > 2700:  # 45 min,
+            # safely under Supabase's default 1-hour access-token lifetime.
             _rt = st.session_state.get("pvm_refresh_token", "") or st.query_params.get("s", "")
             if _rt:
                 _refreshed = _refresh_session(_rt)
@@ -692,10 +696,19 @@ def render_auth_page(app_name: str = "PVMath"):
                     st.session_state["pvm_refresh_token"]     = _refreshed["refresh_token"]
                     st.session_state["pvm_token_refreshed_at"] = time.time()
                     st.query_params["s"] = _refreshed["refresh_token"]
-                # else: leave the existing token in place. Failing to refresh
-                # isn't proof the token is dead (could be a transient network
-                # hiccup) — better to keep using what we have than to hard-fail
-                # an otherwise-working session over one missed refresh.
+                else:
+                    # Refresh failed. If we don't even know the token's age
+                    # (first time we've checked), don't loop retrying on
+                    # every single rerun — stamp now and let the normal
+                    # 45-min cycle handle the next attempt. If we DO know it
+                    # was already overdue, leave the timestamp alone so the
+                    # next page load tries again immediately instead of
+                    # waiting another 45 minutes on a session that's clearly
+                    # already in trouble.
+                    if _last_refresh is None:
+                        st.session_state["pvm_token_refreshed_at"] = time.time()
+            else:
+                st.session_state["pvm_token_refreshed_at"] = time.time()
 
     # Already logged in?
     if st.session_state.get("pvm_user_id"):
