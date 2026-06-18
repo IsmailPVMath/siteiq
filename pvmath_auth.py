@@ -15,6 +15,7 @@ import secrets
 import time
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from typing import Optional
 
 import requests as _req
 import streamlit as st
@@ -492,7 +493,7 @@ def remaining(user_id: str, app: str) -> int:
 # existing one (row_id given — re-saving a project the user already opened),
 # so a user can accumulate many projects instead of one save overwriting the
 # last. This is what backs the "My Projects" dashboard.
-def save_project(user_id: str, project: dict, row_id: str | None = None) -> str | None:
+def save_project(user_id: str, project: dict, row_id: Optional[str] = None) -> Optional[str]:
     """Insert a new project row, or update an existing one if row_id is given.
     Returns the row's id on success, or None on failure."""
     try:
@@ -567,7 +568,7 @@ def load_latest_project(user_id: str):
     return None, None
 
 
-def load_project(user_id: str) -> dict | None:
+def load_project(user_id: str) -> Optional[dict]:
     """Back-compat wrapper — returns just the project dict for the most
     recently saved project."""
     data, _ = load_latest_project(user_id)

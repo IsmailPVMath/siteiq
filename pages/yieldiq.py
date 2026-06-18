@@ -9,6 +9,7 @@ import re
 import io
 import concurrent.futures
 from datetime import date
+from typing import Optional
 
 import streamlit as st
 import requests
@@ -349,7 +350,7 @@ def run_all_configs(lat, lon, gcr_1p, gcr_2p, soiling_loss, other_loss):
     return results, raddatabase
 
 
-def get_ghi(lat, lon, raddatabase=None) -> float | None:
+def get_ghi(lat, lon, raddatabase=None) -> Optional[float]:
     """True horizontal-plane GHI (kWh/m²/yr) via PVGIS's PVcalc — the same
     endpoint already verified for spec_y/H(i)_y. Requesting a horizontal
     (angle=0) fixed plane makes H(i)_y equal GHI by definition, so this
