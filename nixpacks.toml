@@ -1,5 +1,0 @@
-# Nixpacks (Railway) — install from the pinned lock file only.
-# Direct deps live in requirements.in; regenerate with ./scripts/compile-requirements.sh
-
-[phases.install]
-cmds = ["pip install --no-cache-dir -r requirements.txt"]
