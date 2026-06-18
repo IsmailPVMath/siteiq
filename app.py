@@ -47,12 +47,30 @@ components.html(
         _win.location.replace(_win.location.pathname + '?' + _params.toString());
       }
 
-      _win.addEventListener('pageshow', function(event) {
-        if (event.persisted) { _win.location.reload(); }
-      });
-      _win.addEventListener('popstate', function() {
-        _win.location.reload();
-      });
+      // Install these listeners only ONCE per browser tab. This whole script
+      // block re-runs on every single Streamlit rerun (every button click,
+      // every map click/drag) because it's a components.html() call that
+      // gets freshly re-mounted each time the page script executes top to
+      // bottom. Without this guard, each rerun added ANOTHER permanent
+      // 'popstate'/'pageshow' listener to window.parent that was never
+      // cleaned up — after a few quick reruns (e.g. clicking Save Project
+      // twice in a row) dozens of these could be stacked up, each one able
+      // to independently force a hard location.reload()/replace(). That's
+      // what was causing an unplanned full-page reload mid-save: the user's
+      // click got swallowed by a reload that was already in flight, and the
+      // very next reload after a successful save dropped them on a stale
+      // bfcache snapshot with no sidebar. Guarding with a flag means the
+      // listeners are attached exactly once per tab, no matter how many
+      // reruns happen during the session.
+      if (!_win.__pvmBfListenersInstalled) {
+        _win.__pvmBfListenersInstalled = true;
+        _win.addEventListener('pageshow', function(event) {
+          if (event.persisted) { _win.location.reload(); }
+        });
+        _win.addEventListener('popstate', function() {
+          _win.location.reload();
+        });
+      }
     } catch (e) {}
     </script>
     """,
