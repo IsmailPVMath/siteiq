@@ -10,7 +10,8 @@ from datetime import datetime
 import folium
 from pvmath_auth import (
     show_paywall,
-    increment_usage, is_over_limit, remaining, FREE_LIMIT, STRIPE_LINK
+    increment_usage, is_over_limit, remaining, FREE_LIMIT, STRIPE_LINK,
+    get_plan, plan_limit, plan_label
 )
 from pvmath_styles import inject_styles
 from streamlit_folium import st_folium
@@ -1301,17 +1302,25 @@ with left:
     _left = remaining(_username, "siteiq")
 
     if is_over_limit(_username, "siteiq"):
+        _plan = get_plan(_username)
+        _limit = plan_limit(_plan)
+        if _plan == "free":
+            _pw_title = "Free Trial Complete"
+            _pw_body = f"You've used all <b>{_limit} free analyses</b> in SiteIQ.<br>Upgrade to run more screenings."
+        else:
+            _pw_title = "Monthly Limit Reached"
+            _pw_body = (f"You've used all <b>{_limit} {plan_label(_plan)} analyses</b> in SiteIQ "
+                        f"this month.<br>Your limit resets next month.")
         st.markdown(f"""
         <div style="background:#fff;border:1.5px solid #e2ede2;border-radius:14px;
                     padding:1.8rem 1.6rem;text-align:center;margin-top:0.5rem;
                     font-family:'Inter',sans-serif;">
           <div style="font-size:2rem;margin-bottom:0.5rem;">🔒</div>
           <div style="font-size:1.2rem;font-weight:800;color:#1a5c2e;margin-bottom:0.4rem;">
-            Free Trial Complete
+            {_pw_title}
           </div>
           <div style="color:#555;font-size:0.88rem;margin-bottom:1.2rem;line-height:1.6;">
-            You've used all <b>{FREE_LIMIT} free analyses</b> in SiteIQ.<br>
-            Upgrade to run unlimited screenings.
+            {_pw_body}
           </div>
           <a href="{STRIPE_LINK}" target="_blank"
              style="display:inline-block;background:linear-gradient(135deg,#1d9e52,#145f34);

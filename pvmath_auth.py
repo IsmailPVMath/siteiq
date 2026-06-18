@@ -20,7 +20,34 @@ import requests as _req
 import streamlit as st
 
 # ── Config ────────────────────────────────────────────────────
-FREE_LIMIT   = 5
+# Per-module monthly analysis caps, by plan. None = unlimited.
+# Mirrors the live pricing page (pvmath.com) — keep these in sync if pricing changes.
+PLAN_LIMITS = {
+    "free":         5,
+    "professional": 50,
+    "developer":    250,
+    "enterprise":   None,
+}
+DEFAULT_PLAN = "free"
+FREE_LIMIT   = PLAN_LIMITS["free"]   # kept for backward compat — pages/*.py import this directly
+
+# Team seat caps, by plan. Usage is pooled across a team (see get_team_id/_usage_key
+# below) — seats control how many logins can draw on that one shared monthly pool,
+# they are not an additional per-person allowance.
+SEAT_LIMITS = {
+    "free":         1,
+    "professional": 1,
+    "developer":    5,
+    "enterprise":   None,
+}
+
+PLAN_LABELS = {
+    "free":         "Free",
+    "professional": "Professional",
+    "developer":    "Developer",
+    "enterprise":   "Enterprise",
+}
+
 STRIPE_LINK  = "https://buy.stripe.com/YOUR_LINK_HERE"
 PRICE_LABEL  = "€49 / month"
 
@@ -329,11 +356,88 @@ def is_admin(user_id: str) -> bool:
         return False
 
 
+# ── Plan + team helpers ─────────────────────────────────────────
+def _current_period() -> str:
+    """Calendar-month key, e.g. '2026-06'. Usage caps reset when this rolls over —
+    no separate cron/reset job needed, the period itself is the reset mechanism."""
+    return time.strftime("%Y-%m")
+
+
+def get_profile(user_id: str) -> dict:
+    """Raw profile row (plan, team_id, is_admin). Empty dict if not found/error."""
+    try:
+        r = _req.get(f"{_sb_url()}/rest/v1/profiles",
+                     params={"id": f"eq.{user_id}", "select": "plan,team_id,is_admin"},
+                     headers=_db_hdr(), timeout=10)
+        data = r.json()
+        return data[0] if data else {}
+    except Exception:
+        return {}
+
+
+def get_plan(user_id: str) -> str:
+    """The billing plan a user is on. Defaults to 'free' if unset.
+    Until Stripe webhooks exist, this column is set by hand in Supabase after
+    manually confirming a payment — see STRIPE_LINK above."""
+    return get_profile(user_id).get("plan") or DEFAULT_PLAN
+
+
+def get_team_id(user_id: str):
+    """Team id if this user belongs to a pooled team account (Developer tier),
+    else None for a solo account."""
+    return get_profile(user_id).get("team_id") or None
+
+
+def plan_limit(plan: str):
+    """Per-module monthly analysis cap for a plan. None = unlimited."""
+    return PLAN_LIMITS.get(plan, PLAN_LIMITS[DEFAULT_PLAN])
+
+
+def seat_limit(plan: str):
+    """Max team members for a plan. None = unlimited/negotiated (Enterprise)."""
+    return SEAT_LIMITS.get(plan, SEAT_LIMITS[DEFAULT_PLAN])
+
+
+def plan_label(plan: str) -> str:
+    return PLAN_LABELS.get(plan, PLAN_LABELS[DEFAULT_PLAN])
+
+
+def team_member_count(team_id: str) -> int:
+    try:
+        r = _req.get(f"{_sb_url()}/rest/v1/profiles",
+                     params={"team_id": f"eq.{team_id}", "select": "id"},
+                     headers=_db_hdr(), timeout=10)
+        return len(r.json())
+    except Exception:
+        return 0
+
+
+def can_add_seat(team_id: str, plan: str) -> bool:
+    """Whether a team still has room for another member under its plan's seat cap.
+    No invite UI calls this yet — it's here so a future team-invite flow has a
+    ready-made check instead of re-deriving the seat math."""
+    limit = seat_limit(plan)
+    if limit is None:
+        return True
+    return team_member_count(team_id) < limit
+
+
+def _usage_key(user_id: str) -> str:
+    """The id usage is pooled against: a team's id for team members (so
+    Developer's 5 seats share one monthly counter), else the user's own id."""
+    return get_team_id(user_id) or user_id
+
+
 # ── Usage tracking ────────────────────────────────────────────
+# Rows are keyed by (usage_key, app, period) so counts reset naturally each
+# calendar month and so team members share one counter. See
+# supabase_migration_plan_limits.sql for the schema change this depends on.
 def get_usage(user_id: str, app: str) -> int:
+    key, period = _usage_key(user_id), _current_period()
     try:
         r = _req.get(f"{_sb_url()}/rest/v1/usage_tracking",
-                     params={"user_id": f"eq.{user_id}", "app": f"eq.{app}", "select": "count"},
+                     params={"usage_key": f"eq.{key}", "app": f"eq.{app}",
+                              "period": f"eq.{period}", "select": "count"},
                      headers=_db_hdr(), timeout=10)
         data = r.json()
         return data[0]["count"] if data else 0
@@ -342,16 +446,19 @@ def get_usage(user_id: str, app: str) -> int:
 
 
 def increment_usage(user_id: str, app: str) -> int:
+    key, period = _usage_key(user_id), _current_period()
     try:
         current = get_usage(user_id, app)
         new_count = current + 1
         base = f"{_sb_url()}/rest/v1/usage_tracking"
         if current == 0:
-            _req.post(base, json={"user_id": user_id, "app": app, "count": 1},
+            _req.post(base, json={"user_id": user_id, "usage_key": key, "app": app,
+                                   "period": period, "count": 1},
                       headers=_db_hdr(), timeout=10)
         else:
             _req.patch(base, json={"count": new_count},
-                       params={"user_id": f"eq.{user_id}", "app": f"eq.{app}"},
+                       params={"usage_key": f"eq.{key}", "app": f"eq.{app}",
+                               "period": f"eq.{period}"},
                        headers=_db_hdr(), timeout=10)
         return new_count
     except Exception:
@@ -359,17 +466,23 @@ def increment_usage(user_id: str, app: str) -> int:
 
 
 def is_over_limit(user_id: str, app: str) -> bool:
-    """Admins are never over the limit."""
+    """Admins and Enterprise (uncapped) are never over the limit."""
     if is_admin(user_id):
         return False
-    return get_usage(user_id, app) >= FREE_LIMIT
+    limit = plan_limit(get_plan(user_id))
+    if limit is None:
+        return False
+    return get_usage(user_id, app) >= limit
 
 
 def remaining(user_id: str, app: str) -> int:
-    """Admins see unlimited (999) remaining."""
+    """Admins and Enterprise see unlimited (999) remaining."""
     if is_admin(user_id):
         return 999
-    return max(0, FREE_LIMIT - get_usage(user_id, app))
+    limit = plan_limit(get_plan(user_id))
+    if limit is None:
+        return 999
+    return max(0, limit - get_usage(user_id, app))
 
 
 # ── Project persistence ───────────────────────────────────────
@@ -1067,7 +1180,25 @@ def show_user_header(app_name: str):
 
 
 def show_paywall(app_label: str):
-    """Renders the upgrade paywall when the free limit is reached."""
+    """Renders the upgrade/limit-reached paywall. Call sites only ever pass
+    app_label, so the user's plan is read from session state — that way the
+    copy matches whatever was actually hit (free trial vs. a paid plan's
+    monthly cap) instead of always claiming Professional is unlimited."""
+    user_id = st.session_state.get("pvm_user_id", "guest")
+    plan = get_plan(user_id)
+    limit = plan_limit(plan)
+
+    if plan == "free":
+        title = "Free trial complete"
+        body = (f"You've used your {limit} free {app_label} analyses. "
+                f"Upgrade to Professional for {PLAN_LIMITS['professional']} analyses/month.")
+        cta_text, cta_href = "Upgrade to Professional →", STRIPE_LINK
+    else:
+        title = "Monthly limit reached"
+        body = (f"You've used all {limit} {plan_label(plan)} {app_label} analyses for this month. "
+                f"Your limit resets at the start of next month.")
+        cta_text, cta_href = "Contact us about a higher limit →", "mailto:contact@pvmath.com"
+
     st.markdown(f"""
     <div style="
         background: #fff; border: 1.5px solid #1d9e52; border-radius: 14px;
@@ -1076,18 +1207,18 @@ def show_paywall(app_label: str):
     ">
       <div style="font-size:2rem;margin-bottom:0.8rem;">🔒</div>
       <div style="font-size:1.1rem;font-weight:800;color:#1a2e1a;letter-spacing:-0.02em;margin-bottom:0.5rem;">
-        Free trial complete
+        {title}
       </div>
       <div style="font-size:0.88rem;color:#5a7a5a;line-height:1.6;margin-bottom:1.5rem;max-width:340px;margin-left:auto;margin-right:auto;">
-        You've used your 5 free {app_label} analyses. Upgrade to Professional for unlimited access to all modules.
+        {body}
       </div>
-      <a href="{STRIPE_LINK}" target="_blank" style="
+      <a href="{cta_href}" target="_blank" style="
           display:inline-block;
           background:linear-gradient(135deg,#1d9e52,#145f34);
           color:#fff;text-decoration:none;padding:0.8rem 2rem;
           border-radius:9px;font-weight:700;font-size:0.95rem;
           box-shadow:0 4px 16px rgba(29,158,82,.3);
-      ">Upgrade to Professional →</a>
+      ">{cta_text}</a>
       <div style="font-size:0.75rem;color:#5a7a5a;margin-top:1rem;">
         Cancel anytime &nbsp;·&nbsp; All modules included &nbsp;·&nbsp; VAT invoice provided
       </div>
