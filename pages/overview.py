@@ -8,6 +8,7 @@ show the same thing.
 
 import streamlit as st
 from concurrent.futures import ThreadPoolExecutor
+from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
 from pvmath_auth import list_projects, get_usage
 from pvmath_styles import inject_styles
 
@@ -60,11 +61,32 @@ with st.spinner("Loading your stats…"):
     # in parallel instead of one-after-another is what was causing the
     # dashboard to feel slow (4x sequential network round-trips collapsed
     # into 1).
+    #
+    # BUT: list_projects()/get_usage() call _db_hdr(), which reads
+    # st.session_state["pvm_access_token"] to authenticate the request as
+    # the signed-in user. Streamlit's session state is only visible from the
+    # thread that's running the current script — bare ThreadPoolExecutor
+    # worker threads have no script-run context attached, so inside the
+    # worker, st.session_state silently behaves as if it were a *different*,
+    # empty session. _db_hdr() then falls back to the bare anon/service key
+    # instead of the user's token, the RLS-protected query comes back empty,
+    # and get_usage()/list_projects() swallow that as "0"/"[]" with no error
+    # surfaced anywhere. That's why this page showed 0/0 while My Projects —
+    # which calls list_projects() directly on the main thread, no
+    # ThreadPoolExecutor — correctly showed the real count. Fix: attach this
+    # script's run context to each worker thread before it does any
+    # st.session_state-touching work.
+    _ctx = get_script_run_ctx()
+
+    def _with_ctx(fn, *args):
+        add_script_run_ctx(ctx=_ctx)
+        return fn(*args)
+
     with ThreadPoolExecutor(max_workers=4) as _ex:
-        _f_rows    = _ex.submit(list_projects, _uid)
-        _f_siteiq  = _ex.submit(get_usage, _uid, "siteiq")
-        _f_topoiq  = _ex.submit(get_usage, _uid, "topoiq")
-        _f_yieldiq = _ex.submit(get_usage, _uid, "yieldiq")
+        _f_rows    = _ex.submit(_with_ctx, list_projects, _uid)
+        _f_siteiq  = _ex.submit(_with_ctx, get_usage, _uid, "siteiq")
+        _f_topoiq  = _ex.submit(_with_ctx, get_usage, _uid, "topoiq")
+        _f_yieldiq = _ex.submit(_with_ctx, get_usage, _uid, "yieldiq")
         _rows      = _f_rows.result()
         _siteiq_n  = _f_siteiq.result()
         _topoiq_n  = _f_topoiq.result()
