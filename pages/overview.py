@@ -7,6 +7,7 @@ show the same thing.
 """
 
 import streamlit as st
+from concurrent.futures import ThreadPoolExecutor
 from pvmath_auth import list_projects, get_usage
 from pvmath_styles import inject_styles
 
@@ -26,6 +27,18 @@ st.markdown("""
 .ov-stat-lbl { font-size:0.82rem; color:#5a7a5a; margin-top:0.3rem; font-weight:600; }
 .ov-module-row { font-size:0.85rem; color:#5a7a5a; margin-top:0.5rem; }
 .ov-module-row b { color:#1a2e1a; }
+/* Smaller, tighter action buttons — scoped to the Overview action row only
+   (via :has() on a marker div) so this doesn't bleed into button styling on
+   other pages, since Streamlit's hidden-nav SPA navigation can keep injected
+   CSS alive across page switches within the same session. */
+div[data-testid="stVerticalBlock"]:has(div.ov-actions-anchor) div[data-testid="stButton"] > button {
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    padding: 0.35rem 0.8rem !important;
+    border-radius: 8px !important;
+    height: auto !important;
+    min-height: 0 !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -43,10 +56,19 @@ if not _uid:
     st.stop()
 
 with st.spinner("Loading your stats…"):
-    _rows = list_projects(_uid)
-    _siteiq_n  = get_usage(_uid, "siteiq")
-    _topoiq_n  = get_usage(_uid, "topoiq")
-    _yieldiq_n = get_usage(_uid, "yieldiq")
+    # The 4 calls below are independent reads against Supabase — running them
+    # in parallel instead of one-after-another is what was causing the
+    # dashboard to feel slow (4x sequential network round-trips collapsed
+    # into 1).
+    with ThreadPoolExecutor(max_workers=4) as _ex:
+        _f_rows    = _ex.submit(list_projects, _uid)
+        _f_siteiq  = _ex.submit(get_usage, _uid, "siteiq")
+        _f_topoiq  = _ex.submit(get_usage, _uid, "topoiq")
+        _f_yieldiq = _ex.submit(get_usage, _uid, "yieldiq")
+        _rows      = _f_rows.result()
+        _siteiq_n  = _f_siteiq.result()
+        _topoiq_n  = _f_topoiq.result()
+        _yieldiq_n = _f_yieldiq.result()
 
 _project_count  = len(_rows)
 _analysis_total = _siteiq_n + _topoiq_n + _yieldiq_n
@@ -72,6 +94,7 @@ with c2:
 
 st.markdown("<div style='margin-top:1.5rem;'></div>", unsafe_allow_html=True)
 
+st.markdown('<div class="ov-actions-anchor"></div>', unsafe_allow_html=True)
 _a1, _a2, _a3 = st.columns(3)
 with _a1:
     if st.button("+ New Project", use_container_width=True, type="primary"):
@@ -81,6 +104,8 @@ with _a1:
             "proj_map_center", "proj_map_zoom", "proj_last_search",
             "proj_polygon_draft", "proj_polygon_cleared", "proj_edit_mode",
             "map_center", "map_zoom", "map_lat", "map_lon", "last_map_search",
+            "siteiq_run_cache", "siteiq_project_name", "siteiq_country",
+            "siteiq_lat", "siteiq_lon", "siteiq_area_ha",
         ]:
             st.session_state.pop(_k, None)
         st.switch_page("pages/project.py")

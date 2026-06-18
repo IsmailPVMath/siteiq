@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import pandas as pd
+import altair as alt
 import math
 import io
 import re
@@ -1336,27 +1337,58 @@ with left:
     else:
         if _left <= 1:
             st.warning(f"⚠️ {_left} free analysis remaining after this run.")
-        go = st.button("🔍 Run Site Screening", type="primary", use_container_width=True)
+        go_clicked = st.button("🔍 Run Site Screening", type="primary", use_container_width=True)
 
 with right:
-    if not is_over_limit(_username, "siteiq") and go:
-        if lat is None or lon is None:
-            st.error("Please select a site location using one of the input methods on the left.")
-            st.stop()
+    # st.button() only returns True on the single rerun right after the click —
+    # it's False again on every later rerun. The results section used to be
+    # gated directly on that raw value, so clicking the "Download PDF" button
+    # below (itself a rerun-triggering click) made `go` False again and the
+    # whole results section — including the just-rendered download button —
+    # collapsed back to the placeholder/legacy view, immediately, with no
+    # browser Back press involved. Fix: snapshot everything the results need
+    # into st.session_state on a real "Run Site Screening" click, and keep
+    # rendering from that snapshot on every subsequent rerun until the next
+    # real click replaces it. Network calls + increment_usage() only run on
+    # go_clicked itself, never on a redisplay-from-cache rerun, so usage isn't
+    # double-counted by clicking Download PDF or anything else on the page.
+    _run_cache = st.session_state.get("siteiq_run_cache")
+    if not is_over_limit(_username, "siteiq") and (go_clicked or _run_cache):
+        if go_clicked:
+            if lat is None or lon is None:
+                st.error("Please select a site location using one of the input methods on the left.")
+                st.stop()
 
-        st.session_state["siteiq_project_name"] = project_name or "Unnamed Project"
-        st.session_state["siteiq_country"]      = project_country_input or ""
-        st.session_state["siteiq_lat"]          = lat
-        st.session_state["siteiq_lon"]          = lon
-        st.session_state["siteiq_area_ha"]      = area_ha
+            st.session_state["siteiq_project_name"] = project_name or "Unnamed Project"
+            st.session_state["siteiq_country"]      = project_country_input or ""
+            st.session_state["siteiq_lat"]          = lat
+            st.session_state["siteiq_lon"]          = lon
+            st.session_state["siteiq_area_ha"]      = area_ha
 
-        increment_usage(_username, "siteiq")
+            increment_usage(_username, "siteiq")
 
-        with st.spinner("Fetching solar resource data from EU PVGIS…"):
-            solar = get_solar_data(lat, lon)
-        with st.spinner("Analysing terrain & slope…"):
-            _proj_polygon = _proj.get("polygon_coords") if _proj.get("mode") == "full" else None
-            terrain = get_terrain_data(lat, lon, polygon=_proj_polygon)
+            with st.spinner("Fetching solar resource data from EU PVGIS…"):
+                solar = get_solar_data(lat, lon)
+            with st.spinner("Analysing terrain & slope…"):
+                _proj_polygon = _proj.get("polygon_coords") if _proj.get("mode") == "full" else None
+                terrain = get_terrain_data(lat, lon, polygon=_proj_polygon)
+
+            st.session_state["siteiq_run_cache"] = {
+                "lat": lat, "lon": lon, "area_ha": area_ha,
+                "project_name": project_name, "project_country_input": project_country_input,
+                "land_use": _land_use, "mount_type": _mount_type,
+                "solar": solar, "terrain": terrain,
+            }
+        else:
+            # Redisplay-from-cache rerun (e.g. triggered by clicking Download
+            # PDF) — restore the frozen inputs/results from the last real run
+            # instead of re-fetching or re-incrementing usage.
+            lat, lon, area_ha          = _run_cache["lat"], _run_cache["lon"], _run_cache["area_ha"]
+            project_name               = _run_cache["project_name"]
+            project_country_input      = _run_cache["project_country_input"]
+            _land_use                  = _run_cache["land_use"]
+            _mount_type                = _run_cache["mount_type"]
+            solar, terrain              = _run_cache["solar"], _run_cache["terrain"]
 
         s_lbl, _, s_detail = assess_slope(terrain["max_slope_pct"] if terrain["success"] else 0, _mount_type)
         if solar["success"]:
@@ -1471,7 +1503,24 @@ with right:
         if solar["success"] and solar.get("monthly"):
             st.divider()
             st.markdown('<div class="section-hdr"><i class="fa-solid fa-chart-bar" style="color:#f5a623;"></i> Monthly Solar Irradiation (kWh/m²)</div>', unsafe_allow_html=True)
-            st.bar_chart(pd.DataFrame(solar["monthly"]).set_index("Month"))
+            # st.bar_chart sorts a string "Month" axis alphabetically (Apr, Aug,
+            # Dec, Feb, Jan...) instead of calendar order — build the chart with
+            # Altair directly so we can pin the real Jan-Dec sort order, and use
+            # a fixed, shorter height so the chart doesn't dominate the page.
+            _month_order = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+            _chart_df = pd.DataFrame(solar["monthly"])
+            _irr_chart = (
+                alt.Chart(_chart_df)
+                .mark_bar(color="#1d9e52", cornerRadiusTopLeft=3, cornerRadiusTopRight=3)
+                .encode(
+                    x=alt.X("Month:N", sort=_month_order, title=None,
+                            axis=alt.Axis(labelAngle=0)),
+                    y=alt.Y("GHI (kWh/m²):Q", title=None),
+                    tooltip=["Month", "GHI (kWh/m²)"],
+                )
+                .properties(height=220)
+            )
+            st.altair_chart(_irr_chart, use_container_width=True)
 
         st.divider()
         pdf = build_pdf(

@@ -112,7 +112,9 @@ for _i in range(0, len(_rows), _COLS):
                     st.session_state["pvm_saved_snapshot"] = dict(_pdata)
                     for _k in ["map_center", "map_zoom", "map_lat", "map_lon", "last_map_search",
                                "proj_polygon_draft", "proj_polygon_cleared",
-                               "proj_pin_lat", "proj_pin_lon"]:
+                               "proj_pin_lat", "proj_pin_lon",
+                               "siteiq_run_cache", "siteiq_project_name", "siteiq_country",
+                               "siteiq_lat", "siteiq_lon", "siteiq_area_ha"]:
                         st.session_state.pop(_k, None)
                     st.switch_page("pages/project.py")
             with _dc:
