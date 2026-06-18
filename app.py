@@ -452,23 +452,39 @@ pg.run()
 # this is a known Streamlit front-end behavior, not something our code does.
 # Since "s" (the Supabase refresh token) is the ONLY thing that lets a hard
 # refresh restore the session, losing it from the address bar after navigating
-# anywhere in the app meant every subsequent refresh forced a fresh login. Re-
-# writing it here, as the very last thing this script does, makes sure the URL
-# always carries the current token by the time the page settles — regardless
-# of what page-routing did to it during this run.
+# anywhere in the app meant every subsequent refresh forced a fresh login.
+#
+# This USED to be done via `st.query_params["s"] = _rt`, which goes through
+# Streamlit's own URL-sync. That sync appears to register a new browser
+# history entry every time it fires — on top of the entry the page switch
+# itself just created. So one logical in-app navigation (e.g. Project ->
+# TopoIQ) silently consumed TWO history slots: pressing Back once only undid
+# half of it, and the popstate listener above (which forces a reload on every
+# Back/Forward) re-ran this same reassertion on that reload, pushing yet
+# another entry that wiped out whatever was sitting in the Forward stack —
+# explaining both "have to press Back twice" and "Forward goes grey after".
+#
+# Fix: write the token straight into the address bar via history.replaceState()
+# instead. That still keeps the URL carrying the current token (so a hard
+# refresh recovers the session exactly as before) but replaceState by
+# definition only ever edits the CURRENT history entry — it can never add one,
+# so it can't create the double-entry-per-navigation effect above. Combined
+# here with the existing localStorage mirror (used by the self-heal script at
+# the top of this file to recover a stale "s" from an old history entry).
 _rt = st.session_state.get("pvm_refresh_token", "")
-if _rt and st.query_params.get("s") != _rt:
-    st.query_params["s"] = _rt
-
-# Mirror the current token into localStorage on every run that has one — this
-# is the single freshest copy the self-heal script (top of this file) reads
-# from to recover a Back/Forward press that resurfaces an old, already-
-# rotated "s" value from a stale history entry.
 if _rt:
     components.html(
         f"""
         <script>
-        try {{ window.parent.localStorage.setItem('pvm_s', {json.dumps(_rt)}); }} catch (e) {{}}
+        try {{
+          var _win = window.parent;
+          var _params = new URLSearchParams(_win.location.search);
+          if (_params.get('s') !== {json.dumps(_rt)}) {{
+            _params.set('s', {json.dumps(_rt)});
+            _win.history.replaceState(null, '', _win.location.pathname + '?' + _params.toString());
+          }}
+          _win.localStorage.setItem('pvm_s', {json.dumps(_rt)});
+        }} catch (e) {{}}
         </script>
         """,
         height=0,
