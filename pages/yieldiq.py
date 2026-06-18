@@ -31,7 +31,7 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
 from pvmath_auth import (
     show_paywall, increment_usage, is_over_limit,
-    remaining, FREE_LIMIT, STRIPE_LINK,
+    remaining, FREE_LIMIT, UPGRADE_CONTACT,
 )
 from pvmath_styles import inject_styles
 
@@ -100,7 +100,7 @@ _left = remaining(_uid, "yieldiq")
 if _left is not None and _left <= 2:
     st.warning(
         f"⚠️ {_left} free analysis{'es' if _left != 1 else ''} remaining on YieldIQ. "
-        f"[Upgrade to Professional]({STRIPE_LINK})"
+        f"[Contact us to upgrade]({UPGRADE_CONTACT})"
     )
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -445,7 +445,7 @@ def get_dni_dhi(lat, lon, raddatabase=None) -> tuple:
         return None, None
 
 
-def make_monthly_chart(results: dict, dc_kwp: float) -> bytes:
+def make_monthly_chart(results: dict, mwp: float, title_cfg: str = "") -> bytes:
     """Grouped bar chart — monthly energy output (MWh) for all 4 configs."""
     x     = np.arange(12)
     width = 0.18
@@ -456,7 +456,8 @@ def make_monthly_chart(results: dict, dc_kwp: float) -> bytes:
     for i, (cfg, color) in enumerate(zip(CONFIG_ORDER, CHART_COLORS)):
         if cfg not in results:
             continue
-        vals_mwh = [v * dc_kwp / 1000 for v in results[cfg]["monthly"]]
+        cfg_mwp = results[cfg].get("mwp") or mwp
+        vals_mwh = [v * cfg_mwp for v in results[cfg]["monthly"]]
         offset   = (i - 1.5) * width
         ax.bar(x + offset, vals_mwh, width, label=cfg, color=color,
                alpha=0.88, edgecolor="white", linewidth=0.5)
@@ -471,8 +472,9 @@ def make_monthly_chart(results: dict, dc_kwp: float) -> bytes:
     ax.grid(axis="y", alpha=0.25, linewidth=0.5, color="#d4e0d4")
     ax.spines[["top", "right"]].set_visible(False)
     ax.spines[["left", "bottom"]].set_color("#d4e0d4")
+    _title_mwp = results.get(title_cfg, {}).get("mwp", mwp) if title_cfg else mwp
     ax.set_title(
-        f"Monthly Energy Output — {dc_kwp:,.0f} kWp System",
+        f"Monthly Energy Output — {_title_mwp:,.1f} MWp ({title_cfg or 'system'})",
         fontsize=11, fontweight="bold", pad=10, color="#1a2e1a"
     )
     plt.tight_layout()
@@ -483,8 +485,9 @@ def make_monthly_chart(results: dict, dc_kwp: float) -> bytes:
     return buf.getvalue()
 
 
-def build_pdf(project_name, lat, lon, dc_kwp, gcr_1p, gcr_2p, soiling_loss, other_loss,
-              results, chart_bytes, best_sy, ghi=None, dni=None, dhi=None) -> bytes:
+def build_pdf(project_name, lat, lon, area_ha, land_use, gcr_1p, gcr_2p,
+              soiling_loss, other_loss, results, chart_bytes,
+              best_mwh, best_cfg, ghi=None, dni=None, dhi=None) -> bytes:
     """Generate ReportLab PDF report."""
     buf  = io.BytesIO()
     doc  = SimpleDocTemplate(buf, pagesize=A4,
@@ -547,12 +550,14 @@ def build_pdf(project_name, lat, lon, dc_kwp, gcr_1p, gcr_2p, soiling_loss, othe
     info = Table([
         [lp("PROJECT",     lbl), lp(project_name, bod),
          lp("LOCATION",    lbl), lp(f"{lat:.5f}°N, {lon:.5f}°E", bod)],
-        [lp("DC CAPACITY", lbl), lp(f"{dc_kwp:,.0f} kWp", bod),
-         lp("DATE",        lbl), lp(str(date.today()), bod)],
+        [lp("SITE AREA",   lbl), lp(f"{area_ha:,.1f} ha" if area_ha else "—", bod),
+         lp("LAND USE",    lbl), lp(land_use, bod)],
         [lp("GCR — 1P",   lbl), lp(f"{gcr_1p:.2f}", bod),
          lp("GCR — 2P",   lbl), lp(f"{gcr_2p:.2f}", bod)],
         [lp("SOILING / OTHER LOSSES", lbl), lp(f"{soiling_loss:.1f}% / {other_loss:.1f}% (excl. row shading)", bod),
-         lp("DATA SOURCE", lbl), lp("PVGIS JRC (EU Commission)", bod)],
+         lp("DATE",        lbl), lp(str(date.today()), bod)],
+        [lp("DATA SOURCE", lbl), lp("PVGIS JRC (EU Commission)", bod),
+         lp("", lbl), lp("", bod)],
     ], colWidths=[3*cm, 6*cm, 3*cm, 6*cm])
     info.setStyle(TableStyle([
         ("BACKGROUND",    (0,0),(-1,-1), LGRAY),
@@ -611,11 +616,10 @@ def build_pdf(project_name, lat, lon, dc_kwp, gcr_1p, gcr_2p, soiling_loss, othe
     ]))
     story += [perf_tbl, Spacer(1, 0.45*cm)]
 
-    # ── Losses Breakdown (best-performing config) ────────────────────────────
-    best_cfg = next((c for c in CONFIG_ORDER if c in results and results[c]["spec_y"] == best_sy), None)
-    if best_cfg:
+    # ── Losses Breakdown (best by annual energy) ─────────────────────────────
+    if best_cfg and best_cfg in results:
         _b = results[best_cfg]
-        story.append(section_hdr(f"LOSSES BREAKDOWN — {best_cfg} (BEST CONFIG)"))
+        story.append(section_hdr(f"LOSSES BREAKDOWN — {best_cfg} (BEST BY MWh/yr)"))
         story.append(Spacer(1, 0.15*cm))
         loss_tbl = Table([
             [lp("Shading", lbl), lp("Temperature", lbl), lp("Soiling", lbl), lp("Total Loss", lbl)],
@@ -644,40 +648,39 @@ def build_pdf(project_name, lat, lon, dc_kwp, gcr_1p, gcr_2p, soiling_loss, othe
     story.append(section_hdr("RESULTS — CONFIGURATION COMPARISON"))
     story.append(Spacer(1, 0.15*cm))
     hdr_row = [lp(h, lbl) for h in [
-        "Configuration","GCR","Shading\nLoss","Total\nLoss",
+        "Configuration","GCR","MWp","Shading\nLoss","Total\nLoss",
         "POA Irrad.\n(kWh/m²/yr)","Specific Yield\n(kWh/kWp/yr)","Annual Energy\n(MWh/yr)","PR (%)","CF (%)"
     ]]
     rows = [hdr_row]
-    _cfg_row_colors = []  # track row background per cfg
+    _cfg_row_colors = []
     for cfg in CONFIG_ORDER:
         if cfg not in results:
             continue
         r  = results[cfg]
-        is_best = r["spec_y"] == best_sy
+        is_best = cfg == best_cfg
         is_tracker = "Tracker" in cfg
         sy_color = GREEN_C if is_tracker else ORANGE_C
         sy_style = S("sy", fontSize=10, fontName="Helvetica-Bold", textColor=sy_color)
         cfg_style = S("cf", fontSize=9,
                       fontName="Helvetica-Bold" if is_best else "Helvetica",
                       textColor=GREEN_DK if is_tracker else colors.HexColor("#c24a00"))
-        # POA (plane-of-array / in-plane irradiance, PVGIS field H(i)_y) — shown
-        # alongside specific yield so a tracker's higher yield can be traced
-        # back to genuinely higher captured irradiance, not just lower losses.
         rows.append([
             lp(cfg + (" ★" if is_best else ""), cfg_style),
             lp(f"{r['gcr']:.2f}", bod),
+            lp(f"{r.get('mwp', 0):,.1f}", bod),
             lp(f"{r['shading']:.1f}%", bod),
             lp(f"{r['total_loss']:.1f}%", bod),
             lp(f"{r['h_y']:,.0f}", bod),
             lp(f"{r['spec_y']:,.0f}", sy_style),
-            lp(f"{r['spec_y'] * dc_kwp / 1000:,.1f}", bod),
+            lp(f"{r.get('mwh_yr', 0):,.1f}", bod),
             lp(f"{r['pr']:.1f}%" if r["pr"] else "—", bod),
             lp(f"{r['cf']:.1f}%", bod),
         ])
         _cfg_row_colors.append(
             colors.HexColor("#f0faf4") if is_tracker else colors.HexColor("#fff4ee")
         )
-    res_tbl = Table(rows, colWidths=[2.6*cm, 1.3*cm, 1.5*cm, 1.5*cm, 1.7*cm, 2.6*cm, 2.4*cm, 1.3*cm, 1.3*cm])
+    res_tbl = Table(rows, colWidths=[2.4*cm, 1.1*cm, 1.2*cm, 1.3*cm, 1.3*cm,
+                                     1.6*cm, 2.2*cm, 2.0*cm, 1.1*cm, 1.1*cm])
     _tbl_style = [
         ("BACKGROUND",    (0,0),(-1, 0), AMBER),
         ("BOX",           (0,0),(-1,-1), 0.5, BORDER),
@@ -761,13 +764,51 @@ _proj_ctry = _proj.get("country", "")
 _proj_area = _proj.get("area_ha")
 _has_proj  = _proj_lat is not None and _proj_lon is not None
 
-# Capacity density table (MW/ha)
+# Capacity density table (MW/ha) — reference values at GCR 0.30, 1P portrait
 _DENSITY = {
     ("Standard",  "Fixed Tilt"):          0.40,
     ("Standard",  "Single-Axis Tracker"): 0.35,
     ("Agri-PV",   "Fixed Tilt"):          0.20,
     ("Agri-PV",   "Single-Axis Tracker"): 0.18,
 }
+_GCR_REF = 0.30          # density table calibrated at this GCR (1P)
+_P2_FACTOR = 1.85        # 2P module count vs 1P at same row pitch (approx.)
+
+_CONFIG_CAPACITY = {
+    "1P Fixed":   (False, False, "1p"),
+    "2P Fixed":   (False, True,  "2p"),
+    "1P Tracker": (True,  False, "1p"),
+    "2P Tracker": (True,  True,  "2p"),
+}
+
+
+def config_mwp(area_ha: float, land_use: str, tracker: bool,
+                 gcr: float, two_portrait: bool) -> float:
+    """Installable DC capacity (MWp) from site area and GCR.
+
+    Base MW/ha is defined at _GCR_REF for 1P. Higher GCR → shorter pitch →
+    more MWp (and more row shading, modelled separately in gcr_shading()).
+    """
+    if not area_ha or area_ha <= 0:
+        return 0.0
+    mount = "Single-Axis Tracker" if tracker else "Fixed Tilt"
+    base = _DENSITY[(land_use, mount)]
+    mwp = area_ha * base * (gcr / _GCR_REF)
+    if two_portrait:
+        mwp *= _P2_FACTOR
+    return round(mwp, 2)
+
+
+def attach_capacity(results: dict, area_ha: float, land_use: str,
+                    gcr_1p: float, gcr_2p: float) -> None:
+    """Add mwp and mwh_yr to each config in results (in place)."""
+    for cfg, (tracker, two_p, gcr_key) in _CONFIG_CAPACITY.items():
+        if cfg not in results:
+            continue
+        gcr = gcr_1p if gcr_key == "1p" else gcr_2p
+        mwp = config_mwp(area_ha, land_use, tracker, gcr, two_p) if area_ha else 0.0
+        results[cfg]["mwp"] = mwp
+        results[cfg]["mwh_yr"] = round(results[cfg]["spec_y"] * mwp, 1) if mwp else 0.0
 
 if _has_proj:
     st.markdown(f"""
@@ -785,61 +826,81 @@ else:
         icon=None,
     )
 
-# ── Capacity picker (shown when project area is known) ────────────────────────
-# Previously this rendered all 4 land-use/mounting combinations side by side
-# in one table. Laypeople read "highest MWp in the table" as "best system" —
-# but capacity density and energy yield are different metrics, and the table
-# invited exactly that mix-up. Now the user picks ONE combination up front and
-# sees only that result, which removes the misleading comparison entirely.
-_default_dc_kwp = 10_000.0
-_scenario_label = "Custom"
+# ── Land use + GCR (outside form — live capacity preview) ───────────────────
+_yiq_land_use = "Standard"
+_area_ha = float(_proj_area) if _proj_area else 0.0
 
 if _has_proj and _proj_area:
-    st.markdown('<div class="yiq-section">📐 Site Capacity for Your Area</div>',
+    st.markdown('<div class="yiq-section">📐 Site Capacity — All Configurations</div>',
                 unsafe_allow_html=True)
+    _yiq_land_use = st.radio(
+        "Land Use", ["Standard", "Agri-PV"],
+        key="yiq_landuse", horizontal=True,
+        help="Capacity density differs by land use (Agri-PV needs wider spacing)."
+    )
+elif _has_proj:
+    _yiq_land_use = st.radio(
+        "Land Use", ["Standard", "Agri-PV"],
+        key="yiq_landuse", horizontal=True,
+    )
+else:
+    _cap_c1, _cap_c2 = st.columns(2)
+    with _cap_c1:
+        _yiq_land_use = st.radio(
+            "Land Use", ["Standard", "Agri-PV"],
+            key="yiq_landuse", horizontal=True,
+        )
+    with _cap_c2:
+        _area_ha = st.number_input(
+            "Site Area (ha)", min_value=0.0, max_value=50_000.0,
+            value=0.0, step=1.0,
+            help="Required for MWp and MWh/yr. Set in Project page to auto-fill."
+        )
 
-    _pick_c1, _pick_c2 = st.columns(2)
-    with _pick_c1:
-        _pick_lu = st.radio("Land Use", ["Standard", "Agri-PV"],
-                             key="yiq_pick_landuse", horizontal=True)
-    with _pick_c2:
-        _pick_mt = st.radio("Mounting", ["Fixed Tilt", "Single-Axis Tracker"],
-                             key="yiq_pick_mount", horizontal=True)
+_gcr_c1, _gcr_c2 = st.columns(2)
+with _gcr_c1:
+    gcr_1p = st.slider(
+        "GCR — 1-portrait", min_value=0.15, max_value=0.55,
+        value=0.28, step=0.01,
+        help="Ground Cover Ratio for 1P configs. Typical: 0.25–0.33. Higher GCR → more MWp, more shading."
+    )
+with _gcr_c2:
+    gcr_2p = st.slider(
+        "GCR — 2-portrait", min_value=0.20, max_value=0.65,
+        value=0.40, step=0.01,
+        help="Ground Cover Ratio for 2P configs. Typical: 0.35–0.50."
+    )
 
-    _pick_density = _DENSITY[(_pick_lu, _pick_mt)]
-    _pick_mwp     = round(_proj_area * _pick_density, 1)
-    _default_dc_kwp = _pick_mwp * 1000
-    _scenario_label = f"{_pick_lu} · {_pick_mt}"
-
-    st.markdown(f"""
-    <div style="display:flex;align-items:center;gap:1.2rem;background:#f0faf5;
-                border:1px solid #b8ddc8;border-radius:8px;padding:0.7rem 1rem;
-                margin-bottom:0.7rem;">
-      <div>
-        <div style="font-size:0.7rem;font-weight:700;color:#5a7a5a;text-transform:uppercase;
-                    letter-spacing:0.06em;">Density</div>
-        <div style="font-size:1rem;font-weight:800;color:#145f34;">{_pick_density} MW/ha</div>
-      </div>
-      <div style="width:1px;height:32px;background:#b8ddc8;"></div>
-      <div>
-        <div style="font-size:0.7rem;font-weight:700;color:#5a7a5a;text-transform:uppercase;
-                    letter-spacing:0.06em;">Est. Capacity for {_proj_area} ha</div>
-        <div style="font-size:1.3rem;font-weight:800;color:#0d5c0d;">{_pick_mwp} MWp</div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
+if _area_ha and _area_ha > 0:
+    _prev_hdr = st.columns([1.6, 0.9, 1.0, 1.2])
+    for col, txt in zip(_prev_hdr, ["Configuration", "GCR", "MWp", "MW/ha eff."]):
+        col.markdown(
+            f"<div style='font-size:0.77rem;font-weight:700;color:#6a8a6a;"
+            f"text-transform:uppercase;letter-spacing:0.04em;"
+            f"border-bottom:1px solid #dde8dd;padding-bottom:4px;'>{txt}</div>",
+            unsafe_allow_html=True,
+        )
+    for cfg, (tracker, two_p, gcr_key) in _CONFIG_CAPACITY.items():
+        gcr = gcr_1p if gcr_key == "1p" else gcr_2p
+        mwp = config_mwp(_area_ha, _yiq_land_use, tracker, gcr, two_p)
+        eff = round(mwp / _area_ha, 3) if _area_ha else 0
+        _pr = st.columns([1.6, 0.9, 1.0, 1.2])
+        _pr[0].markdown(f"**{cfg}**")
+        _pr[1].markdown(f"{gcr:.2f}")
+        _pr[2].markdown(f"**{mwp:,.1f}**")
+        _pr[3].markdown(f"{eff:.3f}")
 
     st.markdown(
         '<div style="font-size:0.82rem;color:#7a6a2a;background:#fff8e1;'
         'border-left:3px solid #d4840a;border-radius:6px;padding:0.55rem 0.8rem;'
-        'margin:0 0 0.9rem 0;">'
-        '⚠️ <strong>This is installable capacity (MWp), not energy performance.</strong> '
-        'Fixed Tilt fits more MWp per hectare than Tracker because trackers need wider '
-        'row spacing to avoid self-shading while rotating — lower density, not lower output. '
-        'Trackers produce <strong>more energy per installed kWp</strong> (see Specific Yield, '
-        'kWh/kWp/yr, in the results below after running the analysis).'
-        '</div>', unsafe_allow_html=True
+        'margin:0.5rem 0 0.9rem 0;">'
+        '⚠️ <strong>MWp scales with GCR</strong> (tighter pitch → more modules). '
+        'Row shading is modelled separately in the yield run. '
+        '<strong>Best configuration = highest MWh/yr</strong>, not highest MWp or kWh/kWp.'
+        '</div>', unsafe_allow_html=True,
     )
+elif _has_proj:
+    st.info("Set site area in the **📋 Project** page to see capacity estimates.", icon=None)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # INPUT FORM
@@ -872,39 +933,21 @@ with st.form("yieldiq_form"):
                 "Project Name", placeholder="e.g. Mannheim Solar 50 MWp"
             )
 
-    c3, c4, c5, c6, c7, c8 = st.columns(6)
+    c3, c4, c5 = st.columns(3)
     with c3:
-        dc_kwp = st.number_input(
-            "Target DC Capacity (kWp)", min_value=1.0, max_value=5_000_000.0,
-            value=float(_default_dc_kwp), step=500.0,
-            help="Total rated DC power of the system. Auto-filled from scenario above."
-        )
-    with c4:
-        gcr_1p = st.number_input(
-            "GCR — 1P", min_value=0.15, max_value=0.55,
-            value=0.28, step=0.01, format="%.2f",
-            help="Ground Cover Ratio for 1-portrait configurations. Typical: 0.25–0.33"
-        )
-    with c5:
-        gcr_2p = st.number_input(
-            "GCR — 2P", min_value=0.20, max_value=0.65,
-            value=0.40, step=0.01, format="%.2f",
-            help="Ground Cover Ratio for 2-portrait configurations. Typical: 0.35–0.50"
-        )
-    with c6:
         soiling_loss = st.number_input(
             "Soiling Loss (%)", min_value=0.0, max_value=10.0,
             value=2.0, step=0.5,
             help="Dust/dirt accumulation loss. Typical: 1–3% (temperate), 3–6% (arid/desert sites)."
         )
-    with c7:
+    with c4:
         other_loss = st.number_input(
             "Other System Losses (%)", min_value=3.0, max_value=20.0,
-            value=12.0, step=0.5,
+            value=6.0, step=0.5,
             help="Wiring, inverter, mismatch, availability — excludes row shading, soiling and "
                  "PVGIS's own temperature/AOI/spectral derates (those are computed automatically)."
         )
-    with c8:
+    with c5:
         st.markdown("<div style='height:1.85rem'></div>", unsafe_allow_html=True)
         submitted = st.form_submit_button(
             "⚡ Run Yield Analysis", use_container_width=True, type="primary"
@@ -951,8 +994,20 @@ if submitted:
 
     increment_usage(_uid, "yieldiq")
 
-    best_sy  = max(results[c]["spec_y"] for c in CONFIG_ORDER if c in results)
-    best_cfg = next(c for c in CONFIG_ORDER if c in results and results[c]["spec_y"] == best_sy)
+    _area_for_cap = float(_area_ha) if _area_ha and _area_ha > 0 else 0.0
+    if _area_for_cap:
+        attach_capacity(results, _area_for_cap, _yiq_land_use, gcr_1p, gcr_2p)
+        best_cfg = max(
+            (c for c in CONFIG_ORDER if c in results),
+            key=lambda c: results[c].get("mwh_yr", 0),
+        )
+        best_mwh = results[best_cfg]["mwh_yr"]
+    else:
+        best_cfg = max(
+            (c for c in CONFIG_ORDER if c in results),
+            key=lambda c: results[c]["spec_y"],
+        )
+        best_mwh = 0.0
 
     # ── Section: Solar Resource ────────────────────────────────────────────────
     st.markdown('<div class="yiq-section">🌞 Solar Resource</div>', unsafe_allow_html=True)
@@ -977,7 +1032,8 @@ if submitted:
 
     # ── Section: Losses Breakdown (for best-performing config) ────────────────
     st.markdown(
-        f'<div class="yiq-section">📉 Losses Breakdown — {best_cfg} (best config)</div>',
+        f'<div class="yiq-section">📉 Losses Breakdown — {best_cfg} '
+        f'({"best by MWh/yr" if _area_for_cap else "best by kWh/kWp"})</div>',
         unsafe_allow_html=True
     )
     _best = results[best_cfg]
@@ -999,11 +1055,11 @@ if submitted:
     st.markdown('<div class="yiq-section">📊 Results — Configuration Comparison</div>', unsafe_allow_html=True)
 
     # Column headers
-    _COL_W = [1.5, 0.7, 1.0, 1.0, 1.1, 1.4, 1.4, 0.8, 0.8]
+    _COL_W = [1.4, 0.6, 0.9, 0.9, 0.9, 1.0, 1.3, 1.2, 0.7, 0.7]
     hdr_cols = st.columns(_COL_W)
     for col, txt in zip(hdr_cols, [
-        "Configuration","GCR","Shading Loss","Total Loss",
-        "POA Irrad.","Specific Yield","Annual Energy","PR","CF"
+        "Configuration","GCR","MWp","Shading","Total Loss",
+        "POA Irrad.","Specific Yield","Annual MWh","PR","CF"
     ]):
         col.markdown(
             f"<div style='font-size:0.77rem;font-weight:700;color:#6a8a6a;"
@@ -1016,7 +1072,7 @@ if submitted:
         if cfg not in results:
             continue
         r       = results[cfg]
-        is_best = r["spec_y"] == best_sy
+        is_best = cfg == best_cfg
         best_badge = (' <span style="background:#e8f5e9;color:#2e7d32;font-size:0.62rem;'
                       'font-weight:700;padding:1px 7px;border-radius:10px;">BEST</span>'
                       if is_best else "")
@@ -1027,43 +1083,51 @@ if submitted:
         row_cols[1].markdown(
             f'<div style="padding:6px 0;color:#3a5a3a;">{r["gcr"]:.2f}</div>',
             unsafe_allow_html=True)
+        _mwp = r.get("mwp", 0)
         row_cols[2].markdown(
-            f'<div style="padding:6px 0;color:#d4840a;font-weight:600;">{r["shading"]:.1f}%</div>',
+            f'<div style="padding:6px 0;font-weight:600;">'
+            f'{f"{_mwp:,.1f} MWp" if _mwp else "—"}</div>',
             unsafe_allow_html=True)
         row_cols[3].markdown(
+            f'<div style="padding:6px 0;color:#d4840a;font-weight:600;">{r["shading"]:.1f}%</div>',
+            unsafe_allow_html=True)
+        row_cols[4].markdown(
             f'<div style="padding:6px 0;color:#5a7a5a;">{r["total_loss"]:.1f}%</div>',
             unsafe_allow_html=True)
-        # POA = plane-of-array / in-plane irradiance (PVGIS field H(i)_y).
-        # Shown so a tracker's higher yield can be traced back to genuinely
-        # higher captured irradiance, not just lower shading/loss.
-        row_cols[4].markdown(
+        row_cols[5].markdown(
             f'<div style="padding:6px 0;color:#3a5a3a;">{r["h_y"]:,.0f} kWh/m²</div>',
             unsafe_allow_html=True)
-        row_cols[5].markdown(
+        row_cols[6].markdown(
             f'<div style="padding:6px 0;font-weight:700;color:#1565c0;font-size:1.05rem;">'
             f'{r["spec_y"]:,.0f} kWh/kWp</div>', unsafe_allow_html=True)
-        row_cols[6].markdown(
-            f'<div style="padding:6px 0;font-weight:600;">'
-            f'{r["spec_y"] * dc_kwp / 1000:,.1f} MWh/yr</div>', unsafe_allow_html=True)
-        _pr_str = f'{r["pr"]:.1f}%' if r["pr"] else "—"
+        _mwh = r.get("mwh_yr", 0)
         row_cols[7].markdown(
+            f'<div style="padding:6px 0;font-weight:600;">'
+            f'{f"{_mwh:,.1f} MWh/yr" if _mwh else "— (set area)"}</div>',
+            unsafe_allow_html=True)
+        _pr_str = f'{r["pr"]:.1f}%' if r["pr"] else "—"
+        row_cols[8].markdown(
             f'<div style="padding:6px 0;">{_pr_str}</div>',
             unsafe_allow_html=True)
-        row_cols[8].markdown(
+        row_cols[9].markdown(
             f'<div style="padding:6px 0;">{r["cf"]:.1f}%</div>',
             unsafe_allow_html=True)
 
-    # ── Tracker gain ──────────────────────────────────────────────────────────
+    # ── Tracker gain (specific yield + energy where area known) ───────────────
     gain_cols = st.columns(2)
     for i, pref in enumerate(["1P", "2P"]):
         fix, trk = f"{pref} Fixed", f"{pref} Tracker"
         if fix in results and trk in results:
             g    = results[trk]["spec_y"] - results[fix]["spec_y"]
             gpct = g / results[fix]["spec_y"] * 100
+            delta = ""
+            if _area_for_cap:
+                dmwh = results[trk].get("mwh_yr", 0) - results[fix].get("mwh_yr", 0)
+                delta = f" · {dmwh:+,.0f} MWh/yr"
             gain_cols[i].metric(
                 f"Tracker Gain ({pref})",
                 f"{g:+,.0f} kWh/kWp/yr",
-                f"{gpct:+.1f}% vs Fixed"
+                f"{gpct:+.1f}% vs Fixed{delta}"
             )
 
     # ── Optimal tilt ──────────────────────────────────────────────────────────
@@ -1076,14 +1140,16 @@ if submitted:
 
     # ── Monthly chart ─────────────────────────────────────────────────────────
     st.markdown('<div class="yiq-section">📅 Monthly Energy Profile</div>', unsafe_allow_html=True)
-    chart_bytes = make_monthly_chart(results, dc_kwp)
+    _chart_mwp = results[best_cfg].get("mwp") or 1.0
+    chart_bytes = make_monthly_chart(results, _chart_mwp, title_cfg=best_cfg)
     st.image(chart_bytes, use_container_width=True)
 
     # ── PDF download (generated once, shown immediately) ──────────────────────
     st.markdown("---")
     pdf_bytes = build_pdf(
-        project_name, lat, lon, dc_kwp, gcr_1p, gcr_2p, soiling_loss, other_loss,
-        results, chart_bytes, best_sy, ghi, dni, dhi
+        project_name, lat, lon, _area_for_cap, _yiq_land_use,
+        gcr_1p, gcr_2p, soiling_loss, other_loss,
+        results, chart_bytes, best_mwh, best_cfg, ghi, dni, dhi
     )
     safe_name = re.sub(r"[^\w\- ]", "", project_name).strip().replace(" ", "_")
     st.download_button(

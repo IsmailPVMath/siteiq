@@ -1,7 +1,7 @@
 import json
 import streamlit as st
 import streamlit.components.v1 as components
-from pvmath_auth import render_auth_page, sign_out, load_latest_project, STRIPE_LINK
+from pvmath_auth import render_auth_page, sign_out, load_latest_project, UPGRADE_CONTACT
 
 st.set_page_config(
     page_title="PVMath — Solar Site Intelligence",
@@ -390,7 +390,7 @@ with st.sidebar:
             # itself will show the user's current plan and the correct upgrade
             # path (e.g. Pro -> Developer) — that should live in Stripe's config,
             # not be duplicated/hardcoded in the app.
-            st.link_button("Manage Membership", STRIPE_LINK, use_container_width=True)
+            st.link_button("Upgrade / Billing", UPGRADE_CONTACT, use_container_width=True)
 
             if st.button("Log out", key="sidebar_logout", use_container_width=True):
                 sign_out()

@@ -15,7 +15,7 @@ from streamlit_folium import st_folium
 from datetime import datetime
 from pvmath_auth import (
     show_paywall,
-    increment_usage, is_over_limit, remaining, FREE_LIMIT, STRIPE_LINK,
+    increment_usage, is_over_limit, remaining, FREE_LIMIT, UPGRADE_CONTACT,
     get_plan, plan_limit, plan_label
 )
 from pvmath_styles import inject_styles
@@ -1182,11 +1182,11 @@ with left:
           <div style="color:#555;font-size:0.88rem;margin-bottom:1.2rem;line-height:1.6;">
             {_topo_pw_body}
           </div>
-          <a href="{STRIPE_LINK}" target="_blank"
+          <a href="{UPGRADE_CONTACT}"
              style="display:inline-block;background:linear-gradient(135deg,#1d9e52,#145f34);
                     color:#fff;font-weight:700;font-size:0.95rem;padding:0.75rem 2rem;
                     border-radius:9px;text-decoration:none;letter-spacing:0.01em;">
-            Upgrade to Professional →
+            Contact us to upgrade →
           </a>
           <div style="margin-top:1rem;font-size:0.78rem;color:#999;">
             Questions? <a href="mailto:contact@pvmath.com" style="color:#1d9e52;">contact@pvmath.com</a>

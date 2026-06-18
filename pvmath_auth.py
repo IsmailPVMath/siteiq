@@ -50,7 +50,8 @@ PLAN_LABELS = {
 }
 
 STRIPE_LINK  = "https://buy.stripe.com/YOUR_LINK_HERE"
-PRICE_LABEL  = "€49 / month"
+UPGRADE_CONTACT = "mailto:contact@pvmath.com?subject=PVMath%20%E2%80%94%20Professional%20upgrade"
+PRICE_LABEL  = "€149 / month"
 
 # ── Supabase helpers (direct REST — no supabase-py) ───────────
 def _sb_url() -> str:
@@ -1247,7 +1248,7 @@ def show_paywall(app_label: str):
         title = "Free trial complete"
         body = (f"You've used your {limit} free {app_label} analyses. "
                 f"Upgrade to Professional for {PLAN_LIMITS['professional']} analyses/month.")
-        cta_text, cta_href = "Upgrade to Professional →", STRIPE_LINK
+        cta_text, cta_href = "Contact us to upgrade →", UPGRADE_CONTACT
     else:
         title = "Monthly limit reached"
         body = (f"You've used all {limit} {plan_label(plan)} {app_label} analyses for this month. "
