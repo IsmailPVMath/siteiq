@@ -20,7 +20,7 @@ import requests as _req
 import streamlit as st
 
 # ── Config ────────────────────────────────────────────────────
-FREE_LIMIT   = 10
+FREE_LIMIT   = 5
 STRIPE_LINK  = "https://buy.stripe.com/YOUR_LINK_HERE"
 PRICE_LABEL  = "€49 / month"
 
@@ -591,7 +591,7 @@ def render_auth_page(app_name: str = "PVMath"):
 
         st.markdown("""
         <div style="text-align:center;margin-top:3rem;margin-bottom:0.5rem;">
-          <div style="display:flex;align-items:center;gap:0.6rem;justify-content:center;margin-bottom:0.4rem;">
+          <a href="https://pvmath.com" target="_blank" style="display:flex;align-items:center;gap:0.6rem;justify-content:center;margin-bottom:0.4rem;text-decoration:none;">
             <svg width="40" height="40" viewBox="0 0 46 46" xmlns="http://www.w3.org/2000/svg">
               <rect width="46" height="46" rx="10" fill="#145f34"/>
               <path d="M0 10 Q0 0 10 0 H36 Q46 0 46 10 V14 H0 Z" fill="#1d9e52"/>
@@ -600,7 +600,7 @@ def render_auth_page(app_name: str = "PVMath"):
                     font-weight="900" fill="white">PV</text>
             </svg>
             <span style="font-size:1.5rem;font-weight:800;color:#1a2e1a;letter-spacing:-0.04em;">PVMath</span>
-          </div>
+          </a>
         </div>
         """, unsafe_allow_html=True)
 
@@ -894,14 +894,14 @@ def render_auth_page(app_name: str = "PVMath"):
     # ── Logo + tagline ─────────────────────────────────────────
     st.markdown(f"""
     <div style="text-align:center;margin-top:2.5rem;margin-bottom:0.5rem;">
-      <div style="display:flex;align-items:center;gap:0.7rem;justify-content:center;margin-bottom:0.4rem;">
+      <a href="https://pvmath.com" target="_blank" style="display:flex;align-items:center;gap:0.7rem;justify-content:center;margin-bottom:0.4rem;text-decoration:none;">
         <svg width="46" height="46" viewBox="0 0 46 46" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;display:block;">
           <rect width="46" height="46" rx="10" fill="#145f34"/>
           <path d="M0 10 Q0 0 10 0 H36 Q46 0 46 10 V14 H0 Z" fill="#1d9e52"/>
           <text x="23" y="32" text-anchor="middle" dominant-baseline="middle" font-family="Arial Black,Arial,sans-serif" font-size="18" font-weight="900" fill="white">PV</text>
         </svg>
         <span style="font-family:Inter,sans-serif;font-size:1.7rem;font-weight:800;color:#1a2e1a;letter-spacing:-0.04em;">PVMath</span>
-      </div>
+      </a>
       <div class="auth-logo-sub">Solar Site Intelligence &nbsp;·&nbsp; SiteIQ · TopoIQ · YieldIQ</div>
     </div>
     """, unsafe_allow_html=True)
@@ -915,7 +915,7 @@ def render_auth_page(app_name: str = "PVMath"):
         with tab_register:
             st.markdown("""
             <div class="free-badge">
-              ✦ &nbsp;10 free analyses per module — no credit card required
+              ✦ &nbsp;5 free analyses per module — no credit card required
             </div>
             """, unsafe_allow_html=True)
 
@@ -1079,7 +1079,7 @@ def show_paywall(app_label: str):
         Free trial complete
       </div>
       <div style="font-size:0.88rem;color:#5a7a5a;line-height:1.6;margin-bottom:1.5rem;max-width:340px;margin-left:auto;margin-right:auto;">
-        You've used your 10 free {app_label} analyses. Upgrade to Professional for unlimited access to all modules.
+        You've used your 5 free {app_label} analyses. Upgrade to Professional for unlimited access to all modules.
       </div>
       <a href="{STRIPE_LINK}" target="_blank" style="
           display:inline-block;

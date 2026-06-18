@@ -14,7 +14,7 @@
 **Tagline:** "From site to system."  
 **Focus:** Ground-mount solar ONLY — Fixed Tilt and Single-Axis Tracker, Standard and Agri-PV (dual use). No rooftop, carport, floating, or BIPV.  
 **Target users:** Solar EPCs, project developers, engineering firms worldwide  
-**Monetization:** Freemium — Free (10 screenings/month per module), Pro €49/month, Enterprise custom
+**Monetization:** Freemium — Free (5 screenings/month per module), Pro €49/month, Enterprise custom
 
 ---
 

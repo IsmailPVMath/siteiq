@@ -5,7 +5,7 @@ from pvmath_auth import render_auth_page, sign_out, load_latest_project, STRIPE_
 
 st.set_page_config(
     page_title="PVMath — Solar Site Intelligence",
-    page_icon="🌱",
+    page_icon="assets/logo-192.png",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -271,12 +271,14 @@ with st.sidebar:
         # ── Collapsed rail: brand mark + a single, always-visible control to bring it back ──
         st.markdown("""
         <div style="display:flex;justify-content:center;padding:0.8rem 0;">
-          <svg width="30" height="30" viewBox="0 0 46 46" xmlns="http://www.w3.org/2000/svg">
-            <rect width="46" height="46" rx="10" fill="#145f34"/>
-            <path d="M0 10 Q0 0 10 0 H36 Q46 0 46 10 V14 H0 Z" fill="#1d9e52"/>
-            <text x="23" y="31" text-anchor="middle" dominant-baseline="middle"
-                  font-family="Arial Black,Arial,sans-serif" font-size="16" font-weight="900" fill="white">PV</text>
-          </svg>
+          <a href="https://pvmath.com" target="_blank" style="display:flex;">
+            <svg width="30" height="30" viewBox="0 0 46 46" xmlns="http://www.w3.org/2000/svg">
+              <rect width="46" height="46" rx="10" fill="#145f34"/>
+              <path d="M0 10 Q0 0 10 0 H36 Q46 0 46 10 V14 H0 Z" fill="#1d9e52"/>
+              <text x="23" y="31" text-anchor="middle" dominant-baseline="middle"
+                    font-family="Arial Black,Arial,sans-serif" font-size="16" font-weight="900" fill="white">PV</text>
+            </svg>
+          </a>
         </div>
         """, unsafe_allow_html=True)
         with st.container():
@@ -289,7 +291,7 @@ with st.sidebar:
         # ── Brand header ──────────────────────────────────────────────────
         st.markdown("""
         <div style="padding:0.8rem 0 0.9rem 0;border-bottom:1px solid #1d3a1d;margin-bottom:0.4rem;">
-          <div style="display:flex;align-items:center;gap:0.6rem;">
+          <a href="https://pvmath.com" target="_blank" style="display:flex;align-items:center;gap:0.6rem;text-decoration:none;">
             <svg width="34" height="34" viewBox="0 0 46 46" xmlns="http://www.w3.org/2000/svg">
               <rect width="46" height="46" rx="10" fill="#145f34"/>
               <path d="M0 10 Q0 0 10 0 H36 Q46 0 46 10 V14 H0 Z" fill="#1d9e52"/>
@@ -300,7 +302,7 @@ with st.sidebar:
               <div style="font-weight:800;font-size:1rem;color:#ffffff;letter-spacing:-0.02em;line-height:1.1;">PVMath</div>
               <div style="font-size:0.63rem;color:#7fd99a;font-weight:700;letter-spacing:0.06em;">SOLAR SITE INTELLIGENCE</div>
             </div>
-          </div>
+          </a>
         </div>
         """, unsafe_allow_html=True)
 
