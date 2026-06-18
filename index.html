@@ -10,6 +10,10 @@
   <meta property="og:url" content="https://pvmath.com" />
   <meta name="google-site-verification" content="sxYSRN-kQh7ffXF-8wbf-6Vjv5qcOvZ7tLoL5EVPiR4" />
   <title>PVMath — Solar Site Intelligence Platform</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16.png">
+  <link rel="apple-touch-icon" href="/assets/logo-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
@@ -88,6 +92,13 @@
       padding: 0.4rem 1rem; border-radius: 100px; margin-bottom: 1.8rem;
     }
     .hero-badge span.dot { width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: pulse 1.8s infinite; }
+    .hero-tagline {
+      display: inline-flex; align-items: center; gap: 0.55rem;
+      background: var(--green-lt); border: 1px solid rgba(29,158,82,.25);
+      color: var(--green-dk); font-size: 0.92rem; font-weight: 600;
+      padding: 0.65rem 1.4rem; border-radius: 100px; margin-top: 2.2rem;
+      max-width: 90%;
+    }
     @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.4)} }
     .hero h1 { font-size: clamp(2.4rem, 5vw, 4rem); font-weight: 900; letter-spacing: -0.04em; line-height: 1.1; margin-bottom: 1.2rem; color: var(--text); }
     .hero h1 em { font-style: normal; color: var(--green); }
@@ -266,7 +277,7 @@
 
 <!-- ── NAV ── -->
 <nav>
-  <a href="#" class="nav-logo">
+  <a href="https://pvmath.com" class="nav-logo">
     <div class="nav-logo-mark">
       <svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
         <rect width="36" height="36" rx="9" fill="#145f34"/>
@@ -307,6 +318,7 @@
       <div class="stat"><div class="stat-num">Global</div><div class="stat-lbl" data-i18n="stat.coverage">Solar Data Coverage</div></div>
       <div class="stat"><div class="stat-num" data-i18n="stat.free-val">Free</div><div class="stat-lbl" data-i18n="stat.start">To Get Started</div></div>
     </div>
+    <div class="hero-tagline" data-i18n="hero.tagline">&#9889; Don&rsquo;t wait for the topo survey &mdash; get import-ready DXF &amp; LandXML terrain files in minutes, not weeks.</div>
   </div>
 </section>
 
@@ -417,7 +429,7 @@
           </div>
           <div style="display:flex;gap:0.5rem;">
             <div style="flex:1;background:#e8f0fb;border-radius:7px;padding:0.45rem;text-align:center;font-size:0.7rem;font-weight:700;color:#1565c0;">&#128196; PDF Report</div>
-            <div style="flex:1;background:#e8f0fb;border-radius:7px;padding:0.45rem;text-align:center;font-size:0.7rem;font-weight:700;color:#1565c0;">&#128208; DXF Export</div>
+            <div style="flex:1;background:#e8f0fb;border-radius:7px;padding:0.45rem;text-align:center;font-size:0.7rem;font-weight:700;color:#1565c0;">&#128208; DXF & LandXML</div>
           </div>
           <div style="margin-top:0.45rem;font-size:0.6rem;color:#bbb;text-align:right;">Source: Copernicus GLO-30 DEM</div>
         </div>
@@ -496,13 +508,13 @@
         <div class="module-pill pill-live" data-i18n="pill.live">Live Now</div>
         <div class="module-num">Module 02</div>
         <div class="module-name blue">TopoIQ</div>
-        <p class="module-desc" data-i18n="topoiq.desc">Satellite terrain extraction for solar site engineering. Draw your site boundary, get elevation and slope heatmaps, contour lines, and DXF terrain files ready for detailed 3D study in your CAD software.</p>
+        <p class="module-desc" data-i18n="topoiq.desc">Satellite terrain extraction for solar site engineering. Draw your site boundary, get elevation and slope heatmaps, contour lines, and DXF or LandXML terrain files &mdash; Civil 3D ready &mdash; for detailed 3D study in your CAD software.</p>
         <ul class="module-features">
           <li data-i18n="topoiq.f1">Site boundary drawing on satellite map</li>
           <li data-i18n="topoiq.f2">Copernicus GLO-30 DEM (~30m native, 5m grid)</li>
           <li data-i18n="topoiq.f3">Elevation &amp; solar-grade slope maps</li>
           <li data-i18n="topoiq.f4">Contour lines at custom spacing</li>
-          <li data-i18n="topoiq.f5">DXF terrain file export</li>
+          <li data-i18n="topoiq.f5">DXF & LandXML terrain file export</li>
           <li data-i18n="topoiq.f6">PDF terrain report</li>
         </ul>
         <a href="https://siteiq.pvmath.com" target="_blank" class="module-link link-blue" data-i18n="topoiq.btn">Open in App &rarr;</a>
@@ -601,7 +613,7 @@
       <div class="steps">
         <div class="step"><div class="step-num blue">2</div><h3 data-i18n="topoiq.s1.h">Site Boundary from Project Setup</h3><p data-i18n="topoiq.s1.p">Your site boundary drawn in Full Mode is loaded automatically. Adjust contour line spacing and profile line positions. No re-drawing needed if you already set up your project.</p></div>
         <div class="step"><div class="step-num blue">3</div><h3 data-i18n="topoiq.s2.h">Extract Terrain Data</h3><p data-i18n="topoiq.s2.p">TopoIQ fetches Copernicus GLO-30 satellite DEM for your site boundary, computes elevation profiles, slope heatmaps, and contour lines at your chosen interval automatically.</p></div>
-        <div class="step"><div class="step-num blue">4</div><h3 data-i18n="topoiq.s3.h">Export DXF &amp; PDF</h3><p data-i18n="topoiq.s3.p">Download a DXF terrain file with contour lines at your chosen spacing &mdash; ready for detailed 3D study in any CAD software &mdash; plus a PDF terrain report with elevation and slope maps.</p></div>
+        <div class="step"><div class="step-num blue">4</div><h3 data-i18n="topoiq.s3.h">Export DXF, LandXML &amp; PDF</h3><p data-i18n="topoiq.s3.p">Download a DXF or Civil 3D-ready LandXML terrain file with contour lines at your chosen spacing &mdash; ready for detailed 3D study in any CAD software &mdash; plus a PDF terrain report with elevation and slope maps.</p></div>
       </div>
     </div>
 
@@ -632,11 +644,12 @@
     <div class="section-header">
       <div class="section-label" data-i18n="why.label">Why PVMath</div>
       <h2 class="section-title" data-i18n-html="why.title">Engineering-grade data.<br>Not estimates.</h2>
+      <p class="section-sub" data-i18n="why.sub">Built on the same satellite, solar, and terrain datasets used in bankable energy assessments. Outputs are preliminary screening-stage results &mdash; fast enough for a go/no-go call, not a substitute for a full engineering study.</p>
     </div>
     <div class="why-grid">
       <div class="why-card"><div class="why-icon">&#9728;&#65039;</div><h4 data-i18n="why.c1.h">Industry-Standard Solar Data</h4><p data-i18n="why.c1.p">GHI and irradiation from PVGIS (EC JRC) &mdash; the same data source used by engineers in bankable pre-feasibility studies worldwide.</p></div>
       <div class="why-card"><div class="why-icon">&#127956;&#65039;</div><h4 data-i18n="why.c2.h">Satellite Terrain Data</h4><p data-i18n="why.c2.p">Copernicus GLO-30 DEM (~30m horizontal resolution). Slope maps, elevation profiles, and contour lines &mdash; extracted in seconds, not days.</p></div>
-      <div class="why-card"><div class="why-icon">&#9968;&#65039;</div><h4 data-i18n="why.c3.h">CAD Software Ready</h4><p data-i18n="why.c3.p">DXF terrain files work in any CAD software &mdash; Civil 3D, BricsCAD, QGIS, and more. No conversion needed.</p></div>
+      <div class="why-card"><div class="why-icon">&#9968;&#65039;</div><h4 data-i18n="why.c3.h">CAD Software Ready</h4><p data-i18n="why.c3.p">DXF and Civil 3D-ready LandXML terrain files work in any CAD software &mdash; Civil 3D, BricsCAD, QGIS, and more. No conversion needed.</p></div>
       <div class="why-card"><div class="why-icon">&#9889;</div><h4 data-i18n="why.c4.h">Under 2 Minutes</h4><p data-i18n="why.c4.p">SiteIQ, TopoIQ, and YieldIQ each complete in under 2 minutes. Full pre-check before the client call ends.</p></div>
       <div class="why-card"><div class="why-icon">&#128196;</div><h4 data-i18n="why.c5.h">Client-Ready Reports</h4><p data-i18n="why.c5.p">Branded PDF outputs from all 3 modules &mdash; site screening, terrain analysis, and energy yield. Print, email, present.</p></div>
       <div class="why-card"><div class="why-icon">&#128119;</div><h4 data-i18n="why.c6.h">Built by a Solar Engineer</h4><p data-i18n="why.c6.p">Not a software startup guessing what engineers need. Built by a Solar Engineering Expert with hands-on experience in utility-scale solar, tracker systems, and EPC delivery worldwide.</p></div>
@@ -658,7 +671,7 @@
       </div>
       <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.2rem;">
         <div style="font-size:0.82rem;font-weight:800;color:#1565c0;margin-bottom:0.5rem;">Copernicus GLO-30 DEM &mdash; ESA / Airbus</div>
-        <div style="font-size:0.8rem;color:var(--muted);line-height:1.65;">30 m horizontal resolution global DEM from TanDEM-X radar imagery. Vertical accuracy ~1&ndash;4 m RMSE in open terrain. TopoIQ uses this for slope maps, contour extraction, and DXF terrain files. Suitable for site selection and conceptual layout &mdash; not a substitute for RTK survey.</div>
+        <div style="font-size:0.8rem;color:var(--muted);line-height:1.65;">30 m horizontal resolution global DEM from TanDEM-X radar imagery. Vertical accuracy ~1&ndash;4 m RMSE in open terrain. TopoIQ uses this for slope maps, contour extraction, and DXF or LandXML terrain files. Suitable for site selection and conceptual layout &mdash; not a substitute for RTK survey.</div>
       </div>
       <div style="background:#fff8e6;border:1.5px solid #f0b429;border-radius:10px;padding:1.2rem;">
         <div style="font-size:0.82rem;font-weight:800;color:#7a4f00;margin-bottom:0.5rem;">&#9888; YieldIQ &mdash; Know the Limits</div>
@@ -740,13 +753,13 @@
         <div class="price-tier">Free</div>
         <div class="price-amount">&euro;0<span> / month</span></div>
         <div class="price-annual-note">&nbsp;</div>
-        <p class="price-desc">Get started without a credit card. 10 runs per module per month.</p>
+        <p class="price-desc">Get started without a credit card. 5 runs per module per month.</p>
         <ul class="price-features">
-          <li class="yes">10 SiteIQ screenings / month</li>
-          <li class="yes">10 TopoIQ analyses / month</li>
-          <li class="yes">10 YieldIQ runs / month</li>
+          <li class="yes">5 SiteIQ screenings / month</li>
+          <li class="yes">5 TopoIQ analyses / month</li>
+          <li class="yes">5 YieldIQ runs / month</li>
           <li class="yes">PDF report download</li>
-          <li class="yes">DXF terrain export</li>
+          <li class="yes">DXF & LandXML terrain export</li>
           <li class="no">Priority data refresh</li>
           <li class="no">Email support</li>
         </ul>
@@ -764,7 +777,7 @@
           <li class="yes">50 analyses / module / month</li>
           <li class="yes">SiteIQ &middot; TopoIQ &middot; YieldIQ full access</li>
           <li class="yes">PDF solar &amp; terrain reports</li>
-          <li class="yes">DXF terrain file export</li>
+          <li class="yes">DXF & LandXML terrain file export</li>
           <li class="yes">PVGIS JRC + Copernicus DEM</li>
           <li class="yes">Priority data refresh</li>
           <li class="yes">Email support (1 business day)</li>
@@ -802,7 +815,7 @@
     </div>
 
     <p style="text-align:center;margin-top:1.5rem;font-size:0.82rem;color:var(--muted);">
-      All plans include 10 free analyses to start. No credit card required. Cancel anytime. VAT (19%) added for EU customers.
+      All plans include 5 free analyses to start. No credit card required. Cancel anytime. VAT (19%) added for EU customers.
     </p>
   </div>
 </section>
@@ -873,7 +886,7 @@
   <div class="footer-inner">
     <div>
       <div class="footer-brand">PVMath</div>
-      <p class="footer-tagline" data-i18n="footer.tagline">Solar site intelligence tools for EPCs, developers, financers and everyone shaping solar projects.</p>
+      <p class="footer-tagline" data-i18n="footer.tagline">Solar site intelligence tools for EPCs, developers, financiers and everyone shaping solar projects.</p>
       <p style="font-size:0.75rem;opacity:.5;" data-i18n="footer.copy">&copy; 2026 PVMath. All rights reserved.</p>
     </div>
     <div class="footer-col">
@@ -887,12 +900,14 @@
       <a href="#about" data-i18n="footer.about">About</a>
       <a href="#pricing" data-i18n="footer.pricing">Pricing</a>
       <a href="#contact" data-i18n="footer.contact">Contact</a>
+      <a href="/assets/pvmath-press-kit.zip" download data-i18n="footer.presskit">Download Logo</a>
     </div>
     <div class="footer-col">
       <h5 data-i18n="footer.legal">Legal</h5>
       <a href="mailto:contact@pvmath.com">contact@pvmath.com</a>
       <a href="/impressum.html" data-i18n="footer.impressum">Impressum</a>
       <a href="/privacy.html" data-i18n="footer.privacy">Privacy Policy</a>
+      <a href="/terms.html" data-i18n="footer.terms">Terms &amp; Conditions</a>
     </div>
   </div>
   <div class="footer-bottom">
@@ -913,6 +928,7 @@ var T = {
     'hero.h1':'Solar intelligence tools<br>built by <em>industry experts,</em><br>for every solar stakeholder.',
     'hero.p':'PVMath automates the slow, manual parts of solar project development — from first site coordinates to actionable engineering data. Preliminary screening outputs in minutes, not days.',
     'hero.btn1':'Try it Free →','hero.btn2':'View All Tools',
+    'hero.tagline':'⚡ Don\'t wait for the topo survey — get import-ready DXF & LandXML terrain files in minutes, not weeks.',
     'stat.modules':'Live Modules','stat.speed':'Site Screening Time',
     'stat.coverage':'Solar Data Coverage','stat.start':'To Get Started','stat.free-val':'Free',
     'modules.label':'Platform Modules',
@@ -923,10 +939,10 @@ var T = {
     'siteiq.f1':'Satellite map with coordinate input','siteiq.f2':'Annual & monthly GHI / irradiation',
     'siteiq.f3':'Terrain & slope overview','siteiq.f4':'Regulatory flags (protected areas)',
     'siteiq.f5':'Flood risk indicator','siteiq.f6':'PDF report — client-ready','siteiq.btn':'Open in App →',
-    'topoiq.desc':'Satellite terrain extraction for solar site engineering. Draw your site boundary, get elevation and slope heatmaps, contour lines, and DXF terrain files ready for detailed 3D study in your CAD software.',
+    'topoiq.desc':'Satellite terrain extraction for solar site engineering. Draw your site boundary, get elevation and slope heatmaps, contour lines, and DXF or LandXML terrain files — Civil 3D ready — for detailed 3D study in your CAD software.',
     'topoiq.f1':'Site boundary drawing on satellite map','topoiq.f2':'Copernicus GLO-30 DEM (~30m native, 5m grid)',
     'topoiq.f3':'Elevation & solar-grade slope maps','topoiq.f4':'Contour lines at custom spacing',
-    'topoiq.f5':'DXF terrain file export','topoiq.f6':'PDF terrain report','topoiq.btn':'Open in App →',
+    'topoiq.f5':'DXF & LandXML terrain file export','topoiq.f6':'PDF terrain report','topoiq.btn':'Open in App →',
     'yieldiq.desc':'Quick pre-layout energy yield estimation using PVGIS JRC data. Get preliminary yield estimates before committing to full PV layout design.',
     'yieldiq.f1':'Specific yield estimation (kWh/kWp)','yieldiq.f2':'PR and capacity factor',
     'yieldiq.f3':'Monthly energy profile','yieldiq.f4':'Temperature & shading correction',
@@ -950,11 +966,12 @@ var T = {
     'siteiq.s3.h':'Download PDF Report','siteiq.s3.p':'Get a client-ready PDF with solar resource data, monthly irradiation chart, terrain summary, and a go/no-go verdict. Ready for your next client meeting.',
     'topoiq.s1.h':'Site Boundary from Project Setup','topoiq.s1.p':'Your site boundary drawn in Full Mode is loaded automatically. Adjust contour line spacing and profile line positions. No re-drawing needed if you already set up your project.',
     'topoiq.s2.h':'Extract Terrain Data','topoiq.s2.p':'TopoIQ fetches Copernicus GLO-30 satellite DEM for your site boundary, computes elevation profiles, slope heatmaps, and contour lines at your chosen interval automatically.',
-    'topoiq.s3.h':'Export DXF & PDF','topoiq.s3.p':'Download a DXF terrain file with contour lines at your chosen spacing — ready for detailed 3D study in any CAD software — plus a PDF terrain report with elevation and slope maps.',
+    'topoiq.s3.h':'Export DXF, LandXML & PDF','topoiq.s3.p':'Download a DXF or Civil 3D-ready LandXML terrain file with contour lines at your chosen spacing — ready for detailed 3D study in any CAD software — plus a PDF terrain report with elevation and slope maps.',
     'why.label':'Why PVMath','why.title':'Engineering-grade data.<br>Not estimates.',
+    'why.sub':'Built on the same satellite, solar, and terrain datasets used in bankable energy assessments. Outputs are preliminary screening-stage results — fast enough for a go/no-go call, not a substitute for a full engineering study.',
     'why.c1.h':'Industry-Standard Solar Data','why.c1.p':'GHI and irradiation from PVGIS (EC JRC) — the same data source used by engineers in bankable pre-feasibility studies worldwide.',
     'why.c2.h':'Satellite Terrain Data','why.c2.p':'Copernicus GLO-30 DEM (~30m horizontal resolution). Slope maps, elevation profiles, and contour lines — extracted in seconds, not days.',
-    'why.c3.h':'CAD Software Ready','why.c3.p':'DXF terrain files work in any CAD software — Civil 3D, BricsCAD, QGIS, and more. No conversion needed.',
+    'why.c3.h':'CAD Software Ready','why.c3.p':'DXF and Civil 3D-ready LandXML terrain files work in any CAD software — Civil 3D, BricsCAD, QGIS, and more. No conversion needed.',
     'why.c4.h':'Under 2 Minutes','why.c4.p':'SiteIQ, TopoIQ, and YieldIQ each complete in under 2 minutes. Full pre-check before the client call ends.',
     'why.c5.h':'Client-Ready Reports','why.c5.p':'Branded PDF outputs from all 3 modules — site screening, terrain analysis, and energy yield. Print, email, present.',
     'why.c6.h':'Built by a Solar Engineer','why.c6.p':'Not a software startup guessing what engineers need. Built by a Solar Engineering Expert with hands-on experience in utility-scale solar, tracker systems, and EPC delivery worldwide.',
@@ -970,7 +987,7 @@ var T = {
     'stats.sites':'Sites Screened','stats.modules':'Live Modules','stats.global-val':'Global',
     'stats.coverage':'Data Coverage','stats.speed':'Per Site Screening','stats.start':'To Get Started',
     'pricing.label':'Pricing','pricing.title':'Simple, transparent pricing.',
-    'pricing.sub':"10 free analyses per module. No credit card required to start. Upgrade when you're ready.",
+    'pricing.sub':"5 free analyses per module. No credit card required to start. Upgrade when you're ready.",
     'pricing.monthly':'Monthly','pricing.annual':'Annual','pricing.save':'Save 25%','pricing.popular':'Most Popular',
     'tier.starter':'Starter','tier.pro':'Professional','tier.team':'Team',
     'plan.starter.desc':'For individual engineers doing occasional project screening.',
@@ -978,16 +995,16 @@ var T = {
     'plan.team.desc':'For EPC companies and developer teams with multiple engineers.',
     'pf.s.f1':'20 SiteIQ screenings / month','pf.s.f2':'20 TopoIQ analyses / month',
     'pf.s.f3':'PDF report download','pf.s.f4':'Global solar data (PVGIS JRC)',
-    'pf.s.f5':'DXF terrain file export','pf.s.f6':'YieldIQ (coming soon)','pf.s.f7':'Team seats',
+    'pf.s.f5':'DXF & LandXML terrain file export','pf.s.f6':'YieldIQ (coming soon)','pf.s.f7':'Team seats',
     'pf.p.f1':'Unlimited SiteIQ screenings','pf.p.f2':'Unlimited TopoIQ analyses',
-    'pf.p.f3':'PDF terrain & solar reports','pf.p.f4':'DXF terrain file export',
+    'pf.p.f3':'PDF terrain & solar reports','pf.p.f4':'DXF & LandXML terrain file export',
     'pf.p.f5':'Global solar data (PVGIS JRC)','pf.p.f6':'Copernicus Satellite DEM terrain',
     'pf.p.f7':'YieldIQ — Full Access',
     'pf.t.f1':'Up to 5 team seats','pf.t.f2':'Unlimited all modules',
     'pf.t.f3':'All Professional features','pf.t.f4':'Shared project workspace',
     'pf.t.f5':'Priority support','pf.t.f6':'YieldIQ — Full Access','pf.t.f7':'Custom invoice & billing',
     'pricing.btn.start':'Get Started →','pricing.btn.sub':'Subscribe →','pricing.btn.contact':'Contact Us →',
-    'pricing.note':'All plans include a 10-analysis free trial. No credit card required. Cancel anytime. VAT (19%) added for EU customers.',
+    'pricing.note':'All plans include a 5-analysis free trial. No credit card required. Cancel anytime. VAT (19%) added for EU customers.',
     'pricing.per.monthly':'/ month','pricing.per.annual':'/ month*','pricing.year':'year','pricing.save.word':'save',
     'about.label':'About PVMath','about.title':'From the field.<br>Not a desk.',
     'about.p1':'PVMath was founded by a Solar Engineering Expert with hands-on experience in utility-scale solar — tracker systems, terrain analysis, site design, and EPC project delivery worldwide. Built in Germany.',
@@ -1004,10 +1021,10 @@ var T = {
     'form.s3':'YieldIQ access','form.s4':'Professional plan','form.s5':'Team / Enterprise plan',
     'form.s6':'Billing & invoicing question','form.s7':'Technical support','form.s8':'Other',
     'form.message':'Your message...','form.submit':'Send Message →',
-    'footer.tagline':'Solar site intelligence tools for EPCs, developers, financers and everyone shaping solar projects.',
+    'footer.tagline':'Solar site intelligence tools for EPCs, developers, financiers and everyone shaping solar projects.',
     'footer.platform':'Platform','footer.company':'Company','footer.legal':'Legal',
     'footer.yieldiq':'YieldIQ','footer.about':'About','footer.pricing':'Pricing',
-    'footer.contact':'Contact','footer.impressum':'Impressum','footer.privacy':'Privacy Policy',
+    'footer.contact':'Contact','footer.presskit':'Download Logo','footer.impressum':'Impressum','footer.privacy':'Privacy Policy','footer.terms':'Terms & Conditions',
     'footer.copy':'© 2026 PVMath. All rights reserved.',
     'footer.sources':'Data sources: PVGIS (EC JRC) · Copernicus EU-DEM / SRTM · OpenStreetMap'
   },
@@ -1019,6 +1036,7 @@ var T = {
     'hero.h1':'Solar-Intelligenztools –<br>entwickelt von <em>Ingenieuren,</em><br>für Ingenieure.',
     'hero.p':'PVMath automatisiert die langsamen, manuellen Schritte der Solarplanung – von den ersten Koordinaten bis zu verwertbaren Ingenieursdaten. Vorprüfungs-Ergebnisse in Minuten statt Tagen.',
     'hero.btn1':'Kostenlos testen →','hero.btn2':'Module entdecken',
+    'hero.tagline':'⚡ Nicht auf die Vermessung warten — importfertige DXF- & LandXML-Geländedateien in Minuten statt Wochen.',
     'stat.modules':'Aktive Module','stat.speed':'Standortprüfungszeit',
     'stat.coverage':'Solare Datenabdeckung','stat.start':'Zum Starten','stat.free-val':'Gratis',
     'modules.label':'Plattform-Module',
@@ -1029,10 +1047,10 @@ var T = {
     'siteiq.f1':'Satellitenkarte mit Koordinateneingabe','siteiq.f2':'Jährliche & monatliche GHI / Einstrahlung',
     'siteiq.f3':'Gelände- & Neigungsübersicht','siteiq.f4':'Regulierungshinweise (Schutzgebiete)',
     'siteiq.f5':'Hochwasserrisiko-Indikator','siteiq.f6':'PDF-Bericht — kundenfähig','siteiq.btn':'In der App öffnen →',
-    'topoiq.desc':'Satellitengestützte Geländeextraktion für die solare Standortplanung. Standortgrenze einzeichnen, Höhen- und Neigungsdiagramme, Höhenlinien und DXF-Geländedateien für das 3D-Studium in Ihrer CAD-Software erhalten.',
+    'topoiq.desc':'Satellitengestützte Geländeextraktion für die solare Standortplanung. Standortgrenze einzeichnen, Höhen- und Neigungsdiagramme, Höhenlinien und DXF- oder LandXML-Geländedateien (Civil 3D-fertig) für das 3D-Studium in Ihrer CAD-Software erhalten.',
     'topoiq.f1':'Standortgrenze auf Satellitenkarte','topoiq.f2':'Copernicus GLO-30 DEM (~30m nativ, 5m Raster)',
     'topoiq.f3':'Höhen- & solare Neigungskarten','topoiq.f4':'Höhenlinien mit individuellem Abstand',
-    'topoiq.f5':'DXF-Geländedatei-Export','topoiq.f6':'PDF-Geländebericht','topoiq.btn':'In der App öffnen →',
+    'topoiq.f5':'DXF- & LandXML-Geländedatei-Export','topoiq.f6':'PDF-Geländebericht','topoiq.btn':'In der App öffnen →',
     'yieldiq.desc':'Schnelle Energieertragschätzung vor dem Layout mit PVGIS JRC-Daten. Vorläufige Ertragszahlen vor dem vollständigen PV-Layout.',
     'yieldiq.f1':'Spezifischer Ertrag (kWh/kWp)','yieldiq.f2':'PR und Kapazitätsfaktor',
     'yieldiq.f3':'Monatliches Energieprofil','yieldiq.f4':'Temperatur- & Verschattungskorrektur',
@@ -1056,11 +1074,12 @@ var T = {
     'siteiq.s3.h':'PDF-Bericht herunterladen','siteiq.s3.p':'Kundenfähigen PDF mit Solarressourcendaten, monatlichem Einstrahlungsdiagramm, Geländezusammenfassung und Go/No-Go-Empfehlung erhalten. Bereit für das nächste Kundengespräch.',
     'topoiq.s1.h':'Standortgrenze aus Projekteinrichtung','topoiq.s1.p':'Die im Vollmodus eingezeichnete Standortgrenze wird automatisch geladen. Höhenlinienschrittweite und Profillinienpositionen anpassen. Kein erneutes Einzeichnen erforderlich, wenn das Projekt bereits eingerichtet wurde.',
     'topoiq.s2.h':'Geländedaten extrahieren','topoiq.s2.p':'TopoIQ ruft Copernicus GLO-30 Satelliten-DEM für Ihre Standortgrenze ab und berechnet Höhenprofile, Neigungskarten und Höhenlinien im gewählten Abstand automatisch.',
-    'topoiq.s3.h':'DXF & PDF exportieren','topoiq.s3.p':'DXF-Geländedatei mit Höhenlinien im gewählten Abstand herunterladen — bereit für 3D-Studium in jeder CAD-Software — plus PDF-Geländebericht mit Höhen- und Neigungskarten.',
+    'topoiq.s3.h':'DXF, LandXML & PDF exportieren','topoiq.s3.p':'DXF- oder Civil 3D-fertige LandXML-Geländedatei mit Höhenlinien im gewählten Abstand herunterladen — bereit für 3D-Studium in jeder CAD-Software — plus PDF-Geländebericht mit Höhen- und Neigungskarten.',
     'why.label':'Warum PVMath','why.title':'Ingenieurqualitätsdaten.<br>Keine Schätzungen.',
+    'why.sub':'Basiert auf denselben Satelliten-, Solar- und Geländedatensätzen, die auch in bankfähigen Ertragsgutachten verwendet werden. Die Ergebnisse sind vorläufige Screening-Resultate — schnell genug für eine Go/No-Go-Entscheidung, aber kein Ersatz für eine vollständige technische Planung.',
     'why.c1.h':'Branchenstandard-Solardaten','why.c1.p':'GHI und Einstrahlung von PVGIS (EC JRC) — dieselbe Datenquelle, die Ingenieure weltweit in bankfähigen Vor-Machbarkeitsstudien verwenden.',
     'why.c2.h':'Satellitengelände-Daten','why.c2.p':'Copernicus GLO-30 DEM (~30m Horizontalauflösung). Neigungskarten, Höhenprofile und Höhenlinien — in Sekunden extrahiert, nicht in Tagen.',
-    'why.c3.h':'CAD-Software-kompatibel','why.c3.p':'DXF-Geländedateien funktionieren in jeder CAD-Software — Civil 3D, BricsCAD, QGIS und mehr. Keine Konvertierung nötig.',
+    'why.c3.h':'CAD-Software-kompatibel','why.c3.p':'DXF- und Civil 3D-fertige LandXML-Geländedateien funktionieren in jeder CAD-Software — Civil 3D, BricsCAD, QGIS und mehr. Keine Konvertierung nötig.',
     'why.c4.h':'Unter 2 Minuten','why.c4.p':'SiteIQ, TopoIQ und YieldIQ benötigen jeweils unter 2 Minuten. Vollständige Vorprüfung noch während des Kundengesprächs.',
     'why.c5.h':'Kundenfähige Berichte','why.c5.p':'Gebrandete PDF-Ausgaben aus allen 3 Modulen — Standortprüfung, Geländeanalyse und Energieertrag. Drucken, per E-Mail senden, präsentieren.',
     'why.c6.h':'Von einem Solaringenieur entwickelt','why.c6.p':'Kein Software-Startup, das rät, was Ingenieure brauchen. Entwickelt von einem Solar Engineering Expert mit praktischer Erfahrung in Utility-Scale-Solar, Trackersystemen und EPC-Projekten weltweit.',
@@ -1076,7 +1095,7 @@ var T = {
     'stats.sites':'Standorte geprüft','stats.modules':'Live-Module','stats.global-val':'Global',
     'stats.coverage':'Datenabdeckung','stats.speed':'Pro Standortprüfung','stats.start':'Zum Starten',
     'pricing.label':'Preise','pricing.title':'Einfache, transparente Preise.',
-    'pricing.sub':'10 kostenlose Analysen pro Modul. Keine Kreditkarte erforderlich. Upgrade jederzeit möglich.',
+    'pricing.sub':'5 kostenlose Analysen pro Modul. Keine Kreditkarte erforderlich. Upgrade jederzeit möglich.',
     'pricing.monthly':'Monatlich','pricing.annual':'Jährlich','pricing.save':'25% sparen','pricing.popular':'Beliebteste Wahl',
     'tier.starter':'Starter','tier.pro':'Professional','tier.team':'Team',
     'plan.starter.desc':'Für einzelne Ingenieure mit gelegentlicher Standortprüfung.',
@@ -1084,16 +1103,16 @@ var T = {
     'plan.team.desc':'Für EPC-Unternehmen und Entwicklerteams mit mehreren Ingenieuren.',
     'pf.s.f1':'20 SiteIQ-Prüfungen / Monat','pf.s.f2':'20 TopoIQ-Analysen / Monat',
     'pf.s.f3':'PDF-Bericht-Download','pf.s.f4':'Globale Solardaten (PVGIS JRC)',
-    'pf.s.f5':'DXF-Geländedatei-Export','pf.s.f6':'YieldIQ (demnächst)','pf.s.f7':'Team-Zugänge',
+    'pf.s.f5':'DXF- & LandXML-Geländedatei-Export','pf.s.f6':'YieldIQ (demnächst)','pf.s.f7':'Team-Zugänge',
     'pf.p.f1':'Unbegrenzte SiteIQ-Prüfungen','pf.p.f2':'Unbegrenzte TopoIQ-Analysen',
-    'pf.p.f3':'PDF-Gelände- & Solarberichte','pf.p.f4':'DXF-Geländedatei-Export',
+    'pf.p.f3':'PDF-Gelände- & Solarberichte','pf.p.f4':'DXF- & LandXML-Geländedatei-Export',
     'pf.p.f5':'Globale Solardaten (PVGIS JRC)','pf.p.f6':'Copernicus Satellite DEM-Gelände',
     'pf.p.f7':'YieldIQ — Vollzugang',
     'pf.t.f1':'Bis zu 5 Team-Zugänge','pf.t.f2':'Unbegrenzt alle Module',
     'pf.t.f3':'Alle Professional-Features','pf.t.f4':'Gemeinsamer Projekt-Workspace',
     'pf.t.f5':'Prioritäts-Support','pf.t.f6':'YieldIQ — Vollzugang','pf.t.f7':'Individuelle Rechnung & Abrechnung',
     'pricing.btn.start':'Jetzt starten →','pricing.btn.sub':'Abonnieren →','pricing.btn.contact':'Kontakt →',
-    'pricing.note':'Alle Pläne beinhalten 10 kostenlose Analysen. Keine Kreditkarte erforderlich. Jederzeit kündbar. Zzgl. MwSt. 19% für EU-Kunden.',
+    'pricing.note':'Alle Pläne beinhalten 5 kostenlose Analysen. Keine Kreditkarte erforderlich. Jederzeit kündbar. Zzgl. MwSt. 19% für EU-Kunden.',
     'pricing.per.monthly':'/ Monat','pricing.per.annual':'/ Monat*','pricing.year':'Jahr','pricing.save.word':'spare',
     'about.label':'Über PVMath','about.title':'Aus der Praxis.<br>Nicht vom Schreibtisch.',
     'about.p1':'PVMath wurde von einem Solar Engineering Expert mit praktischer Erfahrung in Utility-Scale-Solar gegründet — Trackersysteme, Geländeanalyse, Standortplanung und EPC-Projektabwicklung weltweit. Entwickelt in Deutschland.',
@@ -1113,8 +1132,8 @@ var T = {
     'footer.tagline':'Solar-Standortintelligenz für EPCs und Projektentwickler. Von Ingenieuren für Ingenieure.',
     'footer.platform':'Plattform','footer.company':'Unternehmen','footer.legal':'Rechtliches',
     'footer.yieldiq':'YieldIQ','\footer.about':'Über uns','footer.about':'Über uns',
-    'footer.pricing':'Preise','footer.contact':'Kontakt','footer.impressum':'Impressum',
-    'footer.privacy':'Datenschutz','footer.copy':'© 2026 PVMath. Alle Rechte vorbehalten.',
+    'footer.pricing':'Preise','footer.contact':'Kontakt','footer.presskit':'Logo herunterladen','footer.impressum':'Impressum',
+    'footer.privacy':'Datenschutz','footer.terms':'AGB','footer.copy':'© 2026 PVMath. Alle Rechte vorbehalten.',
     'footer.sources':'Datenquellen: PVGIS (EC JRC) · Copernicus EU-DEM / SRTM · OpenStreetMap'
   }
 };

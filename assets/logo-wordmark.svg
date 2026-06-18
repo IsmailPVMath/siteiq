@@ -1,0 +1,8 @@
+<svg width="220" height="46" viewBox="0 0 220 46" xmlns="http://www.w3.org/2000/svg">
+  <rect width="46" height="46" rx="10" fill="#145f34"/>
+  <path d="M0 10 Q0 0 10 0 H36 Q46 0 46 10 V14 H0 Z" fill="#1d9e52"/>
+  <text x="23" y="31" text-anchor="middle" dominant-baseline="middle"
+        font-family="Arial Black,Arial,sans-serif" font-size="18" font-weight="900" fill="white">PV</text>
+  <text x="60" y="31" text-anchor="start" dominant-baseline="middle"
+        font-family="Inter,Arial,sans-serif" font-size="24" font-weight="800" fill="#1a2e1a" letter-spacing="-0.5">PVMath</text>
+</svg>

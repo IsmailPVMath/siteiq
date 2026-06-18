@@ -261,7 +261,7 @@ def _normalize_for_display(Z):
 # ─── Page config ─────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="TopoIQ – Terrain Intelligence",
-    page_icon="⛰",
+    page_icon="assets/logo-192.png",
     layout="wide"
 )
 
