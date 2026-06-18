@@ -15,7 +15,7 @@ import folium
 from folium.plugins import Draw
 from streamlit_folium import st_folium
 from pvmath_styles import inject_styles
-from pvmath_auth import save_project
+from pvmath_auth import save_project, _refresh_session
 
 # ─────────────────────────────────────────────────────────────────────────────
 # HELPERS
@@ -537,6 +537,34 @@ if True:
             # in My Projects rather than overwriting an existing project.
             _uid = st.session_state.get("pvm_user_id", "")
             _persist_ok = True
+            if not _uid:
+                # pvm_user_id was empty even though the user is clearly signed
+                # in and using the app (the auth gate in app.py would have
+                # blocked them otherwise). This happens when the server-side
+                # session_state got dropped (e.g. a websocket reconnect after
+                # an idle moment while drawing a boundary) without a full page
+                # reload — so render_auth_page()'s own restore-from-URL-token
+                # logic, which only runs once at the top of a script run,
+                # hasn't re-populated it yet for THIS click. Previously this
+                # silently fell through to the "success" branch below — the
+                # toast said saved, save_project() was never even called, and
+                # nothing reached Supabase. Try the same token-restore Supabase
+                # call here, inline, before giving up — most of the time this
+                # recovers the session within the same click instead of
+                # quietly losing the project.
+                _retry_token = st.query_params.get("s", "")
+                if _retry_token:
+                    _restored = _refresh_session(_retry_token)
+                    if _restored.get("success"):
+                        _uid = _restored["user_id"]
+                        st.session_state["pvm_user_id"]      = _uid
+                        st.session_state["pvm_email"]        = _restored["email"]
+                        st.session_state["pvm_access_token"] = _restored["access_token"]
+                        st.session_state["pvm_refresh_token"] = _restored["refresh_token"]
+                        st.query_params["s"] = _restored["refresh_token"]
+                if not _uid:
+                    _persist_ok = False
+                    st.session_state["pvm_save_fail_reason"] = "session"
             if _uid:
                 _existing_row_id = st.session_state.get("pvm_project_row_id")
                 # pvm_project_row_id lingers in session_state after a save and
@@ -569,6 +597,7 @@ if True:
                     # "saved" toast, which is exactly why new projects weren't
                     # showing up in My Projects. Surface it instead of lying.
                     _persist_ok = False
+                    st.session_state["pvm_save_fail_reason"] = "db"
             # Clear per-module map state so they recentre on new project location
             for key in ["map_center", "map_zoom", "map_lat", "map_lon", "last_map_search",
                         "proj_polygon_draft", "proj_polygon_cleared"]:
@@ -580,15 +609,26 @@ if True:
             st.rerun()
 
     if st.session_state.pop("pvm_save_failed", False):
-        st.error(
-            "⚠️ Saved to this session, but the project could NOT be written to your "
-            "account database — it will not appear in My Projects and won't survive a "
-            "refresh. This usually means the `user_projects` table in Supabase is "
-            "missing an INSERT policy for authenticated users, or still has a UNIQUE "
-            "constraint on `user_id` blocking more than one saved project per account. "
-            "Check the Supabase table editor / RLS policies, or share the error from "
-            "Streamlit Cloud logs."
-        )
+        _fail_reason = st.session_state.pop("pvm_save_fail_reason", "db")
+        if _fail_reason == "session":
+            st.error(
+                "⚠️ Saved to this session, but your sign-in had momentarily dropped "
+                "(common after the page sits idle for a bit while drawing a boundary), "
+                "so it could NOT be written to your account database — it won't appear "
+                "in My Projects or survive a refresh. Please click **Save Project** "
+                "again now that the page is active; if it keeps happening, refresh the "
+                "page once and re-save."
+            )
+        else:
+            st.error(
+                "⚠️ Saved to this session, but the project could NOT be written to your "
+                "account database — it will not appear in My Projects and won't survive a "
+                "refresh. This usually means the `user_projects` table in Supabase is "
+                "missing an INSERT policy for authenticated users, or still has a UNIQUE "
+                "constraint on `user_id` blocking more than one saved project per account. "
+                "Check the Supabase table editor / RLS policies, or share the error from "
+                "Streamlit Cloud logs."
+            )
 
 # ─────────────────────────────────────────────────────────────────────────────
 # STATUS BAR + MODULE BUTTONS — shown below Save button after project is saved
