@@ -3,6 +3,7 @@ import numpy as np
 import requests
 import math
 import io
+import concurrent.futures
 import csv
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
@@ -15,8 +16,7 @@ from streamlit_folium import st_folium
 from datetime import datetime
 from pvmath_auth import (
     show_paywall,
-    increment_usage, is_over_limit, remaining, FREE_LIMIT, UPGRADE_CONTACT,
-    get_plan, plan_limit, plan_label
+    increment_usage, is_over_limit, remaining, FREE_LIMIT,
 )
 from pvmath_styles import inject_styles
 
@@ -35,7 +35,7 @@ except ImportError:
     HAS_EZDXF = False
 
 try:
-    from shapely.geometry import shape, Point, Polygon as ShapelyPolygon
+    from shapely.geometry import shape, Polygon as ShapelyPolygon
     from shapely.ops import unary_union
     HAS_SHAPELY = True
 except ImportError:
@@ -44,6 +44,11 @@ except ImportError:
 # Largest site boundary TopoIQ will process — larger polygons exhaust tile
 # downloads and grid memory on Railway's single Streamlit worker.
 MAX_SITE_AREA_HA = 10_000
+MAX_DEM_TILES = 80           # pick lower zoom if bbox needs more tiles
+MAX_GRID_POINTS = 300_000    # coarsen output grid above this point count
+DEM_ZOOM_MIN = 11
+DEM_ZOOM_MAX = 14
+TILE_FETCH_WORKERS = 8
 
 
 def boundary_area_ha(polygon_coords):
@@ -499,45 +504,98 @@ def fetch_terrarium_tile(x, y, zoom):
     return elev, bounds
 
 
+def tile_count_for_bbox(south, north, west, east, zoom):
+    x_min, y_min = deg2tile(north, west, zoom)
+    x_max, y_max = deg2tile(south, east, zoom)
+    return (x_max - x_min + 1) * (y_max - y_min + 1)
+
+
+def pick_dem_zoom(south, north, west, east, max_tiles=MAX_DEM_TILES):
+    """Choose terrarium zoom — highest detail that stays within tile budget."""
+    for zoom in range(DEM_ZOOM_MAX, DEM_ZOOM_MIN - 1, -1):
+        if tile_count_for_bbox(south, north, west, east, zoom) <= max_tiles:
+            return zoom
+    return DEM_ZOOM_MIN
+
+
+def effective_grid_spacing(p_w, p_e, p_s, p_n, grid_m, lat_c,
+                           max_points=MAX_GRID_POINTS):
+    """Coarsen grid spacing if bbox × spacing would exceed point budget."""
+    m_per_deg_lat = 111320.0
+    m_per_deg_lon = 111320.0 * math.cos(math.radians(lat_c))
+    width_m = max((p_e - p_w) * m_per_deg_lon, grid_m)
+    height_m = max((p_n - p_s) * m_per_deg_lat, grid_m)
+    n_cols = max(1, int(math.ceil(width_m / grid_m)))
+    n_rows = max(1, int(math.ceil(height_m / grid_m)))
+    points = n_rows * n_cols
+    if points <= max_points:
+        return float(grid_m)
+    scale = math.sqrt(points / max_points)
+    return float(math.ceil(grid_m * scale))
+
+
 def get_dem_for_bbox(south, north, west, east, zoom=14):
     x_min, y_min = deg2tile(north, west, zoom)
     x_max, y_max = deg2tile(south, east, zoom)
-    total = (x_max - x_min + 1) * (y_max - y_min + 1)
-    prog = st.progress(0, text="Downloading terrain tiles…")
-    count = 0
-    tile_rows   = []
-    bounds_grid = []
+    tile_list = [
+        (tx, ty)
+        for ty in range(y_min, y_max + 1)
+        for tx in range(x_min, x_max + 1)
+    ]
+    total = len(tile_list)
+    prog = st.progress(0, text=f"Downloading terrain tiles (zoom {zoom})…")
+    fetched = {}
     any_success = False
-    for ty in range(y_min, y_max + 1):
-        row_imgs, row_bounds = [], []
-        for tx in range(x_min, x_max + 1):
-            elev, bounds = fetch_terrarium_tile(tx, ty, zoom)
+    done = 0
+
+    def _fetch_one(tx_ty):
+        tx, ty = tx_ty
+        return tx_ty, fetch_terrarium_tile(tx, ty, zoom)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=TILE_FETCH_WORKERS) as ex:
+        futs = [ex.submit(_fetch_one, t) for t in tile_list]
+        for fut in concurrent.futures.as_completed(futs):
+            (tx, ty), (elev, bounds) = fut.result()
+            fetched[(tx, ty)] = (elev, bounds)
             if elev is not None:
                 any_success = True
-            else:
-                # Placeholder keeps every row/column the same width so the mosaic
-                # never shifts out of alignment — missing data becomes NaN, not a
-                # silently mis-positioned tile.
-                elev = np.full((TILE_PX, TILE_PX), np.nan, dtype=np.float32)
-            row_imgs.append(elev)
-            row_bounds.append(bounds)
-            count += 1
-            prog.progress(count / total, text=f"Downloading tile {count}/{total}…")
-        tile_rows.append(row_imgs)
-        bounds_grid.append(row_bounds)
+            done += 1
+            prog.progress(done / total, text=f"Downloading tile {done}/{total}…")
     prog.empty()
     if not any_success:
         return None, None, None, None, None
 
+    tile_rows, bounds_grid = [], []
+    for ty in range(y_min, y_max + 1):
+        row_imgs, row_bounds = [], []
+        for tx in range(x_min, x_max + 1):
+            elev, bounds = fetched[(tx, ty)]
+            if elev is None:
+                elev = np.full((TILE_PX, TILE_PX), np.nan, dtype=np.float32)
+            row_imgs.append(elev)
+            row_bounds.append(bounds)
+        tile_rows.append(row_imgs)
+        bounds_grid.append(row_bounds)
+
     mosaic = np.concatenate(
         [np.concatenate(row, axis=1) for row in tile_rows], axis=0
     )
-
     lat_n_all = bounds_grid[0][0]["lat_n"]
     lat_s_all = bounds_grid[-1][0]["lat_s"]
     lon_w_all = bounds_grid[0][0]["lon_w"]
     lon_e_all = bounds_grid[0][-1]["lon_e"]
     return mosaic, lat_n_all, lat_s_all, lon_w_all, lon_e_all
+
+
+def _polygon_mask(X, Y, polygon_coords):
+    if not polygon_coords or len(polygon_coords) < 3:
+        return np.ones(X.shape, dtype=bool)
+    if HAS_SHAPELY:
+        from shapely.vectorized import contains as shp_contains
+        return shp_contains(ShapelyPolygon(polygon_coords), X, Y)
+    from matplotlib.path import Path
+    pts = np.column_stack([X.ravel(), Y.ravel()])
+    return Path(polygon_coords).contains_points(pts).reshape(X.shape)
 
 
 def resample_to_grid(mosaic, lat_n, lat_s, lon_w, lon_e,
@@ -547,9 +605,6 @@ def resample_to_grid(mosaic, lat_n, lat_s, lon_w, lon_e,
     m_per_deg_lat = 111320.0
     m_per_deg_lon = 111320.0 * math.cos(math.radians(lat_c))
 
-    step_lat = grid_m / m_per_deg_lat
-    step_lon = grid_m / m_per_deg_lon
-
     if polygon_coords:
         lons_p = [c[0] for c in polygon_coords]
         lats_p = [c[1] for c in polygon_coords]
@@ -558,29 +613,28 @@ def resample_to_grid(mosaic, lat_n, lat_s, lon_w, lon_e,
     else:
         p_w, p_e, p_s, p_n = lon_w, lon_e, lat_s, lat_n
 
+    grid_m = effective_grid_spacing(p_w, p_e, p_s, p_n, grid_m, lat_c)
+    step_lat = grid_m / m_per_deg_lat
+    step_lon = grid_m / m_per_deg_lon
+
     grid_lons = np.arange(p_w, p_e, step_lon)
     grid_lats = np.arange(p_n, p_s, -step_lat)
+    if len(grid_lons) < 2:
+        grid_lons = np.array([p_w, p_e])
+    if len(grid_lats) < 2:
+        grid_lats = np.array([p_n, p_s])
     X, Y = np.meshgrid(grid_lons, grid_lats)
 
-    def sample(lon, lat):
-        col = (lon - lon_w) / (lon_e - lon_w) * (w - 1)
-        row = (lat_n - lat) / (lat_n - lat_s) * (h - 1)
-        col = np.clip(col, 0, w - 2).astype(int)
-        row = np.clip(row, 0, h - 2).astype(int)
-        return mosaic[row, col]
+    col = (X - lon_w) / (lon_e - lon_w) * (w - 1)
+    row = (lat_n - Y) / (lat_n - lat_s) * (h - 1)
+    col = np.clip(col, 0, w - 2).astype(int)
+    row = np.clip(row, 0, h - 2).astype(int)
+    Z = mosaic[row, col].astype(float)
 
-    Z = sample(X, Y)
+    if polygon_coords and len(polygon_coords) >= 3:
+        Z = np.where(_polygon_mask(X, Y, polygon_coords), Z, np.nan)
 
-    if HAS_SHAPELY and polygon_coords and len(polygon_coords) >= 3:
-        poly = ShapelyPolygon(polygon_coords)
-        mask = np.array([
-            [poly.contains(Point(X[r, c], Y[r, c]))
-             for c in range(X.shape[1])]
-            for r in range(X.shape[0])
-        ])
-        Z = np.where(mask, Z, np.nan)
-
-    return X, Y, Z
+    return X, Y, Z, grid_m
 
 
 def compute_slope(Z, grid_m):
@@ -1161,38 +1215,7 @@ with left:
     _topo_left = remaining(_topo_user, "topoiq")
 
     if is_over_limit(_topo_user, "topoiq"):
-        _topo_plan = get_plan(_topo_user)
-        _topo_limit = plan_limit(_topo_plan)
-        if _topo_plan == "free":
-            _topo_pw_title = "Free Trial Complete"
-            _topo_pw_body = (f"You've used all <b>{_topo_limit} free analyses</b> in TopoIQ.<br>"
-                              f"Upgrade to run more terrain extractions.")
-        else:
-            _topo_pw_title = "Monthly Limit Reached"
-            _topo_pw_body = (f"You've used all <b>{_topo_limit} {plan_label(_topo_plan)} analyses</b> "
-                              f"in TopoIQ this month.<br>Your limit resets next month.")
-        st.markdown(f"""
-        <div style="background:#fff;border:1.5px solid #e2ede2;border-radius:14px;
-                    padding:1.8rem 1.6rem;text-align:center;margin-top:0.5rem;
-                    font-family:'Inter',sans-serif;">
-          <div style="font-size:2rem;margin-bottom:0.5rem;">🔒</div>
-          <div style="font-size:1.2rem;font-weight:800;color:#1565c0;margin-bottom:0.4rem;">
-            {_topo_pw_title}
-          </div>
-          <div style="color:#555;font-size:0.88rem;margin-bottom:1.2rem;line-height:1.6;">
-            {_topo_pw_body}
-          </div>
-          <a href="{UPGRADE_CONTACT}"
-             style="display:inline-block;background:linear-gradient(135deg,#1d9e52,#145f34);
-                    color:#fff;font-weight:700;font-size:0.95rem;padding:0.75rem 2rem;
-                    border-radius:9px;text-decoration:none;letter-spacing:0.01em;">
-            Contact us to upgrade →
-          </a>
-          <div style="margin-top:1rem;font-size:0.78rem;color:#999;">
-            Questions? <a href="mailto:contact@pvmath.com" style="color:#1d9e52;">contact@pvmath.com</a>
-          </div>
-        </div>
-        """, unsafe_allow_html=True)
+        show_paywall("TopoIQ")
         run = False
     else:
         if _topo_left <= 1:
@@ -1212,21 +1235,18 @@ with right:
         if _run_area_ha > MAX_SITE_AREA_HA:
             st.error(_area_limit_message(_run_area_ha))
             st.stop()
-        increment_usage(st.session_state.get("pvm_user_id", "guest"), "topoiq")
         lons_p = [c[0] for c in polygon_coords]
         lats_p = [c[1] for c in polygon_coords]
         south, north = min(lats_p) - 0.001, max(lats_p) + 0.001
         west,  east  = min(lons_p) - 0.001, max(lons_p) + 0.001
         lat_c = (south + north) / 2
         lon_c = (west  + east)  / 2
-
-        m_per_deg_lat = 111320.0
-        m_per_deg_lon = 111320.0 * math.cos(math.radians(lat_c))
         area_ha = _run_area_ha
+        dem_zoom = pick_dem_zoom(south, north, west, east)
 
         with st.spinner("Fetching satellite terrain data…"):
             mosaic, lat_n, lat_s, lon_w, lon_e = get_dem_for_bbox(
-                south, north, west, east, zoom=14
+                south, north, west, east, zoom=dem_zoom
             )
 
         if mosaic is None:
@@ -1234,11 +1254,11 @@ with right:
             st.stop()
 
         with st.spinner(f"Processing {grid_spacing}m grid…"):
-            X, Y, Z = resample_to_grid(
+            X, Y, Z, grid_m_used = resample_to_grid(
                 mosaic, lat_n, lat_s, lon_w, lon_e,
                 polygon_coords, grid_m=float(grid_spacing)
             )
-            slope = compute_slope(Z, float(grid_spacing))
+            slope = compute_slope(Z, grid_m_used)
 
         if X.shape[0] < 2 or X.shape[1] < 2:
             st.error(
@@ -1250,6 +1270,27 @@ with right:
 
         z_valid = Z[~np.isnan(Z)]
         s_valid = slope[~np.isnan(slope) & ~np.isnan(Z)]
+
+        if len(z_valid) == 0 or len(s_valid) == 0:
+            st.error(
+                "No elevation data inside the site boundary. "
+                "Check the boundary location or try again — this run was not counted."
+            )
+            st.stop()
+
+        increment_usage(st.session_state.get("pvm_user_id", "guest"), "topoiq")
+
+        if grid_m_used > float(grid_spacing):
+            st.info(
+                f"Grid coarsened to **{grid_m_used:.0f} m** "
+                f"({len(z_valid):,} points) to stay within processing limits."
+            )
+        if dem_zoom < DEM_ZOOM_MAX:
+            st.caption(
+                f"DEM fetched at zoom **{dem_zoom}** "
+                f"({tile_count_for_bbox(south, north, west, east, dem_zoom)} tiles) "
+                f"for this site size — resampled to your output grid."
+            )
 
         m1, m2, m3, m4 = st.columns(4)
         metrics = [
@@ -1294,7 +1335,7 @@ with right:
             f'<div style="font-size:1rem;font-weight:600;color:#1a1a1a;'
             f'background:#f0f4f8;border-radius:8px;padding:0.55rem 1rem;margin-top:0.3rem;">'
             f'📐 <b>{area_ha:.1f} ha</b> &nbsp;·&nbsp; '
-            f'🔢 <b>{len(z_valid):,}</b> grid points at <b>{grid_spacing} m</b> &nbsp;·&nbsp; '
+            f'🔢 <b>{len(z_valid):,}</b> grid points at <b>{grid_m_used:.0f} m</b> &nbsp;·&nbsp; '
             f'⚠️ <b>{pct_over5:.0f}%</b> of site &gt;5% slope &nbsp;·&nbsp; '
             f'🔴 <b>{pct_over10:.0f}%</b> &gt;10% slope'
             f'</div>',
@@ -1310,7 +1351,7 @@ with right:
         import matplotlib.colors as mcolors
 
         if HAS_SCIPY:
-            dy, dx = np.gradient(Z, grid_spacing, grid_spacing)
+            dy, dx = np.gradient(Z, grid_m_used, grid_m_used)
             slope_pct = np.sqrt(dx**2 + dy**2) * 100
             # grid_lats runs north→south (np.arange(p_n, p_s, -step_lat)), so row 0
             # of slope_pct is already the northernmost row — matplotlib's default
@@ -1340,7 +1381,7 @@ with right:
             cbar2.set_label("Slope (%)", color="white", fontsize=10)
             cbar2.ax.yaxis.set_tick_params(color="white", labelsize=9)
             plt.setp(cbar2.ax.yaxis.get_ticklabels(), color="white")
-            ax2.set_title(f"Slope · {grid_spacing}m grid  (green<3%, red>10%)",
+            ax2.set_title(f"Slope · {grid_m_used:.0f}m grid  (green<3%, red>10%)",
                           color="white", fontsize=11, pad=8)
             ax2.set_xticks([]); ax2.set_yticks([])
             for spine in ax2.spines.values():
@@ -1360,7 +1401,7 @@ with right:
 
         st.divider()
         st.markdown('<div class="section-hdr"><i class="fa-solid fa-download" style="color:#1565c0;"></i> Download Outputs</div>', unsafe_allow_html=True)
-        fname = f"TopoIQ_{lat_c:.3f}_{lon_c:.3f}_{grid_spacing}m"
+        fname = f"TopoIQ_{lat_c:.3f}_{lon_c:.3f}_{grid_m_used:.0f}m"
 
         with st.spinner("Generating PDF report…"):
             pdf_slope_buf_for_pdf = pdf_slope_buf if HAS_SCIPY else None
@@ -1374,7 +1415,7 @@ with right:
             ) if _n_slope else None
             pdf_bytes = generate_pdf_report(
                 fname=fname, lat_c=lat_c, lon_c=lon_c,
-                area_ha=area_ha, grid_spacing=grid_spacing,
+                area_ha=area_ha, grid_spacing=grid_m_used,
                 z_min=float(z_valid.min()), z_max=float(z_valid.max()),
                 z_range=float(z_valid.max()-z_valid.min()),
                 mean_slope=mean_slope, max_slope=float(s_valid.max()),
@@ -1441,8 +1482,8 @@ with right:
         <div class="accuracy-card">
           <h4><i class="fa-solid fa-circle-info" style="margin-right:0.3rem;"></i> Data Source & Accuracy</h4>
           <p><strong>Source:</strong> Copernicus GLO-30 DEM (ESA/EC, 2021) via AWS Terrain Tiles</p>
-          <p><strong>Native resolution:</strong> ~2.4m per pixel at zoom 14</p>
-          <p><strong>Output grid:</strong> {grid_spacing}m resampled</p>
+          <p><strong>Native resolution:</strong> Copernicus GLO-30 via AWS Terrain Tiles (zoom {dem_zoom}, adaptive)</p>
+          <p><strong>Output grid:</strong> {grid_m_used:.0f}m resampled</p>
           <p><strong>Vertical accuracy:</strong> ~4m RMSE globally (better in flat terrain, worse in dense vegetation)</p>
           <p><strong>Recommendation:</strong> Suitable for preliminary layout and civil design starting point.
              Verify critical slope areas with LiDAR before final tracker pile design.</p>
