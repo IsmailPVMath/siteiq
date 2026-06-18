@@ -1,0 +1,19 @@
+# Direct runtime dependencies for PVMath (SiteIQ).
+# Regenerate the lock file after edits:
+#   ./scripts/compile-requirements.sh
+#
+# Railway/nixpacks installs from requirements.txt (pinned lock), not this file.
+
+streamlit
+requests
+pandas
+reportlab
+pillow
+folium
+streamlit-folium
+numpy
+scipy
+ezdxf
+shapely
+matplotlib
+altair
