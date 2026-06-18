@@ -194,7 +194,6 @@
     .toggle-switch::after { content: ''; position: absolute; width: 22px; height: 22px; background: #fff; border-radius: 50%; top: 3px; left: 3px; transition: transform .25s; }
     .toggle-switch.monthly::after { transform: translateX(0); }
     .toggle-switch.annual::after  { transform: translateX(24px); }
-    .toggle-badge { background: var(--green-lt); color: var(--green-dk); font-size: 0.82rem; font-weight: 700; letter-spacing: 0.05em; padding: 0.3rem 0.75rem; border-radius: 100px; text-transform: uppercase; }
     .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
     .price-card { background: var(--card); border: 1.5px solid var(--border); border-radius: 14px; padding: 2rem; position: relative; display: flex; flex-direction: column; transition: transform .25s, box-shadow .25s; }
     .price-card:hover { transform: translateY(-3px); box-shadow: 0 10px 35px rgba(0,0,0,.07); }
@@ -649,7 +648,7 @@
     <div class="why-grid">
       <div class="why-card"><div class="why-icon">&#9728;&#65039;</div><h4 data-i18n="why.c1.h">Industry-Standard Solar Data</h4><p data-i18n="why.c1.p">GHI and irradiation from PVGIS (EC JRC) &mdash; the same data source used by engineers in bankable pre-feasibility studies worldwide.</p></div>
       <div class="why-card"><div class="why-icon">&#127956;&#65039;</div><h4 data-i18n="why.c2.h">Satellite Terrain Data</h4><p data-i18n="why.c2.p">Copernicus GLO-30 DEM (~30m horizontal resolution). Slope maps, elevation profiles, and contour lines &mdash; extracted in seconds, not days.</p></div>
-      <div class="why-card"><div class="why-icon">&#9968;&#65039;</div><h4 data-i18n="why.c3.h">CAD Software Ready</h4><p data-i18n="why.c3.p">DXF and Civil 3D-ready LandXML terrain files work in any CAD software &mdash; Civil 3D, BricsCAD, QGIS, and more. No conversion needed.</p></div>
+      <div class="why-card"><div class="why-icon">&#128208;</div><h4 data-i18n="why.c3.h">CAD Software Ready</h4><p data-i18n="why.c3.p">DXF and Civil 3D-ready LandXML terrain files work in any CAD software &mdash; Civil 3D, BricsCAD, QGIS, and more. No conversion needed.</p></div>
       <div class="why-card"><div class="why-icon">&#9889;</div><h4 data-i18n="why.c4.h">Under 2 Minutes</h4><p data-i18n="why.c4.p">SiteIQ, TopoIQ, and YieldIQ each complete in under 2 minutes. Full pre-check before the client call ends.</p></div>
       <div class="why-card"><div class="why-icon">&#128196;</div><h4 data-i18n="why.c5.h">Client-Ready Reports</h4><p data-i18n="why.c5.p">Branded PDF outputs from all 3 modules &mdash; site screening, terrain analysis, and energy yield. Print, email, present.</p></div>
       <div class="why-card"><div class="why-icon">&#128119;</div><h4 data-i18n="why.c6.h">Built by a Solar Engineer</h4><p data-i18n="why.c6.p">Not a software startup guessing what engineers need. Built by a Solar Engineering Expert with hands-on experience in utility-scale solar, tracker systems, and EPC delivery worldwide.</p></div>
@@ -743,7 +742,7 @@
     <div class="pricing-toggle">
       <span class="toggle-label" id="lbl-monthly">Monthly</span>
       <button class="toggle-switch annual" id="billing-toggle" onclick="toggleBilling()"></button>
-      <span class="toggle-label" id="lbl-annual">Annual <span class="toggle-badge">Save 25%</span></span>
+      <span class="toggle-label" id="lbl-annual">Annual</span>
     </div>
 
     <div class="pricing-grid" style="grid-template-columns:repeat(3,1fr);max-width:1050px;margin:0 auto;">
@@ -988,7 +987,7 @@ var T = {
     'stats.coverage':'Data Coverage','stats.speed':'Per Site Screening','stats.start':'To Get Started',
     'pricing.label':'Pricing','pricing.title':'Simple, transparent pricing.',
     'pricing.sub':"5 free analyses per module. No credit card required to start. Upgrade when you're ready.",
-    'pricing.monthly':'Monthly','pricing.annual':'Annual','pricing.save':'Save 25%','pricing.popular':'Most Popular',
+    'pricing.monthly':'Monthly','pricing.annual':'Annual','pricing.popular':'Most Popular',
     'tier.starter':'Starter','tier.pro':'Professional','tier.team':'Team',
     'plan.starter.desc':'For individual engineers doing occasional project screening.',
     'plan.pro.desc':'For solar engineers and EPC teams running active projects.',
@@ -1096,7 +1095,7 @@ var T = {
     'stats.coverage':'Datenabdeckung','stats.speed':'Pro Standortprüfung','stats.start':'Zum Starten',
     'pricing.label':'Preise','pricing.title':'Einfache, transparente Preise.',
     'pricing.sub':'5 kostenlose Analysen pro Modul. Keine Kreditkarte erforderlich. Upgrade jederzeit möglich.',
-    'pricing.monthly':'Monatlich','pricing.annual':'Jährlich','pricing.save':'25% sparen','pricing.popular':'Beliebteste Wahl',
+    'pricing.monthly':'Monatlich','pricing.annual':'Jährlich','pricing.popular':'Beliebteste Wahl',
     'tier.starter':'Starter','tier.pro':'Professional','tier.team':'Team',
     'plan.starter.desc':'Für einzelne Ingenieure mit gelegentlicher Standortprüfung.',
     'plan.pro.desc':'Für Solaringenieure und EPC-Teams in aktiven Projekten.',
