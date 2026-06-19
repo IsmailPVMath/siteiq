@@ -99,6 +99,35 @@
       padding: 0.65rem 1.4rem; border-radius: 100px; margin-top: 2.2rem;
       max-width: 90%;
     }
+    .hero-topoiq {
+      margin-top: 2.2rem; max-width: 720px; margin-left: auto; margin-right: auto;
+      background: linear-gradient(180deg, #f0faf5 0%, #e8f5ee 100%);
+      border: 1.5px solid rgba(29,158,82,.22); border-radius: 16px;
+      padding: 1.15rem 1.35rem 1.25rem; text-align: left;
+      box-shadow: 0 4px 24px rgba(29,158,82,.07);
+    }
+    .hero-topoiq-label {
+      font-size: 0.68rem; font-weight: 800; letter-spacing: 0.1em;
+      text-transform: uppercase; color: #1565c0; margin-bottom: 0.45rem;
+    }
+    .hero-topoiq-head {
+      font-size: 0.98rem; font-weight: 700; color: var(--green-dk);
+      line-height: 1.45; margin-bottom: 0.85rem;
+      display: flex; align-items: flex-start; gap: 0.35rem; text-align: left;
+    }
+    .hero-topoiq-head .bolt { color: #e8a317; margin-right: 0.15rem; }
+    .hero-topoiq-chips {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+    }
+    .hero-topoiq-chip {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      background: #fff; border: 1px solid rgba(29,158,82,.18);
+      color: #1a3a2a; font-size: 0.78rem; font-weight: 600;
+      padding: 0.42rem 0.75rem; border-radius: 100px; line-height: 1.3;
+    }
+    .hero-topoiq-chip svg {
+      width: 14px; height: 14px; flex-shrink: 0; color: var(--green);
+    }
     @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.4)} }
     .hero h1 { font-size: clamp(2.4rem, 5vw, 4rem); font-weight: 900; letter-spacing: -0.04em; line-height: 1.1; margin-bottom: 1.2rem; color: var(--text); }
     .hero h1 em { font-style: normal; color: var(--green); }
@@ -326,7 +355,27 @@
       <div class="stat"><div class="stat-num">Global</div><div class="stat-lbl" data-i18n="stat.coverage">Solar Data Coverage</div></div>
       <div class="stat"><div class="stat-num" data-i18n="stat.free-val">Free</div><div class="stat-lbl" data-i18n="stat.start">To Get Started</div></div>
     </div>
-    <div class="hero-tagline" data-i18n="hero.tagline">&#9889; Don&rsquo;t wait for the topo survey &mdash; get import-ready DXF &amp; LandXML terrain files in minutes, not weeks.</div>
+    <div class="hero-topoiq">
+      <div class="hero-topoiq-label" data-i18n="hero.topoiq.label">TopoIQ &mdash; Terrain Screening</div>
+      <div class="hero-topoiq-head">
+        <span class="bolt">&#9889;</span>
+        <span data-i18n="hero.topoiq.head">Don&rsquo;t wait for the topo survey &mdash; screen civil risk, export CAD terrain, and deliver an executive PDF in minutes, not weeks.</span>
+      </div>
+      <div class="hero-topoiq-chips">
+        <span class="hero-topoiq-chip">
+          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+          <span data-i18n="hero.topoiq.c1">Indicative earthworks &amp; drainage maps</span>
+        </span>
+        <span class="hero-topoiq-chip">
+          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+          <span data-i18n="hero.topoiq.c2">DXF &amp; LandXML &mdash; Civil-ready export</span>
+        </span>
+        <span class="hero-topoiq-chip">
+          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+          <span data-i18n="hero.topoiq.c3">Executive terrain PDF &mdash; report ID &amp; metadata</span>
+        </span>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -925,7 +974,11 @@ var T = {
     'hero.h1':'Solar intelligence tools<br>built by <em>industry experts,</em><br>for every solar stakeholder.',
     'hero.p':'PVMath automates the slow, manual parts of solar project development — from first site coordinates to actionable engineering data. Preliminary screening outputs in minutes, not days.',
     'hero.btn1':'Try it Free →','hero.btn2':'View All Tools',
-    'hero.tagline':'⚡ Don\'t wait for the topo survey — get import-ready DXF & LandXML terrain files in minutes, not weeks.',
+    'hero.topoiq.label':'TopoIQ — Terrain Screening',
+    'hero.topoiq.head':'Don\'t wait for the topo survey — screen civil risk, export CAD terrain, and deliver an executive PDF in minutes, not weeks.',
+    'hero.topoiq.c1':'Indicative earthworks & drainage maps',
+    'hero.topoiq.c2':'DXF & LandXML — Civil-ready export',
+    'hero.topoiq.c3':'Executive terrain PDF — report ID & metadata',
     'stat.modules':'Live Modules','stat.speed':'Site Screening Time',
     'stat.coverage':'Solar Data Coverage','stat.start':'To Get Started','stat.free-val':'Free',
     'modules.label':'Platform Modules',
@@ -1030,7 +1083,11 @@ var T = {
     'hero.h1':'Solar-Intelligenztools –<br>entwickelt von <em>Ingenieuren,</em><br>für Ingenieure.',
     'hero.p':'PVMath automatisiert die langsamen, manuellen Schritte der Solarplanung – von den ersten Koordinaten bis zu verwertbaren Ingenieursdaten. Vorprüfungs-Ergebnisse in Minuten statt Tagen.',
     'hero.btn1':'Kostenlos testen →','hero.btn2':'Module entdecken',
-    'hero.tagline':'⚡ Nicht auf die Vermessung warten — importfertige DXF- & LandXML-Geländedateien in Minuten statt Wochen.',
+    'hero.topoiq.label':'TopoIQ — Gelände-Screening',
+    'hero.topoiq.head':'Nicht auf die Vermessung warten — Civil-Risiken screenen, CAD-Gelände exportieren und Executive-PDF in Minuten statt Wochen.',
+    'hero.topoiq.c1':'Indikative Erdarbeiten & Entwässerungskarten',
+    'hero.topoiq.c2':'DXF & LandXML — Civil-ready Export',
+    'hero.topoiq.c3':'Executive-Gelände-PDF — Report-ID & Metadaten',
     'stat.modules':'Aktive Module','stat.speed':'Standortprüfungszeit',
     'stat.coverage':'Solare Datenabdeckung','stat.start':'Zum Starten','stat.free-val':'Gratis',
     'modules.label':'Plattform-Module',
