@@ -15,6 +15,7 @@ from pvmath_auth import (
     get_plan, plan_limit, plan_label
 )
 from pvmath_styles import inject_styles
+from pvmath_kml import filter_boundary_list
 from streamlit_folium import st_folium
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -110,6 +111,30 @@ st.markdown("""
     /* ── Expander ── */
     div[data-testid="stExpander"] {
         border: 1px solid #e2ede2 !important; border-radius: 10px !important;
+    }
+
+    .topo-feature-card {
+        background: #ffffff;
+        border: 1.5px solid #dce8f5;
+        border-radius: 12px;
+        padding: 1.1rem 1.15rem;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 1px 4px rgba(21, 101, 192, 0.06);
+        min-height: 0;
+    }
+    .topo-feature-title {
+        font-size: 1.02rem;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+        color: #0d1a0d;
+        line-height: 1.25;
+    }
+    .topo-feature-desc {
+        font-size: 0.84rem;
+        color: #4a6a8a;
+        font-weight: 500;
+        margin-top: 0.35rem;
+        line-height: 1.55;
     }
 
 
@@ -322,11 +347,45 @@ def _haversine_m(lat1, lon1, lat2, lon2):
     return 2 * R * math.asin(math.sqrt(a))
 
 
-def get_terrain_data(lat, lon, polygon=None, radius_km=0.5):
+def _boundaries_from_project(proj):
+    """Enabled site boundaries from Project Setup (coords as lon, lat)."""
+    if proj.get("polygon_boundaries"):
+        loaded = filter_boundary_list(list(proj["polygon_boundaries"]), latlon=True)
+        return [
+            {
+                "id": b.get("id", f"proj_{i}"),
+                "name": b.get("name", f"Boundary {i + 1}"),
+                "coords": [(c[1], c[0]) for c in b["coords"]],
+                "enabled": b.get("enabled", True),
+            }
+            for i, b in enumerate(loaded)
+            if b.get("coords")
+        ]
+    pc = proj.get("polygon_coords")
+    if proj.get("mode") == "full" and pc:
+        return [{
+            "id": "proj_0",
+            "name": "Project boundary",
+            "coords": [(c[1], c[0]) for c in pc],
+            "enabled": True,
+        }]
+    return []
+
+
+def _enabled_polygons_latlon(boundaries):
+    """Convert enabled boundary rings to [[lat, lon], ...] for folium / terrain."""
+    out = []
+    for b in boundaries:
+        if b.get("enabled") and b.get("coords"):
+            out.append([(c[1], c[0]) for c in b["coords"]])
+    return out
+
+
+def get_terrain_data(lat, lon, polygon=None, polygons=None, radius_km=0.5):
     """
     Slope/elevation screening.
-    - If `polygon` (the drawn site boundary, [[lat,lon],...]) is supplied, samples a grid
-      of points across the ACTUAL boundary — same spirit as TopoIQ's full-grid analysis,
+    - If `polygon` or `polygons` (site boundary rings as [[lat,lon],...]) is supplied,
+      samples a grid of points across the ACTUAL boundary — same spirit as TopoIQ's
       just coarser — so the verdict reflects the whole site, not just the pin.
     - Otherwise (Quick Mode, pin only), samples a denser 8-direction ring around the pin
       (9 points total, up from the old 4-direction/5-point cross) for the best estimate
@@ -335,11 +394,17 @@ def get_terrain_data(lat, lon, polygon=None, radius_km=0.5):
     in_europe = 34 <= lat <= 72 and -25 <= lon <= 45
     dataset   = "eudem25m" if in_europe else "srtm30m"
 
-    if polygon and len(polygon) >= 3:
-        lats = [p[0] for p in polygon]
-        lons = [p[1] for p in polygon]
-        lat_min, lat_max = min(lats), max(lats)
-        lon_min, lon_max = min(lons), max(lons)
+    poly_list = []
+    if polygons:
+        poly_list = [p for p in polygons if p and len(p) >= 3]
+    elif polygon and len(polygon) >= 3:
+        poly_list = [polygon]
+
+    if poly_list:
+        all_lats = [p[0] for poly in poly_list for p in poly]
+        all_lons = [p[1] for poly in poly_list for p in poly]
+        lat_min, lat_max = min(all_lats), max(all_lats)
+        lon_min, lon_max = min(all_lons), max(all_lons)
 
         GRID_N = 7
         grid_pts = []
@@ -347,12 +412,14 @@ def get_terrain_data(lat, lon, polygon=None, radius_km=0.5):
             for j in range(GRID_N):
                 glat = lat_min + (lat_max - lat_min) * (i + 0.5) / GRID_N
                 glon = lon_min + (lon_max - lon_min) * (j + 0.5) / GRID_N
-                if _point_in_polygon(glat, glon, polygon):
+                if any(_point_in_polygon(glat, glon, poly) for poly in poly_list):
                     grid_pts.append((glat, glon))
 
         if len(grid_pts) < 4:
-            clat, clon = sum(lats) / len(lats), sum(lons) / len(lons)
-            grid_pts = list(polygon) + [(clat, clon)]
+            clat, clon = sum(all_lats) / len(all_lats), sum(all_lons) / len(all_lons)
+            grid_pts = [(clat, clon)]
+            for poly in poly_list:
+                grid_pts.extend(poly[:1])
 
         grid_pts = grid_pts[:40]  # keep the API request size reasonable
         locations = "|".join(f"{p[0]},{p[1]}" for p in grid_pts)
@@ -1041,6 +1108,9 @@ _proj_ctry  = _proj.get("country", "")
 _proj_lat   = _proj.get("lat")
 _proj_lon   = _proj.get("lon")
 _has_proj   = _proj_lat is not None and _proj_lon is not None
+_boundaries = _boundaries_from_project(_proj) if _has_proj else []
+_enabled_polys_latlon = _enabled_polygons_latlon(_boundaries)
+_enabled_n = sum(1 for b in _boundaries if b.get("enabled"))
 
 if _has_proj:
     st.markdown(f"""
@@ -1118,12 +1188,6 @@ with left:
     lat = lon = None
     kml_area = None
 
-    _proj_polygon_ll = (
-        _proj["polygon_coords"]
-        if (_proj.get("mode") == "full" and _proj.get("polygon_coords"))
-        else None
-    )
-
     if not _has_proj:
         st.warning(
             "No project location yet. Open **Project Setup**, enter your site (pin, coordinates, "
@@ -1132,13 +1196,14 @@ with left:
         if st.button("Go to Project Setup", type="primary", use_container_width=True, key="siq_go_proj"):
             st.switch_page("pages/project.py")
 
-    elif _proj_polygon_ll:
+    elif _enabled_polys_latlon:
         lat = _proj_lat
         lon = _proj_lon
-        _lons_p = [c[1] for c in _proj_polygon_ll]
-        _lats_p = [c[0] for c in _proj_polygon_ll]
-        _lon_c  = (min(_lons_p) + max(_lons_p)) / 2
-        _lat_c  = (min(_lats_p) + max(_lats_p)) / 2
+        all_lats = [p[0] for poly in _enabled_polys_latlon for p in poly]
+        all_lons = [p[1] for poly in _enabled_polys_latlon for p in poly]
+        _lat_c = (min(all_lats) + max(all_lats)) / 2
+        _lon_c = (min(all_lons) + max(all_lons)) / 2
+        _vert_n = sum(len(poly) for poly in _enabled_polys_latlon)
 
         st.markdown(
             f'<div style="background:#e8f5ee;border:1.5px solid #b8ddc8;border-radius:10px;'
@@ -1146,7 +1211,8 @@ with left:
             f'<span style="font-weight:700;color:#145f34;font-size:0.88rem;">'
             f'<i class="fa-solid fa-circle-check"></i> Site boundary from Project Setup</span><br>'
             f'<span style="font-size:0.8rem;color:#3a5a3a;">'
-            f'{len(_proj_polygon_ll)-1} vertices &nbsp;·&nbsp; '
+            f'{_enabled_n} enabled parcel{"s" if _enabled_n != 1 else ""} · '
+            f'{_vert_n} vertices &nbsp;·&nbsp; '
             f'Centre {_lat_c:.4f}°, {_lon_c:.4f}°</span>'
             f'</div>',
             unsafe_allow_html=True
@@ -1154,15 +1220,23 @@ with left:
         m = folium.Map(location=[_lat_c, _lon_c], zoom_start=14,
                        tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
                        attr="Google Satellite")
-        folium.Polygon(
-            locations=[(c[0], c[1]) for c in _proj_polygon_ll],
-            color="#22c55e", fill=True, fill_opacity=0.25, weight=3
-        ).add_to(m)
+        for poly in _enabled_polys_latlon:
+            folium.Polygon(
+                locations=[(c[0], c[1]) for c in poly],
+                color="#22c55e", fill=True, fill_opacity=0.25, weight=3,
+            ).add_to(m)
         st_folium(m, width=None, height=340, returned_objects=[])
-        st.caption("Read-only preview — edit the boundary in **Project Setup**.")
+        st.caption("Read-only preview — edit parcels in **Project Setup**.")
         st.success(f"📌 {lat:.5f}°N, {lon:.5f}°E")
 
-    else:
+    elif _proj.get("mode") == "full" and _boundaries and _enabled_n == 0:
+        st.warning(
+            "No parcels enabled. Open **Project Setup**, check the parcels you want, and save."
+        )
+        lat = _proj_lat
+        lon = _proj_lon
+
+    elif _has_proj:
         lat = _proj_lat
         lon = _proj_lon
         center = [_proj_lat, _proj_lon]
@@ -1268,8 +1342,10 @@ with right:
             with st.spinner("Fetching solar resource data from EU PVGIS…"):
                 solar = get_solar_data(lat, lon)
             with st.spinner("Analysing terrain & slope…"):
-                _proj_polygon = _proj.get("polygon_coords") if _proj.get("mode") == "full" else None
-                terrain = get_terrain_data(lat, lon, polygon=_proj_polygon)
+                terrain = get_terrain_data(
+                    lat, lon,
+                    polygons=_enabled_polys_latlon if _enabled_polys_latlon else None,
+                )
 
             st.session_state["siteiq_run_cache"] = {
                 "lat": lat, "lon": lon, "area_ha": area_ha,
@@ -1332,7 +1408,7 @@ with right:
                 unsafe_allow_html=True
             )
 
-        if _proj.get("mode") == "full" and _proj.get("polygon_coords"):
+        if _proj.get("mode") == "full" and _enabled_polys_latlon:
             st.caption(
                 "⚡ Capacity estimated from your drawn site boundary area — "
                 f"**{area_ha} ha**."
@@ -1453,27 +1529,26 @@ with right:
     else:
         st.caption("Enter a site location on the left and click **Run Site Screening** to get:")
         wc1, wc2 = st.columns(2)
-        _cards = [
-            (wc1, "#1a3a2a", "#0f2a1e", "#2a6040", "#4caf82",
-             "SOLAR RESOURCE", "Annual GHI · Monthly irradiation · Optimal tilt angle"),
-            (wc2, "#1a2a3a", "#0f1e2a", "#2a4060", "#5b9bd5",
-             "TERRAIN & SLOPE", "Max slope % · Centre elevation · Tracker suitability"),
-            (wc1, "#2a1a3a", "#1e0f2a", "#5a3a80", "#a87fd4",
-             "REGULATORY CHECK", "Country-specific incentives · Grid authority · Permitting contacts"),
-            (wc2, "#1a2a3a", "#0a1828", "#1a4a6a", "#4ab0d4",
-             "FLOOD RISK", "Elevation-based assessment · Local flood portal links"),
-            (wc1, "#2a2a1a", "#1e1e0f", "#5a5a20", "#d4c44a",
-             "CAPACITY ESTIMATE", "MWp & annual MWh · Density by system type"),
-            (wc2, "#2a1a1a", "#1e0f0f", "#6a2a2a", "#d47a4a",
-             "PDF REPORT", "One-click download · Professional format · Client-ready"),
+        _wcards = [
+            (wc1, "Solar resource",
+             "Annual GHI · monthly irradiation · optimal tilt angle"),
+            (wc2, "Terrain & slope",
+             "Max slope % · centre elevation · tracker suitability"),
+            (wc1, "Regulatory check",
+             "Country-specific incentives · grid authority · permitting contacts"),
+            (wc2, "Flood risk",
+             "Elevation-based assessment · local flood portal links"),
+            (wc1, "Capacity estimate",
+             "MWp & annual MWh · density by system type"),
+            (wc2, "PDF report",
+             "One-click download · professional format · client-ready"),
         ]
-        for _col, _bg1, _bg2, _bd, _tc, _title, _desc in _cards:
+        for _col, _title, _desc in _wcards:
             _col.markdown(
-                f'<div style="background:linear-gradient(135deg,{_bg1},{_bg2});'
-                f'border:1px solid {_bd};border-radius:10px;padding:1rem;margin-bottom:0.75rem;">'
-                f'<div style="color:{_tc};font-weight:700;font-size:0.9rem;">{_title}</div>'
-                f'<div style="color:#ccc;font-size:0.78rem;margin-top:0.3rem;">{_desc}</div>'
+                f'<div class="topo-feature-card">'
+                f'<div class="topo-feature-title">{_title}</div>'
+                f'<div class="topo-feature-desc">{_desc}</div>'
                 f'</div>',
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
         st.caption("Data: PVGIS JRC · EU-DEM / SRTM via OpenTopoData · OpenStreetMap  |  SiteIQ by PVMath — Module 1 of 3 · pvmath.com")
