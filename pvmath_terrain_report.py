@@ -99,8 +99,8 @@ def _aspect_compass(deg: float) -> str:
 
 def compute_terrain_extras(X, Y, Z, grid_m: float) -> dict:
     """
-    Cross-row / along-row slope (N–S tracker rows), earthworks OOM, drainage hint.
-  Rows assumed N–S (standard US practice); cross-row = E–W grade component.
+    Cross-row / along-row slope (N–S tracker rows) and dominant aspect.
+    Rows assumed N–S (standard US practice); cross-row = E–W grade component.
     """
     out = {
         "cross_row_mean": None,
@@ -109,11 +109,6 @@ def compute_terrain_extras(X, Y, Z, grid_m: float) -> dict:
         "pct_cross_over_3": None,
         "pct_cross_over_6": None,
         "dominant_aspect": None,
-        "cut_m3": None,
-        "fill_m3": None,
-        "net_balance_m3": None,
-        "depression_count": None,
-        "drainage_direction": None,
     }
     if not HAS_SCIPY:
         return out
@@ -122,7 +117,6 @@ def compute_terrain_extras(X, Y, Z, grid_m: float) -> dict:
     dz_dy, dz_dx = np.gradient(Zf, grid_m, grid_m)
     valid = ~np.isnan(Z)
 
-  # N–S rows: along-row ≈ |dz_dy|, cross-row ≈ |dz_dx|
     along = np.abs(dz_dy) * 100.0
     cross = np.abs(dz_dx) * 100.0
     a = along[valid]
@@ -138,50 +132,6 @@ def compute_terrain_extras(X, Y, Z, grid_m: float) -> dict:
 
     asp = (np.degrees(np.arctan2(dz_dy, dz_dx)) + 360) % 360
     out["dominant_aspect"] = _aspect_compass(float(np.nanmedian(asp[valid])))
-
-    z_v = Z[valid]
-    z_design = float(np.median(z_v))
-    cell_m2 = grid_m * grid_m
-    cut = np.maximum(Z[valid] - z_design, 0).sum() * cell_m2
-    fill = np.maximum(z_design - Z[valid], 0).sum() * cell_m2
-    out["cut_m3"] = round(float(cut), 0)
-    out["fill_m3"] = round(float(fill), 0)
-    out["net_balance_m3"] = round(float(cut - fill), 0)
-
-    # Coarse D8 outflow toward site edges
-    Zm = np.where(valid, Zf, np.nan)
-    nr, nc = Zm.shape
-    edge_flow = {"N": 0, "E": 0, "S": 0, "W": 0}
-    depressions = 0
-    for r in range(1, nr - 1):
-        for c in range(1, nc - 1):
-            if not valid[r, c]:
-                continue
-            z0 = Zm[r, c]
-            neigh = []
-            for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1),
-                           (-1, -1), (-1, 1), (1, -1), (1, 1)):
-                rr, cc = r + dr, c + dc
-                if valid[rr, cc]:
-                    neigh.append((Zm[rr, cc], dr, dc))
-            if not neigh:
-                continue
-            lowest = min(neigh, key=lambda t: t[0])
-            if lowest[0] >= z0 - 0.01:
-                depressions += 1
-                continue
-            dr, dc = lowest[1], lowest[2]
-            if dr < 0 and dc == 0:
-                edge_flow["N"] += 1
-            elif dr > 0 and dc == 0:
-                edge_flow["S"] += 1
-            elif dc > 0 and dr == 0:
-                edge_flow["E"] += 1
-            elif dc < 0 and dr == 0:
-                edge_flow["W"] += 1
-    out["depression_count"] = depressions
-    if sum(edge_flow.values()) > 0:
-        out["drainage_direction"] = max(edge_flow, key=edge_flow.get)
     return out
 
 
@@ -311,16 +261,22 @@ def render_slope_map_png(
     ax.set_ylabel("Latitude", fontsize=8, color="#555")
     ax.tick_params(labelsize=7)
 
-    # North arrow (upper-left)
-    ax.annotate(
-        "N", xy=(0.04, 0.92), xycoords="axes fraction",
-        fontsize=11, fontweight="bold", color="#1a2e1a",
-        ha="center",
+    # North arrow — white, bold N beside shaft (upper-left)
+    import matplotlib.patheffects as pe
+    _stroke = [pe.withStroke(linewidth=3, foreground="#333333")]
+    ax.text(
+        0.034, 0.875, "N", transform=ax.transAxes, ha="center", va="center",
+        fontsize=18, fontweight="bold", color="white", zorder=12,
+        path_effects=_stroke,
     )
     ax.annotate(
-        "", xy=(0.04, 0.96), xytext=(0.04, 0.88),
+        "", xy=(0.062, 0.955), xytext=(0.062, 0.795),
         xycoords="axes fraction",
-        arrowprops=dict(arrowstyle="-|>", color="#1a2e1a", lw=1.5),
+        arrowprops=dict(
+            arrowstyle="-|>", color="white", lw=4.5,
+            mutation_scale=18, shrinkA=0, shrinkB=0,
+        ),
+        zorder=11,
     )
 
     # Scale bar (lower-right) — approximate metres at centre lat
@@ -343,41 +299,47 @@ def render_slope_map_png(
     return buf
 
 
-def render_drainage_map_png(X, Y, Z, grid_m: float) -> Optional[io.BytesIO]:
-    """Simple flow-direction map for screening drainage patterns."""
-    if not HAS_SCIPY:
-        return None
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-
-    valid = ~np.isnan(Z)
-    Zf = gaussian_filter(np.nan_to_num(Z, nan=0), sigma=1)
-    dz_dy, dz_dx = np.gradient(Zf, grid_m, grid_m)
-    flow_ang = (np.degrees(np.arctan2(-dz_dy, -dz_dx)) + 360) % 360
-    flow_ang = np.where(valid, flow_ang, np.nan)
-    Fm = np.ma.masked_invalid(flow_ang)
-
-    fig, ax = plt.subplots(figsize=(8, 5))
-    fig.patch.set_facecolor("#f5f7f5")
-    im = ax.imshow(Fm, cmap="hsv", vmin=0, vmax=360, aspect="auto")
-    lon_min, lon_max = float(np.nanmin(X)), float(np.nanmax(X))
-    lat_min, lat_max = float(np.nanmin(Y)), float(np.nanmax(Y))
-    im.set_extent([lon_min, lon_max, lat_min, lat_max])
-    cbar = fig.colorbar(im, ax=ax, fraction=0.04)
-    cbar.set_label("Flow direction (°)", fontsize=8)
-    ax.set_title("Indicative surface flow (screening only)", fontsize=10, fontweight="bold")
-    ax.set_xlabel("Longitude", fontsize=8)
-    ax.set_ylabel("Latitude", fontsize=8)
-    plt.tight_layout()
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=120, bbox_inches="tight", facecolor="#f5f7f5")
-    plt.close(fig)
-    buf.seek(0)
-    return buf
-
-
 # ── PDF report ─────────────────────────────────────────────────────────────────
+
+def _verdict_color(vlabel: str):
+    from reportlab.lib import colors
+    if "Excellent" in vlabel:
+        return colors.HexColor("#1b5e20")
+    if "Good" in vlabel:
+        return colors.HexColor("#2e7d32")
+    if "Moderate" in vlabel:
+        return colors.HexColor("#f57c00")
+    return colors.HexColor("#c62828")
+
+
+def _verdict_box(vlabel: str, vdetail: str, width, heading: str):
+    from reportlab.lib import colors
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.platypus import Paragraph, Table, TableStyle
+    from reportlab.lib.enums import TA_CENTER
+
+    bg = _verdict_color(vlabel)
+    t = Table([
+        [Paragraph(f"<b>{heading}</b>", ParagraphStyle(
+            "vh", fontName="Helvetica-Bold", fontSize=9,
+            textColor=colors.white, alignment=TA_CENTER,
+        ))],
+        [Paragraph(f"<b>{vlabel}</b>", ParagraphStyle(
+            "v1", fontName="Helvetica-Bold", fontSize=10,
+            textColor=colors.white, alignment=TA_CENTER,
+        ))],
+        [Paragraph(vdetail, ParagraphStyle(
+            "v2", fontSize=8, textColor=colors.white, alignment=TA_CENTER, leading=11,
+        ))],
+    ], colWidths=[width])
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), bg),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    return t
+
 
 def _lp(text, size=9, bold=False, color="#333333"):
     from reportlab.lib.styles import ParagraphStyle
@@ -549,11 +511,21 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
     if ctx.get("land_use"):
         info_rows.append(["Land use", ctx["land_use"]])
     if ctx.get("mount_type"):
-        info_rows.append(["Mounting system", ctx["mount_type"]])
-    if ctx.get("cap_mw"):
+        info_rows.append(["Project mount (ref.)", ctx["mount_type"]])
+    if ctx.get("cap_ft_mw") is not None:
         info_rows.append([
-            "Indicative capacity",
-            f"~{ctx['cap_mw']:,.0f} MWac — {ctx.get('cap_note', '')}",
+            "Indicative capacity (Fixed Tilt)",
+            f"~{ctx['cap_ft_mw']:,.0f} MWac @ {ctx.get('density_ft', 0.40):.2f} MW/ha",
+        ])
+    if ctx.get("cap_tr_mw") is not None:
+        info_rows.append([
+            "Indicative capacity (Tracker)",
+            f"~{ctx['cap_tr_mw']:,.0f} MWac @ {ctx.get('density_tr', 0.35):.2f} MW/ha",
+        ])
+    if ctx.get("cap_ft_mw") is not None:
+        info_rows.append([
+            "Capacity note",
+            "Screening densities only — not layout-optimised. Earthworks volumes require layout.",
         ])
     if ctx.get("prepared_by"):
         info_rows.append(["Prepared by", ctx["prepared_by"]])
@@ -659,45 +631,6 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
         story.append(d_tbl)
         story.append(Spacer(1, 4 * mm))
 
-    # ── Phase C: drainage + earthworks ────────────────────────────────────
-    if ex.get("cut_m3") is not None:
-        story.append(Paragraph("Drainage & Earthworks (Screening)", hdr_style))
-        ew_rows = [
-            ["Cut volume (est.)", f"{ex['cut_m3']:,.0f} m³",
-             "vs median pad elevation — screening only"],
-            ["Fill volume (est.)", f"{ex['fill_m3']:,.0f} m³", "Same design surface"],
-            ["Net balance", f"{ex['net_balance_m3']:+,.0f} m³",
-             "Positive = net cut; excludes roads, ponds, topsoil strip"],
-            ["Local depressions", str(ex.get("depression_count", "—")),
-             "Grid cells with no downslope neighbour (ponding risk)"],
-            ["Dominant outflow", ex.get("drainage_direction") or "—",
-             "Coarse surface flow toward site edge"],
-        ]
-        ew_tbl = Table(ew_rows, colWidths=[42 * mm, 32 * mm, usable - 74 * mm])
-        ew_tbl.setStyle(TableStyle([
-            ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 9),
-            ("ROWBACKGROUNDS", (0, 0), (-1, -1), [LIGHT_BG, colors.white]),
-            ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#cccccc")),
-            ("TOPPADDING", (0, 0), (-1, -1), 4),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ("LEFTPADDING", (0, 0), (-1, -1), 6),
-        ]))
-        story.append(ew_tbl)
-        story.append(Spacer(1, 2 * mm))
-        drain_img = _img_flowable(ctx.get("drainage_img_buf"), usable * 0.85, 0.55)
-        if drain_img:
-            story.append(KeepTogether([
-                Paragraph("Indicative Flow Map", hdr_style),
-                drain_img,
-                Paragraph(
-                    "Figure 2 — Indicative surface flow from DEM gradient. "
-                    "Not a hydrology model — confirm with civil engineer.",
-                    cap_style,
-                ),
-            ]))
-        story.append(Spacer(1, 4 * mm))
-
     # ── Slope distribution ────────────────────────────────────────────────
     slope_bins = ctx.get("slope_bins")
     if slope_bins:
@@ -732,44 +665,27 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
         story.append(bins_tbl)
         story.append(Spacer(1, 4 * mm))
 
-    # ── Engineering verdict (mount-aware) ─────────────────────────────────
+    # ── Engineering verdict — fixed tilt & tracker side by side ─────────────
     story.append(Paragraph("Engineering Verdict", hdr_style))
-    mount = ctx.get("mount_type", "Fixed Tilt")
     vf = ctx.get("verdict_fixed") or ("—", "")
     vt = ctx.get("verdict_tracker") or ("—", "")
-    primary = vt if mount == "Single-Axis Tracker" else vf
-    vlabel, vdetail = primary
-
-    if "Excellent" in vlabel:
-        vcolor = GREEN
-    elif "Good" in vlabel:
-        vcolor = colors.HexColor("#2e7d32")
-    elif "Moderate" in vlabel:
-        vcolor = ORANGE
-    else:
-        vcolor = RED_C
-
-    v_tbl = Table([
-        [Paragraph(f"<b>{vlabel}</b>", ParagraphStyle(
-            "v1", fontName="Helvetica-Bold", fontSize=11,
-            textColor=colors.white, alignment=TA_CENTER,
-        ))],
-        [Paragraph(vdetail, ParagraphStyle(
-            "v2", fontSize=9, textColor=colors.white, alignment=TA_CENTER,
-        ))],
-        [Paragraph(
-            f"<i>Project mounting: {mount}. See threshold tables below for both systems.</i>",
-            ParagraphStyle("v3", fontSize=8, textColor=colors.HexColor("#e8f5e9"),
-                           alignment=TA_CENTER),
-        )],
-    ], colWidths=[usable])
-    v_tbl.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), vcolor),
-        ("TOPPADDING", (0, 0), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+    half = (usable - 4 * mm) / 2
+    v_dual = Table([[
+        _verdict_box(vf[0], vf[1], half, "Fixed Tilt"),
+        _verdict_box(vt[0], vt[1], half, "Single-Axis Tracker"),
+    ]], colWidths=[half, half])
+    v_dual.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (0, 0), 0),
+        ("RIGHTPADDING", (1, 0), (1, 0), 0),
     ]))
-    story.append(v_tbl)
+    story.append(v_dual)
+    story.append(Spacer(1, 2 * mm))
+    story.append(Paragraph(
+        "<i>Both mounting systems assessed from the same DEM slope data. "
+        "Cross-row metrics above apply to tracker screening.</i>",
+        ParagraphStyle("vnote", fontSize=8, textColor=MUTED, leading=11),
+    ))
     story.append(Spacer(1, 4 * mm))
 
     # Threshold tables
@@ -832,18 +748,24 @@ def build_report_context(
     lat_c, lon_c, area_ha, grid_spacing,
     z_min, z_max, mean_slope, max_slope,
     pct_over5, pct_over10,
-    slope_bins, slope_img_buf, drainage_img_buf,
+    slope_bins, slope_img_buf,
     land_use, mount_type, boundary_provenance,
     prepared_by, extras,
     siteiq_run_cache=None,
     project_row_id=None,
+    dem_zoom=None,
 ) -> dict:
     """Assemble all PDF fields from analysis outputs and project metadata."""
     mean_slope = float(mean_slope)
     z_range = float(z_max - z_min)
     ha_over5 = area_ha * pct_over5 / 100.0
     ha_over10 = area_ha * pct_over10 / 100.0
-    cap_mw, cap_note = site_capacity_mw(area_ha, land_use, mount_type)
+    cap_ft_mw, _ = site_capacity_mw(area_ha, land_use, "Fixed Tilt")
+    cap_tr_mw, _ = site_capacity_mw(area_ha, land_use, "Single-Axis Tracker")
+    if land_use == "Agri-PV":
+        density_ft, density_tr = 0.20, 0.18
+    else:
+        density_ft, density_tr = 0.40, 0.35
 
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     rid_suffix = (project_row_id or f"{lat_c:.3f}_{lon_c:.3f}")[:12]
@@ -880,11 +802,13 @@ def build_report_context(
         "ha_over10": ha_over10,
         "slope_bins": slope_bins,
         "slope_img_buf": slope_img_buf,
-        "drainage_img_buf": drainage_img_buf,
         "land_use": land_use,
         "mount_type": mount_type,
-        "cap_mw": cap_mw,
-        "cap_note": cap_note,
+        "cap_ft_mw": cap_ft_mw,
+        "cap_tr_mw": cap_tr_mw,
+        "density_ft": density_ft,
+        "density_tr": density_tr,
+        "dem_zoom": dem_zoom,
         "boundary_provenance": boundary_provenance,
         "prepared_by": prepared_by,
         "extras": extras,

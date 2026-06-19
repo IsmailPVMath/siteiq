@@ -55,8 +55,8 @@ from pvmath_terrain_report import (
     build_report_context,
     compute_terrain_extras,
     generate_pdf_report,
-    render_drainage_map_png,
     render_slope_map_png,
+    site_capacity_mw,
     _verdict_from_mean,
 )
 def boundaries_union_area_ha(polygon_list):
@@ -436,7 +436,7 @@ st.markdown("""
       <span class="pvmath-app-name">TopoIQ</span>
       <span class="pvmath-app-sub">by PVMath</span>
     </div>
-    <div class="pvmath-tagline">Tracker-aware terrain screening from Copernicus DEM — slope, earthworks, drainage, and client-ready PDFs before you order LiDAR.</div>
+    <div class="pvmath-tagline">Tracker-aware terrain screening from Copernicus DEM — slope, cross-row grades, and client-ready PDFs before you order LiDAR.</div>
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -1098,23 +1098,28 @@ with right:
 
         _land_use = _proj.get("land_use", "Standard")
         _mount_type = _proj.get("mount_type", "Fixed Tilt")
+        _vf_label, _vf_detail = _verdict_from_mean(mean_slope, "Fixed Tilt")
+        _vt_label, _vt_detail = _verdict_from_mean(mean_slope, "Single-Axis Tracker")
         verdict_label, verdict_detail = _verdict_from_mean(mean_slope, _mount_type)
-        _vf, _ = _verdict_from_mean(mean_slope, "Fixed Tilt")
-        _vt, _ = _verdict_from_mean(mean_slope, "Single-Axis Tracker")
 
-        if "Excellent" in verdict_label or "Good" in verdict_label:
-            st.success(f"**{verdict_label}** — {verdict_detail}")
-        elif "Moderate" in verdict_label:
-            st.warning(f"**{verdict_label}** — {verdict_detail}")
-        else:
-            st.error(f"**{verdict_label}** — {verdict_detail}")
+        vc1, vc2 = st.columns(2)
+        with vc1:
+            st.success(f"**Fixed Tilt:** {_vf_label} — {_vf_detail}")
+        with vc2:
+            st.success(f"**Tracker:** {_vt_label} — {_vt_detail}")
+
+        _cap_ft, _ = site_capacity_mw(area_ha, _land_use, "Fixed Tilt")
+        _cap_tr, _ = site_capacity_mw(area_ha, _land_use, "Single-Axis Tracker")
+        st.caption(
+            f"Indicative capacity — **Fixed tilt ~{_cap_ft:,.0f} MWac** · "
+            f"**Tracker ~{_cap_tr:,.0f} MWac** (screening densities, not layout-optimised)"
+        )
 
         _extras = compute_terrain_extras(X, Y, Z, grid_m_used)
         if _extras.get("cross_row_mean") is not None:
             st.caption(
                 f"Cross-row slope (tracker screening): mean **{_extras['cross_row_mean']:.1f}%** · "
-                f"95th %ile **{_extras['cross_row_p95']:.1f}%** · "
-                f"Fixed tilt verdict: {_vf} · Tracker: {_vt}"
+                f"95th %ile **{_extras['cross_row_p95']:.1f}%**"
             )
 
         st.markdown(
@@ -1132,7 +1137,6 @@ with right:
         st.markdown('<div class="section-hdr"><i class="fa-solid fa-layer-group" style="color:#1565c0;"></i> Slope Map</div>', unsafe_allow_html=True)
 
         pdf_slope_buf = None
-        pdf_drain_buf = None
         if HAS_SCIPY:
             with st.spinner("Rendering slope map…"):
                 pdf_slope_buf = render_slope_map_png(
@@ -1146,10 +1150,8 @@ with right:
                 "Slope over satellite basemap — green = flat (<3%), red = steep (>10%). "
                 "North arrow and scale bar included in PDF export."
             )
-            with st.spinner("Rendering drainage map…"):
-                pdf_drain_buf = render_drainage_map_png(X, Y, Z, grid_m_used)
         else:
-            st.info("Install scipy for slope and drainage maps.")
+            st.info("Install scipy for slope maps.")
 
         st.divider()
         st.markdown('<div class="section-hdr"><i class="fa-solid fa-download" style="color:#1565c0;"></i> Download Outputs</div>', unsafe_allow_html=True)
@@ -1165,7 +1167,6 @@ with right:
                 float((s_valid > 10).sum() / _n_slope * 100),
             ) if _n_slope else None
             _slope_pdf = io.BytesIO(pdf_slope_buf.getvalue()) if pdf_slope_buf else None
-            _drain_pdf = io.BytesIO(pdf_drain_buf.getvalue()) if pdf_drain_buf else None
             _ctx = build_report_context(
                 project_name=_proj.get("name", ""),
                 country=_proj.get("country", ""),
@@ -1177,14 +1178,14 @@ with right:
                 pct_over5=pct_over5, pct_over10=pct_over10,
                 slope_bins=_slope_bins,
                 slope_img_buf=_slope_pdf,
-                drainage_img_buf=_drain_pdf,
                 land_use=_land_use,
                 mount_type=_mount_type,
                 boundary_provenance=_boundary_provenance(_boundaries, _proj),
-                prepared_by=st.session_state.get("pvm_user_id", ""),
+                prepared_by=st.session_state.get("pvm_email", ""),
                 extras=_extras,
                 siteiq_run_cache=st.session_state.get("siteiq_run_cache"),
                 project_row_id=st.session_state.get("pvm_project_row_id"),
+                dem_zoom=dem_zoom,
             )
             pdf_bytes = generate_pdf_report(_ctx)
         if pdf_bytes:
@@ -1241,12 +1242,11 @@ with right:
         st.markdown(f"""
         <div class="accuracy-card">
           <h4><i class="fa-solid fa-circle-info" style="margin-right:0.3rem;"></i> Data Source & Accuracy</h4>
-          <p><strong>Source:</strong> Copernicus GLO-30 DEM (ESA/EC, 2021) via AWS Terrain Tiles</p>
-          <p><strong>Native resolution:</strong> Copernicus GLO-30 via AWS Terrain Tiles (zoom {dem_zoom}, adaptive)</p>
-          <p><strong>Output grid:</strong> {grid_m_used:.0f}m resampled</p>
-          <p><strong>Vertical accuracy:</strong> ~4m RMSE globally (better in flat terrain, worse in dense vegetation)</p>
-          <p><strong>Recommendation:</strong> Suitable for preliminary layout and civil design starting point.
-             Verify critical slope areas with LiDAR before final tracker pile design.</p>
+          <p><strong>Source:</strong> Copernicus DEM GLO-30 (ESA/EC, 2021) via AWS Terrain Tiles</p>
+          <p><strong>Native resolution:</strong> ~30 m (GLO-30); tiles fetched at zoom {dem_zoom} (adaptive)</p>
+          <p><strong>Output grid:</strong> {grid_m_used:.0f} m resampled</p>
+          <p><strong>Vertical accuracy:</strong> ±1–3 m RMSE typical (better on open ground; worse in dense vegetation)</p>
+          <p><strong>Recommendation:</strong> Screening-grade terrain assessment only. Verify critical slopes and grades with LiDAR or RTK survey before FEED and pile layout.</p>
           <p style="color:#e53935;margin-top:0.4rem;">
             <i class="fa-solid fa-triangle-exclamation"></i>
             Dense vegetation (forests) and urban areas may cause elevation overestimation.
@@ -1260,7 +1260,7 @@ with right:
         wc1, wc2 = st.columns(2)
         _wcards = [
             (wc1, "Satellite DEM",
-             "Copernicus GLO-30 · ~2.4 m resolution · global coverage"),
+             "Copernicus GLO-30 · ~30 m native · global coverage"),
             (wc2, "Civil 3D ready",
              "LandXML TIN surface · import directly, no conversion"),
             (wc1, "DXF contours",
