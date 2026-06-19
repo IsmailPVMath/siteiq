@@ -16,6 +16,12 @@ from folium.plugins import Draw
 from streamlit_folium import st_folium
 from pvmath_styles import inject_styles
 from pvmath_auth import save_project, _refresh_session
+from pvmath_kml import (
+    BOUNDARY_COLORS,
+    guess_boundary_enabled,
+    lonlat_polys_to_latlon,
+    parse_kmz_all_polygons,
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # HELPERS
@@ -74,6 +80,92 @@ def centroid_of(coords):
     lats = [c[0] for c in coords]
     lons = [c[1] for c in coords]
     return sum(lats) / len(lats), sum(lons) / len(lons)
+
+
+def boundaries_union_area_ha(coords_list):
+    """Combined area (ha) for one or more [lat, lon] rings."""
+    polys = [p for p in coords_list if p and len(p) >= 3]
+    if not polys:
+        return 0.0
+    if len(polys) == 1:
+        return polygon_area_ha(polys[0])
+    try:
+        from shapely.geometry import Polygon as ShapelyPolygon
+        from shapely.ops import unary_union
+        shapes = []
+        for coords in polys:
+            lats = [c[0] for c in coords]
+            mean_lat = sum(lats) / len(lats)
+            lat_m = 111320.0
+            lon_m = 111320.0 * math.cos(math.radians(mean_lat))
+            pts = [(c[1] * lon_m, c[0] * lat_m) for c in coords]
+            shapes.append(ShapelyPolygon(pts))
+        return round(unary_union(shapes).area / 10_000, 2)
+    except Exception:
+        return round(sum(polygon_area_ha(p) for p in polys), 2)
+
+
+def _boundaries_from_kml_dict(all_polys_lonlat: dict, source_key: str):
+    latlon = lonlat_polys_to_latlon(all_polys_lonlat)
+    out = []
+    for i, (name, coords) in enumerate(latlon.items()):
+        area = polygon_area_ha(coords)
+        out.append({
+            "id": f"{source_key}_{i}",
+            "name": name,
+            "coords": coords,
+            "enabled": guess_boundary_enabled(name, area),
+        })
+    return out
+
+
+def _render_proj_boundary_manager():
+    bounds = st.session_state.get("proj_boundaries", [])
+    if not bounds:
+        return
+    st.markdown("**Site boundaries** — check parcels to include in this project")
+    st.caption(
+        "Tracker rows and small layout shapes are usually unchecked. "
+        "TopoIQ uses all checked boundaries; SiteIQ uses combined area."
+    )
+    qa, qb, qc = st.columns(3)
+    if qa.button("✓ Enable all", use_container_width=True, key="proj_en_all"):
+        for b in bounds:
+            b["enabled"] = True
+        st.rerun()
+    if qb.button("Site areas only", use_container_width=True, key="proj_en_smart"):
+        for b in bounds:
+            b["enabled"] = guess_boundary_enabled(b["name"], polygon_area_ha(b["coords"]))
+        st.rerun()
+    if qc.button("Clear all", use_container_width=True, key="proj_clr_bounds"):
+        st.session_state["proj_boundaries"] = []
+        st.session_state.pop("proj_polygon_draft", None)
+        st.session_state.pop("proj_kml_upload_key", None)
+        st.session_state["proj_polygon_cleared"] = True
+        st.rerun()
+
+    remove_ids = []
+    for b in bounds:
+        area = polygon_area_ha(b["coords"])
+        row_cb, row_txt, row_rm = st.columns([0.06, 0.84, 0.10])
+        with row_cb:
+            b["enabled"] = st.checkbox(
+                "on", value=b.get("enabled", True),
+                key=f"proj_en_{b['id']}", label_visibility="collapsed",
+            )
+        with row_txt:
+            st.markdown(f"**{b['name']}** · {area:,.1f} ha · {len(b['coords'])} vertices")
+        with row_rm:
+            if st.button("✕", key=f"proj_rm_{b['id']}", help="Remove"):
+                remove_ids.append(b["id"])
+    if remove_ids:
+        st.session_state["proj_boundaries"] = [b for b in bounds if b["id"] not in remove_ids]
+        st.rerun()
+
+    enabled = [b for b in bounds if b.get("enabled")]
+    if enabled:
+        total = boundaries_union_area_ha([b["coords"] for b in enabled])
+        st.success(f"**{len(enabled)}** selected · **{total:,.1f} ha** combined")
 
 
 def parse_kml_polygon(data: bytes):
@@ -260,10 +352,27 @@ if True:
     lat = proj.get("lat")
     lon = proj.get("lon")
     # Read polygon: use draft if present; but if user hit "Clear" use None, not saved polygon
+    # ── Boundaries list (multi-parcel KMZ support) ───────────────────────────
+    if "proj_boundaries" not in st.session_state:
+        if proj.get("polygon_boundaries"):
+            st.session_state["proj_boundaries"] = list(proj["polygon_boundaries"])
+        elif proj.get("polygon_coords"):
+            st.session_state["proj_boundaries"] = [{
+                "id": "saved_0",
+                "name": "Site boundary",
+                "coords": proj["polygon_coords"],
+                "enabled": True,
+            }]
+        else:
+            st.session_state["proj_boundaries"] = []
+
     if st.session_state.get("proj_polygon_cleared"):
         polygon_coords = None
+    elif st.session_state.get("proj_polygon_draft"):
+        polygon_coords = st.session_state["proj_polygon_draft"]
     else:
-        polygon_coords = st.session_state.get("proj_polygon_draft", proj.get("polygon_coords"))
+        _enabled = [b["coords"] for b in st.session_state["proj_boundaries"] if b.get("enabled")]
+        polygon_coords = _enabled[0] if len(_enabled) == 1 else (_enabled[0] if _enabled else None)
 
     # ── Coordinate / Google Maps inputs (used to centre map in Full Mode too) ──
     _coord_center = None  # [lat, lon] to jump map to
@@ -306,39 +415,47 @@ if True:
             help="Export a polygon boundary from Google Earth, QGIS, or your GIS tool as .kml or .kmz.",
         )
         if kml_file is not None:
-            _raw = kml_file.read()
-            if kml_file.name.lower().endswith(".kmz"):
-                _kcoords, _klat, _klon, _karea = parse_kmz_polygon(_raw)
-            else:
-                _kcoords, _klat, _klon, _karea = parse_kml_polygon(_raw)
+            _file_key = f"{kml_file.name}_{kml_file.size}"
+            if st.session_state.get("proj_kml_upload_key") != _file_key:
+                _raw = kml_file.read()
+                _all_polys = parse_kmz_all_polygons(_raw)
 
-            if _kcoords:
-                lat, lon = _klat, _klon
-                if is_full:
-                    polygon_coords = _kcoords
-                    st.session_state["proj_polygon_draft"] = _kcoords
-                    st.session_state.pop("proj_polygon_cleared", None)
-                    st.session_state["proj_pin_lat"] = _klat
-                    st.session_state["proj_pin_lon"] = _klon
-                    _coord_center = [_klat, _klon]
-                    st.success(
-                        f"✅ Boundary imported from **{kml_file.name}** — "
-                        f"{len(_kcoords)} vertices · centroid {_klat:.5f}°N, {_klon:.5f}°E · "
-                        f"area **{_karea} ha**"
+                if not _all_polys:
+                    st.warning(
+                        "No closed polygons found. Ensure the file contains site boundary "
+                        "polylines or polygons (not just points)."
                     )
                 else:
-                    st.session_state["proj_pin_lat"] = _klat
-                    st.session_state["proj_pin_lon"] = _klon
-                    _coord_center = [_klat, _klon]
-                    st.success(
-                        f"📌 Pin set from **{kml_file.name}** centroid: "
-                        f"{_klat:.5f}°N, {_klon:.5f}°E  (file boundary area: {_karea} ha)"
+                    st.session_state["proj_boundaries"] = _boundaries_from_kml_dict(
+                        _all_polys, _file_key
                     )
-            else:
-                st.warning(
-                    "Could not extract a polygon from this file. Make sure it contains a "
-                    "boundary (Polygon/LinearRing), not just a point marker."
-                )
+                    st.session_state["proj_kml_upload_key"] = _file_key
+                    st.session_state.pop("proj_polygon_draft", None)
+                    st.session_state.pop("proj_polygon_cleared", None)
+
+                    _enabled = [b for b in st.session_state["proj_boundaries"] if b["enabled"]]
+                    _all_bounds = st.session_state["proj_boundaries"]
+                    if _enabled:
+                        _primary = max(_enabled, key=lambda b: polygon_area_ha(b["coords"]))
+                        lat, lon = centroid_of(_primary["coords"])
+                        polygon_coords = _primary["coords"]
+                        st.session_state["proj_pin_lat"] = lat
+                        st.session_state["proj_pin_lon"] = lon
+                        _coord_center = [lat, lon]
+                        _total = boundaries_union_area_ha([b["coords"] for b in _enabled])
+                        st.success(
+                            f"✅ Loaded **{len(_all_bounds)}** shapes from **{kml_file.name}** — "
+                            f"**{len(_enabled)}** site areas auto-selected · **{_total:,.1f} ha** combined"
+                        )
+                    else:
+                        st.info(
+                            f"Loaded **{len(_all_bounds)}** shapes — none auto-selected. "
+                            f"Check the site parcels below."
+                        )
+                    st.rerun()
+
+        if st.session_state.get("proj_boundaries"):
+            _render_proj_boundary_manager()
 
     # ── MAP ───────────────────────────────────────────────────────────────────
     if _is_map or (is_full and _coord_center):
@@ -390,8 +507,17 @@ if True:
                 },
                 edit_options={"edit": True, "remove": True},
             ).add_to(m)
-            # Show any previously drawn / saved polygon
-            if polygon_coords and len(polygon_coords) >= 3:
+            # Show all saved / imported boundaries
+            for _bi, _bb in enumerate(st.session_state.get("proj_boundaries", [])):
+                _bc = BOUNDARY_COLORS[_bi % len(BOUNDARY_COLORS)] if _bb.get("enabled") else "#888"
+                folium.Polygon(
+                    locations=[[c[0], c[1]] for c in _bb["coords"]],
+                    color=_bc, fill=True,
+                    fill_opacity=0.22 if _bb.get("enabled") else 0.05,
+                    weight=3 if _bb.get("enabled") else 1,
+                    tooltip=_bb["name"],
+                ).add_to(m)
+            if polygon_coords and len(polygon_coords) >= 3 and not st.session_state.get("proj_boundaries"):
                 folium.Polygon(
                     locations=[[c[0], c[1]] for c in polygon_coords],
                     color="#f5c518", fill=True, fill_opacity=0.15, weight=4,
@@ -416,6 +542,12 @@ if True:
                         raw = geom["coordinates"][0]
                         _poly = [[c[1], c[0]] for c in raw]  # GeoJSON [lon,lat] → [lat,lon]
                         st.session_state["proj_polygon_draft"] = _poly
+                        st.session_state["proj_boundaries"] = [{
+                            "id": "draw_1",
+                            "name": "Drawn boundary",
+                            "coords": _poly,
+                            "enabled": True,
+                        }]
                         polygon_coords = _poly
                         _clat, _clon = centroid_of(_poly)
                         st.session_state["proj_pin_lat"] = _clat
@@ -430,12 +562,36 @@ if True:
                     st.session_state.pop("proj_polygon_draft", None)
                     st.session_state.pop("proj_pin_lat", None)
                     st.session_state.pop("proj_pin_lon", None)
+                    st.session_state["proj_boundaries"] = []
                     st.session_state["proj_polygon_cleared"] = True
                     polygon_coords = None
                     st.rerun()
 
             # Show result or prompt
-            if polygon_coords and len(polygon_coords) >= 3:
+            _enabled_bounds = [b for b in st.session_state.get("proj_boundaries", []) if b.get("enabled")]
+            if _enabled_bounds:
+                lat = st.session_state.get("proj_pin_lat")
+                lon = st.session_state.get("proj_pin_lon")
+                if lat is None or lon is None:
+                    _p = _enabled_bounds[0]["coords"]
+                    lat, lon = centroid_of(_p)
+                _total = boundaries_union_area_ha([b["coords"] for b in _enabled_bounds])
+                _ps1, _ps2 = st.columns([4, 1])
+                with _ps1:
+                    st.success(
+                        f"✅ **{len(_enabled_bounds)}** boundar{'y' if len(_enabled_bounds)==1 else 'ies'} · "
+                        f"Centroid: {lat:.5f}°N, {lon:.5f}°E · Combined: **{_total:,.1f} ha**"
+                    )
+                with _ps2:
+                    if st.button("🗑️ Clear", use_container_width=True,
+                                 help="Remove all boundaries"):
+                        st.session_state.pop("proj_polygon_draft", None)
+                        st.session_state.pop("proj_pin_lat", None)
+                        st.session_state.pop("proj_pin_lon", None)
+                        st.session_state["proj_boundaries"] = []
+                        st.session_state["proj_polygon_cleared"] = True
+                        st.rerun()
+            elif polygon_coords and len(polygon_coords) >= 3:
                 lat = st.session_state.get("proj_pin_lat")
                 lon = st.session_state.get("proj_pin_lon")
                 if lat is not None and lon is not None:
@@ -487,7 +643,18 @@ if True:
 
     # ── Area input ────────────────────────────────────────────────────────────
     area_ha_final = None
-    if is_full and polygon_coords and len(polygon_coords) >= 3:
+    _enabled_for_area = [
+        b["coords"] for b in st.session_state.get("proj_boundaries", []) if b.get("enabled")
+    ]
+    if is_full and _enabled_for_area:
+        area_from_poly = boundaries_union_area_ha(_enabled_for_area)
+        n_b = len(_enabled_for_area)
+        st.markdown(
+            f"**Site Area** — auto-calculated from **{n_b}** "
+            f"boundar{'y' if n_b == 1 else 'ies'}: **{area_from_poly:,.1f} ha**"
+        )
+        area_ha_final = area_from_poly
+    elif is_full and polygon_coords and len(polygon_coords) >= 3:
         area_from_poly = polygon_area_ha(polygon_coords)
         st.markdown(f"**Site Area** — auto-calculated from boundary: **{area_from_poly} ha**")
         area_ha_final = area_from_poly
@@ -518,6 +685,16 @@ if True:
             st.error("Please enter a project name.")
         else:
             mode_val = "full" if is_full else "quick"
+            _bounds_save = st.session_state.get("proj_boundaries", [])
+            _enabled_save = [b for b in _bounds_save if b.get("enabled")]
+            _primary_poly = None
+            if _enabled_save:
+                _primary_poly = max(
+                    _enabled_save, key=lambda b: polygon_area_ha(b["coords"])
+                )["coords"]
+            elif polygon_coords:
+                _primary_poly = polygon_coords
+
             _proj_data = {
                 "name":           proj_name.strip(),
                 "country":        proj_country.strip(),
@@ -525,7 +702,8 @@ if True:
                 "lon":            lon,
                 "area_ha":        area_ha_final,
                 "mode":           mode_val,
-                "polygon_coords": polygon_coords if is_full else None,
+                "polygon_coords": _primary_poly if is_full else None,
+                "polygon_boundaries": _bounds_save if is_full else None,
                 "map_center_cache": [lat, lon],
             }
             st.session_state["pvm_project"] = _proj_data
@@ -649,7 +827,9 @@ if True:
 _saved = st.session_state.get("pvm_project", {})
 if _saved.get("lat") is not None:
     _is_quick = _saved.get("mode") == "quick"
-    topo_ok   = (not _is_quick) and bool(_saved.get("polygon_coords"))
+    topo_ok   = (not _is_quick) and bool(
+        _saved.get("polygon_boundaries") or _saved.get("polygon_coords")
+    )
     mode_str  = "Quick Mode" if _is_quick else "Full Mode"
     area_str  = f" · {_saved.get('area_ha')} ha" if _saved.get("area_ha") else ""
 

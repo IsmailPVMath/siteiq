@@ -3,7 +3,6 @@ import numpy as np
 import requests
 import math
 import io
-import re
 import concurrent.futures
 import csv
 import xml.etree.ElementTree as ET
@@ -50,40 +49,14 @@ MAX_GRID_POINTS = 300_000    # coarsen output grid above this point count
 DEM_ZOOM_MIN = 11
 DEM_ZOOM_MAX = 14
 TILE_FETCH_WORKERS = 8
-BOUNDARY_COLORS = ["#22c55e", "#3b82f6", "#f59e0b", "#ec4899", "#8b5cf6", "#14b8a6"]
-_EXCLUDE_BOUNDARY_RE = re.compile(
-    r"tracker|row|string|module|panel|restricted|exclusion|buffer|road|easement|"
-    r"cable|inverter|subst|transformer|fence|layout|block(?!able)",
-    re.I,
+from pvmath_kml import (
+    BOUNDARY_COLORS,
+    guess_boundary_enabled,
+    normalize_ring_lonlat,
+    parse_kml_all_polygons,
+    parse_kmz_all_polygons,
+    read_kml_bytes,
 )
-_INCLUDE_BOUNDARY_RE = re.compile(
-    r"site|boundary|buildable|parcel|field|area|limit|perimeter|develop|zone|"
-    r"usable|solar|pv|plot",
-    re.I,
-)
-
-
-def _normalize_ring(pts):
-    """Ensure closed (lon, lat) ring."""
-    if not pts or len(pts) < 3:
-        return pts
-    out = [(float(p[0]), float(p[1])) for p in pts]
-    if out[0] != out[-1]:
-        out.append(out[0])
-    return out
-
-
-def _guess_boundary_enabled(name: str, area_ha: float) -> bool:
-    """Auto-select likely site parcels; skip tracker rows and tiny layout shapes."""
-    if _EXCLUDE_BOUNDARY_RE.search(name or ""):
-        return False
-    if _INCLUDE_BOUNDARY_RE.search(name or ""):
-        return True
-    if area_ha < 2.0:
-        return False
-    return area_ha >= 5.0
-
-
 def boundaries_union_area_ha(polygon_list):
     """Total area (ha) — union when shapely available, else sum of parts."""
     polys = [p for p in polygon_list if p and len(p) >= 3]
@@ -171,7 +144,7 @@ def _render_boundary_manager():
         st.rerun()
     if qb.button("Site areas only", use_container_width=True, key="topo_en_smart"):
         for b in bounds:
-            b["enabled"] = _guess_boundary_enabled(
+            b["enabled"] = guess_boundary_enabled(
                 b["name"], boundary_area_ha(b["coords"])
             )
         st.rerun()
@@ -958,96 +931,6 @@ def export_dxf(X, Y, Z, lat_c, lon_c, minor_int=0.5, major_int=1.0):
     return stream.getvalue().encode("utf-8")
 
 
-# ─── KML/KMZ parser ───────────────────────────────────────────────────────────
-
-def _parse_kml_coords(text):
-    pairs = []
-    for tok in text.strip().split():
-        parts = tok.split(",")
-        if len(parts) >= 2:
-            try:
-                pairs.append((float(parts[0]), float(parts[1])))
-            except ValueError:
-                pass
-    return pairs
-
-
-def parse_kml_all_polygons(raw_bytes):
-    """Extract every closed polygon / ring from KML/KMZ (incl. MultiGeometry)."""
-    NS = "http://www.opengis.net/kml/2.2"
-
-    try:
-        root2 = ET.fromstring(raw_bytes)
-    except Exception:
-        return {}
-
-    results = {}
-    seen = set()
-    _counter = [0]
-
-    def _unique_key(label):
-        _counter[0] += 1
-        base = (label or "Unnamed").strip()
-        key = base if base not in results else f"{base} ({_counter[0]})"
-        return key
-
-    def coords_from_el(el):
-        if el is None:
-            return []
-        c = el.find(f"{{{NS}}}coordinates")
-        if c is None:
-            c = el.find("coordinates")
-        return _parse_kml_coords(c.text) if (c is not None and c.text) else []
-
-    def _add_ring(pts, label):
-        pts = _normalize_ring(pts)
-        if len(pts) < 3:
-            return
-        sig = tuple(round(x, 6) for x in pts[0]) + (len(pts),)
-        if sig in seen:
-            return
-        seen.add(sig)
-        results[_unique_key(label)] = pts
-
-    def _rings_from_container(container, name):
-        if container is None:
-            return
-        for poly_el in container.findall(f".//{{{NS}}}Polygon"):
-            outer = poly_el.find(f"{{{NS}}}outerBoundaryIs/{{{NS}}}LinearRing")
-            if outer is None:
-                outer = poly_el.find(f".//{{{NS}}}outerBoundaryIs/{{{NS}}}LinearRing")
-            pts = coords_from_el(outer)
-            _add_ring(pts, name)
-        for ls in container.findall(f".//{{{NS}}}LineString"):
-            pts = coords_from_el(ls)
-            if len(pts) >= 3:
-                d = math.hypot(pts[0][0] - pts[-1][0], pts[0][1] - pts[-1][1])
-                if d < 0.002:
-                    _add_ring(pts, f"{name} (line)")
-
-    for pm in root2.iter(f"{{{NS}}}Placemark"):
-        name_el = pm.find(f"{{{NS}}}name")
-        name = name_el.text.strip() if (name_el is not None and name_el.text) else "Unnamed"
-        multi = pm.find(f"{{{NS}}}MultiGeometry")
-        if multi is not None:
-            _rings_from_container(multi, name)
-        else:
-            _rings_from_container(pm, name)
-
-    if not results:
-        for pm in root2.iter("Placemark"):
-            name_el = pm.find("name")
-            name = name_el.text.strip() if (name_el is not None and name_el.text) else "Unnamed"
-            for poly_el in pm.iter("Polygon"):
-                outer = poly_el.find(".//outerBoundaryIs/LinearRing")
-                if outer is not None:
-                    _add_ring(_parse_kml_coords(
-                        outer.find("coordinates").text if outer.find("coordinates") is not None else ""
-                    ), name)
-
-    return results
-
-
 def _boundaries_from_file_dict(all_polys: dict, source_key: str):
     """Build session-state boundary list from parsed file shapes."""
     out = []
@@ -1057,7 +940,7 @@ def _boundaries_from_file_dict(all_polys: dict, source_key: str):
             "id": f"{source_key}_{i}",
             "name": name,
             "coords": coords,
-            "enabled": _guess_boundary_enabled(name, area),
+            "enabled": guess_boundary_enabled(name, area),
         })
     return out
 
@@ -1099,11 +982,7 @@ def load_boundary_file(uploaded):
     raw = uploaded.read()
     name = uploaded.name.lower()
     if name.endswith(".kmz"):
-        with zipfile.ZipFile(io.BytesIO(raw)) as z:
-            kml_name = next((n for n in z.namelist() if n.endswith(".kml")), None)
-            if kml_name:
-                raw = z.read(kml_name)
-        return raw, "kml"
+        return raw, "kmz"
     elif name.endswith(".kml"):
         return raw, "kml"
     elif name.endswith(".dxf"):
@@ -1142,7 +1021,35 @@ _preloaded_polygon = (
 if "topo_boundaries" not in st.session_state:
     st.session_state["topo_boundaries"] = []
 
-if _preloaded_polygon and not st.session_state.get("topo_from_proj"):
+def _proj_boundaries_fingerprint(proj):
+    bounds = proj.get("polygon_boundaries")
+    if bounds:
+        return ("multi", len(bounds), tuple(b.get("id", i) for i, b in enumerate(bounds)))
+    pc = proj.get("polygon_coords")
+    if pc:
+        return ("single", len(pc), round(pc[0][0], 5), round(pc[0][1], 5))
+    return None
+
+_proj_fp = _proj_boundaries_fingerprint(_proj)
+if _proj_fp and st.session_state.get("topo_proj_fp") != _proj_fp:
+    st.session_state["topo_proj_fp"] = _proj_fp
+    st.session_state.pop("topo_from_proj", None)
+
+if _proj.get("polygon_boundaries"):
+    st.session_state.setdefault("topo_boundaries", [])
+    if not st.session_state.get("topo_from_proj"):
+        st.session_state["topo_boundaries"] = [
+            {
+                "id": b.get("id", f"proj_{i}"),
+                "name": b.get("name", f"Boundary {i + 1}"),
+                "coords": [(c[1], c[0]) for c in b["coords"]],
+                "enabled": b.get("enabled", True),
+            }
+            for i, b in enumerate(_proj["polygon_boundaries"])
+            if b.get("coords")
+        ]
+        st.session_state["topo_from_proj"] = True
+elif _preloaded_polygon and not st.session_state.get("topo_from_proj"):
     st.session_state["topo_boundaries"] = [{
         "id": "proj_0",
         "name": "Project boundary",
@@ -1170,20 +1077,25 @@ left, right = st.columns([1, 1.4])
 with left:
     st.markdown('<div class="section-hdr"><i class="fa-solid fa-draw-polygon" style="color:#1565c0;"></i> Site Boundary</div>', unsafe_allow_html=True)
 
-    if _preloaded_polygon and st.session_state.get("topo_from_proj"):
-        _preload_area_ha = boundary_area_ha(_preloaded_polygon)
+    if st.session_state.get("topo_from_proj") and st.session_state.get("topo_boundaries"):
         st.markdown(
             f'<div style="background:#e8f5ee;border:1.5px solid #b8ddc8;border-radius:10px;'
             f'padding:0.75rem 1rem;margin-bottom:0.6rem;">'
             f'<span style="font-weight:700;color:#145f34;font-size:0.88rem;">'
-            f'<i class="fa-solid fa-circle-check"></i> Boundary loaded from project</span><br>'
+            f'<i class="fa-solid fa-circle-check"></i> Boundaries loaded from project</span><br>'
             f'<span style="font-size:0.8rem;color:#3a5a3a;">'
-            f'Use the checklist below to add/remove parcels, or upload a KMZ with more boundaries.</span>'
+            f'Adjust the checklist below, or upload a KMZ here to replace.</span>'
             f'</div>',
             unsafe_allow_html=True
         )
+        _tb = st.session_state["topo_boundaries"]
+        if len(_tb) == 1 and _tb[0].get("name") == "Project boundary":
+            st.info(
+                "Only one boundary is saved on this project (older format). "
+                "Re-upload your KMZ in **Project Setup** or below to import all buildable parcels."
+            )
 
-    if not (_preloaded_polygon and st.session_state.get("topo_from_proj")):
+    if not st.session_state.get("topo_from_proj"):
         input_method = st.radio("Input method", [
             "📁 Upload KML / KMZ / DXF / DWG",
             "✏️ Draw Site Boundary on Map",
@@ -1364,7 +1276,9 @@ with left:
                         "Then re-upload the `.dxf` file here."
                     )
                     all_polys = {}
-                elif ftype in ("kml",):
+                elif ftype == "kmz":
+                    all_polys = parse_kmz_all_polygons(raw)
+                elif ftype == "kml":
                     all_polys = parse_kml_all_polygons(raw)
                 elif ftype in ("dxf", "dwg_ok"):
                     all_polys = parse_dxf_polygons(raw)
