@@ -477,6 +477,9 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
         "hdr", fontName="Helvetica-Bold", fontSize=10.5,
         textColor=MID_BLUE, spaceBefore=5, spaceAfter=3,
     )
+    hdr_tight = ParagraphStyle(
+        "hdr_t", parent=hdr_style, spaceBefore=0, spaceAfter=2,
+    )
     body_style = ParagraphStyle(
         "body", fontName="Helvetica", fontSize=9,
         textColor=colors.HexColor("#333333"), leading=13,
@@ -658,7 +661,6 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
     story.append(Spacer(1, 4 * mm))
 
     # ── Terrain metrics (honest rounding) ─────────────────────────────────
-    story.append(Paragraph("Terrain Metrics", hdr_style))
     z_min = round(ctx["z_min"])
     z_max = round(ctx["z_max"])
     z_rng = round(ctx["z_range"])
@@ -694,13 +696,15 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
         ("LEFTPADDING", (0, 0), (-1, -1), 6),
         ("ALIGN", (1, 1), (1, -1), "CENTER"),
     ]))
-    story.append(m_tbl)
+    story.append(KeepTogether([
+        Paragraph("Terrain Metrics", hdr_tight),
+        m_tbl,
+    ]))
     story.append(Spacer(1, 4 * mm))
 
     # ── Phase B: slope direction ──────────────────────────────────────────
     ex = ctx.get("extras") or {}
     if ex.get("cross_row_mean") is not None:
-        story.append(Paragraph("Slope Direction (Tracker Screening)", hdr_style))
         dir_rows = [
             ["Metric", "Value", "Notes"],
             ["Mean cross-row slope", f"{ex['cross_row_mean']:.1f}%",
@@ -726,13 +730,15 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
             ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
             ("LEFTPADDING", (0, 0), (-1, -1), 6),
         ]))
-        story.append(d_tbl)
+        story.append(KeepTogether([
+            Paragraph("Slope Direction (Tracker Screening)", hdr_tight),
+            d_tbl,
+        ]))
         story.append(Spacer(1, 4 * mm))
 
     # ── Slope distribution ────────────────────────────────────────────────
     slope_bins = ctx.get("slope_bins")
     if slope_bins:
-        story.append(Paragraph("Slope Distribution", hdr_style))
         bin_labels = ["0% – 2.5%", "2.5% – 5%", "5% – 7.5%", "7.5% – 10%", "&gt; 10%"]
         bin_colors = [
             (colors.HexColor("#1b5e20"), colors.white),
@@ -760,7 +766,10 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
             bs.append(("BACKGROUND", (1, i), (1, i), bg))
             bs.append(("TEXTCOLOR", (1, i), (1, i), fg))
         bins_tbl.setStyle(TableStyle(bs))
-        story.append(bins_tbl)
+        story.append(KeepTogether([
+            Paragraph("Slope Distribution", hdr_tight),
+            bins_tbl,
+        ]))
         story.append(Spacer(1, 4 * mm))
 
     # ── Engineering verdict — fixed tilt & tracker side by side ─────────────
