@@ -1072,36 +1072,36 @@ if not _has_proj:
 
 st.divider()
 
-_land_use = _proj.get("land_use", "Standard")
-_mount_type = _proj.get("mount_type", "Fixed Tilt")
-_land_display = "Agri-PV (Dual Use)" if _land_use == "Agri-PV" else "Standard"
+st.markdown("**Site screening configuration**")
+_siq_lu_col, _siq_mt_col = st.columns(2)
+with _siq_lu_col:
+    _lu_default = st.session_state.get("siteiq_land_use", "Standard")
+    _lu_ix = 1 if _lu_default == "Agri-PV" else 0
+    _land_use_sel = st.radio(
+        "Land use",
+        ["Standard Ground Mount", "Agri-PV (Dual Use)"],
+        index=_lu_ix,
+        horizontal=True,
+        key="siteiq_land_use_radio",
+        help="Used for regulatory flags, capacity density, and slope thresholds in this SiteIQ run.",
+    )
+with _siq_mt_col:
+    _mt_default = st.session_state.get("siteiq_mount_type", "Fixed Tilt")
+    _mt_ix = 1 if _mt_default == "Single-Axis Tracker" else 0
+    _mount_type_sel = st.radio(
+        "Mounting system",
+        ["Fixed Tilt", "Single-Axis Tracker"],
+        index=_mt_ix,
+        horizontal=True,
+        key="siteiq_mount_type_radio",
+        help="SiteIQ assesses slope and capacity for the system you select here.",
+    )
+_land_use = "Agri-PV" if "Agri-PV" in _land_use_sel else "Standard"
+_mount_type = _mount_type_sel
+st.session_state["siteiq_land_use"] = _land_use
+st.session_state["siteiq_mount_type"] = _mount_type
+_land_display = "Agri-PV (Dual Use)" if _land_use == "Agri-PV" else "Standard Ground Mount"
 _mount_display = _mount_type
-
-st.caption("Project configuration — set in **Project Setup**")
-if _has_proj:
-    _lu_color = "#1a5c2e" if _land_use == "Agri-PV" else "#1565c0"
-    _mt_color = "#7a4800" if _mount_type == "Single-Axis Tracker" else "#1565c0"
-    st.markdown(
-        f'<div style="background:#f0f4f8;border:1.5px solid #d4e8f8;border-radius:10px;'
-        f'padding:0.75rem 1rem;margin-bottom:0.5rem;">'
-        f'<span style="background:{_lu_color};color:#fff;padding:3px 10px;border-radius:4px;'
-        f'font-size:0.82rem;font-weight:600;">{_land_display}</span> '
-        f'<span style="background:{_mt_color};color:#fff;padding:3px 10px;border-radius:4px;'
-        f'font-size:0.82rem;font-weight:600;">{_mount_display}</span>'
-        f'<div style="font-size:0.8rem;color:#5a7a5a;margin-top:0.45rem;">'
-        f'Edit land use and mounting in <strong>Project Setup</strong>, then save.</div>'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
-else:
-    st.warning(
-        "No project loaded — using **Standard** / **Fixed Tilt**. "
-        "Open **Project Setup** to configure land use and mounting once for all modules."
-    )
-    _land_use = "Standard"
-    _mount_type = "Fixed Tilt"
-    _land_display = "Standard"
-    _mount_display = "Fixed Tilt"
 
 st.divider()
 

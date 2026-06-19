@@ -818,8 +818,6 @@ if _has_proj:
       &nbsp;·&nbsp; {_proj_ctry}
       &nbsp;·&nbsp; {_proj_lat:.5f}°N, {_proj_lon:.5f}°E
       {f"&nbsp;·&nbsp; <strong>{_proj_area} ha</strong>" if _proj_area else ""}
-      &nbsp;·&nbsp; {_proj.get("land_use", "Standard")}
-      &nbsp;·&nbsp; {_proj.get("mount_type", "Fixed Tilt")}
     </div>
     """, unsafe_allow_html=True)
 else:
@@ -828,35 +826,23 @@ else:
         icon=None,
     )
 
-# ── Land use from Project Setup + GCR sliders ───────────────────────────────
-_yiq_land_use = _proj.get("land_use", "Standard") if _has_proj else "Standard"
-_yiq_mount_type = _proj.get("mount_type", "Fixed Tilt") if _has_proj else "Fixed Tilt"
+# ── Land use for capacity density (all 4 configs run automatically) ─────────
+_yiq_land_use = st.radio(
+    "Land use",
+    ["Standard", "Agri-PV"],
+    index=0,
+    horizontal=True,
+    key="yiq_landuse",
+    help="Affects MWp/ha for all four configurations. Mounting types are compared automatically.",
+)
 _area_ha = float(_proj_area) if _proj_area else 0.0
 
-if _has_proj:
-    st.markdown(
-        f'<div style="background:#f0f4f8;border:1px solid #d4e8f8;border-radius:8px;'
-        f'padding:0.6rem 0.9rem;margin-bottom:0.6rem;font-size:0.84rem;color:#1a3a1a;">'
-        f'<strong>Configuration from Project Setup:</strong> '
-        f'{_yiq_land_use} · {_yiq_mount_type} — '
-        f'edit in <strong>Project Setup</strong> and save to update all modules.'
-        f'</div>',
-        unsafe_allow_html=True,
+if not _has_proj:
+    _area_ha = st.number_input(
+        "Site Area (ha)", min_value=0.0, max_value=50_000.0,
+        value=0.0, step=1.0,
+        help="Required for MWp and MWh/yr. Set in Project page to auto-fill.",
     )
-elif not _has_proj:
-    _cap_c1, _cap_c2 = st.columns(2)
-    with _cap_c1:
-        _yiq_land_use = st.radio(
-            "Land Use", ["Standard", "Agri-PV"],
-            key="yiq_landuse", horizontal=True,
-            help="With no project loaded, choose land use here. Prefer Project Setup for shared config.",
-        )
-    with _cap_c2:
-        _area_ha = st.number_input(
-            "Site Area (ha)", min_value=0.0, max_value=50_000.0,
-            value=0.0, step=1.0,
-            help="Required for MWp and MWh/yr. Set in Project page to auto-fill."
-        )
 
 if _has_proj and _proj_area:
     st.markdown('<div class="yiq-section">📐 Site Capacity — All Configurations</div>',

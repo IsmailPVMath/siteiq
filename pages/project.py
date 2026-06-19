@@ -602,28 +602,6 @@ if True:
             placeholder="e.g. Germany, Italy, Spain…",
         )
 
-    pc1, pc2 = st.columns(2)
-    with pc1:
-        _saved_lu = proj.get("land_use", "Standard")
-        _lu_ix = 1 if _saved_lu == "Agri-PV" else 0
-        land_use_sel = st.radio(
-            "Land use",
-            ["Standard Ground Mount", "Agri-PV (Dual Use)"],
-            index=_lu_ix,
-            horizontal=True,
-        )
-    with pc2:
-        _saved_mt = proj.get("mount_type", "Fixed Tilt")
-        _mt_ix = 1 if _saved_mt == "Single-Axis Tracker" else 0
-        mount_type_sel = st.radio(
-            "Mounting system",
-            ["Fixed Tilt", "Single-Axis Tracker"],
-            index=_mt_ix,
-            horizontal=True,
-        )
-    _land_use = "Agri-PV" if "Agri-PV" in land_use_sel else "Standard"
-    _mount_type = mount_type_sel
-
     _loc_label = proj.get("location_label", "")
     if proj.get("lat") and proj.get("lon"):
         st.caption(
@@ -905,8 +883,6 @@ if True:
                 "name":           proj_name.strip(),
                 "country":        proj_country.strip(),
                 "location_label": _loc_resolved,
-                "land_use":       _land_use,
-                "mount_type":     _mount_type,
                 "lat":            lat,
                 "lon":            lon,
                 "area_ha":        area_ha_final,

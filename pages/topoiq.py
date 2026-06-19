@@ -1097,11 +1097,10 @@ with right:
         pct_over10 = float((s_valid > 10).sum() / len(s_valid) * 100)
         ha_over10 = area_ha * pct_over10 / 100.0
 
-        _land_use = _proj.get("land_use", "Standard")
-        _mount_type = _proj.get("mount_type", "Fixed Tilt")
+        _siq_cache = st.session_state.get("siteiq_run_cache") or {}
+        _land_use = _siq_cache.get("land_use", "Standard")
         _vf_label, _vf_detail = _verdict_from_mean(mean_slope, "Fixed Tilt")
         _vt_label, _vt_detail = _verdict_from_mean(mean_slope, "Single-Axis Tracker")
-        verdict_label, verdict_detail = _verdict_from_mean(mean_slope, _mount_type)
 
         vc1, vc2 = st.columns(2)
         with vc1:
@@ -1184,7 +1183,7 @@ with right:
                 slope_bins=_slope_bins,
                 slope_img_buf=_slope_pdf,
                 land_use=_land_use,
-                mount_type=_mount_type,
+                mount_type=None,
                 boundary_provenance=_boundary_provenance(_boundaries, _proj),
                 prepared_by=st.session_state.get("pvm_email", ""),
                 extras=_extras,
