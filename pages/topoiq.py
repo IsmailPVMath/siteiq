@@ -51,6 +51,14 @@ DEM_ZOOM_MIN = 11
 DEM_ZOOM_MAX = 14
 TILE_FETCH_WORKERS = 8
 from pvmath_kml import BOUNDARY_COLORS, filter_boundary_list
+from pvmath_terrain_report import (
+    build_report_context,
+    compute_terrain_extras,
+    generate_pdf_report,
+    render_drainage_map_png,
+    render_slope_map_png,
+    _verdict_from_mean,
+)
 def boundaries_union_area_ha(polygon_list):
     """Total area (ha) — union when shapely available, else sum of parts."""
     polys = [p for p in polygon_list if p and len(p) >= 3]
@@ -266,261 +274,19 @@ def _area_limit_message(area_ha: float) -> str:
     )
 
 
-def generate_pdf_report(
-    fname, lat_c, lon_c, area_ha, grid_spacing,
-    z_min, z_max, z_range, mean_slope, max_slope,
-    pct_over5, pct_over10,
-    slope_img_buf,
-    verdict_label, verdict_detail,
-    project_name="", country="",
-    slope_bins=None
-):
-    try:
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib import colors
-        from reportlab.lib.units import mm
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
-                                         Table, TableStyle, Image as RLImage,
-                                         HRFlowable)
-        from reportlab.lib.enums import TA_CENTER, TA_LEFT
-    except ImportError:
-        return None
-
-    buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4,
-                            topMargin=15*mm, bottomMargin=15*mm,
-                            leftMargin=18*mm, rightMargin=18*mm)
-
-    W, _ = A4
-    usable = W - 36*mm
-
-    styles = getSampleStyleSheet()
-    DARK_BLUE = colors.HexColor("#0d2137")
-    MID_BLUE  = colors.HexColor("#1565c0")
-    GREEN     = colors.HexColor("#1b5e20")
-    ORANGE    = colors.HexColor("#f57c00")
-    RED_C     = colors.HexColor("#c62828")
-    LIGHT_BG  = colors.HexColor("#f0f4f8")
-
-    title_style = ParagraphStyle("title", fontName="Helvetica-Bold",
-                                  fontSize=14, textColor=colors.white,
-                                  alignment=TA_LEFT, leading=17)
-    sub_style   = ParagraphStyle("sub", fontName="Helvetica",
-                                  fontSize=8.5, textColor=colors.HexColor("#b0c4de"),
-                                  alignment=2)  # TA_RIGHT = 2
-    hdr_style   = ParagraphStyle("hdr", fontName="Helvetica-Bold",
-                                  fontSize=11, textColor=MID_BLUE,
-                                  spaceBefore=6, spaceAfter=3)
-    body_style  = ParagraphStyle("body", fontName="Helvetica",
-                                  fontSize=9, textColor=colors.HexColor("#333333"),
-                                  leading=13)
-
-    story = []
-
-    header_tbl = Table([[
-        Paragraph("TOPOIQ — TERRAIN ANALYSIS REPORT", title_style),
-        Paragraph(f"PVMath · pvmath.com", sub_style),
-    ]], colWidths=["65%","35%"])
-    header_tbl.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0), (-1,-1), colors.HexColor("#1565c0")),
-        ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
-        ("TOPPADDING",    (0,0), (-1,-1), 13),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 13),
-        ("LEFTPADDING",   (0,0), (-1,-1), 14),
-        ("RIGHTPADDING",  (0,0), (-1,-1), 14),
-    ]))
-    story.append(header_tbl)
-    story.append(Spacer(1, 6*mm))
-
-    story.append(Paragraph("Project Summary", hdr_style))
-    info_data = []
-    if project_name:
-        info_data.append(["Project Name", project_name])
-    if country:
-        info_data.append(["Location", country])
-    info_data += [
-        ["Coordinates",     f"Lat {lat_c:.5f}°,  Lon {lon_c:.5f}°"],
-        ["Site Area",       f"~{area_ha:.1f} ha  ({area_ha*10000:,.0f} m²)"],
-        ["Grid Resolution", f"{grid_spacing} m"],
-    ]
-    info_tbl = Table(info_data, colWidths=[45*mm, usable-45*mm])
-    info_tbl.setStyle(TableStyle([
-        ("FONTNAME",      (0,0), (0,-1), "Helvetica-Bold"),
-        ("FONTNAME",      (1,0), (1,-1), "Helvetica"),
-        ("FONTSIZE",      (0,0), (-1,-1), 9),
-        ("TEXTCOLOR",     (0,0), (0,-1), DARK_BLUE),
-        ("TEXTCOLOR",     (1,0), (1,-1), colors.HexColor("#222")),
-        ("BACKGROUND",    (0,0), (-1,-1), LIGHT_BG),
-        ("ROWBACKGROUNDS",(0,0), (-1,-1), [colors.white, LIGHT_BG]),
-        ("GRID",          (0,0), (-1,-1), 0.3, colors.HexColor("#cccccc")),
-        ("TOPPADDING",    (0,0), (-1,-1), 4),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
-        ("LEFTPADDING",   (0,0), (-1,-1), 7),
-    ]))
-    story.append(info_tbl)
-    story.append(Spacer(1, 5*mm))
-
-    story.append(Paragraph("Terrain Metrics", hdr_style))
-    metrics_data = [
-        ["Parameter", "Value", "Notes"],
-        ["Min Elevation",       f"{z_min:.1f} m",        "Lowest point in site boundary"],
-        ["Max Elevation",       f"{z_max:.1f} m",        "Highest point in site boundary"],
-        ["Elevation Range",     f"{z_range:.1f} m",      "Total relief across site"],
-        ["Mean Slope",          f"{mean_slope:.2f}%",    "Average terrain gradient"],
-        ["Max Slope",           f"{max_slope:.1f}%",     "Steepest point in site"],
-        ["Area > 5% slope",     f"{pct_over5:.1f}%",    "Fraction requiring slope analysis"],
-        ["Area > 10% slope",    f"{pct_over10:.1f}%",   "Fraction with challenging grade"],
-    ]
-    m_tbl = Table(metrics_data, colWidths=[55*mm, 30*mm, usable-85*mm])
-    m_tbl.setStyle(TableStyle([
-        ("FONTNAME",      (0,0), (-1,0), "Helvetica-Bold"),
-        ("FONTNAME",      (0,1), (-1,-1), "Helvetica"),
-        ("FONTSIZE",      (0,0), (-1,-1), 9),
-        ("BACKGROUND",    (0,0), (-1,0), MID_BLUE),
-        ("TEXTCOLOR",     (0,0), (-1,0), colors.white),
-        ("ROWBACKGROUNDS",(0,1), (-1,-1), [colors.white, LIGHT_BG]),
-        ("GRID",          (0,0), (-1,-1), 0.3, colors.HexColor("#cccccc")),
-        ("TOPPADDING",    (0,0), (-1,-1), 4),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
-        ("LEFTPADDING",   (0,0), (-1,-1), 7),
-        ("ALIGN",         (1,1), (1,-1), "CENTER"),
-    ]))
-    story.append(m_tbl)
-    story.append(Spacer(1, 5*mm))
-
-    story.append(Paragraph("Engineering Verdict", hdr_style))
-    if "Excellent" in verdict_label:
-        vcolor = GREEN
-    elif "Good" in verdict_label:
-        vcolor = colors.HexColor("#2e7d32")
-    elif "Moderate" in verdict_label:
-        vcolor = ORANGE
-    else:
-        vcolor = RED_C
-
-    verdict_data = [[Paragraph(f"<b>{verdict_label}</b>", ParagraphStyle(
-        "verd", fontName="Helvetica-Bold", fontSize=11,
-        textColor=colors.white, alignment=TA_CENTER))],
-        [Paragraph(verdict_detail, ParagraphStyle(
-        "verd2", fontName="Helvetica", fontSize=9,
-        textColor=colors.white, alignment=TA_CENTER))]]
-    v_tbl = Table(verdict_data, colWidths=[usable])
-    v_tbl.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0), (-1,-1), vcolor),
-        ("TOPPADDING",    (0,0), (-1,-1), 7),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 7),
-        ("LEFTPADDING",   (0,0), (-1,-1), 10),
-        ("ROUNDEDCORNERS", [5]),
-    ]))
-    story.append(v_tbl)
-    story.append(Spacer(1, 5*mm))
-
-    story.append(Paragraph("Slope Map", hdr_style))
-    img_w = usable
-
-    if slope_img_buf:
-        # Size the image box from its ACTUAL pixel aspect ratio rather than a
-        # hardcoded constant (0.62). matplotlib's bbox_inches="tight" trims the
-        # saved PNG to its content bounding box, which does not reliably keep
-        # the figure's nominal figsize ratio (10x6.2in) — the colorbar/title
-        # eat a different proportion of width vs height each render. Forcing
-        # a mismatched fixed height stretched/squashed the chart in the PDF
-        # (looked "inverted"/garbled) even though it displayed fine on-screen
-        # via st.image's own aspect-preserving use_container_width=True.
-        slope_img_buf.seek(0)
-        img_h = img_w * 0.62
-        try:
-            _pil_probe = Image.open(slope_img_buf)
-            _iw, _ih = _pil_probe.size
-            if _iw > 0 and _ih > 0:
-                _ratio = _ih / _iw
-                if 0.25 <= _ratio <= 1.3:   # sanity clamp against a corrupt/odd image
-                    img_h = img_w * _ratio
-        except Exception:
-            pass
-        slope_img_buf.seek(0)
-        slope_img = RLImage(slope_img_buf, width=img_w, height=img_h)
-        img_tbl = Table([[slope_img]], colWidths=[img_w], hAlign="CENTER")
-        img_tbl.setStyle(TableStyle([
-            ("LEFTPADDING",  (0,0), (-1,-1), 0),
-            ("RIGHTPADDING", (0,0), (-1,-1), 0),
-            ("TOPPADDING",   (0,0), (-1,-1), 0),
-            ("BOTTOMPADDING",(0,0), (-1,-1), 0),
-        ]))
-        story.append(img_tbl)
-        story.append(Spacer(1, 2*mm))
-
-        _cap_style = ParagraphStyle(
-            "mapcap", fontName="Helvetica", fontSize=7,
-            textColor=colors.HexColor("#999"), alignment=TA_CENTER, leading=9
+def _boundary_provenance(boundaries, proj) -> str:
+    """Describe how the analysis boundary was defined."""
+    n = len(boundaries) if boundaries else 0
+    en = sum(1 for b in (boundaries or []) if b.get("enabled"))
+    if proj.get("polygon_boundaries"):
+        layers = len({b.get("layer_group") for b in boundaries if b.get("layer_group")})
+        return (
+            f"KMZ import via Project Setup · {en} enabled parcel{'s' if en != 1 else ''}"
+            f"{' · ' + str(layers) + ' layers' if layers else ''}"
         )
-        story.append(Paragraph(
-            "Slope Map — steepness (%) derived from elevation across the site grid; "
-            "green = flat (&lt;3%), red = steep (&gt;10%).", _cap_style
-        ))
-    story.append(Spacer(1, 5*mm))
-
-    if slope_bins:
-        story.append(Paragraph("Slope Distribution", hdr_style))
-        _bin_labels = ["0% – 2.5%", "2.5% – 5%", "5% – 7.5%", "7.5% – 10%", "&gt; 10%"]
-        # Same green→yellow→orange→red ramp as the Slope Map colormap (0-15% range),
-        # sampled at each bin's representative slope so the table reads as an
-        # extension of the map's legend rather than a plain blue/white table.
-        _bin_colors = [
-            (colors.HexColor("#1b5e20"), colors.white),     # 0–2.5%   dark green
-            (colors.HexColor("#66bb6a"), colors.white),     # 2.5–5%   light green
-            (colors.HexColor("#d4e157"), colors.HexColor("#1a1a1a")),  # 5–7.5%   yellow-green
-            (colors.HexColor("#ffa726"), colors.HexColor("#1a1a1a")),  # 7.5–10%  orange
-            (colors.HexColor("#c62828"), colors.white),     # >10%     red
-        ]
-        bins_data = [["Slope Range", "% of Site Area"]]
-        for _lbl, _pct in zip(_bin_labels, slope_bins):
-            bins_data.append([Paragraph(_lbl, body_style), f"{_pct:.1f}%"])
-        bins_tbl = Table(bins_data, colWidths=[usable*0.6, usable*0.4])
-        _bins_style = [
-            ("FONTNAME",      (0,0), (-1,0), "Helvetica-Bold"),
-            ("FONTNAME",      (0,1), (-1,-1), "Helvetica-Bold"),
-            ("FONTSIZE",      (0,0), (-1,-1), 9),
-            ("BACKGROUND",    (0,0), (-1,0), MID_BLUE),
-            ("TEXTCOLOR",     (0,0), (-1,0), colors.white),
-            ("GRID",          (0,0), (-1,-1), 0.3, colors.HexColor("#cccccc")),
-            ("TOPPADDING",    (0,0), (-1,-1), 4),
-            ("BOTTOMPADDING", (0,0), (-1,-1), 4),
-            ("LEFTPADDING",   (0,0), (-1,-1), 7),
-            ("ALIGN",         (1,1), (1,-1), "CENTER"),
-        ]
-        # Color only column 1 ("% of Site Area") with the slope ramp — column 0
-        # ("Slope Range" labels) stays plain/white, matching the header's own
-        # styling for that column.
-        for _i, (_bg, _fg) in enumerate(_bin_colors, start=1):
-            _bins_style.append(("BACKGROUND", (1,_i), (1,_i), _bg))
-            _bins_style.append(("TEXTCOLOR",  (1,_i), (1,_i), _fg))
-        bins_tbl.setStyle(TableStyle(_bins_style))
-        story.append(bins_tbl)
-        story.append(Spacer(1, 5*mm))
-
-    story.append(HRFlowable(width="100%", thickness=0.5,
-                             color=colors.HexColor("#cccccc")))
-    story.append(Spacer(1, 2*mm))
-    story.append(Paragraph(
-        "<b>Data Source:</b> Copernicus DEM GLO-30 (ESA/EC 2021) delivered via AWS Terrain Tiles "
-        "(Terrarium format, ~30m native resolution, resampled to specified grid). "
-        "Accuracy: ±1–3m RMSE typical. Vegetation/building bias possible in forested or built-up areas. "
-        "Recommended for preliminary site assessment. Field survey (LiDAR/GNSS) required for detailed design.",
-        ParagraphStyle("footer", fontName="Helvetica", fontSize=7.5,
-                       textColor=colors.HexColor("#666"), leading=11)
-    ))
-    story.append(Spacer(1, 2*mm))
-    story.append(Paragraph(
-        "Generated by TopoIQ · PVMath (pvmath.com) · contact@pvmath.com",
-        ParagraphStyle("footer2", fontName="Helvetica-Oblique", fontSize=7,
-                       textColor=colors.HexColor("#999"), alignment=TA_CENTER)
-    ))
-
-    doc.build(story)
-    buf.seek(0)
-    return buf.getvalue()
+    if n:
+        return "Project Setup boundary · single polygon"
+    return "User-defined boundary"
 
 
 def _normalize_for_display(Z):
@@ -670,7 +436,7 @@ st.markdown("""
       <span class="pvmath-app-name">TopoIQ</span>
       <span class="pvmath-app-sub">by PVMath</span>
     </div>
-    <div class="pvmath-tagline">Satellite terrain extraction for solar site engineering — DXF terrain files for detailed 3D study in your CAD software</div>
+    <div class="pvmath-tagline">Tracker-aware terrain screening from Copernicus DEM — slope, earthworks, drainage, and client-ready PDFs before you order LiDAR.</div>
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -1309,9 +1075,9 @@ with right:
 
         m1, m2, m3, m4 = st.columns(4)
         metrics = [
-            ("fa-arrow-down", "#e53935", "Min Elevation", f"{z_valid.min():.1f} m"),
-            ("fa-arrow-up",   "#43a047", "Max Elevation", f"{z_valid.max():.1f} m"),
-            ("fa-wave-square","#1565c0", "Elev Range",    f"{z_valid.max()-z_valid.min():.1f} m"),
+            ("fa-arrow-down", "#e53935", "Min Elevation", f"{round(z_valid.min())} m"),
+            ("fa-arrow-up",   "#43a047", "Max Elevation", f"{round(z_valid.max())} m"),
+            ("fa-wave-square","#1565c0", "Elev Range",    f"{round(z_valid.max()-z_valid.min())} m"),
             ("fa-percent",    "#f57c00", "Max Slope",     f"{s_valid.max():.1f}%"),
         ]
         for col, (icon, color, label, val) in zip([m1,m2,m3,m4], metrics):
@@ -1328,31 +1094,36 @@ with right:
         mean_slope = float(s_valid.mean())
         pct_over5  = float((s_valid > 5).sum() / len(s_valid) * 100)
         pct_over10 = float((s_valid > 10).sum() / len(s_valid) * 100)
+        ha_over10 = area_ha * pct_over10 / 100.0
 
-        if mean_slope <= 3:
-            verdict_label  = "Excellent Terrain"
-            verdict_detail = f"Mean slope {mean_slope:.1f}%. Ideal for both fixed tilt and single-axis tracker."
+        _land_use = _proj.get("land_use", "Standard")
+        _mount_type = _proj.get("mount_type", "Fixed Tilt")
+        verdict_label, verdict_detail = _verdict_from_mean(mean_slope, _mount_type)
+        _vf, _ = _verdict_from_mean(mean_slope, "Fixed Tilt")
+        _vt, _ = _verdict_from_mean(mean_slope, "Single-Axis Tracker")
+
+        if "Excellent" in verdict_label or "Good" in verdict_label:
             st.success(f"**{verdict_label}** — {verdict_detail}")
-        elif mean_slope <= 6:
-            verdict_label  = "Good Terrain"
-            verdict_detail = f"Mean slope {mean_slope:.1f}%. Suitable for fixed tilt; single-axis tracker feasible with grading."
-            st.success(f"**{verdict_label}** — {verdict_detail}")
-        elif mean_slope <= 10:
-            verdict_label  = "Moderate Terrain"
-            verdict_detail = f"Mean slope {mean_slope:.1f}%. Fixed tilt preferred; tracker design needs careful civil study."
+        elif "Moderate" in verdict_label:
             st.warning(f"**{verdict_label}** — {verdict_detail}")
         else:
-            verdict_label  = "Challenging Terrain"
-            verdict_detail = f"Mean slope {mean_slope:.1f}%. Significant grading required. Detailed civil study essential."
             st.error(f"**{verdict_label}** — {verdict_detail}")
+
+        _extras = compute_terrain_extras(X, Y, Z, grid_m_used)
+        if _extras.get("cross_row_mean") is not None:
+            st.caption(
+                f"Cross-row slope (tracker screening): mean **{_extras['cross_row_mean']:.1f}%** · "
+                f"95th %ile **{_extras['cross_row_p95']:.1f}%** · "
+                f"Fixed tilt verdict: {_vf} · Tracker: {_vt}"
+            )
 
         st.markdown(
             f'<div style="font-size:1rem;font-weight:600;color:#1a1a1a;'
             f'background:#f0f4f8;border-radius:8px;padding:0.55rem 1rem;margin-top:0.3rem;">'
             f'📐 <b>{area_ha:.1f} ha</b> &nbsp;·&nbsp; '
             f'🔢 <b>{len(z_valid):,}</b> grid points at <b>{grid_m_used:.0f} m</b> &nbsp;·&nbsp; '
-            f'⚠️ <b>{pct_over5:.0f}%</b> of site &gt;5% slope &nbsp;·&nbsp; '
-            f'🔴 <b>{pct_over10:.0f}%</b> &gt;10% slope'
+            f'⚠️ <b>{pct_over5:.1f}%</b> (&gt;5% slope) &nbsp;·&nbsp; '
+            f'🔴 <b>{pct_over10:.1f}%</b> (&gt;10%, ≈{ha_over10:.1f} ha) · max point <b>{s_valid.max():.1f}%</b>'
             f'</div>',
             unsafe_allow_html=True
         )
@@ -1360,66 +1131,31 @@ with right:
         st.divider()
         st.markdown('<div class="section-hdr"><i class="fa-solid fa-layer-group" style="color:#1565c0;"></i> Slope Map</div>', unsafe_allow_html=True)
 
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-        import matplotlib.colors as mcolors
-
+        pdf_slope_buf = None
+        pdf_drain_buf = None
         if HAS_SCIPY:
-            dy, dx = np.gradient(Z, grid_m_used, grid_m_used)
-            slope_pct = np.sqrt(dx**2 + dy**2) * 100
-            # grid_lats runs north→south (np.arange(p_n, p_s, -step_lat)), so row 0
-            # of slope_pct is already the northernmost row — matplotlib's default
-            # imshow origin ("upper") plots row 0 at the top, which is correct as-is.
-            # A previous np.flipud() here flipped north/south, making the map
-            # upside-down relative to the satellite boundary view above it.
-            Sm = np.ma.masked_invalid(slope_pct)
-            fig2, ax2 = plt.subplots(figsize=(10, 6.2))
-            fig2.patch.set_facecolor("#0e1117")
-            ax2.set_facecolor("#0e1117")
-            _slope_colors = [
-                (0.000, "#1b5e20"),
-                (0.167, "#388e3c"),
-                (0.200, "#66bb6a"),
-                (0.333, "#d4e157"),
-                (0.500, "#ffa726"),
-                (0.667, "#f44336"),
-                (1.000, "#7f0000"),
-            ]
-            cmap_slope = mcolors.LinearSegmentedColormap.from_list(
-                "solar_slope",
-                [(pos, col) for pos, col in _slope_colors], N=512
-            )
-            im2 = ax2.imshow(Sm, cmap=cmap_slope, vmin=0, vmax=15,
-                             interpolation="bilinear", aspect="auto")
-            cbar2 = fig2.colorbar(im2, ax=ax2, fraction=0.04, pad=0.03)
-            cbar2.set_label("Slope (%)", color="white", fontsize=10)
-            cbar2.ax.yaxis.set_tick_params(color="white", labelsize=9)
-            plt.setp(cbar2.ax.yaxis.get_ticklabels(), color="white")
-            ax2.set_title(f"Slope · {grid_m_used:.0f}m grid  (green<3%, red>10%)",
-                          color="white", fontsize=11, pad=8)
-            ax2.set_xticks([]); ax2.set_yticks([])
-            for spine in ax2.spines.values():
-                spine.set_edgecolor("#333")
-            plt.tight_layout(pad=0.5)
-            pdf_slope_buf = io.BytesIO()
-            fig2.savefig(pdf_slope_buf, format="png", dpi=150, bbox_inches="tight", facecolor="#0e1117")
-            pdf_slope_buf.seek(0); plt.close(fig2)
-            st.image(pdf_slope_buf, use_container_width=True)
+            with st.spinner("Rendering slope map…"):
+                pdf_slope_buf = render_slope_map_png(
+                    X, Y, Z, grid_m_used, south, north, west, east,
+                    polygon_list=_enabled_polys,
+                )
+            if pdf_slope_buf:
+                st.image(pdf_slope_buf, use_container_width=True)
+                pdf_slope_buf.seek(0)
             st.caption(
-                "Slope is derived from elevation — green = flat (<3%), red = steep (>10%). "
-                "Steeper zones need more grading or favor fixed tilt over tracker."
+                "Slope over satellite basemap — green = flat (<3%), red = steep (>10%). "
+                "North arrow and scale bar included in PDF export."
             )
+            with st.spinner("Rendering drainage map…"):
+                pdf_drain_buf = render_drainage_map_png(X, Y, Z, grid_m_used)
         else:
-            pdf_slope_buf = None
-            st.info("Install scipy for slope map.")
+            st.info("Install scipy for slope and drainage maps.")
 
         st.divider()
         st.markdown('<div class="section-hdr"><i class="fa-solid fa-download" style="color:#1565c0;"></i> Download Outputs</div>', unsafe_allow_html=True)
         fname = f"TopoIQ_{lat_c:.3f}_{lon_c:.3f}_{grid_m_used:.0f}m"
 
         with st.spinner("Generating PDF report…"):
-            pdf_slope_buf_for_pdf = pdf_slope_buf if HAS_SCIPY else None
             _n_slope = len(s_valid)
             _slope_bins = (
                 float((s_valid <= 2.5).sum() / _n_slope * 100),
@@ -1428,20 +1164,29 @@ with right:
                 float(((s_valid > 7.5) & (s_valid <= 10)).sum() / _n_slope * 100),
                 float((s_valid > 10).sum() / _n_slope * 100),
             ) if _n_slope else None
-            pdf_bytes = generate_pdf_report(
-                fname=fname, lat_c=lat_c, lon_c=lon_c,
-                area_ha=area_ha, grid_spacing=grid_m_used,
-                z_min=float(z_valid.min()), z_max=float(z_valid.max()),
-                z_range=float(z_valid.max()-z_valid.min()),
-                mean_slope=mean_slope, max_slope=float(s_valid.max()),
-                pct_over5=pct_over5, pct_over10=pct_over10,
-                slope_img_buf=pdf_slope_buf_for_pdf,
-                verdict_label=verdict_label,
-                verdict_detail=verdict_detail,
-                slope_bins=_slope_bins,
+            _slope_pdf = io.BytesIO(pdf_slope_buf.getvalue()) if pdf_slope_buf else None
+            _drain_pdf = io.BytesIO(pdf_drain_buf.getvalue()) if pdf_drain_buf else None
+            _ctx = build_report_context(
                 project_name=_proj.get("name", ""),
                 country=_proj.get("country", ""),
+                location_label=_proj.get("location_label", ""),
+                lat_c=lat_c, lon_c=lon_c,
+                area_ha=area_ha, grid_spacing=grid_m_used,
+                z_min=float(z_valid.min()), z_max=float(z_valid.max()),
+                mean_slope=mean_slope, max_slope=float(s_valid.max()),
+                pct_over5=pct_over5, pct_over10=pct_over10,
+                slope_bins=_slope_bins,
+                slope_img_buf=_slope_pdf,
+                drainage_img_buf=_drain_pdf,
+                land_use=_land_use,
+                mount_type=_mount_type,
+                boundary_provenance=_boundary_provenance(_boundaries, _proj),
+                prepared_by=st.session_state.get("pvm_user_id", ""),
+                extras=_extras,
+                siteiq_run_cache=st.session_state.get("siteiq_run_cache"),
+                project_row_id=st.session_state.get("pvm_project_row_id"),
             )
+            pdf_bytes = generate_pdf_report(_ctx)
         if pdf_bytes:
             st.download_button(
                 "📄 Download Terrain Report (PDF)",

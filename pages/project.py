@@ -18,6 +18,7 @@ from streamlit_folium import st_folium
 from pvmath_styles import inject_styles
 from pvmath_auth import save_project, ensure_db_session
 from pvmath_session import clear_blank_project_flag
+from pvmath_geocode import reverse_geocode
 from pvmath_boundary_ui import render_grouped_boundary_manager
 from pvmath_kml import (
     BOUNDARY_COLORS,
@@ -601,6 +602,36 @@ if True:
             placeholder="e.g. Germany, Italy, Spain…",
         )
 
+    pc1, pc2 = st.columns(2)
+    with pc1:
+        _saved_lu = proj.get("land_use", "Standard")
+        _lu_ix = 1 if _saved_lu == "Agri-PV" else 0
+        land_use_sel = st.radio(
+            "Land use",
+            ["Standard Ground Mount", "Agri-PV (Dual Use)"],
+            index=_lu_ix,
+            horizontal=True,
+        )
+    with pc2:
+        _saved_mt = proj.get("mount_type", "Fixed Tilt")
+        _mt_ix = 1 if _saved_mt == "Single-Axis Tracker" else 0
+        mount_type_sel = st.radio(
+            "Mounting system",
+            ["Fixed Tilt", "Single-Axis Tracker"],
+            index=_mt_ix,
+            horizontal=True,
+        )
+    _land_use = "Agri-PV" if "Agri-PV" in land_use_sel else "Standard"
+    _mount_type = mount_type_sel
+
+    _loc_label = proj.get("location_label", "")
+    if proj.get("lat") and proj.get("lon"):
+        st.caption(
+            f"Resolved location: **{_loc_label}**"
+            if _loc_label
+            else "Location label updates on save (state/county from coordinates)."
+        )
+
     st.divider()
 
     # ── Mode selector ─────────────────────────────────────────────────────────
@@ -864,9 +895,18 @@ if True:
             elif polygon_coords:
                 _primary_poly = polygon_coords
 
+            _loc_resolved = (
+                reverse_geocode(lat, lon)
+                if lat is not None and lon is not None
+                else None
+            ) or st.session_state.get("pvm_project", {}).get("location_label", "")
+
             _proj_data = {
                 "name":           proj_name.strip(),
                 "country":        proj_country.strip(),
+                "location_label": _loc_resolved,
+                "land_use":       _land_use,
+                "mount_type":     _mount_type,
                 "lat":            lat,
                 "lon":            lon,
                 "area_ha":        area_ha_final,

@@ -516,14 +516,15 @@
         <div class="module-pill pill-live" data-i18n="pill.live">Live Now</div>
         <div class="module-num">Module 02</div>
         <div class="module-name blue">TopoIQ</div>
-        <p class="module-desc" data-i18n="topoiq.desc">Satellite terrain extraction for solar site engineering. Draw your site boundary, get elevation and slope heatmaps, contour lines, and DXF or LandXML terrain files &mdash; Civil 3D ready &mdash; for detailed 3D study in your CAD software.</p>
+        <p class="module-tagline" style="font-size:0.82rem;color:#1565c0;font-weight:700;margin:0.35rem 0 0.5rem 0;font-style:italic;" data-i18n="topoiq.tagline">From satellite to civil screen in minutes — tracker-aware terrain PDFs your EPC team can actually defend.</p>
+        <p class="module-desc" data-i18n="topoiq.desc">Copernicus DEM terrain screening for ground-mount solar. Slope direction, cross-row tracker grades, indicative cut/fill, drainage patterns, indicative MW capacity, and client-ready PDF reports — with honest accuracy disclaimers built in.</p>
         <ul class="module-features">
-          <li data-i18n="topoiq.f1">Site boundary drawing on satellite map</li>
-          <li data-i18n="topoiq.f2">Copernicus GLO-30 DEM (~30m native, 5m grid)</li>
-          <li data-i18n="topoiq.f3">Elevation &amp; solar-grade slope maps</li>
-          <li data-i18n="topoiq.f4">Contour lines at custom spacing</li>
-          <li data-i18n="topoiq.f5">DXF & LandXML terrain file export</li>
-          <li data-i18n="topoiq.f6">PDF terrain report</li>
+          <li data-i18n="topoiq.f1">Site boundary from Project Setup (KMZ / draw once)</li>
+          <li data-i18n="topoiq.f2">Copernicus GLO-30 DEM (~30m native, resampled grid)</li>
+          <li data-i18n="topoiq.f3">Tracker-aware slope &amp; cross-row screening</li>
+          <li data-i18n="topoiq.f4">Indicative earthworks &amp; drainage maps</li>
+          <li data-i18n="topoiq.f5">DXF &amp; LandXML terrain file export</li>
+          <li data-i18n="topoiq.f6">Executive terrain PDF with report ID &amp; metadata</li>
         </ul>
         <a href="https://siteiq.pvmath.com" target="_blank" class="module-link link-blue" data-i18n="topoiq.btn">Open in App &rarr;</a>
       </div>
@@ -935,10 +936,11 @@ var T = {
     'siteiq.f1':'Satellite map with coordinate input','siteiq.f2':'Annual & monthly GHI / irradiation',
     'siteiq.f3':'Terrain & slope overview','siteiq.f4':'Regulatory flags (protected areas)',
     'siteiq.f5':'Flood risk indicator','siteiq.f6':'PDF report — client-ready','siteiq.btn':'Open in App →',
-    'topoiq.desc':'Satellite terrain extraction for solar site engineering. Draw your site boundary, get elevation and slope heatmaps, contour lines, and DXF or LandXML terrain files — Civil 3D ready — for detailed 3D study in your CAD software.',
-    'topoiq.f1':'Site boundary drawing on satellite map','topoiq.f2':'Copernicus GLO-30 DEM (~30m native, 5m grid)',
-    'topoiq.f3':'Elevation & solar-grade slope maps','topoiq.f4':'Contour lines at custom spacing',
-    'topoiq.f5':'DXF & LandXML terrain file export','topoiq.f6':'PDF terrain report','topoiq.btn':'Open in App →',
+    'topoiq.tagline':'From satellite to civil screen in minutes — tracker-aware terrain PDFs your EPC team can actually defend.',
+    'topoiq.desc':'Copernicus DEM terrain screening for ground-mount solar. Slope direction, cross-row tracker grades, indicative cut/fill, drainage patterns, indicative MW capacity, and client-ready PDF reports — with honest accuracy disclaimers built in.',
+    'topoiq.f1':'Site boundary from Project Setup (KMZ / draw once)','topoiq.f2':'Copernicus GLO-30 DEM (~30m native, resampled grid)',
+    'topoiq.f3':'Tracker-aware slope & cross-row screening','topoiq.f4':'Indicative earthworks & drainage maps',
+    'topoiq.f5':'DXF & LandXML terrain file export','topoiq.f6':'Executive terrain PDF with report ID & metadata','topoiq.btn':'Open in App →',
     'yieldiq.desc':'Quick pre-layout energy yield estimation using PVGIS JRC data. Get preliminary yield estimates before committing to full PV layout design.',
     'yieldiq.f1':'Specific yield estimation (kWh/kWp)','yieldiq.f2':'PR and capacity factor',
     'yieldiq.f3':'Monthly energy profile','yieldiq.f4':'Temperature & shading correction',
@@ -1039,10 +1041,11 @@ var T = {
     'siteiq.f1':'Satellitenkarte mit Koordinateneingabe','siteiq.f2':'Jährliche & monatliche GHI / Einstrahlung',
     'siteiq.f3':'Gelände- & Neigungsübersicht','siteiq.f4':'Regulierungshinweise (Schutzgebiete)',
     'siteiq.f5':'Hochwasserrisiko-Indikator','siteiq.f6':'PDF-Bericht — kundenfähig','siteiq.btn':'In der App öffnen →',
-    'topoiq.desc':'Satellitengestützte Geländeextraktion für die solare Standortplanung. Standortgrenze einzeichnen, Höhen- und Neigungsdiagramme, Höhenlinien und DXF- oder LandXML-Geländedateien (Civil 3D-fertig) für das 3D-Studium in Ihrer CAD-Software erhalten.',
-    'topoiq.f1':'Standortgrenze auf Satellitenkarte','topoiq.f2':'Copernicus GLO-30 DEM (~30m nativ, 5m Raster)',
-    'topoiq.f3':'Höhen- & solare Neigungskarten','topoiq.f4':'Höhenlinien mit individuellem Abstand',
-    'topoiq.f5':'DXF- & LandXML-Geländedatei-Export','topoiq.f6':'PDF-Geländebericht','topoiq.btn':'In der App öffnen →',
+    'topoiq.tagline':'Vom Satellit zum Civil-Screening in Minuten — tracker-bewusste Gelände-PDFs, die Ihr EPC-Team vertreten kann.',
+    'topoiq.desc':'Copernicus-DEM-Geländescreening für Freiflächen-Solar. Neigungsrichtung, Querneigung für Tracker, indikative Cut/Fill-Volumen, Entwässerungsmuster, indikative MW-Kapazität und kundenfertige PDF-Berichte — mit ehrlichen Genauigkeitshinweisen.',
+    'topoiq.f1':'Standortgrenze aus Projekteinrichtung (KMZ / einmal zeichnen)','topoiq.f2':'Copernicus GLO-30 DEM (~30m nativ, resampled Raster)',
+    'topoiq.f3':'Tracker-bewusste Neigung & Querneigung','topoiq.f4':'Indikative Erdarbeiten & Entwässerungskarten',
+    'topoiq.f5':'DXF- & LandXML-Geländedatei-Export','topoiq.f6':'Executive-Gelände-PDF mit Report-ID & Metadaten','topoiq.btn':'In der App öffnen →',
     'yieldiq.desc':'Schnelle Energieertragschätzung vor dem Layout mit PVGIS JRC-Daten. Vorläufige Ertragszahlen vor dem vollständigen PV-Layout.',
     'yieldiq.f1':'Spezifischer Ertrag (kWh/kWp)','yieldiq.f2':'PR und Kapazitätsfaktor',
     'yieldiq.f3':'Monatliches Energieprofil','yieldiq.f4':'Temperatur- & Verschattungskorrektur',
