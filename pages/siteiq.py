@@ -67,6 +67,27 @@ st.markdown("""
         border-radius: 12px; padding: 1.1rem;
         box-shadow: 0 1px 6px rgba(0,0,0,0.05);
     }
+    .metric-card {
+        background: #fff; border: 1.5px solid #d4e8d4;
+        border-radius: 12px; padding: 1.1rem 1rem;
+        box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+    }
+    .metric-card .mc-label {
+        font-size: 0.88rem;
+        font-weight: 800;
+        color: #1a3a1a;
+        letter-spacing: 0.04em;
+        margin-top: 0.4rem;
+        line-height: 1.3;
+    }
+    .metric-card .mc-value {
+        font-size: 1.55rem;
+        font-weight: 800;
+        color: #0d1a0d;
+        line-height: 1.15;
+        margin-top: 0.35rem;
+        letter-spacing: -0.02em;
+    }
 
     /* ── Buttons ── */
     div[data-testid="stButton"] > button {
