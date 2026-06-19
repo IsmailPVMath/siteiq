@@ -17,7 +17,28 @@ from pvmath_auth import (
 from pvmath_styles import inject_styles
 from pvmath_kml import filter_boundary_list
 from pvmath_geocode import reverse_geocode
-from pvmath_terrain_report import site_capacity_screen, GCR_REF, _SCREENING_GCR
+from pvmath_terrain_report import site_capacity_screen, GCR_REF, GCR_SCREEN_HI, _SCREENING_GCR
+
+# Shared rating legend — UI expander + PDF must stay in sync
+SITEIQ_RATING_LEGEND_MD = """
+| Rating | Meaning | Action |
+|--------|---------|--------|
+| ✅ Excellent / Good | Parameter within ideal range | Proceed — no major concerns |
+| ⚠️ Acceptable | Feasible with constraints | Proceed with attention to this factor |
+| ⚠️ Challenging | Near viability limit — significant effort | Detailed study mandatory |
+| ❌ Critical | Exceeds viability threshold | High risk — reconsider site or system type |
+| ⚠️ Indicative only | Sparse OpenTopoData slope sample — not confirmed terrain | Run **TopoIQ** before treating slope as bankable |
+| ⚠️ Data unavailable | Solar or terrain data could not be retrieved | Retry or check API coverage for this location |
+| — (capacity / output) | Screening MWp DC band from area × density @ GCR | Indicative only — confirm with layout / bankable study |
+| ✅ EXCELLENT (overall) | All key parameters in ideal range | Proceed to detailed feasibility study |
+| ⚠️ ACCEPTABLE (overall) | Viable with noted constraints | Address constraints in detailed design |
+| ⚠️ CHALLENGING (overall) | Multiple moderate concerns | Detailed study mandatory before commitment |
+| ❌ CRITICAL (overall) | One or more parameters exceed threshold | High risk — reconsider site or system type |
+| 🟢 Low flood risk | Elevated terrain — flood exposure likely low | Verify at local flood portal |
+| 🟡 Low-Moderate risk | Moderate terrain — check watercourse proximity | Cross-check official flood maps |
+| 🟠 Moderate risk | Low-lying terrain — flood exposure possible | Manual flood check required |
+| 🔴 High flood risk | Very low elevation — high flood exposure | Official flood zone study required |
+"""
 from streamlit_folium import st_folium
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -71,25 +92,80 @@ st.markdown("""
     }
     .metric-card {
         background: #fff; border: 1.5px solid #d4e8d4;
-        border-radius: 12px; padding: 1.1rem 1rem;
+        border-radius: 12px; padding: 0.95rem 0.85rem 0.9rem;
         box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+        min-height: 128px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
     }
+    .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.75rem;
+        margin: 0.6rem 0 0.85rem 0;
+    }
+    @media (max-width: 960px) {
+        .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    .metric-card .mc-icon { font-size: 1rem; line-height: 1; flex-shrink: 0; }
     .metric-card .mc-label {
-        font-size: 0.88rem;
+        font-size: 0.78rem;
         font-weight: 800;
         color: #1a3a1a;
-        letter-spacing: 0.04em;
-        margin-top: 0.4rem;
-        line-height: 1.3;
+        letter-spacing: 0.03em;
+        margin-top: 0.45rem;
+        line-height: 1.25;
+        min-height: 2.5em;
     }
-    .metric-card .mc-value {
-        font-size: 1.55rem;
+    .metric-card .mc-value-row {
+        margin-top: auto;
+        padding-top: 0.35rem;
+    }
+    .metric-card .mc-number {
+        display: block;
+        font-size: 1.42rem;
         font-weight: 800;
         color: #0d1a0d;
-        line-height: 1.15;
-        margin-top: 0.35rem;
+        line-height: 1.1;
         letter-spacing: -0.02em;
+        white-space: nowrap;
     }
+    .metric-card .mc-unit {
+        display: block;
+        margin-top: 0.2rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #5a7a5a;
+        letter-spacing: 0.03em;
+        white-space: nowrap;
+    }
+    .siq-screening-notes {
+        background: #f8faf8;
+        border: 1px solid #dce8dc;
+        border-left: 3px solid #b8a040;
+        border-radius: 8px;
+        padding: 0.6rem 0.85rem 0.65rem;
+        margin: 0.25rem 0 1rem 0;
+        font-size: 0.78rem;
+        color: #3a5a3a;
+        line-height: 1.5;
+    }
+    .siq-screening-notes .siq-notes-kicker {
+        font-size: 0.66rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: #6a8a6a;
+        margin-bottom: 0.35rem;
+    }
+    .siq-screening-notes ul {
+        margin: 0;
+        padding-left: 1.05rem;
+    }
+    .siq-screening-notes li { margin-bottom: 0.15rem; }
+    .siq-screening-notes li:last-child { margin-bottom: 0; }
 
     /* ── Buttons ── */
     div[data-testid="stButton"] > button {
@@ -741,6 +817,31 @@ def _cap_mwh_text(mwh_lo, mwh_hi):
     return f"{mwh_lo:,.0f}–{mwh_hi:,.0f} MWh/yr"
 
 
+def _fmt_metric_num(val, decimals=1):
+    if val is None or val == "—":
+        return "—"
+    try:
+        v = float(val)
+        if decimals == 0:
+            return f"{v:,.0f}"
+        s = f"{v:,.{decimals}f}"
+        return s.rstrip("0").rstrip(".") if decimals > 0 else s
+    except (TypeError, ValueError):
+        return str(val)
+
+
+def _metric_card_html(icon, color, label, number, unit):
+    return (
+        f'<div class="metric-card">'
+        f'<div class="mc-icon"><i class="fa-solid {icon}" style="color:{color};"></i></div>'
+        f'<div class="mc-label">{label}</div>'
+        f'<div class="mc-value-row">'
+        f'<span class="mc-number">{number}</span>'
+        f'<span class="mc-unit">{unit}</span>'
+        f'</div></div>'
+    )
+
+
 def overall_verdict(slope_lbl, solar_lbl, land_use="Standard", mount_type="Fixed Tilt"):
     reds    = sum(1 for l in [slope_lbl, solar_lbl] if "❌" in l)
     yellows = sum(1 for l in [slope_lbl, solar_lbl] if "⚠️" in l)
@@ -1030,7 +1131,7 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
         _t = text.split("—")[0].strip().upper()
         if any(w in _t for w in ["EXCELLENT","GOOD","LOW"]):
             return lp(f"<b>{_t}</b>", C_GREEN, bold=True, size=8)
-        if any(w in _t for w in ["ACCEPTABLE","MODERATE","LOW-MOD","INDICATIVE"]):
+        if any(w in _t for w in ["ACCEPTABLE","MODERATE","LOW-MOD","INDICATIVE","DATA UNAVAILABLE"]):
             return lp(f"<b>{_t}</b>", C_YELLOW, bold=True, size=8)
         if any(w in _t for w in ["CHALLENGING","HIGH"]):
             return lp(f"<b>{_t}</b>", C_ORANGE, bold=True, size=8)
@@ -1192,14 +1293,40 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
 
     # Performance ratings table
     perf_rows = [
-        [lp("Performance Rating", colors.white, bold=True, size=7), lp("Action", colors.white, bold=True, size=7)],
-        [lp("EXCELLENT / GOOD", C_GREEN,  bold=True, size=7), lp("All parameters ideal — proceed", MUTED, size=7)],
-        [lp("ACCEPTABLE",       C_YELLOW, bold=True, size=7), lp("Viable with constraints — monitor", MUTED, size=7)],
+        [lp("Metric rating", colors.white, bold=True, size=7), lp("Action", colors.white, bold=True, size=7)],
+        [lp("EXCELLENT / GOOD", C_GREEN,  bold=True, size=7), lp("Parameter ideal — proceed", MUTED, size=7)],
+        [lp("ACCEPTABLE",       C_YELLOW, bold=True, size=7), lp("Feasible with constraints — monitor", MUTED, size=7)],
         [lp("CHALLENGING",      C_ORANGE, bold=True, size=7), lp("Near limit — detailed study required", MUTED, size=7)],
         [lp("CRITICAL",         C_RED,    bold=True, size=7), lp("Exceeds threshold — reconsider site", MUTED, size=7)],
+        [lp("INDICATIVE ONLY",  C_ORANGE, bold=True, size=7), lp("Sparse slope sample — run TopoIQ first", MUTED, size=7)],
+        [lp("DATA UNAVAILABLE", C_YELLOW, bold=True, size=7), lp("API/data gap — retry or check coverage", MUTED, size=7)],
     ]
     pt = Table(perf_rows, colWidths=[3.8*cm, 6.2*cm])
     pt.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0), (-1,0),  ORANGE),
+        ("GRID",          (0,0), (-1,-1), 0.5, colors.lightgrey),
+        ("TOPPADDING",    (0,0), (-1,-1), 3),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+        ("LEFTPADDING",   (0,0), (-1,-1), 4),
+        ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
+        ("ROWBACKGROUNDS",(0,1),(-1,-1), [colors.white, LGRAY]),
+        ("BACKGROUND",    (0,1), (0,1), C_LGREEN),
+        ("BACKGROUND",    (0,2), (0,2), C_LYELLOW),
+        ("BACKGROUND",    (0,3), (0,3), C_LORANG),
+        ("BACKGROUND",    (0,4), (0,4), C_LRED),
+        ("BACKGROUND",    (0,5), (0,5), C_LORANG),
+        ("BACKGROUND",    (0,6), (0,6), C_LYELLOW),
+    ]))
+
+    verdict_rows = [
+        [lp("Overall verdict", colors.white, bold=True, size=7), lp("Action", colors.white, bold=True, size=7)],
+        [lp("EXCELLENT",  C_GREEN,  bold=True, size=7), lp("Proceed to detailed feasibility study", MUTED, size=7)],
+        [lp("ACCEPTABLE", C_YELLOW, bold=True, size=7), lp("Address noted constraints in detailed design", MUTED, size=7)],
+        [lp("CHALLENGING",C_ORANGE, bold=True, size=7), lp("Detailed study mandatory before commitment", MUTED, size=7)],
+        [lp("CRITICAL",   C_RED,    bold=True, size=7), lp("High risk — reconsider site or system type", MUTED, size=7)],
+    ]
+    vt_legend = Table(verdict_rows, colWidths=[3.8*cm, 6.2*cm])
+    vt_legend.setStyle(TableStyle([
         ("BACKGROUND",    (0,0), (-1,0),  ORANGE),
         ("GRID",          (0,0), (-1,-1), 0.5, colors.lightgrey),
         ("TOPPADDING",    (0,0), (-1,-1), 3),
@@ -1236,9 +1363,11 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
         ("BACKGROUND",    (0,4), (0,4), C_LRED),
     ]))
 
-    # Stacked vertically — performance legend, then flood risk legend below
+    # Stacked vertically — metric ratings, overall verdict, flood risk
     story.append(pt)
-    story.append(Spacer(1, 0.3*cm))
+    story.append(Spacer(1, 0.25*cm))
+    story.append(vt_legend)
+    story.append(Spacer(1, 0.25*cm))
     story.append(ft)
 
     story.append(Spacer(1, 0.4*cm))
@@ -1541,7 +1670,6 @@ with right:
         country, eeg_status, eeg_note = assess_eeg(lat, lon, _land_use, project_country_input)
         _yield = solar.get("annual_yield") if solar.get("success") else None
         cap = screening_capacity(area_ha, _land_use, _mount_type, _yield)
-        _cap_mwp_display = _cap_mwp_text(cap["mwp_lo"], cap["mwp_hi"])
         verdict, verdict_txt = overall_verdict(s_lbl, g_lbl, _land_use, _mount_type)
         flood_risk, flood_detail, flood_portal, flood_portal_name = get_flood_risk(
             lat, lon, terrain.get("center_elev") if terrain.get("success") else None
@@ -1562,71 +1690,72 @@ with right:
         else:
             st.error(f"**{verdict}** — {verdict_txt}")
 
-        c1, c2, c3, c4 = st.columns(4)
-        _mc4_lbl = "Specific Yield" if _mount_type == "Single-Axis Tracker" else "Optimal Tilt"
-        _mc4_val = (
-            f"{solar.get('annual_yield', '—')} kWh/kWp/yr"
-            if _mount_type == "Single-Axis Tracker"
-            else f"{solar.get('optimal_tilt', '—')}°"
-        )
-        _metrics = [
-            (c1, "fa-sun",            "#f5a623", "In-plane Irradiation", f"{solar.get('annual_ghi','—')} kWh/m²"),
-            (c2, "fa-mountain",       "#5b9bd5", "Max Slope",    f"{terrain.get('max_slope_pct','—')}%"),
-            (c3, "fa-bolt",           "#2ecc71", "Est. DC Capacity", _cap_mwp_display),
-            (c4, "fa-ruler-combined", "#a87fd4", _mc4_lbl, _mc4_val),
-        ]
-        for _mc, _icon, _ic, _lbl, _val in _metrics:
-            _mc.markdown(
-                f'<div class="metric-card">'
-                f'<div class="mc-icon"><i class="fa-solid {_icon}" style="color:{_ic};"></i></div>'
-                f'<div class="mc-label">{_lbl}</div>'
-                f'<div class="mc-value">{_val}</div>'
-                f'</div>',
-                unsafe_allow_html=True
-            )
+        if cap["mwp_lo"] == cap["mwp_hi"]:
+            _cap_num = f"~{cap['mwp_lo']:,.0f}"
+        else:
+            _cap_num = f"~{cap['mwp_lo']:,.0f}–{cap['mwp_hi']:,.0f}"
 
+        _mc4_lbl = "Specific Yield" if _mount_type == "Single-Axis Tracker" else "Optimal Tilt"
+        if _mount_type == "Single-Axis Tracker":
+            _mc4_num = _fmt_metric_num(solar.get("annual_yield"), 1)
+            _mc4_unit = "kWh/kWp/yr"
+        else:
+            _tilt = solar.get("optimal_tilt")
+            _mc4_num = _fmt_metric_num(_tilt, 0) if _tilt is not None else "—"
+            _mc4_unit = "deg tilt"
+
+        _cards = [
+            _metric_card_html("fa-sun", "#f5a623", "In-plane Irradiation",
+                              _fmt_metric_num(solar.get("annual_ghi"), 1), "kWh/m²/yr"),
+            _metric_card_html("fa-mountain", "#5b9bd5", "Max Slope",
+                              _fmt_metric_num(terrain.get("max_slope_pct") if terrain.get("success") else None, 1), "%"),
+            _metric_card_html("fa-bolt", "#2ecc71", "Est. DC Capacity", _cap_num, "MWp DC"),
+            _metric_card_html("fa-ruler-combined", "#a87fd4", _mc4_lbl, _mc4_num, _mc4_unit),
+        ]
+        st.markdown(f'<div class="metric-grid">{"".join(_cards)}</div>', unsafe_allow_html=True)
+
+        _notes = []
         if _proj.get("mode") == "full" and _enabled_polys_latlon:
-            _gcr_note = (
-                f" · 1P SAT GCR {cap['gcr_lo']:.2f}–{cap['gcr_hi']:.2f}"
+            _gcr = (
+                f"GCR {cap['gcr_lo']:.2f}–{cap['gcr_hi']:.2f}"
                 if cap["gcr_lo"] != cap["gcr_hi"]
-                else f" · GCR {cap['gcr_lo']:.2f}"
+                else f"GCR {cap['gcr_lo']:.2f}"
             )
-            st.caption(
-                "⚡ Capacity estimated from your drawn site boundary area — "
-                f"**{area_ha} ha**{_gcr_note}. "
-                "Screening band aligned with TopoIQ — layout-optimised designs can differ."
+            _notes.append(
+                f"DC capacity from <b>{area_ha:,.2f} ha</b> site boundary "
+                f"({_gcr}, 1P screening — same band as TopoIQ). Layout-optimised designs may differ."
             )
         else:
-            st.caption(
-                f"⚡ Capacity estimated from a manually entered area (**{area_ha} ha**), "
-                "not a drawn boundary — treat this as a rough figure. Draw a site "
-                "boundary in Project Setup (Full Mode) for a boundary-derived capacity estimate."
+            _notes.append(
+                f"DC capacity from manually entered area (<b>{area_ha:,.2f} ha</b>). "
+                "Draw a boundary in Project Setup for boundary-based figures."
             )
-
         if cap["mwh_lo"] is not None:
-            _mwh_txt = _cap_mwh_text(cap["mwh_lo"], cap["mwh_hi"])
-            st.caption(
-                f"⚡ Est. annual output: **{_mwh_txt}** "
-                f"({_cap_mwp_display} × {solar.get('annual_yield', '—')} kWh/kWp/yr)"
+            _notes.append(
+                f"Est. output <b>{_cap_mwh_text(cap['mwh_lo'], cap['mwh_hi'])}</b> "
+                f"at {_fmt_metric_num(solar.get('annual_yield'), 1)} kWh/kWp/yr — indicative only."
             )
-
         if terrain.get("success"):
             if terrain.get("boundary_sampled"):
-                st.warning(
-                    f"**Slope is indicative only** — {terrain.get('sample_points','—')} sparse sample points "
-                    f"across your boundary ({terrain.get('pct_over5','—')}% of samples >5% slope, "
-                    f"{terrain.get('pct_over10','—')}% >10%). "
-                    f"Do not treat the Max Slope rating as confirmed until you run **TopoIQ**."
-                )
-                st.caption(
-                    f"📐 OpenTopoData screening only — run TopoIQ for full-resolution, area-weighted terrain stats."
+                _notes.append(
+                    f"Slope is <b>indicative only</b> ({terrain.get('sample_points', '—')} sparse samples; "
+                    f"{terrain.get('pct_over5', '—')}% &gt;5%). Confirm in <b>TopoIQ</b> before treating as bankable."
                 )
             else:
-                st.caption(
-                    f"📍 Slope estimated from {terrain.get('sample_points','—')} elevation samples within a 500m "
-                    "radius of the pin. Draw a site boundary in Project Setup for boundary-based sampling, or run "
-                    "TopoIQ for full-resolution terrain analysis."
+                _notes.append(
+                    f"Slope from {terrain.get('sample_points', '—')} pin-radius samples — "
+                    "draw a boundary or run TopoIQ for site-wide terrain."
                 )
+        _notes.append(
+            "Pre-feasibility screening only — not a substitute for a bankable energy study or confirmed layout."
+        )
+        _notes_html = "".join(f"<li>{n}</li>" for n in _notes)
+        st.markdown(
+            f'<div class="siq-screening-notes">'
+            f'<div class="siq-notes-kicker">Screening notes</div>'
+            f'<ul>{_notes_html}</ul></div>',
+            unsafe_allow_html=True,
+        )
 
         st.divider()
 
@@ -1652,18 +1781,7 @@ with right:
 
         st.divider()
         with st.expander("Rating Scale — what do the colours mean?"):
-            st.markdown("""
-| Rating | Meaning | Action |
-|--------|---------|--------|
-| ✅ Excellent / Good | Parameter is within ideal range | Proceed — no major concerns |
-| ⚠️ Acceptable | Feasible but has constraints | Proceed with attention to this factor |
-| ⚠️ Challenging | Near the limit — significant effort needed | Detailed study mandatory |
-| ❌ Critical | Exceeds viable threshold | High risk — reconsider site or system type |
-| 🟢 Low flood risk | Elevated terrain, flood exposure likely low | Verify at local portal |
-| 🟡 Low-Moderate risk | Moderate terrain, check watercourse proximity | Cross-check official flood maps |
-| 🟠 Moderate risk | Low-lying terrain, flood exposure possible | Manual flood check required |
-| 🔴 High flood risk | Very low elevation, high flood exposure | Official flood zone study required |
-""")
+            st.markdown(SITEIQ_RATING_LEGEND_MD)
 
         if solar["success"] and solar.get("monthly"):
             st.divider()

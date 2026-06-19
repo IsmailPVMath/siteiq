@@ -24,9 +24,11 @@ _BASE_DENSITY = {
     ("Agri-PV", "Single-Axis Tracker"): 0.18,
 }
 # Typical pre-layout GCR band for screening (1P portrait)
+GCR_SCREEN_LO = 0.30
+GCR_SCREEN_HI = 0.42
 _SCREENING_GCR = {
-    "Fixed Tilt": (0.30, 0.30),
-    "Single-Axis Tracker": (0.30, 0.42),
+    "Fixed Tilt": (GCR_SCREEN_LO, GCR_SCREEN_HI),
+    "Single-Axis Tracker": (GCR_SCREEN_LO, GCR_SCREEN_HI),
 }
 
 
@@ -79,14 +81,12 @@ site_capacity_mw = site_capacity_mwp
 
 
 def capacity_range_mw(area_ha: float, land_use: str = "Standard") -> str:
-    """Show fixed-tilt and tracker DC range when mount not fixed."""
+    """Show fixed-tilt and tracker DC screening bands."""
     ft_lo, ft_hi, _, _ = site_capacity_screen(area_ha, land_use, "Fixed Tilt")
     tr_lo, tr_hi, _, _ = site_capacity_screen(area_ha, land_use, "Single-Axis Tracker")
-    if tr_lo == tr_hi:
-        tr_s = f"{tr_lo:,.0f} MWp"
-    else:
-        tr_s = f"{tr_lo:,.0f}–{tr_hi:,.0f} MWp"
-    return f"{tr_s}–{ft_lo:,.0f} MWp tracker–fixed (1P DC screening)"
+    ft_s = f"{ft_lo:,.0f}" if ft_lo == ft_hi else f"{ft_lo:,.0f}–{ft_hi:,.0f}"
+    tr_s = f"{tr_lo:,.0f}" if tr_lo == tr_hi else f"{tr_lo:,.0f}–{tr_hi:,.0f}"
+    return f"Fixed {ft_s} · Tracker {tr_s} MWp DC (1P screening @ GCR {GCR_SCREEN_LO:.2f}–{GCR_SCREEN_HI:.2f})"
 
 
 # ── Slope thresholds ───────────────────────────────────────────────────────────
@@ -588,12 +588,24 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
             _lp(ctx["mount_type"]),
         ])
     if ctx.get("cap_ft_mwp") is not None:
+        ft_lo = ctx["cap_ft_mwp"]
+        ft_hi = ctx.get("cap_ft_mwp_hi", ft_lo)
+        dens_ft_lo = ctx.get("density_ft", 0.40)
+        dens_ft_hi = ctx.get("density_ft_hi", dens_ft_lo)
+        if ft_lo == ft_hi:
+            ft_val = (
+                f"~{ft_lo:,.0f} MWp · GCR {ctx.get('gcr_ft', GCR_REF):.2f} · "
+                f"{dens_ft_lo:.2f} MWp/ha"
+            )
+        else:
+            ft_val = (
+                f"~{ft_lo:,.0f}–{ft_hi:,.0f} MWp · 1P · GCR "
+                f"{ctx.get('gcr_ft', GCR_REF):.2f}–{ctx.get('gcr_ft_hi', GCR_SCREEN_HI):.2f} · "
+                f"{dens_ft_lo:.2f}–{dens_ft_hi:.2f} MWp/ha"
+            )
         info_rows.append([
             _lp("Fixed tilt DC (1P)", bold=True, color=DARK_BLUE),
-            _lp(
-                f"~{ctx['cap_ft_mwp']:,.0f} MWp · GCR {ctx.get('gcr_ft', GCR_REF):.2f} · "
-                f"{ctx.get('density_ft', 0.40):.2f} MWp/ha"
-            ),
+            _lp(ft_val),
         ])
     if ctx.get("cap_tr_mwp_lo") is not None:
         tr_lo = ctx["cap_tr_mwp_lo"]
@@ -608,7 +620,7 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
         else:
             tr_val = (
                 f"~{tr_lo:,.0f}–{tr_hi:,.0f} MWp · 1P SAT · GCR "
-                f"{ctx.get('gcr_tr_lo', GCR_REF):.2f}–{ctx.get('gcr_tr_hi', 0.42):.2f} · "
+                f"{ctx.get('gcr_tr_lo', GCR_REF):.2f}–{ctx.get('gcr_tr_hi', GCR_SCREEN_HI):.2f} · "
                 f"{dens_lo:.2f}–{dens_hi:.2f} MWp/ha"
             )
         info_rows.append([
@@ -619,7 +631,8 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
         info_rows.append([
             _lp("Capacity note", bold=True, color=DARK_BLUE),
             _lp(
-                "Indicative DC MWp from area × screening density (1P portrait). "
+                "Indicative DC MWp from area × screening density (1P portrait, "
+                f"GCR {GCR_SCREEN_LO:.2f}–{GCR_SCREEN_HI:.2f}). "
                 "Layout-optimised designs can exceed this band — confirm with full layout."
             ),
         ])
@@ -914,12 +927,15 @@ def build_report_context(
         "land_use": land_use,
         "mount_type": mount_type,
         "cap_ft_mwp": ft_lo,
+        "cap_ft_mwp_hi": ft_hi,
         "cap_tr_mwp_lo": tr_lo,
         "cap_tr_mwp_hi": tr_hi,
         "density_ft": dens_ft_lo,
+        "density_ft_hi": dens_ft_hi,
         "density_tr_lo": dens_tr_lo,
         "density_tr_hi": dens_tr_hi,
         "gcr_ft": gcr_ft_lo,
+        "gcr_ft_hi": gcr_ft_hi,
         "gcr_tr_lo": gcr_tr_lo,
         "gcr_tr_hi": gcr_tr_hi,
         "dem_zoom": dem_zoom,

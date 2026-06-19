@@ -1110,12 +1110,16 @@ with right:
 
         _ft_lo, _ft_hi, _, _ = site_capacity_screen(area_ha, _land_use, "Fixed Tilt")
         _tr_lo, _tr_hi, _, _ = site_capacity_screen(area_ha, _land_use, "Single-Axis Tracker")
+        if _ft_lo == _ft_hi:
+            _cap_ft_txt = f"**Fixed tilt ~{_ft_lo:,.0f} MWp DC**"
+        else:
+            _cap_ft_txt = f"**Fixed tilt ~{_ft_lo:,.0f}–{_ft_hi:,.0f} MWp DC** (1P, GCR 0.30–0.42)"
         if _tr_lo == _tr_hi:
             _cap_tr_txt = f"**Tracker ~{_tr_lo:,.0f} MWp DC**"
         else:
             _cap_tr_txt = f"**Tracker ~{_tr_lo:,.0f}–{_tr_hi:,.0f} MWp DC** (1P SAT, GCR 0.30–0.42)"
         st.caption(
-            f"Indicative DC capacity — **Fixed tilt ~{_ft_lo:,.0f} MWp** · "
+            f"Indicative DC capacity — {_cap_ft_txt} · "
             f"{_cap_tr_txt} — screening densities, not layout-optimised"
         )
 
