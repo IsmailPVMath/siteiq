@@ -1644,14 +1644,6 @@ with right:
         ]
         st.markdown(f'<div class="metric-grid">{"".join(_cards)}</div>', unsafe_allow_html=True)
 
-        if solar.get("success") and _analysis_ref:
-            st.markdown(
-                yield_cross_ref_siteiq_html(
-                    solar["annual_yield"], _analysis_ref, _mount_type,
-                ),
-                unsafe_allow_html=True,
-            )
-
         _notes = []
         if _proj.get("mode") == "full" and _enabled_polys_latlon:
             _notes.append(
@@ -1786,6 +1778,13 @@ with right:
             f'<ul>{_notes_html}</ul></div>',
             unsafe_allow_html=True,
         )
+        if solar.get("success") and _analysis_ref:
+            st.markdown(
+                yield_cross_ref_siteiq_html(
+                    solar["annual_yield"], _analysis_ref, _mount_type,
+                ),
+                unsafe_allow_html=True,
+            )
 
     else:
         st.caption("Enter a site location on the left and click **Run Site Screening** to get:")
