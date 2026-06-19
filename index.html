@@ -300,6 +300,32 @@
     /* ── PRODUCT PREVIEW ── */
     .preview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
     @media (max-width: 900px) { .preview-grid { grid-template-columns: 1fr; } }
+    .preview-card { border-radius: 14px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,.12); border: 1.5px solid var(--border); }
+    .preview-card-hdr { padding: 0.65rem 1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .preview-card-hdr.siteiq { background: linear-gradient(135deg,#e85d04,#c24a00); }
+    .preview-card-hdr.topoiq { background: linear-gradient(135deg,#1565c0,#0d47a1); }
+    .preview-card-hdr.yieldiq { background: linear-gradient(135deg,#d4840a,#b36a00); }
+    .preview-card-hdr strong { font-size: 0.72rem; font-weight: 800; color: #fff; letter-spacing: 0.05em; }
+    .preview-card-body { background: #fff; padding: 1.1rem; }
+    .preview-meta { font-size: 0.68rem; color: #888; margin-bottom: 0.9rem; font-weight: 500; }
+    .preview-metrics { margin: 0 0 0.9rem; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.42rem; }
+    .preview-metrics li { display: flex; justify-content: space-between; align-items: center; font-size: 0.73rem; gap: 0.5rem; }
+    .preview-metrics .metric-label { color: #5a7a5a; font-weight: 500; }
+    .preview-metrics .metric-value { margin: 0; font-weight: 700; text-align: right; }
+    .preview-badge { border-radius: 4px; padding: 1px 5px; font-size: 0.6rem; font-weight: 700; white-space: nowrap; }
+    .preview-badge.pos { background: #d1fae5; color: #065f46; }
+    .preview-badge.warn { background: #fef3c7; color: #92400e; }
+    .preview-chart-label { font-size: 0.62rem; color: #888; margin-bottom: 0.4rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+    .preview-score { border-radius: 8px; padding: 0.65rem 0.85rem; margin-top: 0.5rem; }
+    .preview-score.siteiq { background: #d1fae5; color: #065f46; }
+    .preview-score.topoiq { background: #e8f0fb; color: #0d47a1; }
+    .preview-score.yieldiq { background: #f0f7f2; color: #1a3a2a; }
+    .preview-score-label { font-size: 0.62rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.2rem; opacity: 0.9; }
+    .preview-score-value { font-size: 0.98rem; font-weight: 800; line-height: 1.35; }
+    .preview-score-verdict { font-size: 0.78rem; font-weight: 700; }
+    .preview-score-note { font-size: 0.72rem; font-weight: 600; margin-top: 0.25rem; opacity: 0.92; }
+    .preview-source { margin-top: 0.45rem; font-size: 0.6rem; color: #bbb; text-align: right; }
+    .preview-footnote { font-size: 0.58rem; color: #aaa; margin-top: -0.35rem; margin-bottom: 0.5rem; text-align: right; }
 
     /* ── DATA ACCURACY STRIP ── */
     .accuracy-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
@@ -394,38 +420,23 @@
     <div class="preview-grid">
 
       <!-- SiteIQ mockup -->
-      <div style="border-radius:14px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.12);border:1.5px solid var(--border);">
-        <div style="background:linear-gradient(135deg,#e85d04,#c24a00);padding:0.65rem 1rem;display:flex;align-items:center;gap:0.5rem;">
-          <span style="font-size:0.82rem;">🌍</span>
-          <span style="font-size:0.72rem;font-weight:800;color:#fff;letter-spacing:0.05em;">SITEIQ — SITE ASSESSMENT</span>
-        </div>
-        <div style="background:#fff;padding:1.1rem;">
-          <div style="font-size:0.68rem;color:#888;margin-bottom:0.9rem;font-weight:500;">38.2°N, 2.5°W &middot; Castilla-La Mancha, Spain</div>
-          <div style="display:flex;flex-direction:column;gap:0.42rem;margin-bottom:0.9rem;">
-            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.73rem;">
-              <span style="color:#5a7a5a;">GHI Annual</span>
-              <span style="font-weight:700;">1,842 kWh/m&sup2;/yr &nbsp;<span style="background:#d1fae5;color:#065f46;border-radius:4px;padding:1px 5px;font-size:0.6rem;font-weight:700;">HIGH</span></span>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.73rem;">
-              <span style="color:#5a7a5a;">Irradiation</span>
-              <span style="font-weight:700;">2,109 kWh/m&sup2;/yr</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.73rem;">
-              <span style="color:#5a7a5a;">Avg Slope</span>
-              <span style="font-weight:700;">3.2% &nbsp;<span style="background:#d1fae5;color:#065f46;border-radius:4px;padding:1px 5px;font-size:0.6rem;font-weight:700;">EXCELLENT</span></span>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.73rem;">
-              <span style="color:#5a7a5a;">Flood Risk</span>
-              <span style="font-weight:700;"><span style="background:#d1fae5;color:#065f46;border-radius:4px;padding:1px 5px;font-size:0.6rem;font-weight:700;">LOW</span></span>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.73rem;">
-              <span style="color:#5a7a5a;">Est. Capacity (FT)</span>
-              <span style="font-weight:700;">~75&ndash;105 MWp DC</span>
-            </div>
-            <div style="font-size:0.58rem;color:#aaa;margin-top:-0.35rem;margin-bottom:0.5rem;text-align:right;">1P fixed tilt @ GCR 0.30&ndash;0.42 screening &middot; utility-scale screening density assumptions only</div>
-          </div>
-          <div style="font-size:0.62rem;color:#888;margin-bottom:0.4rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Monthly GHI (kWh/m&sup2;)</div>
-          <div style="display:flex;align-items:flex-end;gap:2px;height:38px;margin-bottom:0.7rem;">
+      <article class="preview-card" itemscope itemtype="https://schema.org/SoftwareApplication" aria-label="SiteIQ site assessment example output">
+        <meta itemprop="name" content="SiteIQ">
+        <header class="preview-card-hdr siteiq">
+          <strong>SITEIQ — SITE ASSESSMENT</strong>
+        </header>
+        <div class="preview-card-body">
+          <p class="preview-meta">38.2&deg;N, 2.5&deg;W &middot; Castilla-La Mancha, Spain &middot; 187 ha</p>
+          <ul class="preview-metrics" aria-label="Site screening metrics">
+            <li><span class="metric-label">GHI Annual</span><span class="metric-value">1,842 kWh/m&sup2;/yr <span class="preview-badge pos">High</span></span></li>
+            <li><span class="metric-label">In-plane Irradiation</span><span class="metric-value">2,109 kWh/m&sup2;/yr</span></li>
+            <li><span class="metric-label">Avg Slope</span><span class="metric-value">3.2% <span class="preview-badge pos">Low</span></span></li>
+            <li><span class="metric-label">Flood Risk</span><span class="metric-value"><span class="preview-badge pos">Low</span></span></li>
+            <li><span class="metric-label">Est. DC Capacity (Fixed Tilt 1P)</span><span class="metric-value">75&ndash;105 MWp</span></li>
+          </ul>
+          <p class="preview-footnote">GCR 0.30&ndash;0.42 screening &middot; utility-scale density assumptions</p>
+          <p class="preview-chart-label">Monthly GHI (kWh/m&sup2;)</p>
+          <div style="display:flex;align-items:flex-end;gap:2px;height:38px;margin-bottom:0.7rem;" role="img" aria-label="Monthly GHI bar chart, peak in June">
             <div style="flex:1;background:#f87171;border-radius:2px 2px 0 0;height:50%;"></div>
             <div style="flex:1;background:#fb923c;border-radius:2px 2px 0 0;height:63%;"></div>
             <div style="flex:1;background:#facc15;border-radius:2px 2px 0 0;height:74%;"></div>
@@ -442,19 +453,24 @@
           <div style="display:flex;gap:2px;margin-bottom:0.8rem;">
             <div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">J</div><div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">F</div><div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">M</div><div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">A</div><div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">M</div><div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">J</div><div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">J</div><div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">A</div><div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">S</div><div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">O</div><div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">N</div><div style="flex:1;text-align:center;font-size:0.5rem;color:#aaa;">D</div>
           </div>
-          <div style="background:#d1fae5;border-radius:8px;padding:0.55rem 0.8rem;font-size:0.76rem;font-weight:800;color:#065f46;">&#9989; EXCELLENT &mdash; Proceed to Detail Study</div>
-          <div style="margin-top:0.45rem;font-size:0.6rem;color:#bbb;text-align:right;">Source: PVGIS JRC &middot; EUDEM25m</div>
+          <div class="preview-score siteiq" aria-label="Site suitability score">
+            <div class="preview-score-label">Site Suitability Score</div>
+            <div class="preview-score-value">88/100 <span class="preview-score-verdict">Very Good</span></div>
+            <div class="preview-score-note">PVMath Score &middot; Proceed to detail study</div>
+          </div>
+          <p class="preview-source">Data sources: PVGIS JRC &middot; EU-DEM25m &middot; OpenStreetMap</p>
         </div>
-      </div>
+      </article>
 
       <!-- TopoIQ mockup -->
-      <div style="border-radius:14px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.12);border:1.5px solid var(--border);">
-        <div style="background:linear-gradient(135deg,#1565c0,#0d47a1);padding:0.65rem 1rem;display:flex;align-items:center;gap:0.5rem;">
-          <span style="font-size:0.82rem;">&#9968;&#65039;</span>
-          <span style="font-size:0.72rem;font-weight:800;color:#fff;letter-spacing:0.05em;">TOPOIQ — TERRAIN ANALYSIS</span>
-        </div>
-        <div style="background:#fff;padding:1.1rem;">
-          <div style="font-size:0.68rem;color:#888;margin-bottom:0.7rem;font-weight:500;">Site boundary: 187 ha &middot; Copernicus GLO-30 DEM</div>
+      <article class="preview-card" itemscope itemtype="https://schema.org/SoftwareApplication" aria-label="TopoIQ terrain analysis example output">
+        <meta itemprop="name" content="TopoIQ">
+        <header class="preview-card-hdr topoiq">
+          <strong>TOPOIQ — TERRAIN ANALYSIS</strong>
+        </header>
+        <div class="preview-card-body">
+          <p class="preview-meta">Site boundary: 187 ha &middot; Copernicus GLO-30 DEM &middot; ~11 m grid</p>
+          <figure aria-label="Slope heatmap over satellite basemap">
           <svg viewBox="0 0 260 130" xmlns="http://www.w3.org/2000/svg" style="width:100%;border-radius:8px;margin-bottom:0.6rem;display:block;">
             <defs>
               <filter id="tf"><feGaussianBlur stdDeviation="4"/></filter>
@@ -479,60 +495,62 @@
             <text x="6" y="128" font-size="6.5" fill="rgba(0,0,0,0.65)" font-family="Arial,sans-serif" font-weight="700">342m</text>
             <text x="100" y="72" font-size="6" fill="rgba(255,255,255,0.8)" font-family="Arial,sans-serif" font-weight="700">68m range</text>
           </svg>
+          </figure>
           <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.75rem;">
             <div style="font-size:0.6rem;color:#888;font-weight:600;">342m</div>
             <div style="flex:1;height:7px;border-radius:4px;background:linear-gradient(to right,#3b82f6,#22c55e,#eab308,#ef4444);"></div>
             <div style="font-size:0.6rem;color:#888;font-weight:600;">410m &nbsp;Elev.</div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:0.4rem;margin-bottom:0.8rem;">
-            <div style="display:flex;justify-content:space-between;font-size:0.73rem;"><span style="color:#5a7a5a;">Elevation range</span><span style="font-weight:700;">68 m</span></div>
-            <div style="display:flex;justify-content:space-between;font-size:0.73rem;"><span style="color:#5a7a5a;">Max N&ndash;S slope</span><span style="font-weight:700;">4.8% &nbsp;<span style="background:#d1fae5;color:#065f46;border-radius:4px;padding:1px 5px;font-size:0.6rem;font-weight:700;">ACCEPTABLE</span></span></div>
-            <div style="display:flex;justify-content:space-between;font-size:0.73rem;"><span style="color:#5a7a5a;">Analysis grid</span><span style="font-weight:700;">~11 m &nbsp;<span style="font-size:0.62rem;font-weight:600;color:#888;">(GLO-30 ~30 m native)</span></span></div>
-            <div style="display:flex;justify-content:space-between;font-size:0.73rem;"><span style="color:#5a7a5a;">Contour spacing</span><span style="font-weight:700;">5 m</span></div>
+          <ul class="preview-metrics" aria-label="Terrain screening metrics">
+            <li><span class="metric-label">Elevation Range</span><span class="metric-value">68 m</span></li>
+            <li><span class="metric-label">Mean Slope</span><span class="metric-value">3.1% <span class="preview-badge pos">Low</span></span></li>
+            <li><span class="metric-label">Max N&ndash;S Slope</span><span class="metric-value">4.8% <span class="preview-badge pos">Acceptable</span></span></li>
+            <li><span class="metric-label">Analysis Grid</span><span class="metric-value">~11 m</span></li>
+            <li><span class="metric-label">Contour Spacing</span><span class="metric-value">5 m</span></li>
+          </ul>
+          <div class="preview-score topoiq" aria-label="Terrain score">
+            <div class="preview-score-label">Terrain Score</div>
+            <div class="preview-score-value">86/100 <span class="preview-score-verdict">Very Good</span></div>
+            <div class="preview-score-note">Fixed tilt &amp; tracker suitable &middot; limited grading expected</div>
           </div>
-          <div style="display:flex;gap:0.5rem;">
-            <div style="flex:1;background:#e8f0fb;border-radius:7px;padding:0.45rem;text-align:center;font-size:0.7rem;font-weight:700;color:#1565c0;">&#128196; PDF Report</div>
-            <div style="flex:1;background:#e8f0fb;border-radius:7px;padding:0.45rem;text-align:center;font-size:0.7rem;font-weight:700;color:#1565c0;">&#128208; DXF & LandXML</div>
+          <div style="display:flex;gap:0.5rem;margin-top:0.65rem;">
+            <div style="flex:1;background:#e8f0fb;border-radius:7px;padding:0.45rem;text-align:center;font-size:0.7rem;font-weight:700;color:#1565c0;">PDF Report</div>
+            <div style="flex:1;background:#e8f0fb;border-radius:7px;padding:0.45rem;text-align:center;font-size:0.7rem;font-weight:700;color:#1565c0;">DXF &amp; LandXML</div>
           </div>
-          <div style="margin-top:0.45rem;font-size:0.6rem;color:#bbb;text-align:right;">Source: Copernicus GLO-30 DEM</div>
+          <p class="preview-source">Data source: Copernicus GLO-30 DEM</p>
         </div>
-      </div>
+      </article>
 
       <!-- YieldIQ mockup -->
-      <div style="border-radius:14px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.12);border:1.5px solid var(--border);">
-        <div style="background:linear-gradient(135deg,#d4840a,#b36a00);padding:0.65rem 1rem;display:flex;align-items:center;gap:0.5rem;">
-          <span style="font-size:0.82rem;">&#9889;</span>
-          <span style="font-size:0.72rem;font-weight:800;color:#fff;letter-spacing:0.05em;">YIELDIQ — YIELD ESTIMATION</span>
-        </div>
-        <div style="background:#fff;padding:1.1rem;">
-          <div style="font-size:0.68rem;color:#888;margin-bottom:0.9rem;font-weight:500;">100 MWp DC &middot; 4 configurations &middot; PVGIS JRC</div>
-          <div style="font-size:0.62rem;color:#888;margin-bottom:0.5rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Specific Yield (kWh/kWp/yr)</div>
-          <div style="display:flex;flex-direction:column;gap:0.55rem;margin-bottom:0.85rem;">
-            <div>
-              <div style="display:flex;justify-content:space-between;font-size:0.7rem;margin-bottom:2px;"><span style="font-weight:700;">SAT — single portrait (1P)</span><span style="font-weight:800;color:#1d9e52;">2,041</span></div>
-              <div style="height:15px;background:#f0f4f0;border-radius:4px;overflow:hidden;"><div style="height:100%;width:95%;background:linear-gradient(135deg,#1d9e52,#145f34);border-radius:4px;"></div></div>
-            </div>
-            <div>
-              <div style="display:flex;justify-content:space-between;font-size:0.7rem;margin-bottom:2px;"><span style="font-weight:700;">SAT — double portrait (2P)</span><span style="font-weight:800;color:#1d9e52;">1,978</span></div>
-              <div style="height:15px;background:#f0f4f0;border-radius:4px;overflow:hidden;"><div style="height:100%;width:92%;background:linear-gradient(135deg,#1d9e52,#145f34);border-radius:4px;opacity:0.8;"></div></div>
-            </div>
-            <div>
-              <div style="display:flex;justify-content:space-between;font-size:0.7rem;margin-bottom:2px;"><span style="font-weight:700;">Fixed — single portrait (1P)</span><span style="font-weight:800;color:#e85d04;">1,732</span></div>
-              <div style="height:15px;background:#f0f4f0;border-radius:4px;overflow:hidden;"><div style="height:100%;width:81%;background:linear-gradient(135deg,#e85d04,#c24a00);border-radius:4px;opacity:0.85;"></div></div>
-            </div>
-            <div>
-              <div style="display:flex;justify-content:space-between;font-size:0.7rem;margin-bottom:2px;"><span style="font-weight:700;">Fixed — double portrait (2P)</span><span style="font-weight:800;color:#e85d04;">1,668</span></div>
-              <div style="height:15px;background:#f0f4f0;border-radius:4px;overflow:hidden;"><div style="height:100%;width:78%;background:linear-gradient(135deg,#e85d04,#c24a00);border-radius:4px;opacity:0.7;"></div></div>
-            </div>
+      <article class="preview-card" itemscope itemtype="https://schema.org/SoftwareApplication" aria-label="YieldIQ yield estimation example output">
+        <meta itemprop="name" content="YieldIQ">
+        <header class="preview-card-hdr yieldiq">
+          <strong>YIELDIQ — YIELD ESTIMATION</strong>
+        </header>
+        <div class="preview-card-body">
+          <p class="preview-meta">100 MWp DC &middot; 4 configurations &middot; PVGIS JRC ERA5</p>
+          <p class="preview-chart-label">Specific Yield by Configuration (kWh/kWp/yr)</p>
+          <ul class="preview-metrics" aria-label="Yield comparison by mounting configuration" style="margin-bottom:0.85rem;">
+            <li><span class="metric-label">SAT &mdash; single portrait (1P)</span><span class="metric-value" style="color:#1d9e52;">2,041</span></li>
+            <li><span class="metric-label">SAT &mdash; double portrait (2P)</span><span class="metric-value" style="color:#1d9e52;">1,978</span></li>
+            <li><span class="metric-label">Fixed &mdash; single portrait (1P)</span><span class="metric-value" style="color:#e85d04;">1,732</span></li>
+            <li><span class="metric-label">Fixed &mdash; double portrait (2P)</span><span class="metric-value" style="color:#e85d04;">1,668</span></li>
+          </ul>
+          <ul class="preview-metrics" aria-label="Yield summary metrics">
+            <li><span class="metric-label">Tracker Gain (1P SAT vs 1P Fixed)</span><span class="metric-value" style="color:#1d9e52;">+17.9%</span></li>
+            <li><span class="metric-label">Best Performance Ratio (1P Tracker)</span><span class="metric-value">82.1%</span></li>
+          </ul>
+          <div class="preview-score yieldiq" aria-label="Best yield configuration">
+            <div class="preview-score-label">Best Configuration</div>
+            <div class="preview-score-value">SAT 1P Tracker <span class="preview-score-verdict">2,041 kWh/kWp/yr</span></div>
+            <div class="preview-score-note">Pre-layout screening yield &middot; not bankable P50/P90</div>
           </div>
-          <div style="display:flex;justify-content:space-between;font-size:0.73rem;margin-bottom:0.35rem;"><span style="color:#5a7a5a;">Tracker gain (1P vs FT)</span><span style="font-weight:700;color:#1d9e52;">+17.9%</span></div>
-          <div style="display:flex;justify-content:space-between;font-size:0.73rem;margin-bottom:0.8rem;"><span style="color:#5a7a5a;">Best PR (1P Tracker)</span><span style="font-weight:700;">82.1%</span></div>
-          <div style="background:#fff8e6;border:1.5px solid #f0b429;border-radius:7px;padding:0.5rem 0.7rem;">
-            <div style="font-size:0.66rem;color:#7a4f00;line-height:1.5;font-weight:600;">&#9888;&#65039; Early-stage feasibility only. Not a substitute for bankable energy assessment (PVsyst, DNV).</div>
+          <div style="background:#fff8e6;border:1.5px solid #f0b429;border-radius:7px;padding:0.5rem 0.7rem;margin-top:0.65rem;">
+            <div style="font-size:0.66rem;color:#7a4f00;line-height:1.5;font-weight:600;">Early-stage feasibility only. Not a substitute for bankable energy assessment (PVsyst, DNV SolarFarmer, Aurora).</div>
           </div>
-          <div style="margin-top:0.45rem;font-size:0.6rem;color:#bbb;text-align:right;">Source: PVGIS JRC ERA5</div>
+          <p class="preview-source">Data source: PVGIS JRC ERA5</p>
         </div>
-      </div>
+      </article>
 
     </div>
     <p style="text-align:center;margin-top:2rem;font-size:0.82rem;color:var(--muted);">Representative examples only. Actual outputs depend on location, system configuration, and site conditions.</p>
