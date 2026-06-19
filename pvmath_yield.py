@@ -200,12 +200,25 @@ def call_pvgis(
     }
 
 
+def format_loss_pct(val, signed: bool = False) -> str:
+    """Format loss % — default positive magnitude (industry convention: all shown as loss)."""
+    if val is None:
+        return "—"
+    try:
+        v = float(val)
+    except (TypeError, ValueError):
+        return str(val)
+    if signed:
+        return f"{v:.1f}%"
+    return f"{abs(v):.1f}%"
+
+
 def format_pvgis_total_loss(res: dict) -> str:
     """PVGIS combined loss (l_total) — temperature + AOI + spectral + user input."""
     val = res.get("l_total")
     if val is None:
         val = res.get("total_loss", 0)
-    return f"{val:.1f}%"
+    return format_loss_pct(val)
 
 
 def resolve_raddatabase(lat: float, lon: float, profile: str = PROFILE_ANALYSIS,
@@ -301,6 +314,20 @@ def fetch_screening_yields(
         for f in futs:
             f.result()
     return out
+
+
+def fetch_yield_cross_ref_bundle(lat: float, lon: float) -> dict:
+    """Screening + default analysis yields for 1P Fixed / 1P Tracker — all three modules."""
+    rdb = resolve_raddatabase(lat, lon, PROFILE_SCREENING)
+    screening = fetch_screening_yields(lat, lon, rdb)
+    af = fetch_analysis_reference(lat, lon, MOUNT_FIXED, rdb)
+    at = fetch_analysis_reference(lat, lon, MOUNT_TRACKER, rdb)
+    return {
+        "screening_fixed": screening.get("1P Fixed"),
+        "screening_tracker": screening.get("1P Tracker"),
+        "analysis_fixed": (af or {}).get("spec_y"),
+        "analysis_tracker": (at or {}).get("spec_y"),
+    }
 
 
 def fetch_analysis_reference(
@@ -499,4 +526,37 @@ def yield_cross_ref_yieldiq_pdf_text(
         "Cross-module yield reference — " + "; ".join(parts) + ". "
         f"SiteIQ screening = {SCREENING_LOSS_PCT:.0f}% flat loss, no row-shading. "
         "YieldIQ analysis = disclosed soiling/other + GCR shading + PVGIS physics derates."
+    )
+
+
+def yield_cross_ref_topoiq_text(bundle: dict) -> str:
+    """One-line yield reference for TopoIQ UI and PDF."""
+    sf, st = bundle.get("screening_fixed"), bundle.get("screening_tracker")
+    af, at = bundle.get("analysis_fixed"), bundle.get("analysis_tracker")
+    if sf is None or st is None:
+        return ""
+    line = (
+        f"SiteIQ screening (1P): Fixed {sf:,.0f} · Tracker {st:,.0f} kWh/kWp/yr"
+    )
+    if af is not None and at is not None:
+        line += (
+            f" — YieldIQ analysis @ GCR {DEFAULT_GCR_1P:.2f}: "
+            f"Fixed {af:,.0f} · Tracker {at:,.0f} kWh/kWp/yr"
+        )
+    line += (
+        f". Different profiles by design ({SCREENING_LOSS_PCT:.0f}% flat screening vs "
+        "disclosed losses + GCR shading + PVGIS derates)."
+    )
+    return line
+
+
+def yield_cross_ref_topoiq_html(bundle: dict) -> str:
+    text = yield_cross_ref_topoiq_text(bundle)
+    if not text:
+        return ""
+    return (
+        f'<div style="font-size:0.88rem;color:#1a3a1a;background:#f0f4f8;'
+        f'border:1px solid #b8c8dc;border-left:4px solid #1565c0;border-radius:8px;'
+        f'padding:0.65rem 0.9rem;margin:0.75rem 0;">'
+        f'<strong>Cross-module yield reference</strong> — {text}</div>'
     )

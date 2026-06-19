@@ -51,6 +51,7 @@ from pvmath_yield import (
     CONFIG_ORDER,
     MONTHS,
     format_pvgis_total_loss,
+    format_loss_pct,
     run_all_configs,
     fetch_screening_yields,
     yield_cross_ref_yieldiq_html,
@@ -446,10 +447,10 @@ def build_pdf(project_name, lat, lon, area_ha, land_use, gcr_1p, gcr_2p,
         story.append(Spacer(1, 0.15*cm))
         loss_tbl = Table([
             [lp("Shading", lbl), lp("Temperature", lbl), lp("Soiling", lbl), lp("Total Loss", lbl)],
-            [lp(f"{_b['shading']:.1f}%", bod),
-             lp(f"{_b['l_tg']:.1f}%" if _b.get("l_tg") is not None else "—", bod),
-             lp(f"{_b['soiling_loss']:.1f}%", bod),
-             lp(f"{_b['l_total']:.1f}%" if _b.get("l_total") is not None else f"{_b['total_loss']:.1f}%", bod)],
+            [lp(format_loss_pct(_b["shading"]), bod),
+             lp(format_loss_pct(_b.get("l_tg")), bod),
+             lp(format_loss_pct(_b["soiling_loss"]), bod),
+             lp(format_pvgis_total_loss(_b), bod)],
         ], colWidths=[4.18*cm, 4.18*cm, 4.18*cm, 4.18*cm])
         loss_tbl.setStyle(TableStyle([
             ("BACKGROUND",    (0,0),(-1,0), LGRAY),
@@ -494,7 +495,7 @@ def build_pdf(project_name, lat, lon, area_ha, land_use, gcr_1p, gcr_2p,
             lp(f"{r['gcr']:.2f}", bod),
             lp(f"{GCR_SCREEN_LO:.2f}–{GCR_SCREEN_HI:.2f}", bod),
             lp(_mwp_txt, bod),
-            lp(f"{r['shading']:.1f}%", bod),
+            lp(format_loss_pct(r["shading"]), bod),
             lp(format_pvgis_total_loss(r), bod),
             lp(f"{r['h_y']:,.0f}", bod),
             lp(f"{r['spec_y']:,.0f}", sy_style),
@@ -855,12 +856,12 @@ if submitted:
     )
     _best = results[best_cfg]
     loss_cols = st.columns(4)
-    loss_cols[0].metric("Shading", f"{_best['shading']:.1f}%")
-    loss_cols[1].metric("Temperature", f"{_best['l_tg']:.1f}%" if _best.get("l_tg") is not None else "—")
-    loss_cols[2].metric("Soiling", f"{_best['soiling_loss']:.1f}%")
+    loss_cols[0].metric("Shading", format_loss_pct(_best["shading"]))
+    loss_cols[1].metric("Temperature", format_loss_pct(_best.get("l_tg")))
+    loss_cols[2].metric("Soiling", format_loss_pct(_best["soiling_loss"]))
     loss_cols[3].metric(
         "Total Loss",
-        f"{_best['l_total']:.1f}%" if _best.get("l_total") is not None else f"{_best['total_loss']:.1f}%"
+        format_pvgis_total_loss(_best),
     )
     st.caption(
         "Temperature loss is PVGIS's own physics-based derate (not estimated). "
@@ -909,7 +910,7 @@ if submitted:
             f'{_mwp_txt if r.get("mwp_lo") is not None else "—"}</div>',
             unsafe_allow_html=True)
         row_cols[4].markdown(
-            f'<div style="padding:6px 0;color:#d4840a;font-weight:600;">{r["shading"]:.1f}%</div>',
+            f'<div style="padding:6px 0;color:#d4840a;font-weight:600;">{format_loss_pct(r["shading"])}</div>',
             unsafe_allow_html=True)
         row_cols[5].markdown(
             f'<div style="padding:6px 0;color:#5a7a5a;">{format_pvgis_total_loss(r)}</div>',

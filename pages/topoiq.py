@@ -61,6 +61,11 @@ from pvmath_terrain_report import (
     verdict_for_mount,
 )
 from pvmath_geocode import format_coords
+from pvmath_yield import (
+    fetch_yield_cross_ref_bundle,
+    yield_cross_ref_topoiq_html,
+    yield_cross_ref_topoiq_text,
+)
 from pvmath_capacity import (
     capacity_band,
     format_mwp_range,
@@ -1133,6 +1138,12 @@ with right:
             f"{capacity_footnote_global()}"
         )
 
+        with st.spinner("Fetching cross-module yield reference…"):
+            _yield_xref = fetch_yield_cross_ref_bundle(lat_c, lon_c)
+        _yield_xref_txt = yield_cross_ref_topoiq_text(_yield_xref)
+        if _yield_xref_txt:
+            st.markdown(yield_cross_ref_topoiq_html(_yield_xref), unsafe_allow_html=True)
+
         if _extras.get("cross_row_mean") is not None:
             st.caption(
                 f"Cross-row slope (tracker screening): mean **{_extras['cross_row_mean']:.1f}%** · "
@@ -1203,6 +1214,7 @@ with right:
                 siteiq_run_cache=st.session_state.get("siteiq_run_cache"),
                 project_row_id=st.session_state.get("pvm_project_row_id"),
                 dem_zoom=dem_zoom,
+                yield_cross_ref=_yield_xref_txt,
             )
             pdf_bytes = generate_pdf_report(_ctx)
         if pdf_bytes:

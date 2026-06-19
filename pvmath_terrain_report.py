@@ -615,6 +615,11 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
             _lp("Capacity note", bold=True, color=DARK_BLUE),
             _lp(capacity_footnote_global()),
         ])
+    if ctx.get("yield_cross_ref"):
+        info_rows.append([
+            _lp("Yield reference", bold=True, color=DARK_BLUE),
+            _lp(ctx["yield_cross_ref"]),
+        ])
     if ctx.get("prepared_by"):
         info_rows.append([
             _lp("Prepared by", bold=True, color=DARK_BLUE),
@@ -853,6 +858,7 @@ def build_report_context(
     siteiq_run_cache=None,
     project_row_id=None,
     dem_zoom=None,
+    yield_cross_ref: str = "",
 ) -> dict:
     """Assemble all PDF fields from analysis outputs and project metadata."""
     mean_slope = float(mean_slope)
@@ -921,4 +927,5 @@ def build_report_context(
         "generated_at": ts,
         "revision": 1,
         "siteiq_note": siteiq_note,
+        "yield_cross_ref": yield_cross_ref,
     }
