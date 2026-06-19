@@ -1396,10 +1396,10 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
     story.append(section_hdr("SITE SUITABILITY BREAKDOWN"))
     story.append(Spacer(1, 0.12*cm))
     story.append(Paragraph(
-        f"<b>Overall Score:</b> {_suit['overall']}/100 "
-        f"(<font color='#1d9e52'>{_suit['verdict_label']}</font>)",
-        ParagraphStyle("OvScore", parent=styles["Normal"], fontSize=9,
-                       textColor=DARK_TXT, leading=13),
+        f"<b>Overall Score: {_suit['overall']}/100 "
+        f"(<font color='#1d9e52'>{_suit['verdict_label']}</font>)</b>",
+        ParagraphStyle("OvScore", parent=styles["Normal"], fontSize=11,
+                       fontName="Helvetica-Bold", textColor=DARK_TXT, leading=15),
     ))
     story.append(Spacer(1, 0.15*cm))
 
