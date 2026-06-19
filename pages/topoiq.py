@@ -18,6 +18,7 @@ from datetime import datetime
 from pvmath_auth import (
     show_paywall,
     increment_usage, is_over_limit, remaining, FREE_LIMIT,
+    prepared_by_line, module_confidence_label,
 )
 from pvmath_styles import inject_styles
 
@@ -1137,6 +1138,7 @@ with right:
             f"@ GCR {GCR_SCREEN_LO:.2f}–{GCR_SCREEN_HI:.2f} (1P screening). "
             f"{capacity_footnote_global()}"
         )
+        st.caption(module_confidence_label("topoiq"))
 
         with st.spinner("Fetching cross-module yield reference…"):
             _yield_xref = fetch_yield_cross_ref_bundle(lat_c, lon_c)
@@ -1209,7 +1211,8 @@ with right:
                 land_use=_land_use,
                 mount_type=None,
                 boundary_provenance=_boundary_provenance(_boundaries, _proj),
-                prepared_by=st.session_state.get("pvm_email", ""),
+                prepared_by=prepared_by_line(),
+                module_confidence=module_confidence_label("topoiq"),
                 extras=_extras,
                 siteiq_run_cache=st.session_state.get("siteiq_run_cache"),
                 project_row_id=st.session_state.get("pvm_project_row_id"),

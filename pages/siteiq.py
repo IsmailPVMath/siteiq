@@ -12,7 +12,8 @@ import folium
 from pvmath_auth import (
     show_paywall,
     increment_usage, is_over_limit, remaining, FREE_LIMIT, UPGRADE_CONTACT,
-    get_plan, plan_limit, plan_label
+    get_plan, plan_limit, plan_label,
+    prepared_by_line, module_confidence_label,
 )
 from pvmath_styles import inject_styles
 from pvmath_kml import filter_boundary_list
@@ -24,6 +25,7 @@ from pvmath_capacity import (
     format_capacity_rating,
     capacity_basis_sentence,
     capacity_footnote_global,
+    CAPACITY_SCREENING_DISCLAIMER,
 )
 from pvmath_yield import (
     get_solar_data,
@@ -47,6 +49,8 @@ SITEIQ_RATING_LEGEND_MD = """
 | ⚠️ Data unavailable | Solar or terrain data could not be retrieved | Retry or check API coverage for this location |
 | — (capacity / output) | Screening MWp DC band from area × density @ GCR | Indicative only — confirm with layout / bankable study |
 | ✅ EXCELLENT (overall) | All key parameters in ideal range | Proceed to detailed feasibility study |
+| ✅ VERY GOOD (overall) | Strong site — one parameter good, one excellent | Proceed to detailed feasibility study |
+| ✅ GOOD (overall) | Strong site with at most one moderate factor | Proceed — address noted constraint in detailed design |
 | ⚠️ ACCEPTABLE (overall) | Viable with noted constraints | Address constraints in detailed design |
 | ⚠️ CHALLENGING (overall) | Multiple moderate concerns | Detailed study mandatory before commitment |
 | ❌ CRITICAL (overall) | One or more parameters exceed threshold | High risk — reconsider site or system type |
@@ -354,6 +358,7 @@ def parse_kmz_bytes(data: bytes):
 
 
 def get_flood_risk(lat, lon, elevation):
+    """Elevation-based flood screening — not authoritative flood-zone data."""
     in_de = 47.3 <= lat <= 55.1 and  5.9 <= lon <= 15.1
     in_at = 46.4 <= lat <= 49.0 and  9.5 <= lon <= 17.2
     in_ch = 45.8 <= lat <= 47.8 and  5.9 <= lon <= 10.5
@@ -371,18 +376,54 @@ def get_flood_risk(lat, lon, elevation):
         portal = "https://www.globalfloodmonitor.org"
         portal_name = "Global Flood Monitor"
 
-    if elevation is None:
-        return "⚠️ Unknown", "Elevation data unavailable — manual check required", portal, portal_name
-    elif elevation < 10:
-        risk, detail = "🔴 High Risk", f"Elevation {elevation}m — Very low-lying terrain, high flood exposure likely"
-    elif elevation < 50:
-        risk, detail = "🟠 Moderate Risk", f"Elevation {elevation}m — Low terrain, check official flood maps"
-    elif elevation < 200:
-        risk, detail = "🟡 Low-Moderate Risk", f"Elevation {elevation}m — Moderate terrain, verify local watercourse proximity"
-    else:
-        risk, detail = "🟢 Low Risk", f"Elevation {elevation}m — Elevated terrain, flood risk likely low"
+    source = "OpenTopoData DEM (EU-DEM 25 m / SRTM 30 m) — centre elevation at screening coordinates"
+    confidence = "Low — rule-based elevation heuristic; not official flood-zone mapping"
 
-    return risk, detail, portal, portal_name
+    if elevation is None:
+        reason = "Elevation unavailable at screening coordinates"
+        risk = "⚠️ Unknown"
+        detail = (
+            f"{reason}. Manual check required at {portal_name}. "
+            f"Data source: {source}. Confidence: {confidence}."
+        )
+    elif elevation < 10:
+        reason = f"Centre elevation {elevation} m asl is below 10 m — commonly associated with coastal/plain flood exposure"
+        risk = "🔴 High Risk"
+        detail = (
+            f"{reason}. Verify HQ100 / official flood zones at {portal_name}. "
+            f"Source: {source}. Confidence: {confidence}."
+        )
+    elif elevation < 50:
+        reason = f"Centre elevation {elevation} m asl is below 50 m — low-lying terrain; proximity to watercourses not assessed"
+        risk = "🟠 Moderate Risk"
+        detail = (
+            f"{reason}. Cross-check official flood maps at {portal_name}. "
+            f"Source: {source}. Confidence: {confidence}."
+        )
+    elif elevation < 200:
+        reason = f"Centre elevation {elevation} m asl is moderate — local drainage and watercourse proximity not screened"
+        risk = "🟡 Low-Moderate Risk"
+        detail = (
+            f"{reason}. Verify at {portal_name} before commitment. "
+            f"Source: {source}. Confidence: {confidence}."
+        )
+    else:
+        reason = f"Centre elevation {elevation} m asl is relatively elevated — flood exposure likely lower at this pin"
+        risk = "🟢 Low Risk"
+        detail = (
+            f"{reason}. Still verify at {portal_name} for bankable due diligence. "
+            f"Source: {source}. Confidence: {confidence}."
+        )
+
+    return {
+        "risk": risk,
+        "detail": detail,
+        "reason": reason,
+        "source": source,
+        "confidence": confidence,
+        "portal": portal,
+        "portal_name": portal_name,
+    }
 
 
 def _boundary_center(polygons):
@@ -734,21 +775,71 @@ def _metric_card_html(icon, color, label, number, unit):
     )
 
 
+def _param_tier(lbl: str) -> int:
+    """Higher = better. 0 = critical / failed."""
+    if "❌" in lbl:
+        return 0
+    if "Indicative only" in lbl or "Data unavailable" in lbl:
+        return 1
+    if "Challenging" in lbl:
+        return 2
+    if "Acceptable" in lbl or "Moderate" in lbl:
+        return 3
+    if "Good" in lbl:
+        return 4
+    if "Excellent" in lbl:
+        return 5
+    return 3
+
+
 def overall_verdict(slope_lbl, solar_lbl, land_use="Standard", mount_type="Fixed Tilt"):
-    reds    = sum(1 for l in [slope_lbl, solar_lbl] if "❌" in l)
-    yellows = sum(1 for l in [slope_lbl, solar_lbl] if "⚠️" in l)
+    tiers = [_param_tier(slope_lbl), _param_tier(solar_lbl)]
+    worst = min(tiers)
+    best = max(tiers)
     if land_use == "Agri-PV":
         label = f"Agri-PV {mount_type}"
     else:
         label = mount_type
-    if reds >= 1:
-        return "❌ CRITICAL",     "One or more parameters exceed viability threshold. High risk — reconsider site or system type."
-    elif yellows >= 2:
-        return "⚠️ CHALLENGING",  "Multiple moderate concerns. Detailed study mandatory before commitment."
-    elif yellows == 1:
-        return "⚠️ ACCEPTABLE",   f"Site is viable with noted considerations. Address constraints in detailed {label} design."
-    else:
-        return "✅ EXCELLENT",    f"Strong {label} potential. All parameters in ideal range — proceed to detailed feasibility study."
+
+    if worst == 0:
+        return "❌ CRITICAL", (
+            "One or more parameters exceed viability threshold. "
+            "High risk — reconsider site or system type."
+        )
+    if worst == 1:
+        return "⚠️ CHALLENGING", (
+            "Unconfirmed terrain or missing solar data — detailed study mandatory "
+            "before treating this screening as bankable."
+        )
+    if worst == 2:
+        return "⚠️ CHALLENGING", (
+            "One or more parameters are near the viability limit. "
+            "Detailed civil and energy study mandatory before commitment."
+        )
+    if worst == 5:
+        return "✅ EXCELLENT", (
+            f"Strong {label} potential. All parameters in ideal range — "
+            f"proceed to detailed feasibility study."
+        )
+    if worst == 4 and best == 5:
+        return "✅ VERY GOOD", (
+            f"Strong {label} site — key parameters are good to excellent. "
+            f"Proceed to detailed feasibility study."
+        )
+    if worst == 4:
+        return "✅ GOOD", (
+            f"Strong {label} potential. Key parameters are in the good range — "
+            f"proceed to detailed feasibility study."
+        )
+    if worst == 3 and best >= 4:
+        return "✅ GOOD", (
+            f"Strong {label} site with one noted constraint. "
+            f"Proceed to detailed feasibility — address the moderate factor in design."
+        )
+    return "⚠️ ACCEPTABLE", (
+        f"Site is viable with noted considerations. "
+        f"Address constraints in detailed {label} design."
+    )
 
 
 def get_next_steps(project_country, land_use="Standard", lat=None, lon=None):
@@ -873,7 +964,9 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
               cap,
               land_use="Standard", mount_type="Fixed Tilt",
               project_country="", location_label="",
-              flood_risk="", flood_detail="", coord_note="",
+              flood_risk="", flood_detail="", flood_source="", flood_confidence="",
+              flood_reason="", coord_note="",
+              prepared_by="", module_confidence="",
               analysis_ref=None):
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4,
@@ -973,6 +1066,10 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
         ["Mounting System",mount_type],
         ["Report Date",    datetime.now().strftime("%d.%m.%Y")],
     ]
+    if prepared_by:
+        site_rows.append(["Prepared by", prepared_by])
+    if module_confidence:
+        site_rows.append(["Module confidence", module_confidence])
     t = Table(site_rows, colWidths=[5*cm, 12*cm])
     t.setStyle(TableStyle([
         ("BACKGROUND",   (0,0),(0,-1), colors.HexColor("#e8f5e9")),
@@ -986,11 +1083,11 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
     story.append(Spacer(1, 0.5*cm))
 
     # ── Verdict styling (green/amber/red depending on result) ────────────────
-    _is_exc  = "EXCELLENT" in verdict
+    _is_positive = any(x in verdict for x in ("EXCELLENT", "VERY GOOD", "GOOD"))
     _is_acc  = "ACCEPTABLE" in verdict or "CHALLENGING" in verdict
-    v_color  = C_GREEN if _is_exc else (C_YELLOW if _is_acc else C_RED)
-    v_bg     = C_LGREEN if _is_exc else (C_LYELLOW if _is_acc else C_LRED)
-    v_border = GREEN if _is_exc else (C_YELLOW if _is_acc else C_RED)
+    v_color  = C_GREEN if _is_positive else (C_YELLOW if _is_acc else C_RED)
+    v_bg     = C_LGREEN if _is_positive else (C_LYELLOW if _is_acc else C_LRED)
+    v_border = GREEN if _is_positive else (C_YELLOW if _is_acc else C_RED)
 
     story.append(Spacer(1, 0.1*cm))
     story.append(section_hdr("OVERALL VERDICT"))
@@ -1022,7 +1119,7 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
     def _badge(text):
         """Colour-coded rating badge matching website style."""
         _t = text.split("—")[0].strip().upper()
-        if any(w in _t for w in ["EXCELLENT","GOOD","LOW"]):
+        if any(w in _t for w in ["EXCELLENT", "VERY GOOD", "GOOD", "LOW"]):
             return lp(f"<b>{_t}</b>", C_GREEN, bold=True, size=8)
         if any(w in _t for w in ["ACCEPTABLE","MODERATE","LOW-MOD","INDICATIVE","DATA UNAVAILABLE"]):
             return lp(f"<b>{_t}</b>", C_YELLOW, bold=True, size=8)
@@ -1053,10 +1150,21 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
         rows.append([lp("Mounting", MUTED, size=9), lp("Single-axis tracker (horizontal N–S axis)", bold=True, size=9), lp("—", MUTED, size=8)])
     else:
         rows.append([lp("Optimal Tilt", MUTED, size=9), lp(f"{solar.get('optimal_tilt','—')}°", bold=True, size=9), lp("—", MUTED, size=8)])
+    _flood_val = flood_detail or "—"
+    if flood_source or flood_confidence:
+        _flood_parts = [_flood_val]
+        if flood_reason and flood_reason not in _flood_val:
+            _flood_parts.insert(0, flood_reason)
+        if flood_source:
+            _flood_parts.append(f"Source: {flood_source}")
+        if flood_confidence:
+            _flood_parts.append(f"Confidence: {flood_confidence}")
+        _flood_val = " ".join(_flood_parts)
+
     rows += [
         [lp("Max Slope",       MUTED, size=9), lp(f"{terrain.get('max_slope_pct','—')}%", bold=True, size=9),        _slope_badge],
         [lp("Elevation",       MUTED, size=9), lp(f"{terrain.get('center_elev','—')} m asl", bold=True, size=9),     lp("—", MUTED, size=8)],
-        [lp("Flood Risk",      MUTED, size=9), lp(flood_detail or "—", bold=True, size=9),                            _flood_badge],
+        [lp("Flood Risk",      MUTED, size=9), lp(_flood_val, size=9),                            _flood_badge],
         [lp("Est. DC Capacity", MUTED, size=9), lp(_cap_mwp, bold=True, size=9),               lp(_cap_dens, MUTED, size=8)],
         [lp("Est. Output",     MUTED, size=9), lp(_output_val, bold=True, size=9),                                    lp("Indicative only", MUTED, size=8)],
         [lp(_incentive_lbl,   MUTED, size=9), lp(eeg_status, bold=True, size=9),                                    lp(eeg_note, MUTED, size=8)],
@@ -1232,7 +1340,9 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
 
     verdict_rows = [
         [lp("Overall verdict", colors.white, bold=True, size=7), lp("Action", colors.white, bold=True, size=7)],
-        [lp("EXCELLENT",  C_GREEN,  bold=True, size=7), lp("Proceed to detailed feasibility study", MUTED, size=7)],
+        [lp("EXCELLENT",  C_GREEN,  bold=True, size=7), lp("All parameters ideal — proceed to detailed study", MUTED, size=7)],
+        [lp("VERY GOOD",  C_GREEN,  bold=True, size=7), lp("Strong site — proceed to detailed study", MUTED, size=7)],
+        [lp("GOOD",       C_GREEN,  bold=True, size=7), lp("Proceed — address noted constraint in design", MUTED, size=7)],
         [lp("ACCEPTABLE", C_YELLOW, bold=True, size=7), lp("Address noted constraints in detailed design", MUTED, size=7)],
         [lp("CHALLENGING",C_ORANGE, bold=True, size=7), lp("Detailed study mandatory before commitment", MUTED, size=7)],
         [lp("CRITICAL",   C_RED,    bold=True, size=7), lp("High risk — reconsider site or system type", MUTED, size=7)],
@@ -1247,9 +1357,10 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
         ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
         ("ROWBACKGROUNDS",(0,1),(-1,-1), [colors.white, LGRAY]),
         ("BACKGROUND",    (0,1), (0,1), C_LGREEN),
-        ("BACKGROUND",    (0,2), (0,2), C_LYELLOW),
-        ("BACKGROUND",    (0,3), (0,3), C_LORANG),
-        ("BACKGROUND",    (0,4), (0,4), C_LRED),
+        ("BACKGROUND",    (0,2), (0,2), C_LGREEN),
+        ("BACKGROUND",    (0,3), (0,3), C_LYELLOW),
+        ("BACKGROUND",    (0,4), (0,4), C_LORANG),
+        ("BACKGROUND",    (0,5), (0,5), C_LRED),
     ]))
 
     # Flood risk table
@@ -1592,9 +1703,13 @@ with right:
         _yield = solar.get("annual_yield") if solar.get("success") else None
         cap = screening_capacity(area_ha, _land_use, _mount_type, _yield)
         verdict, verdict_txt = overall_verdict(s_lbl, g_lbl, _land_use, _mount_type)
-        flood_risk, flood_detail, flood_portal, flood_portal_name = get_flood_risk(
+        _flood = get_flood_risk(
             lat, lon, terrain.get("center_elev") if terrain.get("success") else None
         )
+        flood_risk = _flood["risk"]
+        flood_detail = _flood["detail"]
+        flood_portal = _flood["portal"]
+        flood_portal_name = _flood["portal_name"]
 
         badge_color = "#1a5c2e" if _land_use == "Agri-PV" else "#1565c0"
         st.markdown(
@@ -1610,6 +1725,8 @@ with right:
             st.warning(f"**{verdict}** — {verdict_txt}")
         else:
             st.error(f"**{verdict}** — {verdict_txt}")
+
+        st.caption(module_confidence_label("siteiq"))
 
         _cap_display = format_mwp_range(cap["mwp_lo"], cap["mwp_hi"]).replace(" MWp DC", "")
         _cap_unit = (
@@ -1707,12 +1824,19 @@ with right:
             (st.success if "✅" in s_lbl else st.warning if "⚠️" in s_lbl else st.error)(s_detail)
 
             st.markdown('<div class="section-hdr" style="margin-top:0.8rem;"><i class="fa-solid fa-water" style="color:#4ab0d4;"></i> Flood Risk</div>', unsafe_allow_html=True)
+            _flood_body = (
+                f"**{flood_risk}**  \n"
+                f"**Reason:** {_flood['reason']}  \n"
+                f"**Source:** {_flood['source']}  \n"
+                f"**Confidence:** {_flood['confidence']}  \n"
+                f"[Check {flood_portal_name} ↗]({flood_portal})"
+            )
             if "🔴" in flood_risk:
-                st.error(f"**{flood_risk}**  \n{flood_detail}  \n[Check {flood_portal_name} ↗]({flood_portal})")
-            elif "🟠" in flood_risk or "🟡" in flood_risk:
-                st.warning(f"**{flood_risk}**  \n{flood_detail}  \n[Check {flood_portal_name} ↗]({flood_portal})")
+                st.error(_flood_body)
+            elif "🟠" in flood_risk or "🟡" in flood_risk or "⚠️" in flood_risk:
+                st.warning(_flood_body)
             else:
-                st.success(f"**{flood_risk}**  \n{flood_detail}  \n[Verify at {flood_portal_name} ↗]({flood_portal})")
+                st.success(_flood_body)
 
         st.divider()
         with st.expander("Rating Scale — what do the colours mean?"):
@@ -1762,7 +1886,11 @@ with right:
             project_country=project_country_input,
             location_label=_location_label,
             flood_risk=flood_risk, flood_detail=flood_detail,
+            flood_source=_flood["source"], flood_confidence=_flood["confidence"],
+            flood_reason=_flood["reason"],
             coord_note=_coord_note,
+            prepared_by=prepared_by_line(),
+            module_confidence=module_confidence_label("siteiq"),
             analysis_ref=_analysis_ref,
         )
         st.download_button(

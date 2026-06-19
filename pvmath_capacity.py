@@ -5,6 +5,10 @@ GCR_REF = 0.30
 GCR_SCREEN_LO = 0.30
 GCR_SCREEN_HI = 0.42
 
+CAPACITY_SCREENING_DISCLAIMER = (
+    "Utility-scale screening density assumptions only — not layout-optimised DC."
+)
+
 _BASE_DENSITY = {
     ("Standard", "Fixed Tilt"): 0.40,
     ("Standard", "Single-Axis Tracker"): 0.35,
@@ -202,12 +206,14 @@ def capacity_basis_sentence(band: dict) -> str:
     return (
         f"Indicative DC capacity at GCR {band['gcr_lo']:.2f}–{band['gcr_hi']:.2f} "
         f"({portrait} {mount} screening): "
-        f"{format_mwp_range(band['mwp_lo'], band['mwp_hi'])}"
+        f"{format_mwp_range(band['mwp_lo'], band['mwp_hi'])}. "
+        f"{CAPACITY_SCREENING_DISCLAIMER}"
     )
 
 
 def capacity_footnote_global() -> str:
     return (
+        f"{CAPACITY_SCREENING_DISCLAIMER} "
         "Capacity estimates use area × screening density (MWp/ha @ GCR 0.30) "
         f"scaled by GCR {GCR_SCREEN_LO:.2f}–{GCR_SCREEN_HI:.2f}. "
         "Values are indicative pre-layout screening bands, not layout-optimised DC."
@@ -224,6 +230,7 @@ def capacity_all_configs_summary(area_ha: float, land_use: str) -> str:
     return (
         f"Indicative DC capacity at GCR {GCR_SCREEN_LO:.2f}–{GCR_SCREEN_HI:.2f}: "
         + " · ".join(parts)
+        + f". {CAPACITY_SCREENING_DISCLAIMER}"
     )
 
 

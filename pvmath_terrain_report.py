@@ -625,6 +625,11 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
             _lp("Prepared by", bold=True, color=DARK_BLUE),
             _lp(ctx["prepared_by"]),
         ])
+    if ctx.get("module_confidence"):
+        info_rows.append([
+            _lp("Module confidence", bold=True, color=DARK_BLUE),
+            _lp(ctx["module_confidence"]),
+        ])
 
     label_w = 48 * mm
     info_tbl = Table(info_rows, colWidths=[label_w, usable - label_w])
@@ -855,6 +860,7 @@ def build_report_context(
     slope_bins, slope_img_buf,
     land_use, mount_type, boundary_provenance,
     prepared_by, extras,
+    module_confidence: str = "",
     siteiq_run_cache=None,
     project_row_id=None,
     dem_zoom=None,
@@ -920,6 +926,7 @@ def build_report_context(
         "dem_zoom": dem_zoom,
         "boundary_provenance": boundary_provenance,
         "prepared_by": prepared_by,
+        "module_confidence": module_confidence,
         "extras": extras,
         "verdict_fixed": _verdict_from_mean(mean_slope, "Fixed Tilt"),
         "verdict_tracker": verdict_for_mount(mean_slope, "Single-Axis Tracker", extras=extras),

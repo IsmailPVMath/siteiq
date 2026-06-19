@@ -23,6 +23,13 @@ import streamlit as st
 # ── Config ────────────────────────────────────────────────────
 # Per-module monthly analysis caps, by plan. None = unlimited.
 # Mirrors the live pricing page (pvmath.com) — keep these in sync if pricing changes.
+# Screening-grade module confidence (SME review — builds trust in reports/UI).
+MODULE_CONFIDENCE = {
+    "siteiq": 85,
+    "topoiq": 90,
+    "yieldiq": 80,
+}
+
 PLAN_LIMITS = {
     "free":         5,
     "professional": 50,
@@ -100,10 +107,19 @@ def _parse_err(r: _req.Response) -> str:
 
 
 # ── Auth functions (direct REST — no supabase-py) ─────────────
-def sign_up(email: str, password: str) -> dict:
+def sign_up(email: str, password: str, first_name: str = "", last_name: str = "") -> dict:
     try:
+        payload: dict = {"email": email, "password": password}
+        fn = (first_name or "").strip()
+        ln = (last_name or "").strip()
+        if fn or ln:
+            payload["data"] = {
+                "first_name": fn,
+                "last_name": ln,
+                "full_name": f"{fn} {ln}".strip(),
+            }
         r = _req.post(f"{_sb_url()}/auth/v1/signup",
-                      json={"email": email, "password": password},
+                      json=payload,
                       headers=_auth_hdr(), timeout=15)
         if r.status_code in (200, 201):
             data = r.json()
@@ -184,6 +200,7 @@ def _refresh_session(refresh_token: str) -> dict:
             "success":       True,
             "user_id":       user.get("id", ""),
             "email":         user.get("email", ""),
+            "display_name":  _display_name_from_user(user),
             "access_token":  data.get("access_token", ""),
             "refresh_token": data.get("refresh_token", refresh_token),
         }
@@ -203,9 +220,71 @@ def _get_stored_refresh_token() -> str:
     return rt or ""
 
 
+def _display_name_from_user(user: dict) -> str:
+    """Best-effort display name from Supabase user / user_metadata."""
+    if not user:
+        return ""
+    meta = user.get("user_metadata") or {}
+    fn = (meta.get("first_name") or "").strip()
+    ln = (meta.get("last_name") or "").strip()
+    if fn or ln:
+        return f"{fn} {ln}".strip()
+    for key in ("full_name", "name", "display_name"):
+        val = (meta.get(key) or user.get(key) or "").strip()
+        if val:
+            return val
+    return ""
+
+
+def _apply_user_fields(user: dict, *, email: str = "") -> None:
+    if email:
+        st.session_state["pvm_email"] = email
+    elif user.get("email"):
+        st.session_state["pvm_email"] = user.get("email", "")
+    name = _display_name_from_user(user)
+    if name:
+        st.session_state["pvm_display_name"] = name
+
+
+def refresh_user_profile() -> None:
+    """Populate pvm_email and pvm_display_name from Supabase /auth/v1/user."""
+    if not st.session_state.get("pvm_user_id"):
+        return
+    try:
+        token = st.session_state.get("pvm_access_token", "")
+        r = _req.get(f"{_sb_url()}/auth/v1/user",
+                     headers=_auth_hdr(token), timeout=10)
+        if r.status_code == 200:
+            _apply_user_fields(r.json())
+    except Exception:
+        pass
+
+
+def user_display_name() -> str:
+    return (st.session_state.get("pvm_display_name") or "").strip()
+
+
+def prepared_by_line() -> str:
+    """Report attribution — display name + email when available."""
+    name = user_display_name()
+    email = (st.session_state.get("pvm_email") or "").strip()
+    if name and email:
+        return f"{name} ({email})"
+    return email or name or ""
+
+
+def module_confidence_label(module: str) -> str:
+    pct = MODULE_CONFIDENCE.get((module or "").lower(), 0)
+    if not pct:
+        return ""
+    return f"Module confidence: ~{pct}% (screening-grade, not bankable)"
+
+
 def _apply_refreshed_session(data: dict) -> None:
     st.session_state["pvm_user_id"] = data["user_id"]
     st.session_state["pvm_email"] = data["email"]
+    if data.get("display_name"):
+        st.session_state["pvm_display_name"] = data["display_name"]
     st.session_state["pvm_access_token"] = data["access_token"]
     st.session_state["pvm_refresh_token"] = data["refresh_token"]
     st.session_state["pvm_token_refreshed_at"] = time.time()
@@ -750,15 +829,8 @@ def render_auth_page(app_name: str = "PVMath"):
 
     # Already logged in?
     if st.session_state.get("pvm_user_id"):
-        if not st.session_state.get("pvm_email"):
-            try:
-                token = st.session_state.get("pvm_access_token", "")
-                r = _req.get(f"{_sb_url()}/auth/v1/user",
-                             headers=_auth_hdr(token), timeout=10)
-                if r.status_code == 200:
-                    st.session_state["pvm_email"] = r.json().get("email", "")
-            except Exception:
-                pass
+        if not st.session_state.get("pvm_email") or not st.session_state.get("pvm_display_name"):
+            refresh_user_profile()
         return True
 
     # ── OTP verification screen ────────────────────────────────
@@ -869,8 +941,9 @@ def render_auth_page(app_name: str = "PVMath"):
                                           "pvm_otp_token", "pvm_otp_uid"]:
                                     st.session_state.pop(k, None)
                                 st.session_state["pvm_user_id"]      = _pre_uid
-                                st.session_state["pvm_email"]        = _otp_email
+                                _apply_user_fields({"email": _otp_email})
                                 st.session_state["pvm_access_token"] = _pre_token
+                                refresh_user_profile()
                                 st.rerun()
                             else:
                                 with st.spinner("Verified! Logging in…"):
@@ -881,7 +954,7 @@ def render_auth_page(app_name: str = "PVMath"):
                                               "pvm_otp_expiry", "pvm_otp_attempts"]:
                                         st.session_state.pop(k, None)
                                     st.session_state["pvm_user_id"]      = result["user"].get("id")
-                                    st.session_state["pvm_email"]        = result["user"].get("email")
+                                    _apply_user_fields(result["user"])
                                     st.session_state["pvm_access_token"] = result.get("access_token", "")
                                     if result.get("refresh_token"):
                                         st.session_state["pvm_refresh_token"] = result["refresh_token"]
@@ -1125,14 +1198,21 @@ def render_auth_page(app_name: str = "PVMath"):
             """, unsafe_allow_html=True)
 
             st.markdown('<div class="auth-title">Create your account</div>', unsafe_allow_html=True)
-            st.markdown('<div class="auth-sub">Enter your work email to get started.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="auth-sub">Your name appears on SiteIQ, YieldIQ, and TopoIQ reports.</div>', unsafe_allow_html=True)
 
+            _reg_name1, _reg_name2 = st.columns(2)
+            with _reg_name1:
+                reg_first = st.text_input("First name", key="reg_first", placeholder="Mohammed")
+            with _reg_name2:
+                reg_last = st.text_input("Last name", key="reg_last", placeholder="Pasha")
             reg_email = st.text_input("Email address", key="reg_email", placeholder="you@company.com")
             reg_pass  = st.text_input("Password", key="reg_pass", type="password", placeholder="Min. 8 characters")
             reg_pass2 = st.text_input("Confirm password", key="reg_pass2", type="password", placeholder="Repeat password")
 
             if st.button("Create Account →", key="btn_register"):
-                if not reg_email or not reg_pass:
+                if not reg_first.strip() or not reg_last.strip():
+                    st.error("Please enter your first and last name.")
+                elif not reg_email or not reg_pass:
                     st.error("Please enter your email and password.")
                 elif len(reg_pass) < 8:
                     st.error("Password must be at least 8 characters.")
@@ -1140,13 +1220,17 @@ def render_auth_page(app_name: str = "PVMath"):
                     st.error("Passwords do not match.")
                 else:
                     with st.spinner("Creating your account…"):
-                        result = sign_up(reg_email, reg_pass)
+                        result = sign_up(reg_email, reg_pass, reg_first, reg_last)
                     if result["success"]:
                         # OTP disabled — Brevo not yet activated. Re-enable once confirmed.
                         # Direct login using token from Supabase auto-confirm.
                         if result.get("access_token"):
                             st.session_state["pvm_user_id"]      = result["user"].get("id")
-                            st.session_state["pvm_email"]        = result["user"].get("email") or reg_email
+                            _apply_user_fields(result["user"], email=reg_email)
+                            if not user_display_name():
+                                st.session_state["pvm_display_name"] = (
+                                    f"{reg_first.strip()} {reg_last.strip()}".strip()
+                                )
                             st.session_state["pvm_access_token"] = result["access_token"]
                             if result.get("refresh_token"):
                                 st.session_state["pvm_refresh_token"] = result["refresh_token"]
@@ -1156,7 +1240,7 @@ def render_auth_page(app_name: str = "PVMath"):
                             _r = sign_in(reg_email, reg_pass)
                             if _r["success"]:
                                 st.session_state["pvm_user_id"]      = _r["user"].get("id")
-                                st.session_state["pvm_email"]        = _r["user"].get("email")
+                                _apply_user_fields(_r["user"])
                                 st.session_state["pvm_access_token"] = _r.get("access_token", "")
                                 if _r.get("refresh_token"):
                                     st.session_state["pvm_refresh_token"] = _r["refresh_token"]
@@ -1213,7 +1297,7 @@ def render_auth_page(app_name: str = "PVMath"):
                         result = sign_in(login_email, login_pass)
                     if result["success"]:
                         st.session_state["pvm_user_id"]      = result["user"].get("id")
-                        st.session_state["pvm_email"]        = result["user"].get("email")
+                        _apply_user_fields(result["user"])
                         st.session_state["pvm_access_token"] = result.get("access_token", "")
                         if result.get("refresh_token"):
                             st.session_state["pvm_refresh_token"] = result["refresh_token"]
