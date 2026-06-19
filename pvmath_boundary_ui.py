@@ -1,5 +1,7 @@
 """Grouped, collapsible boundary checklist for Project Setup."""
 import re
+from typing import Optional
+
 import streamlit as st
 from pvmath_kml import group_boundaries_by_layer, apply_site_areas_only_selection
 
@@ -12,7 +14,7 @@ def _layer_all_on(items: list) -> bool:
     return all(bool(b.get("enabled", True)) for b in items)
 
 
-def _pop_boundary_keys(key_prefix: str, boundary_ids, layer_slug: str | None = None) -> None:
+def _pop_boundary_keys(key_prefix: str, boundary_ids, layer_slug: Optional[str] = None) -> None:
     for bid in boundary_ids:
         st.session_state.pop(f"{key_prefix}_en_{bid}", None)
     if layer_slug:

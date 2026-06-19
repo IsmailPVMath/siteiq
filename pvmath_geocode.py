@@ -1,10 +1,12 @@
 """Reverse geocoding via OpenStreetMap Nominatim (shared across modules)."""
+from typing import Optional
+
 import requests
 
 _NOMINATIM_HEADERS = {"User-Agent": "SiteIQ/1.0 (pvmath.com; contact@pvmath.com)"}
 
 
-def reverse_geocode(lat: float, lon: float) -> str | None:
+def reverse_geocode(lat: float, lon: float) -> Optional[str]:
     """
     Resolve coordinates to a human-readable admin label.
     US: 'County, State, Country' when available; else best-effort display_name tail.

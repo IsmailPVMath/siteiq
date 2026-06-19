@@ -4,6 +4,7 @@ from __future__ import annotations
 import io
 import math
 from datetime import datetime, timezone
+from typing import Optional
 
 import numpy as np
 
@@ -241,7 +242,7 @@ def render_slope_map_png(
     X, Y, Z, grid_m: float,
     south, north, west, east,
     polygon_list=None,
-) -> io.BytesIO | None:
+) -> Optional[io.BytesIO]:
     """Slope map with satellite basemap, north arrow, and scale bar (PDF-ready)."""
     if not HAS_SCIPY:
         return None
@@ -342,7 +343,7 @@ def render_slope_map_png(
     return buf
 
 
-def render_drainage_map_png(X, Y, Z, grid_m: float) -> io.BytesIO | None:
+def render_drainage_map_png(X, Y, Z, grid_m: float) -> Optional[io.BytesIO]:
     """Simple flow-direction map for screening drainage patterns."""
     if not HAS_SCIPY:
         return None
@@ -416,7 +417,7 @@ def _img_flowable(buf, usable_w, max_ratio=0.72):
     return tbl
 
 
-def generate_pdf_report(ctx: dict) -> bytes | None:
+def generate_pdf_report(ctx: dict) -> Optional[bytes]:
     """
     Build TopoIQ terrain screening PDF from a context dict.
     See build_report_context() for expected keys.
