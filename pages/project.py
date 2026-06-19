@@ -18,8 +18,8 @@ from pvmath_styles import inject_styles
 from pvmath_auth import save_project, _refresh_session
 from pvmath_kml import (
     BOUNDARY_COLORS,
-    MIN_SITE_PARCEL_HA,
     boundaries_from_kmz_latlon,
+    filter_boundary_list,
     guess_boundary_enabled,
 )
 
@@ -123,7 +123,8 @@ def _render_proj_boundary_manager():
     if hidden_n and not show_all:
         st.caption(
             f"Showing **{len(bounds)}** site parcel{'s' if len(bounds) != 1 else ''} "
-            f"(≥{MIN_SITE_PARCEL_HA:g} ha). **{hidden_n}** other layers hidden."
+            f"(layout slivers & infrastructure hidden). "
+            f"**{hidden_n}** other layers hidden."
         )
     else:
         st.caption(
@@ -380,7 +381,9 @@ if True:
     # ── Boundaries list (multi-parcel KMZ support) ───────────────────────────
     if "proj_boundaries" not in st.session_state:
         if proj.get("polygon_boundaries"):
-            st.session_state["proj_boundaries"] = list(proj["polygon_boundaries"])
+            st.session_state["proj_boundaries"] = filter_boundary_list(
+                list(proj["polygon_boundaries"]), latlon=True
+            )
         elif proj.get("polygon_coords"):
             st.session_state["proj_boundaries"] = [{
                 "id": "saved_0",
@@ -448,8 +451,8 @@ if True:
 
                 if not _primary and not _bounds:
                     st.warning(
-                        "No site boundaries found. Ensure the file contains buildable-area "
-                        f"or project-boundary parcels ≥{MIN_SITE_PARCEL_HA:g} ha."
+                        "No site boundaries found. Ensure the KMZ contains closed "
+                        "boundary polylines or polygons."
                     )
                 else:
                     st.session_state["proj_boundaries"] = _bounds

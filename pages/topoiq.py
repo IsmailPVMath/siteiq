@@ -51,8 +51,8 @@ DEM_ZOOM_MAX = 14
 TILE_FETCH_WORKERS = 8
 from pvmath_kml import (
     BOUNDARY_COLORS,
-    MIN_SITE_PARCEL_HA,
     boundaries_from_features,
+    filter_boundary_list,
     guess_boundary_enabled,
     normalize_ring_lonlat,
     parse_kml_features,
@@ -147,7 +147,7 @@ def _render_boundary_manager():
     if hidden_n and not show_all:
         st.caption(
             f"Showing **{len(bounds)}** site parcel{'s' if len(bounds) != 1 else ''} "
-            f"(≥{MIN_SITE_PARCEL_HA:g} ha · site boundaries & buildable areas). "
+            f"(layout slivers & infrastructure layers hidden). "
             f"**{hidden_n}** other layers hidden."
         )
     else:
@@ -1118,14 +1118,19 @@ if _proj_fp and st.session_state.get("topo_proj_fp") != _proj_fp:
 if _proj.get("polygon_boundaries"):
     st.session_state.setdefault("topo_boundaries", [])
     if not st.session_state.get("topo_from_proj"):
+        _loaded = filter_boundary_list(
+            list(_proj["polygon_boundaries"]), latlon=True
+        )
         st.session_state["topo_boundaries"] = [
             {
                 "id": b.get("id", f"proj_{i}"),
                 "name": b.get("name", f"Boundary {i + 1}"),
+                "full_name": b.get("full_name", b.get("name", "")),
                 "coords": [(c[1], c[0]) for c in b["coords"]],
                 "enabled": b.get("enabled", True),
+                "is_primary": True,
             }
-            for i, b in enumerate(_proj["polygon_boundaries"])
+            for i, b in enumerate(_loaded)
             if b.get("coords")
         ]
         st.session_state["topo_from_proj"] = True
@@ -1172,7 +1177,7 @@ with left:
         if len(_tb) == 1 and _tb[0].get("name") == "Project boundary":
             st.info(
                 "Only one boundary is saved on this project (older format). "
-                "Re-upload your KMZ in **Project Setup** or below to import all buildable parcels."
+                "Re-upload your KMZ in **Project Setup** or below to import site parcels."
             )
 
     if not st.session_state.get("topo_from_proj"):
@@ -1341,8 +1346,8 @@ with left:
             f = st.file_uploader(
                 "Upload boundary file",
                 type=["kml", "kmz", "dxf", "dwg"],
-                help="KMZ/KML from Google Earth or GIS — all site parcels, buildable areas, "
-                     "and boundaries are imported. Tracker rows are auto-detected and usually excluded.",
+                help="KMZ/KML from Google Earth or GIS — site parcels auto-detected; "
+                     "circuits, roads, and layout layers are auto-hidden.",
             )
         if f:
             file_key = f"{f.name}_{f.size}"
@@ -1374,8 +1379,8 @@ with left:
                 primary = [b for b in new_bounds if b.get("is_primary", True)]
                 if not primary and not new_bounds:
                     st.error(
-                        "No site boundaries found. Ensure the KMZ contains buildable-area "
-                        f"or project-boundary parcels ≥{MIN_SITE_PARCEL_HA:g} ha."
+                        "No site boundaries found. Ensure the KMZ contains closed "
+                        "boundary polylines or polygons."
                     )
                 elif not primary:
                     st.warning(
@@ -1398,7 +1403,7 @@ with left:
                         f"Loaded **{len(primary)}** site parcel{'s' if len(primary) != 1 else ''}"
                     )
                     if hidden_n:
-                        msg += f" · **{hidden_n}** circuit/layout layers hidden"
+                        msg += f" · **{hidden_n}** infrastructure layers hidden"
                     msg += f" · **{n_en}** ready for analysis"
                     st.success(msg)
                     st.rerun()

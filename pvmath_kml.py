@@ -9,28 +9,36 @@ BOUNDARY_COLORS = ["#22c55e", "#3b82f6", "#f59e0b", "#ec4899", "#8b5cf6", "#14b8
 KML_NS = "http://www.opengis.net/kml/2.2"
 KML = f"{{{KML_NS}}}"
 
-_EXCLUDE_BOUNDARY_RE = re.compile(
-    r"tracker|row|string|module|panel|restricted|exclusion|buffer|road|easement|"
-    r"cable|inverter|subst|transformer|fence|layout|block(?!able)|"
-    r"gentie|gen.?tie|bess|substation|access|parking|tie.?line|collection|"
-    r"combiner|pile|rack",
+# ── Generic KMZ layer filters (utility-scale, any project / any stroke colour) ──
+# 1. Area floor — drop layout slivers
+# 2. Infrastructure blacklist — electrical, collection, roads, trackers, etc.
+# 3. Everything else ≥ floor is treated as a candidate site parcel
+
+# Drop tiny GIS noise (tracker cells, slivers) — not a minimum project size
+MIN_LAYOUT_SLIVER_HA = 0.5
+
+# EPC / GIS export layers that are never site boundaries (industry-generic terms)
+_INFRASTRUCTURE_LAYER_RE = re.compile(
+    r"\bcircuit|circuit\s*\d|mv[\s\-]?circuit|lv[\s\-]?circuit|"
+    r"future\s*phase|collection|string|inverter|combiner|tracker|module|"
+    r"\brow\b|layout|gentie|gen[\s\-]?tie|subst|substation|bess|\bpoi\b|"
+    r"access\s*road|\broad\b|easement|wire|conduit|tie[\s\-]?line|parking|"
+    r"gen[\s\-]?tie|cable|transformer|pile|rack|buffer|exclusion|"
+    r"restricted|easement|panel",
     re.I,
 )
-_INCLUDE_BOUNDARY_RE = re.compile(
-    r"site|boundary|buildable|parcel|field|area|limit|perimeter|develop|zone|"
-    r"usable|solar|pv|plot|project",
+_INFRASTRUCTURE_DETAIL_RE = re.compile(
+    r"tracker|row|string|module|panel|road|easement|cable|inverter|"
+    r"subst|transformer|layout|block(?!able)|gentie|gen.?tie|bess|"
+    r"access|parking|tie.?line|collection|combiner|pile|rack",
     re.I,
 )
-_EXCLUDE_FOLDER_RE = re.compile(
-    r"mv[\s\-]?circuit|circuit\s*\d|future\s*phase|collection|string|inverter|"
-    r"combiner|tracker|module|row|layout|block\b|pile|rack|road|gentie|gen.?tie|"
-    r"subst|bess|poi\b|access|gen[\s\-]?tie|wire|conduit|fence",
+# Vocabulary for shortening display labels (not used to reject layers)
+_SITE_LABEL_RE = re.compile(
+    r"site|boundary|buildable|parcel|developable|perimeter|project|fence|area|limit",
     re.I,
 )
 _UNNAMED_RE = re.compile(r"\bunnamed\b", re.I)
-
-# Utility-scale default — financier / KAM workflow; skips layout slivers in KMZ
-MIN_SITE_PARCEL_HA = 10.0
 
 
 def _local_tag(tag: str) -> str:
@@ -67,8 +75,23 @@ def is_vivid_boundary_stroke(rgb) -> bool:
 
 
 def is_magenta_boundary_color(rgb) -> bool:
-    """Backward-compatible alias — prefer is_vivid_boundary_stroke."""
+    """Alias for is_vivid_boundary_stroke (kept for compatibility)."""
     return is_vivid_boundary_stroke(rgb)
+
+
+def is_infrastructure_layer(name: str) -> bool:
+    """True for electrical, collection, road, and layout layers — any project."""
+    n = name or ""
+    if _INFRASTRUCTURE_LAYER_RE.search(n):
+        return True
+    if _INFRASTRUCTURE_DETAIL_RE.search(n):
+        return True
+    return False
+
+
+def is_excluded_layer_name(name: str) -> bool:
+    """Alias — infrastructure layers are excluded from the site-parcel list."""
+    return is_infrastructure_layer(name)
 
 
 def _display_name(full_name: str) -> str:
@@ -77,7 +100,7 @@ def _display_name(full_name: str) -> str:
     if not parts:
         return "Unnamed"
     for i, part in enumerate(parts):
-        if _INCLUDE_BOUNDARY_RE.search(part):
+        if _SITE_LABEL_RE.search(part):
             tail = parts[i:]
             return " / ".join(tail[-2:]) if len(tail) > 2 else " / ".join(tail)
     if len(parts) >= 2 and _UNNAMED_RE.search(parts[-1]):
@@ -87,22 +110,12 @@ def _display_name(full_name: str) -> str:
 
 def is_primary_site_feature(name: str, area_ha: float, line_rgb=None, poly_rgb=None) -> bool:
     """
-    True for parcels in the default short list.
-    First gate: ≥ MIN_SITE_PARCEL_HA, then layer/folder name rules.
+    Site-parcel list: not infrastructure, and above layout-sliver noise floor.
+    No minimum project size — supports small agri-PV sites.
     """
-    if area_ha < MIN_SITE_PARCEL_HA:
+    if area_ha < MIN_LAYOUT_SLIVER_HA:
         return False
-    if _EXCLUDE_FOLDER_RE.search(name or ""):
-        return False
-    if _INCLUDE_BOUNDARY_RE.search(name or ""):
-        return True
-    if _EXCLUDE_BOUNDARY_RE.search(name or ""):
-        return False
-    if _UNNAMED_RE.search(name or ""):
-        return False
-    if is_vivid_boundary_stroke(line_rgb or poly_rgb):
-        return True
-    return True
+    return not is_infrastructure_layer(name)
 
 
 def guess_boundary_enabled(name: str, area_ha: float, line_rgb=None, poly_rgb=None) -> bool:
@@ -173,7 +186,7 @@ def _line_to_ring(pts, label, force_close=False):
     if not pts or len(pts) < 3:
         return None
     label = label or ""
-    is_site = bool(_INCLUDE_BOUNDARY_RE.search(label))
+    is_site = bool(_SITE_LABEL_RE.search(label))
     gap = _gap_meters(pts)
 
     if gap <= 1.0:
@@ -301,11 +314,10 @@ def _parse_kml_root(root) -> list:
         if not ring or len(ring) < 4:
             return
         area_ha = _ring_area_ha_lonlat(ring)
-        if area_ha < MIN_SITE_PARCEL_HA:
+        if area_ha < MIN_LAYOUT_SLIVER_HA:
             return
-        if _EXCLUDE_BOUNDARY_RE.search(label or "") and area_ha < 20.0:
-            if not is_vivid_boundary_stroke(line_rgb or poly_rgb):
-                return
+        if is_infrastructure_layer(label):
+            return
         sig = (round(ring[0][0], 5), round(ring[0][1], 5), len(ring))
         if sig in seen:
             return
@@ -477,3 +489,37 @@ def boundaries_from_kmz_latlon(raw: bytes, source_key: str) -> tuple:
         })
     hidden = sum(1 for b in out if not b.get("is_primary"))
     return out, hidden, len(features)
+
+
+def ring_area_ha_latlon(coords) -> float:
+    """Area (ha) for [[lat, lon], ...] rings."""
+    if not coords or len(coords) < 3:
+        return 0.0
+    lonlat = [(c[1], c[0]) for c in coords]
+    ring = normalize_ring_lonlat(lonlat)
+    return round(_ring_area_ha_lonlat(ring), 2)
+
+
+def ring_area_ha_lonlat(coords) -> float:
+    """Area (ha) for [(lon, lat), ...] rings."""
+    if not coords or len(coords) < 3:
+        return 0.0
+    return round(_ring_area_ha_lonlat(normalize_ring_lonlat(coords)), 2)
+
+
+def filter_boundary_list(boundaries: list, latlon: bool = True) -> list:
+    """Re-apply site-parcel rules to saved boundaries (drops infrastructure / slivers)."""
+    out = []
+    for b in boundaries:
+        coords = b.get("coords") or []
+        area = ring_area_ha_latlon(coords) if latlon else ring_area_ha_lonlat(coords)
+        name = b.get("full_name") or b.get("name", "")
+        if not is_primary_site_feature(name, area):
+            continue
+        out.append({
+            **b,
+            "full_name": name,
+            "is_primary": True,
+            "enabled": guess_boundary_enabled(name, area),
+        })
+    return out
