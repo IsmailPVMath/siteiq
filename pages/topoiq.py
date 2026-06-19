@@ -654,36 +654,23 @@ st.markdown("""
         background: #ffffff;
         border: 1.5px solid #dce8f5;
         border-radius: 12px;
-        padding: 0.95rem 1rem;
+        padding: 1.1rem 1.15rem;
         margin-bottom: 0.75rem;
         box-shadow: 0 1px 4px rgba(21, 101, 192, 0.06);
-        display: flex;
-        gap: 0.85rem;
-        align-items: flex-start;
-        min-height: 74px;
-    }
-    .topo-feature-icon {
-        width: 38px; height: 38px;
-        border-radius: 10px;
-        background: #e8f2fc;
-        color: #1565c0;
-        display: flex; align-items: center; justify-content: center;
-        flex-shrink: 0;
-        font-size: 1rem;
+        min-height: 0;
     }
     .topo-feature-title {
-        font-size: 0.8rem;
+        font-size: 1.02rem;
         font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.07em;
+        letter-spacing: -0.01em;
         color: #0d1a0d;
-        line-height: 1.3;
+        line-height: 1.25;
     }
     .topo-feature-desc {
-        font-size: 0.8rem;
+        font-size: 0.84rem;
         color: #4a6a8a;
         font-weight: 500;
-        margin-top: 0.28rem;
+        margin-top: 0.35rem;
         line-height: 1.5;
     }
 
@@ -1170,10 +1157,10 @@ def load_boundary_file(uploaded):
 
 # ── Pre-populate from shared pvm_project ──────────────────────────────────
 _proj = st.session_state.get("pvm_project", {})
-if _proj.get("name") and not st.session_state.get("topo_project_name"):
-    st.session_state["topo_project_name"] = _proj["name"]
-if _proj.get("country") and not st.session_state.get("topo_country"):
-    st.session_state["topo_country"] = _proj["country"]
+_proj_name = _proj.get("name", "")
+_proj_ctry = _proj.get("country", "")
+_has_proj = _proj.get("lat") is not None and _proj.get("lon") is not None
+
 if _proj.get("lat") and _proj.get("lon") and not st.session_state.get("topo_center"):
     st.session_state["topo_center"] = [_proj["lat"], _proj["lon"]]
     st.session_state["topo_zoom"] = 14
@@ -1217,7 +1204,7 @@ if _proj.get("polygon_boundaries"):
                 "layer_group": b.get("layer_group"),
                 "coords": [(c[1], c[0]) for c in b["coords"]],
                 "enabled": b.get("enabled", True),
-                "is_primary": True,
+                "is_primary": b.get("is_primary", True),
             }
             for i, b in enumerate(_loaded)
             if b.get("coords")
@@ -1232,240 +1219,72 @@ elif _preloaded_polygon and not st.session_state.get("topo_from_proj"):
     }]
     st.session_state["topo_from_proj"] = True
 
-topo_project_name = st.session_state.get("topo_project_name", "")
-topo_country      = st.session_state.get("topo_country", "")
-
-with st.expander("✏️ Project details", expanded=not bool(topo_project_name)):
-    _pn_col1, _pn_col2 = st.columns(2)
-    topo_project_name = _pn_col1.text_input("Project Name", value=topo_project_name,
-                                             placeholder="e.g. Bavaria North – Site A")
-    topo_country      = _pn_col2.text_input("Country / Region", value=topo_country,
-                                             placeholder="e.g. Germany")
-    if topo_project_name:
-        st.session_state["topo_project_name"] = topo_project_name
-    if topo_country:
-        st.session_state["topo_country"] = topo_country
+if _has_proj:
+    st.markdown(f"""
+    <div style="background:#e8f5ee;border:1px solid #b8ddc8;border-radius:8px;
+                padding:0.65rem 1rem;margin-bottom:0.9rem;font-size:0.89rem;color:#1a3a1a;">
+      <strong>📋 Project:</strong>&nbsp; {_proj_name or "Unnamed"}
+      &nbsp;·&nbsp; {_proj_ctry or "—"}
+      &nbsp;·&nbsp; {_proj["lat"]:.5f}°N, {_proj["lon"]:.5f}°E
+    </div>
+    """, unsafe_allow_html=True)
+elif not _has_proj:
+    st.info(
+        "Set up a project in **Project Setup** first — upload your KMZ or draw the site boundary there.",
+        icon="ℹ️",
+    )
 
 left, right = st.columns([1, 1.4])
 
+_enabled_polys = []
+run = False
+grid_spacing = 5
+contour_minor = 0.5
+contour_major = 1.0
+
 with left:
-    st.markdown('<div class="section-hdr"><i class="fa-solid fa-draw-polygon" style="color:#1565c0;"></i> Site Boundary</div>', unsafe_allow_html=True)
-
-    if st.session_state.get("topo_from_proj") and st.session_state.get("topo_boundaries"):
-        st.markdown(
-            f'<div style="background:#e8f5ee;border:1.5px solid #b8ddc8;border-radius:10px;'
-            f'padding:0.75rem 1rem;margin-bottom:0.6rem;">'
-            f'<span style="font-weight:700;color:#145f34;font-size:0.88rem;">'
-            f'<i class="fa-solid fa-circle-check"></i> Boundaries loaded from project</span><br>'
-            f'<span style="font-size:0.8rem;color:#3a5a3a;">'
-            f'Adjust the checklist below, or upload a KMZ here to replace.</span>'
-            f'</div>',
-            unsafe_allow_html=True
-        )
-        _tb = st.session_state["topo_boundaries"]
-        if len(_tb) == 1 and _tb[0].get("name") == "Project boundary":
-            st.info(
-                "Only one boundary is saved on this project (older format). "
-                "Re-upload your KMZ in **Project Setup** or below to import site parcels."
-            )
-
-    if not st.session_state.get("topo_from_proj"):
-        input_method = st.radio("Input method", [
-            "📁 Upload KML / KMZ / DXF / DWG",
-            "✏️ Draw Site Boundary on Map",
-        ], horizontal=True, help="Upload is fastest for utility-scale KMZ exports with multiple parcels.")
-    else:
-        input_method = "📁 Upload KML / KMZ / DXF / DWG"
-
-    _new_draw = None
-
-    if input_method == "✏️ Draw Site Boundary on Map":
-
-            nav_tab1, nav_tab2 = st.tabs(["🔍 Search by Name", "📍 Enter Coordinates"])
-
-            with nav_tab1:
-                search_q = st.text_input("Place name", placeholder="e.g. Rajasthan India or Andalusia Spain",
-                                         label_visibility="collapsed")
-                if search_q and search_q != st.session_state.get("topo_last_search", ""):
-                    try:
-                        r = requests.get(
-                            "https://nominatim.openstreetmap.org/search",
-                            params={"q": search_q, "format": "json", "limit": 1},
-                            headers={"User-Agent": "TopoIQ/1.0 (pvmath.com; contact@pvmath.com)"},
-                            timeout=10
-                        )
-                        data = r.json()
-                        if data:
-                            st.session_state["topo_center"] = [float(data[0]["lat"]), float(data[0]["lon"])]
-                            st.session_state["topo_zoom"] = 15
-                            st.session_state["topo_last_search"] = search_q
-                            st.rerun()
-                        else:
-                            st.warning("Location not found — try a different name.")
-                    except Exception:
-                        st.warning("Search unavailable — try coordinates instead.")
-                    st.session_state["topo_last_search"] = search_q
-
-            with nav_tab2:
-                c1, c2 = st.columns(2)
-                with c1:
-                    lat_in = st.text_input("↕️ Latitude", placeholder="e.g. 26.8467",
-                                           key="coord_lat")
-                with c2:
-                    lon_in = st.text_input("↔️ Longitude", placeholder="e.g. 80.9462",
-                                           key="coord_lon")
-
-                coord_key = f"{lat_in}|{lon_in}"
-                if lat_in and lon_in and coord_key != st.session_state.get("topo_last_coord", ""):
-                    try:
-                        lat_f = float(lat_in.strip())
-                        lon_f = float(lon_in.strip())
-                        if -90 <= lat_f <= 90 and -180 <= lon_f <= 180:
-                            st.session_state["topo_center"] = [lat_f, lon_f]
-                            st.session_state["topo_zoom"] = 15
-                            st.session_state["topo_last_coord"] = coord_key
-                            st.rerun()
-                        else:
-                            st.error("Latitude must be −90 to 90, Longitude −180 to 180.")
-                    except ValueError:
-                        st.caption("Type valid decimal numbers (e.g. 26.8467, 80.9462)")
-
-                latlon_paste = st.text_input("Or paste as  lat, lon", placeholder="26.8467, 80.9462",
-                                             key="coord_paste")
-                if latlon_paste and latlon_paste != st.session_state.get("topo_last_paste", ""):
-                    try:
-                        parts = latlon_paste.replace(";", ",").split(",")
-                        lat_f, lon_f = float(parts[0].strip()), float(parts[1].strip())
-                        if -90 <= lat_f <= 90 and -180 <= lon_f <= 180:
-                            st.session_state["topo_center"] = [lat_f, lon_f]
-                            st.session_state["topo_zoom"] = 15
-                            st.session_state["topo_last_paste"] = latlon_paste
-                            st.rerun()
-                        else:
-                            st.error("Coordinates out of range.")
-                    except Exception:
-                        st.caption("Format: latitude, longitude  (decimal degrees)")
-
-            st.markdown(
-                '<div style="background:rgba(255,193,7,0.08);border:1px solid rgba(255,193,7,0.35);'
-                'border-radius:8px;padding:0.5rem 0.9rem;font-size:0.82rem;color:#5a4a00;margin-bottom:0.4rem;">'
-                '<i class="fa-solid fa-pen-to-square" style="color:#c8960a;margin-right:0.5rem;"></i>'
-                '<strong>How to draw:</strong> &nbsp;'
-                '① Click the <strong>polygon tool</strong> (pentagon icon) in the left toolbar. &nbsp;'
-                '② Click each corner of your site boundary. &nbsp;'
-                '③ Click <strong>Finish</strong>, then edit or delete with the toolbar if needed.'
-                '</div>',
-                unsafe_allow_html=True
-            )
-
-            _map_data = _render_topo_boundary_map(
-                st.session_state.get("topo_boundaries", []),
-                height=430,
-                analysis_polygon=st.session_state.get("topo_analysis_polygon"),
-                enable_draw=True,
-            )
-            polygon_coords = _extract_drawn_polygon(_map_data) if _map_data else None
-
-            if polygon_coords:
-                _new_draw = polygon_coords
-                _drawn_area_ha = boundary_area_ha(polygon_coords)
-                if _drawn_area_ha > MAX_SITE_AREA_HA:
-                    st.error(_area_limit_message(_drawn_area_ha))
-                else:
-                    st.success(
-                        f"✅ Boundary drawn — {len(polygon_coords)-1} vertices · "
-                        f"{_drawn_area_ha:,.1f} ha"
-                    )
-            else:
-                st.caption("Draw your site boundary on the map above.")
-
-    else:
-        if st.session_state.get("topo_boundaries"):
-            with st.expander("📁 Upload KMZ/KML (replaces boundary list)", expanded=False):
-                f = st.file_uploader(
-                    "Boundary file",
-                    type=["kml", "kmz", "dxf", "dwg"],
-                    help="All shapes imported — tracker rows auto-excluded where possible.",
-                )
-        else:
-            f = st.file_uploader(
-                "Upload boundary file",
-                type=["kml", "kmz", "dxf", "dwg"],
-                help="KMZ/KML from Google Earth or GIS — site parcels auto-detected; "
-                     "circuits, roads, and layout layers are auto-hidden.",
-            )
-        if f:
-            file_key = f"{f.name}_{f.size}"
-            if st.session_state.get("topo_upload_key") != file_key:
-                raw, ftype = load_boundary_file(f)
-
-                if ftype == "dwg_unsupported":
-                    st.warning(
-                        "**DWG file could not be read directly.**\n\n"
-                        "In your CAD software: **File → Save As → AutoCAD DXF** (takes ~5 seconds). "
-                        "Then re-upload the `.dxf` file here."
-                    )
-                    new_bounds = []
-                elif ftype == "kmz":
-                    new_bounds = boundaries_from_features(
-                        parse_kmz_features(raw), file_key
-                    )
-                elif ftype == "kml":
-                    new_bounds = boundaries_from_features(
-                        parse_kml_features(raw), file_key
-                    )
-                elif ftype in ("dxf", "dwg_ok"):
-                    new_bounds = _boundaries_from_file_dict(
-                        parse_dxf_polygons(raw), file_key
-                    )
-                else:
-                    new_bounds = []
-
-                primary = [b for b in new_bounds if b.get("is_primary", True)]
-                if not primary and not new_bounds:
-                    st.error(
-                        "No site boundaries found. Ensure the KMZ contains closed "
-                        "boundary polylines or polygons."
-                    )
-                elif not primary:
-                    st.warning(
-                        "No site parcels auto-detected — showing all layers. "
-                        "Use **Site areas only** or check parcels manually."
-                    )
-                    st.session_state["topo_boundaries"] = new_bounds
-                    st.session_state["topo_upload_key"] = file_key
-                    st.session_state["topo_show_all_layers"] = True
-                    st.session_state.pop("topo_from_proj", None)
-                    st.session_state.pop("topo_analysis_polygon", None)
-                    st.session_state["topo_analysis_mode"] = "parcels"
-                    st.rerun()
-                else:
-                    st.session_state["topo_boundaries"] = new_bounds
-                    st.session_state["topo_upload_key"] = file_key
-                    st.session_state["topo_show_all_layers"] = False
-                    st.session_state.pop("topo_from_proj", None)
-                    st.session_state.pop("topo_analysis_polygon", None)
-                    st.session_state["topo_analysis_mode"] = "parcels"
-                    hidden_n = len(new_bounds) - len(primary)
-                    n_en = sum(1 for b in primary if b["enabled"])
-                    msg = (
-                        f"Loaded **{len(primary)}** site parcel{'s' if len(primary) != 1 else ''}"
-                    )
-                    if hidden_n:
-                        msg += f" · **{hidden_n}** infrastructure layers hidden"
-                    msg += f" · **{n_en}** ready for analysis"
-                    st.success(msg)
-                    st.rerun()
-
-    if _new_draw:
-        _sig = tuple(round(c[0], 5) for c in _new_draw[: min(8, len(_new_draw))])
-        if st.session_state.get("topo_last_draw_sig") != _sig:
-            st.session_state["topo_last_draw_sig"] = _sig
-            st.session_state["topo_analysis_polygon"] = _new_draw
-            st.session_state["topo_analysis_mode"] = "drawn"
+    st.markdown(
+        '<div class="section-hdr"><i class="fa-solid fa-layer-group" style="color:#1565c0;"></i> '
+        'Analysis boundary</div>',
+        unsafe_allow_html=True,
+    )
 
     _boundaries = st.session_state.get("topo_boundaries", [])
-    if _boundaries:
+
+    if not _has_proj:
+        st.warning(
+            "No project loaded. Open **Project Setup**, choose **Full Mode**, upload your KMZ "
+            "(or draw a boundary), save, then return here."
+        )
+        if st.button("Go to Project Setup", type="primary", use_container_width=True, key="topo_go_proj"):
+            st.switch_page("pages/project.py")
+        _enabled_polys = []
+    elif not _boundaries:
+        st.warning(
+            "This project has no site boundary yet. In **Project Setup**, switch to **Full Mode**, "
+            "upload your KMZ or draw the boundary, and **Save Project**."
+        )
+        if st.button("Go to Project Setup", type="primary", use_container_width=True, key="topo_go_proj_empty"):
+            st.switch_page("pages/project.py")
+        _enabled_polys = []
+    else:
+        st.markdown(
+            '<div style="background:#e8f5ee;border:1.5px solid #b8ddc8;border-radius:10px;'
+            'padding:0.75rem 1rem;margin-bottom:0.6rem;">'
+            '<span style="font-weight:700;color:#145f34;font-size:0.88rem;">'
+            '<i class="fa-solid fa-circle-check"></i> Boundaries from Project Setup</span><br>'
+            '<span style="font-size:0.8rem;color:#3a5a3a;">'
+            'Choose parcels below, or draw a custom analysis polygon on the map. '
+            'To change the KMZ, edit the project in Project Setup.</span>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+        if len(_boundaries) == 1 and _boundaries[0].get("name") == "Project boundary":
+            st.info(
+                "Only one boundary is saved (older format). Re-upload your KMZ in **Project Setup** "
+                "for the full parcel tree."
+            )
+
         _render_boundary_manager()
 
         st.session_state.setdefault("topo_analysis_mode", "parcels")
@@ -1538,51 +1357,50 @@ with left:
             elif not st.session_state.get("topo_analysis_polygon"):
                 st.caption("Draw your analysis boundary on the map above — polygon tool in the left toolbar.")
 
-    if st.session_state.get("topo_analysis_mode") == "drawn":
-        _ap = st.session_state.get("topo_analysis_polygon")
-        _enabled_polys = [_ap] if _ap else []
-    else:
-        _enabled_polys = [b["coords"] for b in _boundaries if b.get("enabled")]
+        if st.session_state.get("topo_analysis_mode") == "drawn":
+            _ap = st.session_state.get("topo_analysis_polygon")
+            _enabled_polys = [_ap] if _ap else []
+        else:
+            _enabled_polys = [b["coords"] for b in _boundaries if b.get("enabled")]
 
-    st.markdown(
-        '<div class="section-hdr" style="margin-top:1rem;">'
-        '<i class="fa-solid fa-sliders" style="color:#1565c0;"></i> Settings</div>',
-        unsafe_allow_html=True,
-    )
-    st.markdown('<div class="pvm-topo-settings"></div>', unsafe_allow_html=True)
-    sc1, sc2, sc3 = st.columns(3)
-    grid_spacing = sc1.slider("Grid spacing (m)", min_value=3, max_value=10, value=5, step=1,
-                               help="Smaller = finer mesh, more detail, slower processing")
-    contour_minor = sc2.slider("Minor contour (m)", min_value=0.1, max_value=2.0, value=0.5, step=0.1)
-    contour_major = sc3.slider("Major contour (m)", min_value=0.5, max_value=10.0, value=1.0, step=0.5)
+    if _boundaries:
+        st.markdown(
+            '<div class="section-hdr" style="margin-top:1rem;">'
+            '<i class="fa-solid fa-sliders" style="color:#1565c0;"></i> Settings</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown('<div class="pvm-topo-settings"></div>', unsafe_allow_html=True)
+        sc1, sc2, sc3 = st.columns(3)
+        grid_spacing = sc1.slider("Grid spacing (m)", min_value=3, max_value=10, value=5, step=1,
+                                   help="Smaller = finer mesh, more detail, slower processing")
+        contour_minor = sc2.slider("Minor contour (m)", min_value=0.1, max_value=2.0, value=0.5, step=0.1)
+        contour_major = sc3.slider("Major contour (m)", min_value=0.5, max_value=10.0, value=1.0, step=0.5)
 
-    _site_area_ha = boundaries_union_area_ha(_enabled_polys) if _enabled_polys else None
-    _area_over_limit = (
-        _site_area_ha is not None and _site_area_ha > MAX_SITE_AREA_HA
-    )
-    if _area_over_limit:
-        st.error(_area_limit_message(_site_area_ha))
+        _site_area_ha = boundaries_union_area_ha(_enabled_polys) if _enabled_polys else None
+        _area_over_limit = (
+            _site_area_ha is not None and _site_area_ha > MAX_SITE_AREA_HA
+        )
+        if _area_over_limit:
+            st.error(_area_limit_message(_site_area_ha))
 
-    _topo_user = st.session_state.get("pvm_user_id", "guest")
-    _topo_left = remaining(_topo_user, "topoiq")
-    run = False
+        _topo_user = st.session_state.get("pvm_user_id", "guest")
+        _topo_left = remaining(_topo_user, "topoiq")
 
-    if is_over_limit(_topo_user, "topoiq"):
-        show_paywall("TopoIQ")
-        run = False
-    else:
-        if _topo_left <= 1:
-            st.warning(f"⚠️ {_topo_left} free analysis remaining after this run.")
-        run = st.button("⛰ Run Terrain Analysis", type="primary",
-                        use_container_width=True,
-                        disabled=(not _enabled_polys or _area_over_limit))
-        if not _enabled_polys:
-            if st.session_state.get("topo_analysis_mode") == "drawn":
-                st.caption("Switch to custom polygon mode and draw your analysis boundary on the map.")
-            else:
-                st.caption("Upload a KMZ or check at least one parcel above to enable analysis.")
-        elif _area_over_limit:
-            st.caption(f"Reduce selected area below {MAX_SITE_AREA_HA:,} ha to run analysis.")
+        if is_over_limit(_topo_user, "topoiq"):
+            show_paywall("TopoIQ")
+        else:
+            if _topo_left <= 1:
+                st.warning(f"⚠️ {_topo_left} free analysis remaining after this run.")
+            run = st.button("⛰ Run Terrain Analysis", type="primary",
+                            use_container_width=True,
+                            disabled=(not _enabled_polys or _area_over_limit))
+            if not _enabled_polys:
+                if st.session_state.get("topo_analysis_mode") == "drawn":
+                    st.caption("Draw your analysis boundary on the map above.")
+                else:
+                    st.caption("Check at least one parcel in the layer tree above.")
+            elif _area_over_limit:
+                st.caption(f"Reduce selected area below {MAX_SITE_AREA_HA:,} ha to run analysis.")
 
 # ─── Results ──────────────────────────────────────────────────────────────────
 with right:
@@ -1780,8 +1598,8 @@ with right:
                 verdict_label=verdict_label,
                 verdict_detail=verdict_detail,
                 slope_bins=_slope_bins,
-                project_name=st.session_state.get("topo_project_name", ""),
-                country=st.session_state.get("topo_country", ""),
+                project_name=_proj.get("name", ""),
+                country=_proj.get("country", ""),
             )
         if pdf_bytes:
             st.download_button(
@@ -1855,26 +1673,24 @@ with right:
         st.caption("Draw or upload your site boundary on the left, then click Run Terrain Analysis.")
         wc1, wc2 = st.columns(2)
         _wcards = [
-            (wc1, "fa-satellite", "Satellite DEM",
+            (wc1, "Satellite DEM",
              "Copernicus GLO-30 · ~2.4 m resolution · global coverage"),
-            (wc2, "fa-cube", "Civil 3D ready",
+            (wc2, "Civil 3D ready",
              "LandXML TIN surface · import directly, no conversion"),
-            (wc1, "fa-layer-group", "DXF contours",
+            (wc1, "DXF contours",
              "Major & minor contour lines · configurable intervals"),
-            (wc2, "fa-table-cells", "XYZ point cloud",
+            (wc2, "XYZ point cloud",
              "Easting / Northing / Elevation CSV for any tool"),
-            (wc1, "fa-chart-line", "Slope analysis",
+            (wc1, "Slope analysis",
              "Mean slope · % area over threshold · tracker suitability"),
-            (wc2, "fa-clipboard-check", "Accuracy report",
+            (wc2, "Accuracy report",
              "Source · resolution · RMSE · vegetation warnings"),
         ]
-        for _col, _icon, _title, _desc in _wcards:
+        for _col, _title, _desc in _wcards:
             _col.markdown(
                 f'<div class="topo-feature-card">'
-                f'<div class="topo-feature-icon"><i class="fa-solid {_icon}"></i></div>'
-                f'<div>'
                 f'<div class="topo-feature-title">{_title}</div>'
                 f'<div class="topo-feature-desc">{_desc}</div>'
-                f'</div></div>',
+                f'</div>',
                 unsafe_allow_html=True,
             )

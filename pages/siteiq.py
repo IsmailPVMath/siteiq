@@ -1061,9 +1061,14 @@ if _has_proj:
 
 pd_col1, pd_col2 = st.columns(2)
 with pd_col1:
-    project_name = st.text_input("Project Name", value=_proj_name, placeholder="e.g. Bavaria North – Site A")
+    st.markdown(f"**Project:** {_proj_name or '—'}")
 with pd_col2:
-    project_country_input = st.text_input("Project located in (Country)", value=_proj_ctry, placeholder="e.g. Italy, Germany, Spain…")
+    st.markdown(f"**Country:** {_proj_ctry or '—'}")
+if not _has_proj:
+    st.info(
+        "Set up a project in **Project Setup** first — location, boundary, and area are entered there once.",
+        icon="ℹ️",
+    )
 
 st.divider()
 
@@ -1099,6 +1104,11 @@ st.divider()
 
 left, right = st.columns([1, 2])
 
+project_name = _proj_name
+project_country_input = _proj_ctry
+
+go_clicked = False
+
 with left:
     st.subheader("📍 Site Location")
 
@@ -1109,13 +1119,17 @@ with left:
         _proj["polygon_coords"]
         if (_proj.get("mode") == "full" and _proj.get("polygon_coords"))
         else None
-    )  # project.py stores this as [[lat,lon], ...]
+    )
 
-    if _has_proj and _proj_polygon_ll:
-        # ── Full Mode project with a drawn boundary — show the actual polygon,
-        # same as TopoIQ's "boundary loaded from project" preview, instead of
-        # collapsing it to a single point. Read-only here (same as TopoIQ's
-        # preloaded view) — go to Project Setup to redraw or clear it.
+    if not _has_proj:
+        st.warning(
+            "No project location yet. Open **Project Setup**, enter your site (pin, coordinates, "
+            "or KMZ), and save — then return here to run SiteIQ."
+        )
+        if st.button("Go to Project Setup", type="primary", use_container_width=True, key="siq_go_proj"):
+            st.switch_page("pages/project.py")
+
+    elif _proj_polygon_ll:
         lat = _proj_lat
         lon = _proj_lon
         _lons_p = [c[1] for c in _proj_polygon_ll]
@@ -1127,7 +1141,7 @@ with left:
             f'<div style="background:#e8f5ee;border:1.5px solid #b8ddc8;border-radius:10px;'
             f'padding:0.75rem 1rem;margin-bottom:0.6rem;">'
             f'<span style="font-weight:700;color:#145f34;font-size:0.88rem;">'
-            f'<i class="fa-solid fa-circle-check"></i> Site boundary loaded from project</span><br>'
+            f'<i class="fa-solid fa-circle-check"></i> Site boundary from Project Setup</span><br>'
             f'<span style="font-size:0.8rem;color:#3a5a3a;">'
             f'{len(_proj_polygon_ll)-1} vertices &nbsp;·&nbsp; '
             f'Centre {_lat_c:.4f}°, {_lon_c:.4f}°</span>'
@@ -1142,14 +1156,13 @@ with left:
             color="#22c55e", fill=True, fill_opacity=0.25, weight=3
         ).add_to(m)
         st_folium(m, width=None, height=340, returned_objects=[])
-        st.caption("To edit or clear this boundary, go to Project Setup and redraw it there.")
+        st.caption("Read-only preview — edit the boundary in **Project Setup**.")
         st.success(f"📌 {lat:.5f}°N, {lon:.5f}°E")
 
-    elif _has_proj:
-        # ── Project context, point/quick mode only — show pinned map ──
-        lat = st.session_state.get("map_lat", _proj_lat)
-        lon = st.session_state.get("map_lon", _proj_lon)
-        center = st.session_state.get("map_center", [lat, lon])
+    else:
+        lat = _proj_lat
+        lon = _proj_lon
+        center = [_proj_lat, _proj_lon]
         zoom   = st.session_state.get("map_zoom", 13)
 
         m = folium.Map(location=center, zoom_start=zoom,
@@ -1158,146 +1171,23 @@ with left:
         folium.Marker([lat, lon], tooltip="Project site",
                       icon=folium.Icon(color="green", icon="star")).add_to(m)
 
-        st.caption("Location from your project. Click map to override.")
-        map_result = st_folium(m, width=None, height=340, returned_objects=["last_clicked"])
-        if map_result and map_result.get("last_clicked"):
-            _lc = map_result["last_clicked"]
-            st.session_state["map_lat"]    = _lc["lat"]
-            st.session_state["map_lon"]    = _lc["lng"]
-            st.session_state["map_center"] = [_lc["lat"], _lc["lng"]]
-            st.session_state["map_zoom"]   = zoom
-            lat = _lc["lat"]
-            lon = _lc["lng"]
-            st.rerun()
+        st_folium(m, width=None, height=340, returned_objects=[])
+        st.caption("Pin location from **Project Setup** — click the map there to move it.")
         st.success(f"📌 {lat:.5f}°N, {lon:.5f}°E")
 
+    if _has_proj and _proj.get("area_ha"):
+        area_ha = float(_proj["area_ha"])
+        st.metric("Site area (ha)", f"{area_ha:,.1f}")
+    elif _has_proj:
+        area_ha = st.number_input(
+            "Site area (ha)",
+            min_value=0.1,
+            value=float(_proj.get("area_ha") or 10.0),
+            step=0.5,
+            help="Set area in Project Setup to auto-fill here on future visits.",
+        )
     else:
-        # ── No project context: full input method selector ──
-        method = st.radio("Input method", [
-            "🗺️ Click on Map",
-            "📐 Coordinates (Lat / Lon)",
-            "🔗 Google Maps Link",
-            "📁 Upload KML / KMZ File"
-        ])
-
-        if method == "🗺️ Click on Map":
-            nav1, nav2 = st.tabs(["🔍 Search by Name", "📍 Enter Coordinates"])
-
-            with nav1:
-                search_q = st.text_input("Place name", placeholder="e.g. Houston Texas or Rajasthan India",
-                                         label_visibility="collapsed")
-                if search_q and search_q != st.session_state.get("last_map_search", ""):
-                    with st.spinner("Searching…"):
-                        slat, slon, _ = geocode_address(search_q)
-                    if slat:
-                        st.session_state["map_center"]      = [slat, slon]
-                        st.session_state["map_zoom"]        = 13
-                        st.session_state["last_map_search"] = search_q
-                        st.rerun()
-                    else:
-                        st.session_state["last_map_search"] = search_q
-                        st.warning("Location not found — try adding the country name.")
-
-            with nav2:
-                _c1, _c2 = st.columns(2)
-                with _c1:
-                    _lat_in = st.text_input("↕️ Latitude",  placeholder="e.g. 26.8467", key="siq_clat")
-                with _c2:
-                    _lon_in = st.text_input("↔️ Longitude", placeholder="e.g. 80.9462", key="siq_clon")
-                _coord_key = f"{_lat_in}|{_lon_in}"
-                if _lat_in and _lon_in and _coord_key != st.session_state.get("siq_last_coord", ""):
-                    try:
-                        _lf, _lnf = float(_lat_in.strip()), float(_lon_in.strip())
-                        if -90 <= _lf <= 90 and -180 <= _lnf <= 180:
-                            st.session_state["map_center"]    = [_lf, _lnf]
-                            st.session_state["map_zoom"]      = 15
-                            st.session_state["map_lat"]       = _lf
-                            st.session_state["map_lon"]       = _lnf
-                            st.session_state["siq_last_coord"] = _coord_key
-                            st.rerun()
-                    except ValueError:
-                        pass
-                _paste = st.text_input("Or paste  lat, lon", placeholder="26.8467, 80.9462",
-                                       key="siq_paste")
-                if _paste and _paste != st.session_state.get("siq_last_paste", ""):
-                    try:
-                        _p = _paste.replace(";", ",").split(",")
-                        _lf, _lnf = float(_p[0].strip()), float(_p[1].strip())
-                        if -90 <= _lf <= 90 and -180 <= _lnf <= 180:
-                            st.session_state["map_center"]   = [_lf, _lnf]
-                            st.session_state["map_zoom"]     = 15
-                            st.session_state["map_lat"]      = _lf
-                            st.session_state["map_lon"]      = _lnf
-                            st.session_state["siq_last_paste"] = _paste
-                            st.rerun()
-                    except Exception:
-                        pass
-
-            center = st.session_state.get("map_center", [30.0, 10.0])
-            zoom   = st.session_state.get("map_zoom", 3)
-            m = folium.Map(location=center, zoom_start=zoom,
-                           tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
-                           attr="Google Satellite")
-            if "map_lat" in st.session_state:
-                folium.Marker(
-                    [st.session_state["map_lat"], st.session_state["map_lon"]],
-                    tooltip="Selected site",
-                    icon=folium.Icon(color="green", icon="star")
-                ).add_to(m)
-
-            st.caption("Click anywhere on the map to drop a pin on your site.")
-            map_result = st_folium(m, width=None, height=340, returned_objects=["last_clicked"])
-
-            if map_result and map_result.get("last_clicked"):
-                _lc = map_result["last_clicked"]
-                st.session_state["map_lat"]    = _lc["lat"]
-                st.session_state["map_lon"]    = _lc["lng"]
-                st.session_state["map_center"] = [_lc["lat"], _lc["lng"]]
-                st.session_state["map_zoom"]   = zoom
-                st.rerun()
-
-            if "map_lat" in st.session_state:
-                lat = st.session_state["map_lat"]
-                lon = st.session_state["map_lon"]
-                st.success(f"📌 {lat:.5f}°N, {lon:.5f}°E")
-            else:
-                st.info("Search a location or click the map to pin your site.")
-
-        elif method == "📐 Coordinates (Lat / Lon)":
-            lat = st.number_input("↕️ Latitude",  value=48.5665, format="%.5f")
-            lon = st.number_input("↔️ Longitude", value=12.1521, format="%.5f")
-
-        elif method == "🔗 Google Maps Link":
-            st.caption("Paste a Google Maps URL **or** right-click any point in Google Maps → click the coordinates at the top → paste here.")
-            maps_url = st.text_input("Paste Google Maps link or coordinates", placeholder="17.1401, 78.4802  or  https://maps.google.com/...")
-            if maps_url:
-                lat, lon = parse_google_maps_url(maps_url)
-                if lat is not None and lon is not None:
-                    st.success(f"📌 Extracted: {lat:.5f}°N, {lon:.5f}°E")
-                else:
-                    st.warning("Could not extract coordinates — try right-clicking a point in Google Maps and copying the coordinates directly.")
-
-        elif method == "📁 Upload KML / KMZ File":
-            st.caption("Export your site boundary from Google Earth, PVcase, or any GIS tool.")
-            uploaded = st.file_uploader("Upload site boundary file", type=["kml", "kmz"])
-            if uploaded:
-                data = uploaded.read()
-                if uploaded.name.endswith(".kmz"):
-                    lat, lon, kml_area = parse_kmz_bytes(data)
-                else:
-                    lat, lon, kml_area = parse_kml_bytes(data)
-                if lat is not None and lon is not None:
-                    st.success(f"📌 Centroid: {lat:.5f}°N, {lon:.5f}°E  |  Area: {kml_area} ha")
-                else:
-                    st.error("Could not read coordinates from file. Ensure it contains polygon geometry.")
-
-    # ── Site area ─────────────────────────────────────────────────────────────
-    _default_area = float(_proj.get("area_ha") or 10.0)
-    if kml_area:
-        area_ha = st.number_input("Site area (ha) — from file", min_value=0.1, value=float(kml_area), step=0.5)
-    else:
-        area_ha = st.number_input("Site area (ha)", min_value=0.1, value=_default_area, step=0.5,
-                                   help="Adjust for capacity estimate.")
+        area_ha = 10.0
 
     _used = is_over_limit(_username, "siteiq")
     _left = remaining(_username, "siteiq")
@@ -1337,7 +1227,12 @@ with left:
     else:
         if _left <= 1:
             st.warning(f"⚠️ {_left} free analysis remaining after this run.")
-        go_clicked = st.button("🔍 Run Site Screening", type="primary", use_container_width=True)
+        go_clicked = st.button(
+            "🔍 Run Site Screening",
+            type="primary",
+            use_container_width=True,
+            disabled=not _has_proj,
+        )
 
 with right:
     # st.button() only returns True on the single rerun right after the click —
@@ -1356,7 +1251,7 @@ with right:
     if not is_over_limit(_username, "siteiq") and (go_clicked or _run_cache):
         if go_clicked:
             if lat is None or lon is None:
-                st.error("Please select a site location using one of the input methods on the left.")
+                st.error("Set up a project with a site location in **Project Setup** first.")
                 st.stop()
 
             st.session_state["siteiq_project_name"] = project_name or "Unnamed Project"
