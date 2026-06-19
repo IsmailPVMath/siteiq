@@ -1072,33 +1072,36 @@ if not _has_proj:
 
 st.divider()
 
-st.caption("Designed for Ground Mount Solar Projects")
-pt_col1, pt_col2 = st.columns(2)
+_land_use = _proj.get("land_use", "Standard")
+_mount_type = _proj.get("mount_type", "Fixed Tilt")
+_land_display = "Agri-PV (Dual Use)" if _land_use == "Agri-PV" else "Standard"
+_mount_display = _mount_type
 
-with pt_col1:
-    land_use = st.radio(
-        "**Land Use**",
-        ["Standard", "Agri-PV (Dual Use)"],
-        help="Standard = conventional ground-mount. Agri-PV = dual use with agriculture (elevated / bifacial)."
+st.caption("Project configuration — set in **Project Setup**")
+if _has_proj:
+    _lu_color = "#1a5c2e" if _land_use == "Agri-PV" else "#1565c0"
+    _mt_color = "#7a4800" if _mount_type == "Single-Axis Tracker" else "#1565c0"
+    st.markdown(
+        f'<div style="background:#f0f4f8;border:1.5px solid #d4e8f8;border-radius:10px;'
+        f'padding:0.75rem 1rem;margin-bottom:0.5rem;">'
+        f'<span style="background:{_lu_color};color:#fff;padding:3px 10px;border-radius:4px;'
+        f'font-size:0.82rem;font-weight:600;">{_land_display}</span> '
+        f'<span style="background:{_mt_color};color:#fff;padding:3px 10px;border-radius:4px;'
+        f'font-size:0.82rem;font-weight:600;">{_mount_display}</span>'
+        f'<div style="font-size:0.8rem;color:#5a7a5a;margin-top:0.45rem;">'
+        f'Edit land use and mounting in <strong>Project Setup</strong>, then save.</div>'
+        f'</div>',
+        unsafe_allow_html=True,
     )
-    if land_use == "Agri-PV (Dual Use)":
-        st.markdown('<div style="background:#1a5c2e;color:#fff;border-radius:7px;padding:0.45rem 0.8rem;font-size:0.85rem;font-weight:600;">✅ Agri-PV dual-use · Local agricultural regulations apply</div>', unsafe_allow_html=True)
-    else:
-        st.markdown('<div style="background:#1565c0;color:#fff;border-radius:7px;padding:0.45rem 0.8rem;font-size:0.85rem;font-weight:600;">ℹ️ Standard ground-mount · No dual-use requirements</div>', unsafe_allow_html=True)
-
-with pt_col2:
-    mount_type = st.radio(
-        "**Mounting System**",
-        ["Fixed Tilt", "Single-Axis Tracker"],
-        help="Tracker systems require flatter terrain and more N-S row spacing."
+else:
+    st.warning(
+        "No project loaded — using **Standard** / **Fixed Tilt**. "
+        "Open **Project Setup** to configure land use and mounting once for all modules."
     )
-    if mount_type == "Single-Axis Tracker":
-        st.markdown('<div style="background:#7a4800;color:#fff;border-radius:7px;padding:0.45rem 0.8rem;font-size:0.85rem;font-weight:600;">⚠️ Tracker: max recommended slope ± 8° · Higher CAPEX, higher yield</div>', unsafe_allow_html=True)
-    else:
-        st.markdown('<div style="background:#1565c0;color:#fff;border-radius:7px;padding:0.45rem 0.8rem;font-size:0.85rem;font-weight:600;">ℹ️ Fixed Tilt: max recommended slope ≤ 10% · Lower CAPEX</div>', unsafe_allow_html=True)
-
-_land_use   = "Agri-PV" if "Agri-PV" in land_use else "Standard"
-_mount_type = mount_type
+    _land_use = "Standard"
+    _mount_type = "Fixed Tilt"
+    _land_display = "Standard"
+    _mount_display = "Fixed Tilt"
 
 st.divider()
 
@@ -1300,7 +1303,7 @@ with right:
         badge_color = "#1a5c2e" if _land_use == "Agri-PV" else "#1565c0"
         st.markdown(
             f'<span style="background:{badge_color};color:white;padding:3px 10px;border-radius:4px;font-size:0.8rem;">'
-            f'{land_use} · {mount_type}</span>',
+            f'{_land_display} · {_mount_display}</span>',
             unsafe_allow_html=True
         )
         st.markdown("")
