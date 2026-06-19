@@ -1,3 +1,4 @@
+import html as _html
 import json
 import streamlit as st
 import streamlit.components.v1 as components
@@ -388,6 +389,22 @@ with st.sidebar:
         st.markdown('<div class="pvm-group-label">Overview</div>', unsafe_allow_html=True)
         st.page_link("pages/overview.py", label="Overview")
         st.page_link("pages/my_projects.py", label="My Projects")
+
+        # ── Project hub (module launcher) ─────────────────────────────────
+        # Unlike direct module links, Project Setup is safe from any page: it
+        # loads the saved pvm_project and shows SiteIQ / TopoIQ / YieldIQ
+        # buttons only after a committed save — the same gate as before.
+        _sb_proj = st.session_state.get("pvm_project", {})
+        _sb_proj_name = (_sb_proj.get("name") or "").strip()
+        st.markdown('<div class="pvm-group-label">Project</div>', unsafe_allow_html=True)
+        st.page_link("pages/project.py", label="Project Setup")
+        if _sb_proj_name:
+            st.markdown(
+                f'<div style="font-size:0.72rem;color:#8ab88a;padding:0.1rem 0.55rem 0.35rem;'
+                f'line-height:1.35;overflow-wrap:break-word;">'
+                f'Active: {_html.escape(_sb_proj_name)}</div>',
+                unsafe_allow_html=True,
+            )
 
         # ── Modules group ────────────────────────────────────────────────
         # SiteIQ / TopoIQ / YieldIQ are intentionally NOT linked here anymore.
