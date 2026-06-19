@@ -236,11 +236,29 @@ def _display_name_from_user(user: dict) -> str:
     return ""
 
 
+def _name_parts_from_user(user: dict) -> tuple[str, str]:
+    if not user:
+        return "", ""
+    meta = user.get("user_metadata") or {}
+    fn = (meta.get("first_name") or "").strip()
+    ln = (meta.get("last_name") or "").strip()
+    if fn or ln:
+        return fn, ln
+    full = _display_name_from_user(user)
+    if full and " " in full:
+        parts = full.split(None, 1)
+        return parts[0], parts[1] if len(parts) > 1 else ""
+    return full, ""
+
+
 def _apply_user_fields(user: dict, *, email: str = "") -> None:
     if email:
         st.session_state["pvm_email"] = email
     elif user.get("email"):
         st.session_state["pvm_email"] = user.get("email", "")
+    fn, ln = _name_parts_from_user(user)
+    st.session_state["pvm_first_name"] = fn
+    st.session_state["pvm_last_name"] = ln
     name = _display_name_from_user(user)
     if name:
         st.session_state["pvm_display_name"] = name
@@ -262,6 +280,31 @@ def refresh_user_profile() -> None:
 
 def user_display_name() -> str:
     return (st.session_state.get("pvm_display_name") or "").strip()
+
+
+def update_user_name(first_name: str, last_name: str) -> dict:
+    """Persist first/last name to Supabase user_metadata (existing accounts)."""
+    fn = (first_name or "").strip()
+    ln = (last_name or "").strip()
+    if not fn or not ln:
+        return {"success": False, "error": "First and last name are required."}
+    token = st.session_state.get("pvm_access_token", "")
+    if not token:
+        return {"success": False, "error": "Not signed in."}
+    try:
+        r = _req.put(
+            f"{_sb_url()}/auth/v1/user",
+            json={"data": {"first_name": fn, "last_name": ln, "full_name": f"{fn} {ln}"}},
+            headers=_auth_hdr(token),
+            timeout=15,
+        )
+        if r.status_code == 200:
+            user = r.json()
+            _apply_user_fields(user)
+            return {"success": True}
+        return {"success": False, "error": _parse_err(r)}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 def prepared_by_line() -> str:

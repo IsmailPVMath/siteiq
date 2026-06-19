@@ -2,7 +2,10 @@ import html as _html
 import json
 import streamlit as st
 import streamlit.components.v1 as components
-from pvmath_auth import render_auth_page, sign_out, load_latest_project, UPGRADE_CONTACT
+from pvmath_auth import (
+    render_auth_page, sign_out, load_latest_project, UPGRADE_CONTACT,
+    refresh_user_profile, update_user_name,
+)
 
 st.set_page_config(
     page_title="PVMath — Solar Site Intelligence",
@@ -427,17 +430,31 @@ with st.sidebar:
             if st.button("Settings", key="pvm_settings_toggle", use_container_width=True):
                 st.session_state["pvm_show_settings"] = not st.session_state.get("pvm_show_settings", False)
             if st.session_state.get("pvm_show_settings"):
-                # Plain white text to match the rest of the sidebar — st.caption()
-                # renders in Streamlit's default muted grey, which looked
-                # inconsistent/illegible against the dark sidebar background.
+                refresh_user_profile()
                 st.markdown(
                     f'<div style="font-size:0.8rem;color:#ffffff;line-height:1.6;'
                     f'padding:0.1rem 0.1rem 0.4rem 0.1rem;">'
-                    f'Email: {email}<br>'
-                    f'Additional account settings are coming soon.'
-                    f'</div>',
-                    unsafe_allow_html=True
+                    f'Email: {email}</div>',
+                    unsafe_allow_html=True,
                 )
+                _set_fn = st.text_input(
+                    "First name",
+                    value=st.session_state.get("pvm_first_name", ""),
+                    key="pvm_settings_first",
+                    placeholder="Mohammed",
+                )
+                _set_ln = st.text_input(
+                    "Last name",
+                    value=st.session_state.get("pvm_last_name", ""),
+                    key="pvm_settings_last",
+                    placeholder="Pasha",
+                )
+                if st.button("Save name", key="pvm_save_name", use_container_width=True):
+                    _res = update_user_name(_set_fn, _set_ln)
+                    if _res.get("success"):
+                        st.success("Name saved — reports will show this.")
+                    else:
+                        st.error(_res.get("error", "Could not save name."))
 
             # "Manage Membership" just opens STRIPE_LINK — no price is hardcoded
             # here anymore (it was stale at €49 and the popover tooltip overlapped
