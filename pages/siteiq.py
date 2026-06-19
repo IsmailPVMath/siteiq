@@ -466,8 +466,8 @@ def _fetch_pvgis(lat, lon, tracker=False, raddatabase=None):
 
     opt_tilt = None
     if not tracker:
-        meta = data.get("meta", {})
-        slope = meta.get("slope", {})
+        fixed_ms = data.get("inputs", {}).get("mounting_system", {}).get("fixed", {})
+        slope = fixed_ms.get("slope", {})
         if isinstance(slope, dict):
             v = slope.get("value")
             opt_tilt = float(v) if v is not None else None
@@ -1734,12 +1734,6 @@ with right:
             "Specific yield uses 14% system loss, no row-shading — YieldIQ applies GCR-based shading at your selected GCR."
         )
         _notes_html = "".join(f"<li>{n}</li>" for n in _notes)
-        st.markdown(
-            f'<div class="siq-screening-notes">'
-            f'<div class="siq-notes-kicker">Screening notes</div>'
-            f'<ul>{_notes_html}</ul></div>',
-            unsafe_allow_html=True,
-        )
 
         st.divider()
 
@@ -1747,6 +1741,16 @@ with right:
         with d1:
             st.markdown('<div class="section-hdr"><i class="fa-solid fa-sun" style="color:#f5a623;"></i> Solar Resource</div>', unsafe_allow_html=True)
             (st.success if "✅" in g_lbl else st.warning if "⚠️" in g_lbl else st.error)(g_detail)
+            if solar.get("success") and _mount_type == "Fixed Tilt":
+                _tilt_disp = solar.get("optimal_tilt")
+                _yield_disp = solar.get("annual_yield")
+                if _tilt_disp is not None or _yield_disp is not None:
+                    _parts = []
+                    if _tilt_disp is not None:
+                        _parts.append(f"**Optimal tilt:** {_tilt_disp:.0f}° (PVGIS)")
+                    if _yield_disp is not None:
+                        _parts.append(f"**Specific yield:** {_yield_disp:,.0f} kWh/kWp/yr")
+                    st.markdown("  \n".join(_parts))
 
             st.markdown('<div class="section-hdr" style="margin-top:0.8rem;"><i class="fa-solid fa-scale-balanced" style="color:#a87fd4;"></i> Regulatory</div>', unsafe_allow_html=True)
             st.info(f"{country}  \n{eeg_status}  \n_{eeg_note}_")
@@ -1820,6 +1824,12 @@ with right:
             mime="application/pdf",
             type="primary",
             use_container_width=True
+        )
+        st.markdown(
+            f'<div class="siq-screening-notes">'
+            f'<div class="siq-notes-kicker">Screening notes</div>'
+            f'<ul>{_notes_html}</ul></div>',
+            unsafe_allow_html=True,
         )
 
     else:
