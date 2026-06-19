@@ -18,6 +18,7 @@ from pvmath_styles import inject_styles
 from pvmath_auth import save_project, _refresh_session
 from pvmath_kml import (
     BOUNDARY_COLORS,
+    MIN_SITE_PARCEL_HA,
     boundaries_from_kmz_latlon,
     guess_boundary_enabled,
 )
@@ -121,8 +122,8 @@ def _render_proj_boundary_manager():
     st.markdown("**Site boundaries** — check parcels to include in this project")
     if hidden_n and not show_all:
         st.caption(
-            f"Showing **{len(bounds)}** site parcel{'s' if len(bounds) != 1 else ''}. "
-            f"**{hidden_n}** circuit/layout layers hidden."
+            f"Showing **{len(bounds)}** site parcel{'s' if len(bounds) != 1 else ''} "
+            f"(≥{MIN_SITE_PARCEL_HA:g} ha). **{hidden_n}** other layers hidden."
         )
     else:
         st.caption(
@@ -448,7 +449,7 @@ if True:
                 if not _primary and not _bounds:
                     st.warning(
                         "No site boundaries found. Ensure the file contains buildable-area "
-                        "or project-boundary polylines."
+                        f"or project-boundary parcels ≥{MIN_SITE_PARCEL_HA:g} ha."
                     )
                 else:
                     st.session_state["proj_boundaries"] = _bounds

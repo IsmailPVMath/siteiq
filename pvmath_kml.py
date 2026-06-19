@@ -29,6 +29,9 @@ _EXCLUDE_FOLDER_RE = re.compile(
 )
 _UNNAMED_RE = re.compile(r"\bunnamed\b", re.I)
 
+# Utility-scale default — financier / KAM workflow; skips layout slivers in KMZ
+MIN_SITE_PARCEL_HA = 10.0
+
 
 def _local_tag(tag: str) -> str:
     return tag.split("}")[-1] if "}" in tag else tag
@@ -84,21 +87,22 @@ def _display_name(full_name: str) -> str:
 
 def is_primary_site_feature(name: str, area_ha: float, line_rgb=None, poly_rgb=None) -> bool:
     """
-    True for site parcels — primarily layer/folder names, not a specific colour.
-    Vivid KML stroke colour is a secondary signal when names are generic.
+    True for parcels in the default short list.
+    First gate: ≥ MIN_SITE_PARCEL_HA, then layer/folder name rules.
     """
+    if area_ha < MIN_SITE_PARCEL_HA:
+        return False
     if _EXCLUDE_FOLDER_RE.search(name or ""):
         return False
     if _INCLUDE_BOUNDARY_RE.search(name or ""):
         return True
-    if _EXCLUDE_BOUNDARY_RE.search(name or "") and area_ha < 20.0:
+    if _EXCLUDE_BOUNDARY_RE.search(name or ""):
         return False
-    rgb = line_rgb or poly_rgb
-    if is_vivid_boundary_stroke(rgb) and area_ha >= 3.0:
-        return not _UNNAMED_RE.search(name or "") or area_ha >= 8.0
     if _UNNAMED_RE.search(name or ""):
         return False
-    return area_ha >= 10.0 and not _EXCLUDE_BOUNDARY_RE.search(name or "")
+    if is_vivid_boundary_stroke(line_rgb or poly_rgb):
+        return True
+    return True
 
 
 def guess_boundary_enabled(name: str, area_ha: float, line_rgb=None, poly_rgb=None) -> bool:
@@ -297,9 +301,9 @@ def _parse_kml_root(root) -> list:
         if not ring or len(ring) < 4:
             return
         area_ha = _ring_area_ha_lonlat(ring)
-        if area_ha < 0.5 and not _INCLUDE_BOUNDARY_RE.search(label or ""):
+        if area_ha < MIN_SITE_PARCEL_HA:
             return
-        if _EXCLUDE_BOUNDARY_RE.search(label or "") and area_ha < 15.0:
+        if _EXCLUDE_BOUNDARY_RE.search(label or "") and area_ha < 20.0:
             if not is_vivid_boundary_stroke(line_rgb or poly_rgb):
                 return
         sig = (round(ring[0][0], 5), round(ring[0][1], 5), len(ring))

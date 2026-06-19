@@ -51,6 +51,7 @@ DEM_ZOOM_MAX = 14
 TILE_FETCH_WORKERS = 8
 from pvmath_kml import (
     BOUNDARY_COLORS,
+    MIN_SITE_PARCEL_HA,
     boundaries_from_features,
     guess_boundary_enabled,
     normalize_ring_lonlat,
@@ -146,8 +147,8 @@ def _render_boundary_manager():
     if hidden_n and not show_all:
         st.caption(
             f"Showing **{len(bounds)}** site parcel{'s' if len(bounds) != 1 else ''} "
-            f"(site boundaries & buildable areas). "
-            f"**{hidden_n}** circuit/layout layers hidden."
+            f"(≥{MIN_SITE_PARCEL_HA:g} ha · site boundaries & buildable areas). "
+            f"**{hidden_n}** other layers hidden."
         )
     else:
         st.caption(
@@ -1374,7 +1375,7 @@ with left:
                 if not primary and not new_bounds:
                     st.error(
                         "No site boundaries found. Ensure the KMZ contains buildable-area "
-                        "or project-boundary polylines from your GIS export."
+                        f"or project-boundary parcels ≥{MIN_SITE_PARCEL_HA:g} ha."
                     )
                 elif not primary:
                     st.warning(
