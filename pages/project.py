@@ -891,6 +891,16 @@ if True:
                 "polygon_boundaries": _bounds_save if is_full else None,
                 "map_center_cache": [lat, lon],
             }
+            from pvmath_topo_cache import boundary_fingerprint_from_boundaries
+            _new_fp = boundary_fingerprint_from_boundaries(_bounds_save) if is_full else ""
+            _old_cache = st.session_state.get("pvm_project", {}).get("topoiq_cache")
+            if (
+                _old_cache
+                and _new_fp
+                and _old_cache.get("boundary_fp") == _new_fp
+                and _old_cache.get("analysis_mode") == "parcels"
+            ):
+                _proj_data["topoiq_cache"] = _old_cache
             st.session_state["pvm_project"] = _proj_data
             st.session_state["proj_edit_mode"] = False
             clear_blank_project_flag(st.session_state)

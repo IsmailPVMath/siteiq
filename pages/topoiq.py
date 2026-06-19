@@ -18,8 +18,9 @@ from datetime import datetime
 from pvmath_auth import (
     show_paywall,
     increment_usage, is_over_limit, remaining, FREE_LIMIT,
-    prepared_by_line, module_confidence_label,
+    prepared_by_line, module_confidence_label, save_project,
 )
+from pvmath_topo_cache import build_topo_cache, persist_topo_cache, fingerprint_from_latlon_polys
 from pvmath_styles import inject_styles
 
 # ── optional heavy deps — graceful fallback ──────────────────────────────────
@@ -1117,6 +1118,33 @@ with right:
         _siq_cache = st.session_state.get("siteiq_run_cache") or {}
         _land_use = _siq_cache.get("land_use", "Standard")
         _extras = compute_terrain_extras(X, Y, Z, grid_m_used)
+
+        _topo_cache = build_topo_cache(
+            project_row_id=st.session_state.get("pvm_project_row_id"),
+            analysis_mode=st.session_state.get("topo_analysis_mode", "parcels"),
+            boundary_fp=fingerprint_from_latlon_polys(_enabled_polys),
+            area_ha=area_ha,
+            lat_c=lat_c,
+            lon_c=lon_c,
+            grid_m=grid_m_used,
+            grid_points=len(z_valid),
+            mean_slope=mean_slope,
+            max_slope=float(s_valid.max()),
+            pct_over5=pct_over5,
+            pct_over10=pct_over10,
+            z_min=float(z_valid.min()),
+            z_max=float(z_valid.max()),
+            center_elev=float(z_valid.mean()),
+            extras=_extras,
+            dem_zoom=dem_zoom,
+        )
+        persist_topo_cache(
+            _topo_cache,
+            st.session_state,
+            user_id=st.session_state.get("pvm_user_id", ""),
+            save_fn=save_project,
+        )
+
         _vf_label, _vf_detail = verdict_for_mount(mean_slope, "Fixed Tilt")
         _vt_label, _vt_detail = verdict_for_mount(
             mean_slope, "Single-Axis Tracker", extras=_extras,

@@ -24,6 +24,7 @@ _PROJECT_STATE_KEYS = (
     "map_lon",
     "last_map_search",
     "siteiq_run_cache",
+    "topoiq_run_cache",
     "siteiq_project_name",
     "siteiq_country",
     "siteiq_lat",
