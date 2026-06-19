@@ -1044,6 +1044,204 @@ def get_next_steps(project_country, land_use="Standard", lat=None, lon=None):
     return [f"{i+1}. {s}" for i, s in enumerate(steps)]
 
 
+def _tier_to_score(tier: int, *, indicative: bool = False, topoiq: bool = False) -> int:
+    base = {5: 95, 4: 88, 3: 75, 2: 55, 1: 50, 0: 30}.get(tier, 70)
+    if topoiq and tier >= 4:
+        return min(98, base + 2)
+    if indicative and tier >= 4:
+        return max(50, base - 5)
+    return base
+
+
+def _ghi_to_score(ghi) -> int:
+    try:
+        g = float(ghi)
+    except (TypeError, ValueError):
+        return 50
+    if g >= 2200:
+        return 98
+    if g >= 2000:
+        return 95
+    if g >= 1800:
+        return 90
+    if g >= 1600:
+        return 85
+    if g >= 1300:
+        return 80
+    if g >= 1100:
+        return 70
+    if g >= 900:
+        return 55
+    return 40
+
+
+def _flood_risk_to_score(flood_risk: str) -> int:
+    r = (flood_risk or "").upper()
+    if "HIGH" in r and "LOW" not in r:
+        return 40
+    if "MODERATE" in r and "LOW" not in r:
+        return 60
+    if "LOW-MOD" in r or "LOW-MODERATE" in r:
+        return 70
+    if "LOW" in r:
+        return 90
+    return 50
+
+
+def _land_use_to_score(land_use: str) -> int:
+    return 85 if land_use == "Agri-PV" else 90
+
+
+def _regulatory_to_score(country: str, eeg_status: str, project_country: str) -> int:
+    c = (project_country or country or "").lower()
+    status = (eeg_status or "").lower()
+    _strong = (
+        "germany", "deutschland", "united states", "usa", "america",
+        "spain", "france", "italy", "australia", "india", "united kingdom",
+    )
+    if any(x in c for x in _strong) and status and "check local" not in status:
+        return 85
+    if status and any(w in status for w in ("applicable", "eligible", "auction", "itc", "eeg")):
+        return 80
+    return 70
+
+
+def _verdict_label_from_score(score: int) -> str:
+    if score >= 92:
+        return "EXCELLENT"
+    if score >= 82:
+        return "VERY GOOD"
+    if score >= 72:
+        return "GOOD"
+    if score >= 62:
+        return "ACCEPTABLE"
+    if score >= 50:
+        return "CHALLENGING"
+    return "CRITICAL"
+
+
+SUITABILITY_WEIGHTS = (
+    ("Solar Resource", "solar", 35),
+    ("Terrain", "terrain", 25),
+    ("Flood Risk", "flood", 15),
+    ("Land Use", "land", 15),
+    ("Grid / Regulatory", "regulatory", 10),
+)
+
+
+def compute_site_suitability(
+    solar_lbl,
+    slope_lbl,
+    flood_risk,
+    land_use,
+    solar,
+    terrain,
+    mount_type="Fixed Tilt",
+    country="",
+    eeg_status="",
+    project_country="",
+    cap=None,
+) -> dict:
+    """Weighted suitability breakdown + key drivers for PDF."""
+    solar_tier = _param_tier(solar_lbl)
+    if terrain.get("topoiq_confirmed") and terrain.get("mean_slope_pct") is not None:
+        slope_tier = _slope_quality_tier(terrain["mean_slope_pct"], mount_type)
+        terrain_indicative = False
+        terrain_topoiq = True
+    elif "(Indicative)" in slope_lbl or terrain.get("boundary_sampled"):
+        pct = terrain.get("mean_slope_pct") or terrain.get("max_slope_pct")
+        slope_tier = _slope_quality_tier(pct, mount_type) if pct is not None else _param_tier(slope_lbl)
+        terrain_indicative = True
+        terrain_topoiq = False
+    else:
+        slope_tier = _param_tier(slope_lbl)
+        terrain_indicative = False
+        terrain_topoiq = False
+
+    solar_score = _ghi_to_score(solar.get("annual_ghi") if solar.get("success") else None)
+    if solar_tier < 4 and solar.get("success"):
+        solar_score = min(solar_score, _tier_to_score(solar_tier))
+
+    terrain_score = _tier_to_score(
+        slope_tier, indicative=terrain_indicative, topoiq=terrain_topoiq,
+    )
+    flood_score = _flood_risk_to_score(flood_risk)
+    land_score = _land_use_to_score(land_use)
+    reg_score = _regulatory_to_score(country, eeg_status, project_country)
+
+    raw = {
+        "solar": solar_score,
+        "terrain": terrain_score,
+        "flood": flood_score,
+        "land": land_score,
+        "regulatory": reg_score,
+    }
+    overall = round(
+        raw["solar"] * 0.35
+        + raw["terrain"] * 0.25
+        + raw["flood"] * 0.15
+        + raw["land"] * 0.15
+        + raw["regulatory"] * 0.10
+    )
+
+    drivers = []
+    if solar.get("success"):
+        ghi = solar.get("annual_ghi")
+        if ghi is not None and float(ghi) >= 1300:
+            drivers.append(("positive", f"Excellent solar resource ({float(ghi):,.1f} kWh/m²/yr)"))
+        elif ghi is not None:
+            drivers.append(("positive", f"Solar resource {float(ghi):,.1f} kWh/m²/yr"))
+
+    if terrain.get("success"):
+        if terrain.get("topoiq_confirmed") and terrain.get("mean_slope_pct") is not None:
+            drivers.append((
+                "positive",
+                f"Low terrain constraints (mean slope {terrain['mean_slope_pct']:.1f}%)",
+            ))
+        elif terrain.get("max_slope_pct") is not None and float(terrain["max_slope_pct"]) <= 6:
+            drivers.append((
+                "positive",
+                f"Favourable sample slope ({terrain['max_slope_pct']:.1f}% max in screening sample)",
+            ))
+
+    if cap and cap.get("mwp_lo") is not None:
+        drivers.append((
+            "positive",
+            f"Utility-scale development potential ({format_mwp_range(cap['mwp_lo'], cap['mwp_hi'])})",
+        ))
+
+    drivers.append(("warn", "Flood assessment based on screening-level data only"))
+    if terrain.get("boundary_sampled") and not terrain.get("topoiq_confirmed"):
+        drivers.append(("warn", "Terrain confirmation recommended via TopoIQ"))
+
+    return {
+        "scores": raw,
+        "overall": overall,
+        "verdict_label": _verdict_label_from_score(overall),
+        "drivers": drivers,
+    }
+
+
+def compute_verdict_scores(
+    solar_lbl,
+    slope_lbl,
+    flood_risk,
+    land_use,
+    solar,
+    terrain,
+    mount_type="Fixed Tilt",
+) -> dict:
+    s = compute_site_suitability(
+        solar_lbl, slope_lbl, flood_risk, land_use, solar, terrain, mount_type,
+    )
+    return {
+        "Irradiance": s["scores"]["solar"],
+        "Terrain": s["scores"]["terrain"],
+        "Flood": s["scores"]["flood"],
+        "Land Use": s["scores"]["land"],
+        "Overall": s["overall"],
+    }
+
 def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
               country, eeg_status, eeg_note,
               slope_lbl, solar_lbl, verdict, verdict_txt,
@@ -1197,7 +1395,77 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
         ("VALIGN",        (0,0),(-1,-1), "MIDDLE"),
     ]))
     story.append(vt)
-    story.append(Spacer(1, 0.5*cm))
+    story.append(Spacer(1, 0.35*cm))
+
+    _suit = compute_site_suitability(
+        solar_lbl, slope_lbl, flood_risk, land_use, solar, terrain, mount_type,
+        country=country, eeg_status=eeg_status, project_country=project_country, cap=cap,
+    )
+    story.append(section_hdr("SITE SUITABILITY BREAKDOWN"))
+    story.append(Spacer(1, 0.12*cm))
+    story.append(Paragraph(
+        f"<b>Overall Score:</b> {_suit['overall']}/100 "
+        f"(<font color='#1d9e52'>{_suit['verdict_label']}</font>)",
+        ParagraphStyle("OvScore", parent=styles["Normal"], fontSize=9,
+                       textColor=DARK_TXT, leading=13),
+    ))
+    story.append(Spacer(1, 0.15*cm))
+
+    def _score_cell(val):
+        return Paragraph(
+            str(val),
+            ParagraphStyle("sc", parent=styles["Normal"], fontSize=8,
+                           textColor=DARK_TXT, alignment=2),
+        )
+
+    def _weight_cell(val):
+        return Paragraph(
+            f"{val}%",
+            ParagraphStyle("wt", parent=styles["Normal"], fontSize=8,
+                           textColor=MUTED, alignment=2),
+        )
+
+    _brk_rows = [
+        [lp("Category", colors.white, bold=True, size=8),
+         Paragraph("Score", ParagraphStyle("bh1", parent=styles["Normal"], fontSize=8,
+                   fontName="Helvetica-Bold", textColor=colors.white, alignment=2)),
+         Paragraph("Weight", ParagraphStyle("bh2", parent=styles["Normal"], fontSize=8,
+                   fontName="Helvetica-Bold", textColor=colors.white, alignment=2))],
+    ]
+    for label, key, weight in SUITABILITY_WEIGHTS:
+        _brk_rows.append([
+            lp(label, DARK_TXT, size=8),
+            _score_cell(_suit["scores"][key]),
+            _weight_cell(weight),
+        ])
+    brk_t = Table(_brk_rows, colWidths=[8.5*cm, 4*cm, 4.5*cm])
+    brk_t.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0), (-1,0), ORANGE),
+        ("GRID",          (0,0), (-1,-1), 0.5, colors.lightgrey),
+        ("TOPPADDING",    (0,0), (-1,-1), 5),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+        ("LEFTPADDING",   (0,0), (-1,-1), 8),
+        ("RIGHTPADDING",  (0,0), (-1,-1), 8),
+        ("ALIGN",         (1,0), (-1,-1), "RIGHT"),
+        ("ROWBACKGROUNDS",(0,1), (-1,-1), [colors.white, LGRAY]),
+    ]))
+    story.append(brk_t)
+    story.append(Spacer(1, 0.35*cm))
+
+    story.append(section_hdr("KEY DRIVERS"))
+    story.append(Spacer(1, 0.12*cm))
+    for kind, text in _suit["drivers"]:
+        if kind == "positive":
+            icon, icol = "+", C_GREEN
+        else:
+            icon, icol = "!", C_ORANGE
+        story.append(Paragraph(
+            f'<font color="#{icol.hexval()[2:]}"><b>{icon}</b></font>&nbsp;&nbsp;{text}',
+            ParagraphStyle("Kd", parent=styles["Normal"], fontSize=8.5,
+                           textColor=DARK_TXT, leading=12, leftIndent=2),
+        ))
+        story.append(Spacer(1, 0.12*cm))
+    story.append(Spacer(1, 0.35*cm))
 
     story.append(section_hdr("KEY METRICS"))
     story.append(Spacer(1, 0.15*cm))
@@ -1236,19 +1504,16 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
         rows.append([lp("Mounting", MUTED, size=9), lp("Single-axis tracker (horizontal N–S axis)", bold=True, size=9), lp("—", MUTED, size=8)])
     else:
         rows.append([lp("Optimal Tilt", MUTED, size=9), lp(f"{solar.get('optimal_tilt','—')}°", bold=True, size=9), lp("—", MUTED, size=8)])
-    _flood_val = flood_detail or "—"
-    if flood_source or flood_confidence:
-        _flood_parts = [_flood_val]
-        if flood_reason and flood_reason not in _flood_val:
-            _flood_parts.insert(0, flood_reason)
-        if flood_source:
-            _flood_parts.append(f"Source: {flood_source}")
-        if flood_confidence:
-            _flood_parts.append(f"Confidence: {flood_confidence}")
-        _flood_val = " ".join(_flood_parts)
+    _flood_val = flood_reason or flood_detail or "—"
+
+    _slope_metric_lbl = "Mean Slope" if terrain.get("topoiq_confirmed") else "Max Slope"
+    _slope_metric_val = (
+        terrain.get("mean_slope_pct") if terrain.get("topoiq_confirmed")
+        else terrain.get("max_slope_pct", "—")
+    )
 
     rows += [
-        [lp("Max Slope",       MUTED, size=9), lp(f"{terrain.get('max_slope_pct','—')}%", bold=True, size=9),        _slope_badge],
+        [lp(_slope_metric_lbl, MUTED, size=9), lp(f"{_slope_metric_val}%", bold=True, size=9),        _slope_badge],
         [lp("Elevation",       MUTED, size=9), lp(f"{terrain.get('center_elev','—')} m asl", bold=True, size=9),     lp("—", MUTED, size=8)],
         [lp("Flood Risk",      MUTED, size=9), lp(_flood_val, size=9),                            _flood_badge],
         [lp("Est. DC Capacity", MUTED, size=9), lp(_cap_mwp, bold=True, size=9),               lp(_cap_dens, MUTED, size=8)],
@@ -1268,6 +1533,19 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
         ("VALIGN",        (0,0),(-1,-1), "MIDDLE"),
     ]))
     story.append(mt)
+
+    if flood_source or flood_confidence:
+        story.append(Spacer(1, 0.1*cm))
+        _flood_meta = " ".join(
+            p for p in (
+                f"Source: {flood_source}" if flood_source else "",
+                f"Confidence: {flood_confidence}" if flood_confidence else "",
+            ) if p
+        )
+        story.append(Paragraph(
+            _flood_meta,
+            ParagraphStyle("FloodMeta", parent=styles["Normal"], fontSize=7, textColor=MUTED, leading=10),
+        ))
 
     _cap_note_style = ParagraphStyle(
         "CapNote", parent=styles["Normal"], fontSize=8,
@@ -1408,70 +1686,22 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
 
     story.append(Spacer(1, 0.3*cm))
 
-    # ── Rating Legend — small, stacked one below the other for readability ────
-    story.append(section_hdr("RATING LEGEND"))
+    story.append(section_hdr("REFERENCE"))
+    story.append(Spacer(1, 0.12*cm))
+    story.append(Paragraph(
+        "<b>Verdict scale:</b> Excellent &gt; Very Good &gt; Good &gt; Acceptable &gt; Challenging &gt; Critical",
+        ParagraphStyle("VScale", parent=styles["Normal"], fontSize=8, textColor=MUTED, leading=11),
+    ))
+    story.append(Spacer(1, 0.25*cm))
 
-    # Performance ratings table
-    perf_rows = [
-        [lp("Metric rating", colors.white, bold=True, size=7), lp("Action", colors.white, bold=True, size=7)],
-        [lp("EXCELLENT / GOOD", C_GREEN,  bold=True, size=7), lp("Parameter ideal — proceed", MUTED, size=7)],
-        [lp("ACCEPTABLE",       C_YELLOW, bold=True, size=7), lp("Feasible with constraints — monitor", MUTED, size=7)],
-        [lp("CHALLENGING",      C_ORANGE, bold=True, size=7), lp("Near limit — detailed study required", MUTED, size=7)],
-        [lp("CRITICAL",         C_RED,    bold=True, size=7), lp("Exceeds threshold — reconsider site", MUTED, size=7)],
-        [lp("INDICATIVE ONLY",  C_ORANGE, bold=True, size=7), lp("Sparse slope sample — run TopoIQ first", MUTED, size=7)],
-        [lp("DATA UNAVAILABLE", C_YELLOW, bold=True, size=7), lp("API/data gap — retry or check coverage", MUTED, size=7)],
-    ]
-    pt = Table(perf_rows, colWidths=[3.8*cm, 6.2*cm])
-    pt.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0), (-1,0),  ORANGE),
-        ("GRID",          (0,0), (-1,-1), 0.5, colors.lightgrey),
-        ("TOPPADDING",    (0,0), (-1,-1), 3),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
-        ("LEFTPADDING",   (0,0), (-1,-1), 4),
-        ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
-        ("ROWBACKGROUNDS",(0,1),(-1,-1), [colors.white, LGRAY]),
-        ("BACKGROUND",    (0,1), (0,1), C_LGREEN),
-        ("BACKGROUND",    (0,2), (0,2), C_LYELLOW),
-        ("BACKGROUND",    (0,3), (0,3), C_LORANG),
-        ("BACKGROUND",    (0,4), (0,4), C_LRED),
-        ("BACKGROUND",    (0,5), (0,5), C_LORANG),
-        ("BACKGROUND",    (0,6), (0,6), C_LYELLOW),
-    ]))
-
-    verdict_rows = [
-        [lp("Overall verdict", colors.white, bold=True, size=7), lp("Action", colors.white, bold=True, size=7)],
-        [lp("EXCELLENT",  C_GREEN,  bold=True, size=7), lp("All parameters ideal — proceed to detailed study", MUTED, size=7)],
-        [lp("VERY GOOD",  C_GREEN,  bold=True, size=7), lp("Strong site — proceed to detailed study", MUTED, size=7)],
-        [lp("GOOD",       C_GREEN,  bold=True, size=7), lp("Proceed — address noted constraint in design", MUTED, size=7)],
-        [lp("ACCEPTABLE", C_YELLOW, bold=True, size=7), lp("Address noted constraints in detailed design", MUTED, size=7)],
-        [lp("CHALLENGING",C_ORANGE, bold=True, size=7), lp("Detailed study mandatory before commitment", MUTED, size=7)],
-        [lp("CRITICAL",   C_RED,    bold=True, size=7), lp("High risk — reconsider site or system type", MUTED, size=7)],
-    ]
-    vt_legend = Table(verdict_rows, colWidths=[3.8*cm, 6.2*cm])
-    vt_legend.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0), (-1,0),  ORANGE),
-        ("GRID",          (0,0), (-1,-1), 0.5, colors.lightgrey),
-        ("TOPPADDING",    (0,0), (-1,-1), 3),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
-        ("LEFTPADDING",   (0,0), (-1,-1), 4),
-        ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
-        ("ROWBACKGROUNDS",(0,1),(-1,-1), [colors.white, LGRAY]),
-        ("BACKGROUND",    (0,1), (0,1), C_LGREEN),
-        ("BACKGROUND",    (0,2), (0,2), C_LGREEN),
-        ("BACKGROUND",    (0,3), (0,3), C_LYELLOW),
-        ("BACKGROUND",    (0,4), (0,4), C_LORANG),
-        ("BACKGROUND",    (0,5), (0,5), C_LRED),
-    ]))
-
-    # Flood risk table
     flood_rows = [
-        [lp("Flood Risk Rating", colors.white, bold=True, size=7), lp("Action", colors.white, bold=True, size=7)],
-        [lp("LOW RISK",       C_GREEN,  bold=True, size=7), lp("Verify at local flood portal", MUTED, size=7)],
-        [lp("LOW-MODERATE",   C_YELLOW, bold=True, size=7), lp("Cross-check official flood maps", MUTED, size=7)],
-        [lp("MODERATE RISK",  C_ORANGE, bold=True, size=7), lp("Manual flood risk check required", MUTED, size=7)],
-        [lp("HIGH RISK",      C_RED,    bold=True, size=7), lp("Flood zone study before proceeding", MUTED, size=7)],
+        [lp("Flood risk", colors.white, bold=True, size=7), lp("Meaning", colors.white, bold=True, size=7)],
+        [lp("LOW",            C_GREEN,  bold=True, size=7), lp("Elevated terrain — verify at local portal", MUTED, size=7)],
+        [lp("LOW-MODERATE",   C_YELLOW, bold=True, size=7), lp("Moderate elevation — check watercourses", MUTED, size=7)],
+        [lp("MODERATE",       C_ORANGE, bold=True, size=7), lp("Low-lying — manual flood check required", MUTED, size=7)],
+        [lp("HIGH",           C_RED,    bold=True, size=7), lp("Very low elevation — official zone study", MUTED, size=7)],
     ]
-    ft = Table(flood_rows, colWidths=[3.8*cm, 6.2*cm])
+    ft = Table(flood_rows, colWidths=[3.2*cm, 13.8*cm])
     ft.setStyle(TableStyle([
         ("BACKGROUND",    (0,0), (-1,0),  ORANGE),
         ("GRID",          (0,0), (-1,-1), 0.5, colors.lightgrey),
@@ -1485,12 +1715,6 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
         ("BACKGROUND",    (0,3), (0,3), C_LORANG),
         ("BACKGROUND",    (0,4), (0,4), C_LRED),
     ]))
-
-    # Stacked vertically — metric ratings, overall verdict, flood risk
-    story.append(pt)
-    story.append(Spacer(1, 0.25*cm))
-    story.append(vt_legend)
-    story.append(Spacer(1, 0.25*cm))
     story.append(ft)
 
     story.append(Spacer(1, 0.4*cm))
