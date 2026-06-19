@@ -18,6 +18,31 @@ def _pop_layer_checkbox_key(key_prefix: str, slug: str) -> None:
     st.session_state.pop(f"{key_prefix}_layer_{slug}", None)
 
 
+def _layer_group_state(items: list) -> tuple[bool, bool, bool]:
+    """Return (all_on, any_on, mixed)."""
+    flags = [bool(b.get("enabled", True)) for b in items]
+    all_on = all(flags)
+    any_on = any(flags)
+    return all_on, any_on, all_on != any_on
+
+
+def _sync_layer_checkbox_indicator(key_prefix: str, slug: str, *, all_on: bool, mixed: bool) -> None:
+    """Keep the layer box in sync when children change — without toggling children."""
+    layer_key = f"{key_prefix}_layer_{slug}"
+    if mixed:
+        if st.session_state.get(layer_key, True):
+            st.session_state[layer_key] = False
+    elif st.session_state.get(layer_key) != all_on:
+        st.session_state[layer_key] = all_on
+
+
+def _apply_layer_toggle(key_prefix: str, slug: str, items: list, enabled: bool) -> None:
+    for b in items:
+        b["enabled"] = enabled
+    _pop_parcel_checkbox_keys(key_prefix, [b["id"] for b in items])
+    st.session_state[f"{key_prefix}_layer_{slug}"] = enabled
+
+
 def _layer_expanded_default(layer_name: str, parcel_count: int) -> bool:
     key = re.sub(r"[^a-z]", "", (layer_name or "").lower())
     if key in ("projectboundary", "siteboundary", "projectsite"):
@@ -84,17 +109,31 @@ def render_grouped_boundary_manager(
     for layer_name, items in groups:
         slug = _slug(layer_name)
         layer_ha = sum(area_fn(b["coords"]) for b in items)
-        all_on = all(b.get("enabled", True) for b in items)
+        all_on, any_on, mixed = _layer_group_state(items)
         expanded = _layer_expanded_default(layer_name, len(items))
+        layer_key = f"{key_prefix}_layer_{slug}"
+
+        _sync_layer_checkbox_indicator(key_prefix, slug, all_on=all_on, mixed=mixed)
+
+        def _on_layer_change(kp=key_prefix, sl=slug, layer_items=items):
+            val = st.session_state[f"{kp}_layer_{sl}"]
+            _apply_layer_toggle(kp, sl, layer_items, val)
 
         hdr_cb, hdr_tree = st.columns([0.055, 0.945])
         with hdr_cb:
             layer_on = st.checkbox(
                 "layer",
                 value=all_on,
-                key=f"{key_prefix}_layer_{slug}",
+                key=layer_key,
                 label_visibility="collapsed",
+                on_change=_on_layer_change,
             )
+
+        # Fallback for the same run: layer toggled but on_change has not fired yet.
+        if layer_on != all_on and not (mixed and layer_on):
+            _apply_layer_toggle(key_prefix, slug, items, layer_on)
+            st.rerun()
+
         with hdr_tree:
             with st.expander(
                 f"**{layer_name}** — {len(items)} parcel{'s' if len(items) != 1 else ''} "
@@ -124,12 +163,5 @@ def render_grouped_boundary_manager(
                             "✕", key=f"{key_prefix}_rm_{b['id']}", help="Remove parcel"
                         ):
                             remove_ids.append(b["id"])
-
-        if layer_on != all_on:
-            for b in items:
-                b["enabled"] = layer_on
-            _pop_parcel_checkbox_keys(key_prefix, [b["id"] for b in items])
-            _pop_layer_checkbox_key(key_prefix, slug)
-            st.rerun()
 
     return remove_ids

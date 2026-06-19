@@ -192,6 +192,55 @@ def _refresh_session(refresh_token: str) -> dict:
     return {"success": False, "retry": False}
 
 
+def _get_stored_refresh_token() -> str:
+    """Refresh token from URL, session, or cookie (same sources as app.py heal)."""
+    rt = st.query_params.get("s", "") or st.session_state.get("pvm_refresh_token", "")
+    if not rt:
+        try:
+            rt = (st.context.cookies.get("pvm_s") or "").strip()
+        except Exception:
+            pass
+    return rt or ""
+
+
+def _apply_refreshed_session(data: dict) -> None:
+    st.session_state["pvm_user_id"] = data["user_id"]
+    st.session_state["pvm_email"] = data["email"]
+    st.session_state["pvm_access_token"] = data["access_token"]
+    st.session_state["pvm_refresh_token"] = data["refresh_token"]
+    st.session_state["pvm_token_refreshed_at"] = time.time()
+    st.query_params["s"] = data["refresh_token"]
+
+
+def ensure_db_session(*, force_refresh: bool = False) -> str:
+    """
+    Return user_id with a valid Supabase access token for REST writes.
+    Restores from refresh token when websocket session_state was dropped.
+    """
+    if not st.session_state.get("pvm_user_id"):
+        rt = _get_stored_refresh_token()
+        if rt:
+            restored = _refresh_session(rt)
+            if restored.get("success"):
+                _apply_refreshed_session(restored)
+
+    uid = st.session_state.get("pvm_user_id", "")
+    if not uid:
+        return ""
+
+    last = st.session_state.get("pvm_token_refreshed_at")
+    if force_refresh or last is None or time.time() - last > 2400:
+        rt = st.session_state.get("pvm_refresh_token", "") or _get_stored_refresh_token()
+        if rt:
+            refreshed = _refresh_session(rt)
+            if refreshed.get("success"):
+                _apply_refreshed_session(refreshed)
+            elif last is None:
+                st.session_state["pvm_token_refreshed_at"] = time.time()
+
+    return st.session_state.get("pvm_user_id", "") or ""
+
+
 def resend_confirmation(email: str) -> dict:
     try:
         r = _req.post(f"{_sb_url()}/auth/v1/resend",
@@ -637,24 +686,11 @@ def render_auth_page(app_name: str = "PVMath"):
 
     # ── Auto-restore session from URL param (survives browser refresh / back) ──
     if not st.session_state.get("pvm_user_id"):
-        _stored_rt = (
-            st.query_params.get("s", "")
-            or st.session_state.get("pvm_refresh_token", "")
-        )
+        _stored_rt = _get_stored_refresh_token()
         if _stored_rt:
             _restored = _refresh_session(_stored_rt)
             if _restored.get("success"):
-                st.session_state["pvm_user_id"]      = _restored["user_id"]
-                st.session_state["pvm_email"]        = _restored["email"]
-                st.session_state["pvm_access_token"] = _restored["access_token"]
-                # Keep an in-memory copy too — Streamlit's multipage navigation
-                # can silently strip "s" from the visible URL on a page switch
-                # (frontend-only; known Streamlit behavior), so app.py re-asserts
-                # it from this session_state copy at the end of every script run.
-                st.session_state["pvm_refresh_token"] = _restored["refresh_token"]
-                st.session_state["pvm_token_refreshed_at"] = time.time()
-                # Update param with rotated refresh token
-                st.query_params["s"] = _restored["refresh_token"]
+                _apply_refreshed_session(_restored)
             elif not _restored.get("retry"):
                 # Supabase explicitly rejected the token — it's genuinely dead.
                 st.query_params.clear()
@@ -693,14 +729,11 @@ def render_auth_page(app_name: str = "PVMath"):
         # of a refresh token to retry with falls back to just stamping time.
         if _last_refresh is None or time.time() - _last_refresh > 2700:  # 45 min,
             # safely under Supabase's default 1-hour access-token lifetime.
-            _rt = st.session_state.get("pvm_refresh_token", "") or st.query_params.get("s", "")
+            _rt = _get_stored_refresh_token()
             if _rt:
                 _refreshed = _refresh_session(_rt)
                 if _refreshed.get("success"):
-                    st.session_state["pvm_access_token"]      = _refreshed["access_token"]
-                    st.session_state["pvm_refresh_token"]     = _refreshed["refresh_token"]
-                    st.session_state["pvm_token_refreshed_at"] = time.time()
-                    st.query_params["s"] = _refreshed["refresh_token"]
+                    _apply_refreshed_session(_refreshed)
                 else:
                     # Refresh failed. If we don't even know the token's age
                     # (first time we've checked), don't loop retrying on

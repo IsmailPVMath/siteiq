@@ -16,7 +16,7 @@ import folium
 from folium.plugins import Draw
 from streamlit_folium import st_folium
 from pvmath_styles import inject_styles
-from pvmath_auth import save_project, _refresh_session
+from pvmath_auth import save_project, ensure_db_session
 from pvmath_session import clear_blank_project_flag
 from pvmath_boundary_ui import render_grouped_boundary_manager
 from pvmath_kml import (
@@ -821,36 +821,11 @@ if True:
             # Projects, or saved before in this session), update that same
             # row — otherwise insert a new row so it shows up as a new entry
             # in My Projects rather than overwriting an existing project.
-            _uid = st.session_state.get("pvm_user_id", "")
+            _uid = ensure_db_session(force_refresh=True)
             _persist_ok = True
             if not _uid:
-                # pvm_user_id was empty even though the user is clearly signed
-                # in and using the app (the auth gate in app.py would have
-                # blocked them otherwise). This happens when the server-side
-                # session_state got dropped (e.g. a websocket reconnect after
-                # an idle moment while drawing a boundary) without a full page
-                # reload — so render_auth_page()'s own restore-from-URL-token
-                # logic, which only runs once at the top of a script run,
-                # hasn't re-populated it yet for THIS click. Previously this
-                # silently fell through to the "success" branch below — the
-                # toast said saved, save_project() was never even called, and
-                # nothing reached Supabase. Try the same token-restore Supabase
-                # call here, inline, before giving up — most of the time this
-                # recovers the session within the same click instead of
-                # quietly losing the project.
-                _retry_token = st.query_params.get("s", "")
-                if _retry_token:
-                    _restored = _refresh_session(_retry_token)
-                    if _restored.get("success"):
-                        _uid = _restored["user_id"]
-                        st.session_state["pvm_user_id"]      = _uid
-                        st.session_state["pvm_email"]        = _restored["email"]
-                        st.session_state["pvm_access_token"] = _restored["access_token"]
-                        st.session_state["pvm_refresh_token"] = _restored["refresh_token"]
-                        st.query_params["s"] = _restored["refresh_token"]
-                if not _uid:
-                    _persist_ok = False
-                    st.session_state["pvm_save_fail_reason"] = "session"
+                _persist_ok = False
+                st.session_state["pvm_save_fail_reason"] = "session"
             if _uid:
                 _existing_row_id = st.session_state.get("pvm_project_row_id")
                 # pvm_project_row_id lingers in session_state after a save and
