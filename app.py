@@ -2,6 +2,7 @@ import json
 import streamlit as st
 import streamlit.components.v1 as components
 from pvmath_auth import render_auth_page, sign_out, load_latest_project, UPGRADE_CONTACT
+from pvmath_session import clear_module_project_state
 
 st.set_page_config(
     page_title="PVMath — Solar Site Intelligence",
@@ -99,7 +100,7 @@ if not render_auth_page("PVMath"):
 
 # ── Restore project context if session was cleared (back button / refresh) ────
 _uid_for_load = st.session_state.get("pvm_user_id", "")
-if _uid_for_load and "pvm_project" not in st.session_state:
+if _uid_for_load and "pvm_project" not in st.session_state and not st.session_state.get("pvm_blank_project"):
     _loaded, _loaded_row_id = load_latest_project(_uid_for_load)
     if _loaded:
         st.session_state["pvm_project"] = _loaded
@@ -432,16 +433,7 @@ if pg.title not in ("Overview", "Project"):
         with st.container():
             st.markdown('<div class="pvm-newproj-anchor"></div>', unsafe_allow_html=True)
             if st.button("+ New Project", key="topbar_new_project", use_container_width=True):
-                for _k in [
-                    "pvm_project", "pvm_project_row_id", "pvm_saved_snapshot", "proj_mode_sel",
-                    "proj_pin_lat", "proj_pin_lon",
-                    "proj_map_center", "proj_map_zoom", "proj_last_search",
-                    "proj_polygon_draft", "proj_polygon_cleared", "proj_edit_mode",
-                    "map_center", "map_zoom", "map_lat", "map_lon", "last_map_search",
-                    "siteiq_run_cache", "siteiq_project_name", "siteiq_country",
-                    "siteiq_lat", "siteiq_lon", "siteiq_area_ha",
-                ]:
-                    st.session_state.pop(_k, None)
+                clear_module_project_state(st.session_state, blank=True)
                 st.switch_page("pages/project.py")
 
 pg.run()

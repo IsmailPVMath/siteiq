@@ -10,6 +10,7 @@ import streamlit as st
 from concurrent.futures import ThreadPoolExecutor
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
 from pvmath_auth import list_projects, get_usage
+from pvmath_session import clear_module_project_state
 from pvmath_styles import inject_styles
 
 _uid   = st.session_state.get("pvm_user_id", "")
@@ -120,16 +121,7 @@ st.markdown('<div class="ov-actions-anchor"></div>', unsafe_allow_html=True)
 _a1, _a2, _a3 = st.columns(3)
 with _a1:
     if st.button("+ New Project", use_container_width=True, type="primary"):
-        for _k in [
-            "pvm_project", "pvm_project_row_id", "pvm_saved_snapshot", "proj_mode_sel",
-            "proj_pin_lat", "proj_pin_lon",
-            "proj_map_center", "proj_map_zoom", "proj_last_search",
-            "proj_polygon_draft", "proj_polygon_cleared", "proj_edit_mode",
-            "map_center", "map_zoom", "map_lat", "map_lon", "last_map_search",
-            "siteiq_run_cache", "siteiq_project_name", "siteiq_country",
-            "siteiq_lat", "siteiq_lon", "siteiq_area_ha",
-        ]:
-            st.session_state.pop(_k, None)
+        clear_module_project_state(st.session_state, blank=True)
         st.switch_page("pages/project.py")
 with _a2:
     if st.button("View My Projects", use_container_width=True):

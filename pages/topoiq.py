@@ -95,33 +95,130 @@ def _polygons_mask(X, Y, polygon_list):
     return mask
 
 
-def _render_boundaries_map(boundaries, height=380, interactive=False):
-    """Show all boundaries — enabled = colour, disabled = grey outline."""
-    if not boundaries:
+def _extract_drawn_polygon(map_data):
+    """Read the most recent polygon from Folium Draw output."""
+    if not map_data or not map_data.get("all_drawings"):
         return None
-    all_lats = [c[1] for b in boundaries for c in b["coords"]]
-    all_lons = [c[0] for b in boundaries for c in b["coords"]]
+    polygon_coords = None
+    for feat in reversed(map_data["all_drawings"]):
+        geom = feat.get("geometry", {})
+        if geom.get("type") == "LineString":
+            pts = [(c[0], c[1]) for c in geom["coordinates"]]
+            if len(pts) >= 3:
+                if pts[0] != pts[-1]:
+                    pts.append(pts[0])
+                polygon_coords = pts
+                break
+        elif geom.get("type") == "Polygon":
+            polygon_coords = [(c[0], c[1]) for c in geom["coordinates"][0]]
+            break
+    return polygon_coords
+
+
+def _render_topo_boundary_map(
+    boundaries,
+    *,
+    height=400,
+    show_reference_layers=False,
+    analysis_polygon=None,
+    enable_draw=False,
+):
+    """
+    Parcel map synced to checklist selections.
+    In custom-boundary mode, faint reference layers + yellow analysis polygon + Draw tools.
+    """
+    if show_reference_layers:
+        display_bounds = boundaries
+    else:
+        display_bounds = [b for b in boundaries if b.get("enabled")]
+
+    all_lats, all_lons = [], []
+    for b in display_bounds:
+        all_lats.extend(c[1] for c in b["coords"])
+        all_lons.extend(c[0] for c in b["coords"])
+    if analysis_polygon:
+        all_lats.extend(c[1] for c in analysis_polygon)
+        all_lons.extend(c[0] for c in analysis_polygon)
+
+    if not all_lats:
+        if enable_draw:
+            center = st.session_state.get("topo_center", [30.0, 10.0])
+            zoom = st.session_state.get("topo_zoom", 3)
+        else:
+            return None
+    else:
+        center = [float(np.mean(all_lats)), float(np.mean(all_lons))]
+        zoom = st.session_state.get("topo_zoom", 13)
+
     m = folium.Map(
-        location=[float(np.mean(all_lats)), float(np.mean(all_lons))],
-        zoom_start=13,
+        location=center,
+        zoom_start=zoom,
         tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
         attr="Google Satellite",
     )
-    for i, b in enumerate(boundaries):
+
+    for i, b in enumerate(display_bounds):
         on = b.get("enabled", True)
-        color = BOUNDARY_COLORS[i % len(BOUNDARY_COLORS)] if on else "#666666"
+        if show_reference_layers:
+            color = BOUNDARY_COLORS[i % len(BOUNDARY_COLORS)] if on else "#999999"
+            fill_opacity = 0.22 if on else 0.05
+            weight = 2 if on else 1
+            dash = None if on else "5,5"
+        else:
+            color = BOUNDARY_COLORS[i % len(BOUNDARY_COLORS)]
+            fill_opacity = 0.28
+            weight = 3
+            dash = None
         folium.Polygon(
             locations=[(c[1], c[0]) for c in b["coords"]],
             color=color,
             fill=True,
-            fill_opacity=0.28 if on else 0.04,
-            weight=3 if on else 1,
-            dash_array=None if on else "6,4",
-            tooltip=f"{b['name']} ({'included' if on else 'excluded'})",
+            fill_opacity=fill_opacity,
+            weight=weight,
+            dash_array=dash,
+            tooltip=f"{b['name']} ({'reference' if show_reference_layers and not on else 'selected'})",
         ).add_to(m)
+
+    if analysis_polygon and len(analysis_polygon) >= 3:
+        folium.Polygon(
+            locations=[(c[1], c[0]) for c in analysis_polygon],
+            color="#ffeb3b",
+            fill=True,
+            fill_opacity=0.18,
+            weight=4,
+            tooltip="Analysis boundary (drawn)",
+        ).add_to(m)
+
+    if enable_draw:
+        _style = {
+            "color": "#ffeb3b",
+            "weight": 4,
+            "opacity": 1.0,
+            "fillColor": "#ffeb3b",
+            "fillOpacity": 0.12,
+        }
+        Draw(
+            export=False,
+            draw_options={
+                "polyline": False,
+                "polygon": {
+                    "allowIntersection": False,
+                    "showArea": True,
+                    "shapeOptions": _style,
+                },
+                "rectangle": False,
+                "circle": False,
+                "marker": False,
+                "circlemarker": False,
+            },
+            edit_options={"edit": True, "remove": True},
+        ).add_to(m)
+
     return st_folium(
-        m, width=None, height=height,
-        returned_objects=["all_drawings"] if interactive else [],
+        m,
+        width=None,
+        height=height,
+        returned_objects=["all_drawings"] if enable_draw else [],
     )
 
 
@@ -185,6 +282,8 @@ def _render_boundary_manager():
         st.session_state["topo_boundaries"] = []
         st.session_state.pop("topo_upload_key", None)
         st.session_state.pop("topo_show_all_layers", None)
+        st.session_state.pop("topo_analysis_polygon", None)
+        st.session_state["topo_analysis_mode"] = "parcels"
 
     remove_ids = render_grouped_boundary_manager(
         all_bounds=all_bounds,
@@ -1229,69 +1328,25 @@ with left:
                     except Exception:
                         st.caption("Format: latitude, longitude  (decimal degrees)")
 
-            center = st.session_state.get("topo_center", [30.0, 10.0])
-            zoom   = st.session_state.get("topo_zoom", 3)
-
             st.markdown(
                 '<div style="background:rgba(255,193,7,0.08);border:1px solid rgba(255,193,7,0.35);'
-                'border-radius:8px;padding:0.5rem 0.9rem;font-size:0.82rem;color:#ddd;margin-bottom:0.4rem;">'
-                '<i class="fa-solid fa-pen-to-square" style="color:#ffc107;margin-right:0.5rem;"></i>'
+                'border-radius:8px;padding:0.5rem 0.9rem;font-size:0.82rem;color:#5a4a00;margin-bottom:0.4rem;">'
+                '<i class="fa-solid fa-pen-to-square" style="color:#c8960a;margin-right:0.5rem;"></i>'
                 '<strong>How to draw:</strong> &nbsp;'
                 '① Click the <strong>polygon tool</strong> (pentagon icon) in the left toolbar. &nbsp;'
-                '② Click each corner of your site boundary — all 4 sides show live as you go. &nbsp;'
-                '③ Click <strong>[Finish]</strong> in the toolbar when done — all lines including the closing one will appear.'
+                '② Click each corner of your site boundary. &nbsp;'
+                '③ Click <strong>Finish</strong>, then edit or delete with the toolbar if needed.'
                 '</div>',
                 unsafe_allow_html=True
             )
 
-            m = folium.Map(location=center, zoom_start=zoom,
-                           tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
-                           attr="Google Satellite")
-
-            for _bi, _bb in enumerate(st.session_state.get("topo_boundaries", [])):
-                _bc = BOUNDARY_COLORS[_bi % len(BOUNDARY_COLORS)] if _bb.get("enabled") else "#666"
-                folium.Polygon(
-                    locations=[(c[1], c[0]) for c in _bb["coords"]],
-                    color=_bc, fill=True, fill_opacity=0.15, weight=2,
-                    tooltip=_bb["name"],
-                ).add_to(m)
-
-            _style = {"color": "#ffeb3b", "weight": 5, "opacity": 1.0,
-                      "fillColor": "#ffeb3b", "fillOpacity": 0.10}
-            Draw(
-                export=False,
-                draw_options={
-                    "polyline": False,
-                    "polygon": {
-                        "allowIntersection": False,
-                        "showArea": True,
-                        "shapeOptions": _style,
-                    },
-                    "rectangle": False,
-                    "circle": False,
-                    "marker": False,
-                    "circlemarker": False,
-                },
-                edit_options={"edit": False, "remove": True}
-            ).add_to(m)
-
-            map_data = st_folium(m, width=None, height=430,
-                                 returned_objects=["all_drawings"])
-
-            polygon_coords = None
-            if map_data and map_data.get("all_drawings"):
-                for feat in map_data["all_drawings"]:
-                    geom = feat.get("geometry", {})
-                    if geom.get("type") == "LineString":
-                        pts = [(c[0], c[1]) for c in geom["coordinates"]]
-                        if len(pts) >= 3:
-                            if pts[0] != pts[-1]:
-                                pts.append(pts[0])
-                            polygon_coords = pts
-                            break
-                    elif geom.get("type") == "Polygon":
-                        polygon_coords = [(c[0], c[1]) for c in geom["coordinates"][0]]
-                        break
+            _map_data = _render_topo_boundary_map(
+                st.session_state.get("topo_boundaries", []),
+                height=430,
+                analysis_polygon=st.session_state.get("topo_analysis_polygon"),
+                enable_draw=True,
+            )
+            polygon_coords = _extract_drawn_polygon(_map_data) if _map_data else None
 
             if polygon_coords:
                 _new_draw = polygon_coords
@@ -1301,7 +1356,7 @@ with left:
                 else:
                     st.success(
                         f"✅ Boundary drawn — {len(polygon_coords)-1} vertices · "
-                        f"{_drawn_area_ha:,.1f} ha (added to list below)"
+                        f"{_drawn_area_ha:,.1f} ha"
                     )
             else:
                 st.caption("Draw your site boundary on the map above.")
@@ -1363,12 +1418,16 @@ with left:
                     st.session_state["topo_upload_key"] = file_key
                     st.session_state["topo_show_all_layers"] = True
                     st.session_state.pop("topo_from_proj", None)
+                    st.session_state.pop("topo_analysis_polygon", None)
+                    st.session_state["topo_analysis_mode"] = "parcels"
                     st.rerun()
                 else:
                     st.session_state["topo_boundaries"] = new_bounds
                     st.session_state["topo_upload_key"] = file_key
                     st.session_state["topo_show_all_layers"] = False
                     st.session_state.pop("topo_from_proj", None)
+                    st.session_state.pop("topo_analysis_polygon", None)
+                    st.session_state["topo_analysis_mode"] = "parcels"
                     hidden_n = len(new_bounds) - len(primary)
                     n_en = sum(1 for b in primary if b["enabled"])
                     msg = (
@@ -1384,21 +1443,71 @@ with left:
         _sig = tuple(round(c[0], 5) for c in _new_draw[: min(8, len(_new_draw))])
         if st.session_state.get("topo_last_draw_sig") != _sig:
             st.session_state["topo_last_draw_sig"] = _sig
-            _n = sum(1 for b in st.session_state["topo_boundaries"]
-                     if str(b.get("id", "")).startswith("draw_")) + 1
-            st.session_state["topo_boundaries"].append({
-                "id": f"draw_{_n}",
-                "name": f"Drawn boundary {_n}",
-                "coords": _new_draw,
-                "enabled": True,
-            })
-
-    if st.session_state.get("topo_boundaries"):
-        _render_boundary_manager()
-        _render_boundaries_map(st.session_state["topo_boundaries"], height=360)
+            st.session_state["topo_analysis_polygon"] = _new_draw
+            st.session_state["topo_analysis_mode"] = "drawn"
 
     _boundaries = st.session_state.get("topo_boundaries", [])
-    _enabled_polys = [b["coords"] for b in _boundaries if b.get("enabled")]
+    if _boundaries:
+        _render_boundary_manager()
+
+        st.session_state.setdefault("topo_analysis_mode", "parcels")
+        _mode_options = ("Selected parcels", "Custom polygon (draw on map)")
+        _cur_mode = st.session_state.get("topo_analysis_mode", "parcels")
+        _mode_pick = st.radio(
+            "Terrain analysis boundary",
+            _mode_options,
+            index=0 if _cur_mode == "parcels" else 1,
+            horizontal=True,
+            help="Use checked KMZ parcels, or draw one polygon on the map for the terrain run.",
+        )
+        st.session_state["topo_analysis_mode"] = (
+            "parcels" if _mode_pick == _mode_options[0] else "drawn"
+        )
+        _use_draw = st.session_state["topo_analysis_mode"] == "drawn"
+
+        if _use_draw:
+            st.markdown(
+                '<div style="background:rgba(255,235,59,0.12);border:1px solid rgba(200,160,0,0.35);'
+                'border-radius:8px;padding:0.45rem 0.85rem;font-size:0.82rem;color:#5a4a00;'
+                'margin-bottom:0.35rem;">'
+                '<i class="fa-solid fa-pen-ruler" style="margin-right:0.4rem;"></i>'
+                'All parcels are shown for reference. Draw <strong>one polygon</strong> covering '
+                'the area you want analysed — use the toolbar to edit or delete it.'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.caption("Map shows **checked parcels only** — it updates when you change the layer tree.")
+
+        _map_data = _render_topo_boundary_map(
+            _boundaries,
+            height=430,
+            show_reference_layers=_use_draw,
+            analysis_polygon=st.session_state.get("topo_analysis_polygon") if _use_draw else None,
+            enable_draw=_use_draw,
+        )
+        if _use_draw and _map_data:
+            _drawn = _extract_drawn_polygon(_map_data)
+            if _drawn:
+                _sig = tuple(round(c[0], 5) for c in _drawn[: min(8, len(_drawn))])
+                if st.session_state.get("topo_last_draw_sig") != _sig:
+                    st.session_state["topo_last_draw_sig"] = _sig
+                    st.session_state["topo_analysis_polygon"] = _drawn
+                _da = boundary_area_ha(_drawn)
+                if _da > MAX_SITE_AREA_HA:
+                    st.error(_area_limit_message(_da))
+                elif _da > 0:
+                    st.success(
+                        f"Analysis boundary — {len(_drawn) - 1} vertices · {_da:,.1f} ha"
+                    )
+            elif not st.session_state.get("topo_analysis_polygon"):
+                st.caption("Draw your analysis boundary on the map above.")
+
+    if st.session_state.get("topo_analysis_mode") == "drawn":
+        _ap = st.session_state.get("topo_analysis_polygon")
+        _enabled_polys = [_ap] if _ap else []
+    else:
+        _enabled_polys = [b["coords"] for b in _boundaries if b.get("enabled")]
 
     st.markdown(
         '<div class="section-hdr" style="margin-top:1rem;">'
@@ -1433,7 +1542,10 @@ with left:
                         use_container_width=True,
                         disabled=(not _enabled_polys or _area_over_limit))
         if not _enabled_polys:
-            st.caption("Upload a KMZ or check at least one boundary above to enable analysis.")
+            if st.session_state.get("topo_analysis_mode") == "drawn":
+                st.caption("Switch to custom polygon mode and draw your analysis boundary on the map.")
+            else:
+                st.caption("Upload a KMZ or check at least one parcel above to enable analysis.")
         elif _area_over_limit:
             st.caption(f"Reduce selected area below {MAX_SITE_AREA_HA:,} ha to run analysis.")
 

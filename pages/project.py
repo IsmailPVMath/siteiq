@@ -16,6 +16,7 @@ from folium.plugins import Draw
 from streamlit_folium import st_folium
 from pvmath_styles import inject_styles
 from pvmath_auth import save_project, _refresh_session
+from pvmath_session import clear_blank_project_flag
 from pvmath_boundary_ui import render_grouped_boundary_manager
 from pvmath_kml import (
     BOUNDARY_COLORS,
@@ -724,6 +725,7 @@ if True:
             }
             st.session_state["pvm_project"] = _proj_data
             st.session_state["proj_edit_mode"] = False
+            clear_blank_project_flag(st.session_state)
             # Persist to Supabase so project survives browser back / refresh.
             # If we already have a row id (this project was opened from My
             # Projects, or saved before in this session), update that same

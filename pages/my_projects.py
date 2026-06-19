@@ -7,6 +7,7 @@ and jumps to the Overview/Project Setup page.
 
 import streamlit as st
 from pvmath_auth import list_projects, delete_project
+from pvmath_session import clear_module_project_state, clear_blank_project_flag
 from pvmath_styles import inject_styles
 
 _uid = st.session_state.get("pvm_user_id", "")
@@ -107,15 +108,11 @@ for _i in range(0, len(_rows), _COLS):
             _oc, _dc = st.columns([3, 1])
             with _oc:
                 if st.button("Open →", key=f"open_{_key}", use_container_width=True):
+                    clear_module_project_state(st.session_state)
+                    clear_blank_project_flag(st.session_state)
                     st.session_state["pvm_project"] = _pdata
                     st.session_state["pvm_project_row_id"] = _row_id
                     st.session_state["pvm_saved_snapshot"] = dict(_pdata)
-                    for _k in ["map_center", "map_zoom", "map_lat", "map_lon", "last_map_search",
-                               "proj_polygon_draft", "proj_polygon_cleared",
-                               "proj_pin_lat", "proj_pin_lon",
-                               "siteiq_run_cache", "siteiq_project_name", "siteiq_country",
-                               "siteiq_lat", "siteiq_lon", "siteiq_area_ha"]:
-                        st.session_state.pop(_k, None)
                     st.switch_page("pages/project.py")
             with _dc:
                 if st.button("🗑", key=f"del_{_key}", help="Delete this project", use_container_width=True):

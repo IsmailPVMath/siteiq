@@ -8,6 +8,16 @@ def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", (text or "layer").lower())[:48]
 
 
+def _pop_parcel_checkbox_keys(key_prefix: str, boundary_ids) -> None:
+    """Streamlit keeps widget state by key — clear after bulk enable/disable."""
+    for bid in boundary_ids:
+        st.session_state.pop(f"{key_prefix}_en_{bid}", None)
+
+
+def _pop_layer_checkbox_key(key_prefix: str, slug: str) -> None:
+    st.session_state.pop(f"{key_prefix}_layer_{slug}", None)
+
+
 def _layer_expanded_default(layer_name: str, parcel_count: int) -> bool:
     key = re.sub(r"[^a-z]", "", (layer_name or "").lower())
     if key in ("projectboundary", "siteboundary", "projectsite"):
@@ -37,6 +47,9 @@ def render_grouped_boundary_manager(
     if qa.button("✓ Enable all", use_container_width=True, key=f"{key_prefix}_en_all"):
         for b in visible_bounds:
             b["enabled"] = True
+        _pop_parcel_checkbox_keys(key_prefix, [b["id"] for b in visible_bounds])
+        for layer_name, items in groups:
+            _pop_layer_checkbox_key(key_prefix, _slug(layer_name))
         st.rerun()
     if qb.button("Site areas only", use_container_width=True, key=f"{key_prefix}_en_smart"):
         if smart_select_fn:
@@ -47,6 +60,9 @@ def render_grouped_boundary_manager(
                     b.get("full_name", b.get("name", "")),
                     area_fn(b["coords"]),
                 )
+        _pop_parcel_checkbox_keys(key_prefix, [b["id"] for b in all_bounds])
+        for layer_name, items in groups:
+            _pop_layer_checkbox_key(key_prefix, _slug(layer_name))
         st.rerun()
     if qc.button("Clear all", use_container_width=True, key=f"{key_prefix}_clr_all"):
         on_clear_all()
@@ -115,6 +131,8 @@ def render_grouped_boundary_manager(
         if layer_on != all_on:
             for b in items:
                 b["enabled"] = layer_on
+            _pop_parcel_checkbox_keys(key_prefix, [b["id"] for b in items])
+            _pop_layer_checkbox_key(key_prefix, slug)
             st.rerun()
 
     return remove_ids
