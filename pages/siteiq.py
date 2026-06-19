@@ -16,6 +16,7 @@ from pvmath_auth import (
 )
 from pvmath_styles import inject_styles
 from pvmath_kml import filter_boundary_list
+from pvmath_geocode import reverse_geocode
 from streamlit_folium import st_folium
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -291,54 +292,132 @@ def get_flood_risk(lat, lon, elevation):
     return risk, detail, portal, portal_name
 
 
-def _fetch_pvgis(lat, lon, raddatabase=None):
+def format_coords(lat, lon):
+    """Signed hemisphere labels — never append °E to a negative longitude."""
+    ns = "N" if lat >= 0 else "S"
+    ew = "E" if lon >= 0 else "W"
+    return f"{abs(lat):.5f}°{ns}, {abs(lon):.5f}°{ew}"
+
+
+def _boundary_center(polygons):
+    """BBox centre of enabled boundary rings — matches TopoIQ report coordinates."""
+    if not polygons:
+        return None, None
+    all_lats = [p[0] for poly in polygons for p in poly]
+    all_lons = [p[1] for poly in polygons for p in poly]
+    return (min(all_lats) + max(all_lats)) / 2, (min(all_lons) + max(all_lons)) / 2
+
+
+def _us_grid_operator(lat, lon):
+    """Rough US ISO/RTO from coordinates — ERCOT called out for Texas sites."""
+    if 25.8 <= lat <= 36.5 and -106.6 <= lon <= -93.5:
+        return (
+            "ERCOT",
+            "Interconnection via ERCOT — submit LGIA with your transmission owner; "
+            "queue position is often the critical-path timeline at utility scale",
+        )
+    if 36.0 <= lat <= 49.0 and -125.0 <= lon <= -66.0:
+        if lon >= -104.0:
+            return (
+                "PJM / MISO / SPP",
+                "Contact the applicable RTO (PJM, MISO, or SPP) and local transmission owner for queue entry",
+            )
+        return (
+            "WECC / CAISO",
+            "Contact WECC or CAISO and the local utility for large-generator interconnection",
+        )
+    return (
+        "Regional ISO/RTO",
+        "Contact local utility and applicable ISO/RTO for interconnection requirements",
+    )
+
+
+def _incentive_row_label(project_country, country):
+    c = (project_country or country or "").lower()
+    if any(x in c for x in ["usa", "united states", "america", "us"]):
+        return "Federal Incentive (US)"
+    if any(x in c for x in ["germany", "deutschland", "de"]):
+        return "EEG / Incentive"
+    return "Incentive / Tariff"
+
+
+def _fetch_pvgis(lat, lon, tracker=False, raddatabase=None):
     """One PVcalc call. raddatabase=None lets PVGIS auto-pick (PVGIS-SARAH2),
     which only covers roughly -66° to 66° longitude (Europe/Africa/most of Asia)
     — most of India (68-97°E) falls outside it and the call fails/errors."""
     params = {
-        "lat": lat, "lon": lon,
+        "lat": round(lat, 5), "lon": round(lon, 5),
         "peakpower": 1, "loss": 14,
         "outputformat": "json",
         "mountingplace": "free",
-        "optimalangles": 1,
+        "pvtechchoice": "crystSi",
+        "browser": 0,
     }
+    if tracker:
+        params["fixed"] = 0
+        params["inclined_axis"] = 1
+        params["inclinedaxisangle"] = 0
+    else:
+        params["fixed"] = 1
+        params["optimalinclination"] = 1
+        params["optimalangles"] = 1
     if raddatabase:
         params["raddatabase"] = raddatabase
     r = requests.get(
         "https://re.jrc.ec.europa.eu/api/v5_2/PVcalc",
-        params=params, timeout=20
+        params=params, timeout=20,
+        headers={"User-Agent": "SiteIQ/1.0 (pvmath.com; contact@pvmath.com)"},
     )
     data = r.json()
-    totals  = data["outputs"]["totals"]["fixed"]
-    monthly = data["outputs"]["monthly"]["fixed"]
-    tilt    = data["inputs"]["mounting_system"]["fixed"]["slope"].get("value", "—")
+    totals_d = data["outputs"]["totals"]
+    monthly_d = data["outputs"]["monthly"]
+    if tracker:
+        key = "inclined_axis" if "inclined_axis" in totals_d else next(iter(totals_d), None)
+    else:
+        key = "fixed" if "fixed" in totals_d else next(iter(totals_d), None)
+    if not key:
+        raise ValueError("Unexpected PVGIS response structure")
+    totals = totals_d[key]
+    monthly = monthly_d.get(key, [])
 
-    months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+    opt_tilt = None
+    if not tracker:
+        meta = data.get("meta", {})
+        slope = meta.get("slope", {})
+        if isinstance(slope, dict):
+            v = slope.get("value")
+            opt_tilt = float(v) if v is not None else None
+        elif isinstance(slope, (int, float)):
+            opt_tilt = float(slope)
+
+    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     monthly_ghi = [
         {"Month": months[i], "GHI (kWh/m²)": round(m.get("H(i)_m", 0), 1)}
         for i, m in enumerate(monthly[:12])
     ]
     return {
         "success": True,
-        "annual_ghi":   round(totals.get("H(i)_y", 0), 1),
+        "annual_ghi": round(totals.get("H(i)_y", 0), 1),
         "annual_yield": round(totals.get("E_y", 0), 1),
-        "optimal_tilt": tilt,
-        "monthly":      monthly_ghi,
+        "optimal_tilt": opt_tilt,
+        "monthly": monthly_ghi,
+        "tracker": tracker,
     }
 
 
-def get_solar_data(lat, lon):
+def get_solar_data(lat, lon, mount_type="Fixed Tilt"):
     # PVGIS auto-selects PVGIS-SARAH2 by default, which doesn't cover most of
     # India, the Americas, or Australia/Oceania. Falling back to PVGIS-ERA5
     # (true global coverage, coarser resolution) is what actually fixes those
     # regions — previously a failed call here silently became "0 kWh/m²/yr —
     # Poor resource", which read as a real (and very wrong) site assessment
     # for sunny locations like Rajasthan instead of "data unavailable".
+    tracker = mount_type == "Single-Axis Tracker"
     try:
-        return _fetch_pvgis(lat, lon)
+        return _fetch_pvgis(lat, lon, tracker=tracker)
     except Exception as e1:
         try:
-            return _fetch_pvgis(lat, lon, raddatabase="PVGIS-ERA5")
+            return _fetch_pvgis(lat, lon, tracker=tracker, raddatabase="PVGIS-ERA5")
         except Exception as e2:
             return {"success": False, "error": f"{e1} / ERA5 fallback: {e2}"}
 
@@ -515,25 +594,34 @@ def get_terrain_data(lat, lon, polygon=None, polygons=None, radius_km=0.5):
     return {"success": False, "error": "Insufficient data"}
 
 
-def assess_slope(pct, mount_type="Fixed Tilt"):
+def assess_slope(pct, mount_type="Fixed Tilt", sparse_screening=False, sample_points=0):
     if mount_type == "Single-Axis Tracker":
         if pct <= 3:
-            return "✅ Excellent", "green",  f"{pct}% — Ideal for single-axis tracker"
+            lbl, color, detail = "✅ Excellent", "green", f"{pct}% — Ideal for single-axis tracker"
         elif pct <= 6:
-            return "⚠️ Acceptable", "yellow", f"{pct}% — Feasible for tracker; grading may be needed"
+            lbl, color, detail = "⚠️ Acceptable", "yellow", f"{pct}% — Feasible for tracker; grading may be needed"
         elif pct <= 10:
-            return "⚠️ Challenging", "yellow", f"{pct}% — Steep for trackers; significant grading required"
+            lbl, color, detail = "⚠️ Challenging", "yellow", f"{pct}% — Steep for trackers; significant grading required"
         else:
-            return "❌ Critical", "red",    f"{pct}% — Too steep for single-axis tracker systems"
+            lbl, color, detail = "❌ Critical", "red", f"{pct}% — Too steep for single-axis tracker systems"
     else:
         if pct <= 5:
-            return "✅ Excellent", "green",  f"{pct}% — Ideal for fixed-tilt ground mount"
+            lbl, color, detail = "✅ Excellent", "green", f"{pct}% — Ideal for fixed-tilt ground mount"
         elif pct <= 10:
-            return "⚠️ Acceptable", "yellow", f"{pct}% — Feasible; some earthworks expected"
+            lbl, color, detail = "⚠️ Acceptable", "yellow", f"{pct}% — Feasible; some earthworks expected"
         elif pct <= 15:
-            return "⚠️ Challenging", "yellow", f"{pct}% — Significant earthworks required"
+            lbl, color, detail = "⚠️ Challenging", "yellow", f"{pct}% — Significant earthworks required"
         else:
-            return "❌ Critical", "red",    f"{pct}% — Too steep; likely not viable"
+            lbl, color, detail = "❌ Critical", "red", f"{pct}% — Too steep; likely not viable"
+
+    if sparse_screening:
+        n = sample_points or "few"
+        lbl = "⚠️ Indicative only"
+        detail = (
+            f"{pct}% max from {n} sparse OpenTopoData sample points — not confirmed terrain. "
+            f"Run TopoIQ before treating slope as bankable. Underlying estimate: {detail}"
+        )
+    return lbl, color, detail
 
 
 def assess_solar(ghi):
@@ -595,7 +683,8 @@ def assess_eeg(lat, lon, land_use="Standard", project_country=""):
     elif in_nl:
         return "Netherlands", "SDE++ subsidy applicable", "RVO registration — grid congestion check critical (Liander/Stedin/Enexis)"
     elif in_us:
-        return "United States", "ITC 30% + IRA bonus credits applicable", "County zoning permit + utility interconnection agreement required"
+        iso, iso_note = _us_grid_operator(lat, lon)
+        return "United States", "ITC 30% + IRA bonus credits applicable", f"{iso} — {iso_note}"
     elif in_in:
         if agri:
             return "India", "PM-KUSUM / MNRE Agri-PV scheme applicable", "SECI or state DISCOM tender — contact MNRE for Agri-PV guidelines"
@@ -615,13 +704,16 @@ def assess_eeg(lat, lon, land_use="Standard", project_country=""):
         return name, "Check local renewable energy incentive scheme", "Contact national energy regulatory authority for grid connection"
 
 
-def site_capacity(area_ha, land_use="Standard", mount_type="Fixed Tilt"):
+def site_capacity(area_ha, land_use="Standard", mount_type="Fixed Tilt", annual_yield_kwh_kwp=None):
+    """Indicative installable DC capacity (MWp) from area × screening density."""
     if land_use == "Agri-PV":
         density = 0.18 if mount_type == "Single-Axis Tracker" else 0.20
     else:
         density = 0.35 if mount_type == "Single-Axis Tracker" else 0.40
-    mw  = round(area_ha * density, 2)
-    mwh = round(mw * 1000, 0)
+    mw = round(area_ha * density, 2)
+    mwh = None
+    if annual_yield_kwh_kwp and annual_yield_kwh_kwp > 0:
+        mwh = round(mw * annual_yield_kwh_kwp, 0)
     return mw, mwh
 
 
@@ -642,7 +734,7 @@ def overall_verdict(slope_lbl, solar_lbl, land_use="Standard", mount_type="Fixed
         return "✅ EXCELLENT",    f"Strong {label} potential. All parameters in ideal range — proceed to detailed feasibility study."
 
 
-def get_next_steps(project_country, land_use="Standard"):
+def get_next_steps(project_country, land_use="Standard", lat=None, lon=None):
     c = project_country.lower().strip()
     agri = land_use == "Agri-PV"
 
@@ -718,11 +810,12 @@ def get_next_steps(project_country, land_use="Standard"):
             "Land use: Agri-PV — verify agrarisch bestemming — provincial approval required",
         ]
     elif any(x in c for x in ["usa", "united states", "america"]):
+        iso, _ = _us_grid_operator(lat, lon) if lat is not None and lon is not None else ("your regional ISO/RTO", "")
         steps = [
-            "Grid connection: contact local utility / ISO (PJM, CAISO, MISO, ERCOT etc.)",
+            f"Interconnection: submit LGIA / queue application with your transmission owner in {iso} — at utility scale this is often the critical-path timeline",
+            "Environmental: wetlands (USACE), threatened species (USFWS), and cultural-resource screening — frequently the long-pole item on large sites",
             "Planning: county zoning permit + conditional use permit (CUP)",
             "Incentives: ITC (Investment Tax Credit) 30% + IRA bonus credits",
-            "Environmental: NEPA review if federal land — state-level EIA otherwise",
             "Land use: verify zoning classification with county assessor" if not agri else
             "Land use: Agri-PV — verify agricultural zoning and dual-use approval with county",
         ]
@@ -762,7 +855,8 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
               slope_lbl, solar_lbl, verdict, verdict_txt,
               cap_mw, cap_mwh,
               land_use="Standard", mount_type="Fixed Tilt",
-              project_country=""):
+              project_country="", location_label="",
+              flood_risk="", flood_detail="", coord_note=""):
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4,
                             rightMargin=2*cm, leftMargin=2*cm,
@@ -853,8 +947,9 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
 
     site_rows = [
         ["Project Name",   site_name or "—"],
+        ["Location",       location_label or project_country or country or "—"],
         ["Country",        project_country or country],
-        ["Coordinates",    f"{lat:.5f}°N, {lon:.5f}°E"],
+        ["Coordinates",    f"{format_coords(lat, lon)}" + (f" ({coord_note})" if coord_note else "")],
         ["Site Area",      f"{area_ha} ha"],
         ["Land Use Type",  land_use],
         ["Mounting System",mount_type],
@@ -914,7 +1009,7 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
         _t = text.split("—")[0].strip().upper()
         if any(w in _t for w in ["EXCELLENT","GOOD","LOW"]):
             return lp(f"<b>{_t}</b>", C_GREEN, bold=True, size=8)
-        if any(w in _t for w in ["ACCEPTABLE","MODERATE","LOW-MOD"]):
+        if any(w in _t for w in ["ACCEPTABLE","MODERATE","LOW-MOD","INDICATIVE"]):
             return lp(f"<b>{_t}</b>", C_YELLOW, bold=True, size=8)
         if any(w in _t for w in ["CHALLENGING","HIGH"]):
             return lp(f"<b>{_t}</b>", C_ORANGE, bold=True, size=8)
@@ -924,19 +1019,29 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
 
     _slope_badge = _badge(slope_lbl)
     _solar_badge = _badge(solar_lbl)
+    _flood_badge = _badge(flood_risk.replace("🟢 ", "").replace("🟡 ", "").replace("🟠 ", "").replace("🔴 ", "").replace("⚠️ ", ""))
+    _yield_lbl = "Specific Yield" if mount_type == "Single-Axis Tracker" else "Annual Yield"
+    _incentive_lbl = _incentive_row_label(project_country, country)
+    _output_val = f"{cap_mwh:,.0f} MWh/yr" if cap_mwh is not None else "— (yield data unavailable)"
 
     rows = [
         [lp("Metric",          colors.white, bold=True, size=9),
          lp("Value",           colors.white, bold=True, size=9),
          lp("Rating",          colors.white, bold=True, size=9)],
-        [lp("Annual GHI",      MUTED, size=9), lp(f"{solar.get('annual_ghi','—')} kWh/m²/yr", bold=True, size=9),   _solar_badge],
-        [lp("Annual Yield",    MUTED, size=9), lp(f"{solar.get('annual_yield','—')} kWh/kWp/yr", bold=True, size=9), lp("—", MUTED, size=8)],
-        [lp("Optimal Tilt",    MUTED, size=9), lp(f"{solar.get('optimal_tilt','—')}°", bold=True, size=9),           lp("—", MUTED, size=8)],
+        [lp("In-plane Irradiation", MUTED, size=9), lp(f"{solar.get('annual_ghi','—')} kWh/m²/yr", bold=True, size=9),   _solar_badge],
+        [lp(_yield_lbl,       MUTED, size=9), lp(f"{solar.get('annual_yield','—')} kWh/kWp/yr", bold=True, size=9), lp("—", MUTED, size=8)],
+    ]
+    if mount_type == "Single-Axis Tracker":
+        rows.append([lp("Mounting", MUTED, size=9), lp("Single-axis tracker (horizontal N–S axis)", bold=True, size=9), lp("—", MUTED, size=8)])
+    else:
+        rows.append([lp("Optimal Tilt", MUTED, size=9), lp(f"{solar.get('optimal_tilt','—')}°", bold=True, size=9), lp("—", MUTED, size=8)])
+    rows += [
         [lp("Max Slope",       MUTED, size=9), lp(f"{terrain.get('max_slope_pct','—')}%", bold=True, size=9),        _slope_badge],
         [lp("Elevation",       MUTED, size=9), lp(f"{terrain.get('center_elev','—')} m asl", bold=True, size=9),     lp("—", MUTED, size=8)],
-        [lp("Est. Capacity",   MUTED, size=9), lp(f"{cap_mw} MWp", bold=True, size=9),                               lp(f"Density: {_density} MW/ha", MUTED, size=8)],
-        [lp("Est. Output",     MUTED, size=9), lp(f"{cap_mwh:,.0f} MWh/yr", bold=True, size=9),                      lp("Indicative only", MUTED, size=8)],
-        [lp("EEG / Incentive", MUTED, size=9), lp(eeg_status, bold=True, size=9),                                    lp(eeg_note, MUTED, size=8)],
+        [lp("Flood Risk",      MUTED, size=9), lp(flood_detail or "—", bold=True, size=9),                            _flood_badge],
+        [lp("Est. DC Capacity", MUTED, size=9), lp(f"{cap_mw} MWp DC", bold=True, size=9),               lp(f"Density: {_density} MWp DC/ha", MUTED, size=8)],
+        [lp("Est. Output",     MUTED, size=9), lp(_output_val, bold=True, size=9),                                    lp("Indicative only", MUTED, size=8)],
+        [lp(_incentive_lbl,   MUTED, size=9), lp(eeg_status, bold=True, size=9),                                    lp(eeg_note, MUTED, size=8)],
     ]
     mt = Table(rows, colWidths=[4.5*cm, 5.5*cm, 7*cm])
     mt.setStyle(TableStyle([
@@ -955,9 +1060,11 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
     if terrain.get("success"):
         if terrain.get("boundary_sampled"):
             _slope_note = (
-                f"Slope assessed from {terrain.get('sample_points','—')} sample points across the drawn site "
-                f"boundary — {terrain.get('pct_over5','—')}% of points &gt;5% slope, "
-                f"{terrain.get('pct_over10','—')}% &gt;10%. Run TopoIQ for full-resolution, area-weighted terrain stats."
+                f"<b>Slope is indicative only</b> — assessed from {terrain.get('sample_points','—')} sparse "
+                f"OpenTopoData sample points across the drawn boundary "
+                f"({terrain.get('pct_over5','—')}% of samples &gt;5% slope, "
+                f"{terrain.get('pct_over10','—')}% &gt;10%). "
+                f"Do <b>not</b> treat the Max Slope rating as confirmed until TopoIQ has been run."
             )
         else:
             _slope_note = (
@@ -965,8 +1072,14 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
                 "of the pin (no site boundary drawn). Run TopoIQ for full-resolution terrain analysis."
             )
         story.append(Spacer(1, 0.15*cm))
-        story.append(Paragraph(_slope_note,
-            ParagraphStyle("SlopeNote", parent=styles["Normal"], fontSize=7, textColor=MUTED, leading=10)))
+        _slope_style = ParagraphStyle(
+            "SlopeNote", parent=styles["Normal"], fontSize=8,
+            textColor=C_ORANGE if terrain.get("boundary_sampled") else MUTED,
+            leading=11,
+            backColor=C_LORANG if terrain.get("boundary_sampled") else None,
+            borderPadding=6,
+        )
+        story.append(Paragraph(_slope_note, _slope_style))
 
     story.append(Spacer(1, 0.5*cm))
 
@@ -1043,7 +1156,7 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
 
     story.append(section_hdr("RECOMMENDED NEXT STEPS"))
     story.append(Spacer(1, 0.15*cm))
-    for step in get_next_steps(project_country or country, land_use):
+    for step in get_next_steps(project_country or country, land_use, lat=lat, lon=lon):
         story.append(Paragraph(step,
             ParagraphStyle("step", parent=styles["Normal"], fontSize=9,
                            textColor=DARK_TXT, leading=13, leftIndent=4)))
@@ -1139,7 +1252,7 @@ if _has_proj:
                 padding:0.65rem 1rem;margin-bottom:0.9rem;font-size:0.89rem;color:#1a3a1a;">
       <strong>📋 Project:</strong>&nbsp; {_proj_name}
       &nbsp;·&nbsp; {_proj_ctry}
-      &nbsp;·&nbsp; {_proj_lat:.5f}°N, {_proj_lon:.5f}°E
+      &nbsp;·&nbsp; {format_coords(_proj_lat, _proj_lon)}
     </div>
     """, unsafe_allow_html=True)
     # Pre-centre the map and pre-populate coordinates from project context
@@ -1218,12 +1331,10 @@ with left:
             st.switch_page("pages/project.py")
 
     elif _enabled_polys_latlon:
-        lat = _proj_lat
-        lon = _proj_lon
+        _lat_c, _lon_c = _boundary_center(_enabled_polys_latlon)
+        lat, lon = _lat_c, _lon_c
         all_lats = [p[0] for poly in _enabled_polys_latlon for p in poly]
         all_lons = [p[1] for poly in _enabled_polys_latlon for p in poly]
-        _lat_c = (min(all_lats) + max(all_lats)) / 2
-        _lon_c = (min(all_lons) + max(all_lons)) / 2
         _vert_n = sum(len(poly) for poly in _enabled_polys_latlon)
 
         st.markdown(
@@ -1234,7 +1345,7 @@ with left:
             f'<span style="font-size:0.8rem;color:#3a5a3a;">'
             f'{_enabled_n} enabled parcel{"s" if _enabled_n != 1 else ""} · '
             f'{_vert_n} vertices &nbsp;·&nbsp; '
-            f'Centre {_lat_c:.4f}°, {_lon_c:.4f}°</span>'
+            f'Centre {format_coords(_lat_c, _lon_c)}</span>'
             f'</div>',
             unsafe_allow_html=True
         )
@@ -1248,7 +1359,7 @@ with left:
             ).add_to(m)
         st_folium(m, width=None, height=340, returned_objects=[])
         st.caption("Read-only preview — edit parcels in **Project Setup**.")
-        st.success(f"📌 {lat:.5f}°N, {lon:.5f}°E")
+        st.success(f"📌 {format_coords(lat, lon)} · site boundary centre")
 
     elif _proj.get("mode") == "full" and _boundaries and _enabled_n == 0:
         st.warning(
@@ -1270,8 +1381,7 @@ with left:
                       icon=folium.Icon(color="green", icon="star")).add_to(m)
 
         st_folium(m, width=None, height=340, returned_objects=[])
-        st.caption("Pin location from **Project Setup** — click the map there to move it.")
-        st.success(f"📌 {lat:.5f}°N, {lon:.5f}°E")
+        st.success(f"📌 {format_coords(lat, lon)} · reference pin")
 
     if _has_proj and _proj.get("area_ha"):
         area_ha = float(_proj["area_ha"])
@@ -1358,10 +1468,13 @@ with right:
             st.session_state["siteiq_lon"]          = lon
             st.session_state["siteiq_area_ha"]      = area_ha
 
+            _coord_note = "Site boundary centre" if _enabled_polys_latlon else "Reference pin"
+            _location_label = _proj.get("location_label", "") or reverse_geocode(lat, lon) or ""
+
             increment_usage(_username, "siteiq")
 
             with st.spinner("Fetching solar resource data from EU PVGIS…"):
-                solar = get_solar_data(lat, lon)
+                solar = get_solar_data(lat, lon, _mount_type)
             with st.spinner("Analysing terrain & slope…"):
                 terrain = get_terrain_data(
                     lat, lon,
@@ -1373,6 +1486,7 @@ with right:
                 "project_name": project_name, "project_country_input": project_country_input,
                 "land_use": _land_use, "mount_type": _mount_type,
                 "solar": solar, "terrain": terrain,
+                "location_label": _location_label, "coord_note": _coord_note,
             }
         else:
             # Redisplay-from-cache rerun (e.g. triggered by clicking Download
@@ -1384,8 +1498,16 @@ with right:
             _land_use                  = _run_cache["land_use"]
             _mount_type                = _run_cache["mount_type"]
             solar, terrain              = _run_cache["solar"], _run_cache["terrain"]
+            _location_label            = _run_cache.get("location_label", _proj.get("location_label", ""))
+            _coord_note                = _run_cache.get("coord_note", "")
 
-        s_lbl, _, s_detail = assess_slope(terrain["max_slope_pct"] if terrain["success"] else 0, _mount_type)
+        _sparse_slope = bool(terrain.get("success") and terrain.get("boundary_sampled"))
+        s_lbl, _, s_detail = assess_slope(
+            terrain["max_slope_pct"] if terrain["success"] else 0,
+            _mount_type,
+            sparse_screening=_sparse_slope,
+            sample_points=terrain.get("sample_points", 0) if terrain.get("success") else 0,
+        )
         if solar["success"]:
             g_lbl, _, g_detail = assess_solar(solar["annual_ghi"])
         else:
@@ -1394,8 +1516,12 @@ with right:
             # site assessment. Surface it as a data error instead.
             g_lbl, g_detail = "⚠️ Data unavailable", "Solar resource data could not be retrieved for this location — try again or check PVGIS coverage."
         country, eeg_status, eeg_note = assess_eeg(lat, lon, _land_use, project_country_input)
-        cap_mw, cap_mwh = site_capacity(area_ha, _land_use, _mount_type)
+        _yield = solar.get("annual_yield") if solar.get("success") else None
+        cap_mw, cap_mwh = site_capacity(area_ha, _land_use, _mount_type, _yield)
         verdict, verdict_txt = overall_verdict(s_lbl, g_lbl, _land_use, _mount_type)
+        flood_risk, flood_detail, flood_portal, flood_portal_name = get_flood_risk(
+            lat, lon, terrain.get("center_elev") if terrain.get("success") else None
+        )
 
         badge_color = "#1a5c2e" if _land_use == "Agri-PV" else "#1565c0"
         st.markdown(
@@ -1413,11 +1539,17 @@ with right:
             st.error(f"**{verdict}** — {verdict_txt}")
 
         c1, c2, c3, c4 = st.columns(4)
+        _mc4_lbl = "Specific Yield" if _mount_type == "Single-Axis Tracker" else "Optimal Tilt"
+        _mc4_val = (
+            f"{solar.get('annual_yield', '—')} kWh/kWp/yr"
+            if _mount_type == "Single-Axis Tracker"
+            else f"{solar.get('optimal_tilt', '—')}°"
+        )
         _metrics = [
-            (c1, "fa-sun",            "#f5a623", "Annual GHI",   f"{solar.get('annual_ghi','—')} kWh/m²"),
+            (c1, "fa-sun",            "#f5a623", "In-plane Irradiation", f"{solar.get('annual_ghi','—')} kWh/m²"),
             (c2, "fa-mountain",       "#5b9bd5", "Max Slope",    f"{terrain.get('max_slope_pct','—')}%"),
-            (c3, "fa-bolt",           "#2ecc71", "Est. Capacity",f"{cap_mw} MWp"),
-            (c4, "fa-ruler-combined", "#a87fd4", "Optimal Tilt", f"{solar.get('optimal_tilt','—')}°"),
+            (c3, "fa-bolt",           "#2ecc71", "Est. DC Capacity", f"{cap_mw} MWp DC"),
+            (c4, "fa-ruler-combined", "#a87fd4", _mc4_lbl, _mc4_val),
         ]
         for _mc, _icon, _ic, _lbl, _val in _metrics:
             _mc.markdown(
@@ -1441,12 +1573,19 @@ with right:
                 "boundary in Project Setup (Full Mode) for a boundary-derived capacity estimate."
             )
 
+        if cap_mwh is not None:
+            st.caption(f"⚡ Est. annual output: **{cap_mwh:,.0f} MWh/yr** ({cap_mw} MWp DC × {solar.get('annual_yield', '—')} kWh/kWp/yr)")
+
         if terrain.get("success"):
             if terrain.get("boundary_sampled"):
+                st.warning(
+                    f"**Slope is indicative only** — {terrain.get('sample_points','—')} sparse sample points "
+                    f"across your boundary ({terrain.get('pct_over5','—')}% of samples >5% slope, "
+                    f"{terrain.get('pct_over10','—')}% >10%). "
+                    f"Do not treat the Max Slope rating as confirmed until you run **TopoIQ**."
+                )
                 st.caption(
-                    f"📐 Slope assessed from {terrain.get('sample_points','—')} sample points across your drawn "
-                    f"site boundary — {terrain.get('pct_over5','—')}% of points >5% slope, "
-                    f"{terrain.get('pct_over10','—')}% >10%. Run TopoIQ for full-resolution, area-weighted terrain stats."
+                    f"📐 OpenTopoData screening only — run TopoIQ for full-resolution, area-weighted terrain stats."
                 )
             else:
                 st.caption(
@@ -1470,9 +1609,6 @@ with right:
             (st.success if "✅" in s_lbl else st.warning if "⚠️" in s_lbl else st.error)(s_detail)
 
             st.markdown('<div class="section-hdr" style="margin-top:0.8rem;"><i class="fa-solid fa-water" style="color:#4ab0d4;"></i> Flood Risk</div>', unsafe_allow_html=True)
-            flood_risk, flood_detail, flood_portal, flood_portal_name = get_flood_risk(
-                lat, lon, terrain.get("center_elev") if terrain["success"] else None
-            )
             if "🔴" in flood_risk:
                 st.error(f"**{flood_risk}**  \n{flood_detail}  \n[Check {flood_portal_name} ↗]({flood_portal})")
             elif "🟠" in flood_risk or "🟡" in flood_risk:
@@ -1536,7 +1672,10 @@ with right:
             verdict=verdict, verdict_txt=verdict_txt,
             cap_mw=cap_mw, cap_mwh=cap_mwh,
             land_use=_land_use, mount_type=_mount_type,
-            project_country=project_country_input
+            project_country=project_country_input,
+            location_label=_location_label,
+            flood_risk=flood_risk, flood_detail=flood_detail,
+            coord_note=_coord_note,
         )
         st.download_button(
             label="⬇️  Download PDF Report",
@@ -1552,7 +1691,7 @@ with right:
         wc1, wc2 = st.columns(2)
         _wcards = [
             (wc1, "Solar resource",
-             "Annual GHI · monthly irradiation · optimal tilt angle"),
+             "In-plane irradiation · monthly chart · yield by mounting type"),
             (wc2, "Terrain & slope",
              "Max slope % · centre elevation · tracker suitability"),
             (wc1, "Regulatory check",
@@ -1560,7 +1699,7 @@ with right:
             (wc2, "Flood risk",
              "Elevation-based assessment · local flood portal links"),
             (wc1, "Capacity estimate",
-             "MWp & annual MWh · density by system type"),
+             "MWp DC & annual MWh · density by system type"),
             (wc2, "PDF report",
              "One-click download · professional format · client-ready"),
         ]
