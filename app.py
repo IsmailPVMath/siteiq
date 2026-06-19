@@ -3,7 +3,6 @@ import json
 import streamlit as st
 import streamlit.components.v1 as components
 from pvmath_auth import render_auth_page, sign_out, load_latest_project, UPGRADE_CONTACT
-from pvmath_session import clear_module_project_state
 
 st.set_page_config(
     page_title="PVMath — Solar Site Intelligence",
@@ -390,10 +389,7 @@ with st.sidebar:
         st.page_link("pages/overview.py", label="Overview")
         st.page_link("pages/my_projects.py", label="My Projects")
 
-        # ── Project hub (module launcher) ─────────────────────────────────
-        # Unlike direct module links, Project Setup is safe from any page: it
-        # loads the saved pvm_project and shows SiteIQ / TopoIQ / YieldIQ
-        # buttons only after a committed save — the same gate as before.
+        # ── Project hub ───────────────────────────────────────────────────
         _sb_proj = st.session_state.get("pvm_project", {})
         _sb_proj_name = (_sb_proj.get("name") or "").strip()
         st.markdown('<div class="pvm-group-label">Project</div>', unsafe_allow_html=True)
@@ -406,22 +402,11 @@ with st.sidebar:
                 unsafe_allow_html=True,
             )
 
-        # ── Modules group ────────────────────────────────────────────────
-        # SiteIQ / TopoIQ / YieldIQ are intentionally NOT linked here anymore.
-        # Each module reads its site/boundary from st.session_state["pvm_project"],
-        # which is only committed once the user clicks "Save Project" on the
-        # Project page — the per-project "🌍 SiteIQ / ⚡ YieldIQ / ⛰️ TopoIQ"
-        # buttons rendered there (pages/project.py) only appear AFTER that save,
-        # so they always carry a fully-committed project across. A sidebar link
-        # could be clicked at any time, including right after drawing a boundary
-        # but before saving — Streamlit then navigates away before that draft is
-        # ever written to pvm_project, so the destination module finds no
-        # boundary and falls back to a blank "draw your own" state. That looked
-        # like a broken/old page to users who'd just drawn one. Removing the
-        # sidebar shortcuts and keeping a single, always-correct entry point
-        # (Project page -> Save -> module button) fixes that for good.
+        st.markdown('<div class="pvm-group-label">Modules</div>', unsafe_allow_html=True)
+        st.page_link("pages/siteiq.py", label="SiteIQ")
+        st.page_link("pages/yieldiq.py", label="YieldIQ")
+        st.page_link("pages/topoiq.py", label="TopoIQ")
         if _user_email in _ADMIN:
-            st.markdown('<div class="pvm-group-label">Modules</div>', unsafe_allow_html=True)
             st.page_link("pages/_layoutiq.py", label="LayoutIQ")
 
         # ── Bottom-pinned group: account / settings / membership / logout ──
@@ -466,45 +451,6 @@ with st.sidebar:
             if st.button("Log out", key="sidebar_logout", use_container_width=True):
                 sign_out()
                 st.rerun()
-
-# ── Top-right "+ New Project" action (replaces the old redundant top-bar) ─────
-# NOTE: styling must be anchored with a marker INSIDE the same container as the
-# button (via :has()) — a <div> opened in one st.markdown call and closed in a
-# later one never actually wraps the button (each st.markdown call is its own
-# isolated HTML fragment), so that old approach silently failed to style/scope
-# anything reliably.
-#
-# Skipped on Overview: it renders its own "+ New Project" button inline
-# (alongside "View My Projects" / "Continue last project"), so this top-bar
-# copy was a second, redundant button stacked on top of it.
-# Skipped on Project (Project Setup): the page IS the "create a new project"
-# flow itself — a "+ New Project" button up top there reset the form fields
-# the user was actively filling in, which read as broken/confusing rather
-# than useful. Every other page still gets this one — it's their only
-# "+ New Project" entry point.
-if pg.title not in ("Overview", "Project"):
-    st.markdown("""
-    <style>
-    div[data-testid="stVerticalBlock"]:has(div.pvm-newproj-anchor) div[data-testid="stButton"] > button {
-        font-size: 0.82rem !important; font-weight: 700 !important;
-        padding: 0.3rem 0.9rem !important; border-radius: 20px !important;
-        border: 1px solid #1d9e52 !important;
-        background: #1d9e52 !important; color: #fff !important;
-        line-height: 1.4 !important; height: auto !important;
-    }
-    div[data-testid="stVerticalBlock"]:has(div.pvm-newproj-anchor) div[data-testid="stButton"] > button:hover {
-        background: #168442 !important; border-color: #168442 !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    _tb_l, _tb_r = st.columns([8, 2])
-    with _tb_r:
-        with st.container():
-            st.markdown('<div class="pvm-newproj-anchor"></div>', unsafe_allow_html=True)
-            if st.button("+ New Project", key="topbar_new_project", use_container_width=True):
-                clear_module_project_state(st.session_state, blank=True)
-                st.switch_page("pages/project.py")
 
 pg.run()
 

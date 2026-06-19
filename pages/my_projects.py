@@ -47,7 +47,7 @@ st.markdown("""
   <h1 style="font-size:2rem;font-weight:800;color:#1a2e1a;margin:0 0 0.3rem 0;">My Projects</h1>
   <p style="color:#5a7a5a;font-size:1rem;margin:0;">
     Every site you've saved. Open one to keep working on it, or start a new one with
-    <strong>+ New Project</strong> (top right).
+    <strong>+ New Project</strong> on Overview.
   </p>
 </div>
 """, unsafe_allow_html=True)
@@ -64,7 +64,7 @@ if not _rows:
     <div class="myproj-empty">
       <div style="font-size:1.6rem;margin-bottom:0.6rem;"><i class="fa-regular fa-folder-open"></i></div>
       <div style="font-weight:700;color:#1a2e1a;margin-bottom:0.3rem;">No projects yet</div>
-      <div style="font-size:0.88rem;">Use <strong>+ New Project</strong> (top right) to set up your first site.</div>
+      <div style="font-size:0.88rem;">Use <strong>+ New Project</strong> on Overview to set up your first site.</div>
     </div>
     """, unsafe_allow_html=True)
     st.stop()
