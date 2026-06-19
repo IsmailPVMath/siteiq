@@ -50,19 +50,7 @@ MAX_GRID_POINTS = 300_000    # coarsen output grid above this point count
 DEM_ZOOM_MIN = 11
 DEM_ZOOM_MAX = 14
 TILE_FETCH_WORKERS = 8
-from pvmath_boundary_ui import render_grouped_boundary_manager
-from pvmath_kml import (
-    BOUNDARY_COLORS,
-    apply_site_areas_only_selection,
-    boundaries_from_features,
-    boundary_layer_group,
-    filter_boundary_list,
-    guess_boundary_enabled,
-    normalize_ring_lonlat,
-    parse_kml_features,
-    parse_kmz_features,
-    read_kml_bytes,
-)
+from pvmath_kml import BOUNDARY_COLORS, filter_boundary_list
 def boundaries_union_area_ha(polygon_list):
     """Total area (ha) — union when shapely available, else sum of parts."""
     polys = [p for p in polygon_list if p and len(p) >= 3]
@@ -153,7 +141,7 @@ def _render_topo_boundary_map(
     enable_draw=False,
 ):
     """
-    Parcel map synced to checklist selections.
+    Parcel map from Project Setup (enabled parcels shown).
     In custom-boundary mode, faint reference layers + yellow analysis polygon + Draw tools.
     """
     if show_reference_layers:
@@ -252,77 +240,6 @@ def _render_topo_boundary_map(
         key=TOPO_MAP_KEY,
     )
 
-
-def _visible_boundaries(bounds, show_all: bool):
-    if show_all:
-        return bounds
-    return [b for b in bounds if b.get("is_primary", True)]
-
-
-def _render_boundary_manager():
-    """Collapsible KMZ layer tree — per-layer and per-parcel selection."""
-    all_bounds = st.session_state.get("topo_boundaries", [])
-    if not all_bounds:
-        return
-    show_all = st.session_state.get("topo_show_all_layers", False)
-    hidden_n = sum(1 for b in all_bounds if not b.get("is_primary", True))
-    bounds = _visible_boundaries(all_bounds, show_all)
-
-    st.markdown(
-        '<div class="section-hdr" style="margin-top:0.6rem;">'
-        '<i class="fa-solid fa-layer-group" style="color:#1565c0;"></i> '
-        'Site Boundaries — select for analysis</div>',
-        unsafe_allow_html=True,
-    )
-    if hidden_n and not show_all:
-        st.caption(
-            f"Showing **{len(bounds)}** site parcel{'s' if len(bounds) != 1 else ''} "
-            f"(layout slivers & infrastructure layers hidden). "
-            f"**{hidden_n}** other layers hidden."
-        )
-    else:
-        st.caption(
-            "Site parcels are pre-selected. Uncheck anything you do not want in the terrain run."
-        )
-
-    if hidden_n:
-        if not show_all:
-            if st.button(
-                f"Show all layers ({hidden_n} hidden)",
-                use_container_width=True,
-                key="topo_show_hidden",
-            ):
-                st.session_state["topo_show_all_layers"] = True
-                st.rerun()
-        elif st.button("Site parcels only", use_container_width=True, key="topo_hide_extra"):
-            st.session_state["topo_show_all_layers"] = False
-            st.rerun()
-
-    def _smart_select(all_b, visible):
-        visible_ids = {b["id"] for b in visible}
-        targets = all_b if show_all else [b for b in all_b if b["id"] in visible_ids]
-        apply_site_areas_only_selection(targets)
-
-    def _clear():
-        st.session_state["topo_boundaries"] = []
-        st.session_state.pop("topo_upload_key", None)
-        st.session_state.pop("topo_show_all_layers", None)
-        st.session_state.pop("topo_analysis_polygon", None)
-        st.session_state["topo_analysis_mode"] = "parcels"
-
-    remove_ids = render_grouped_boundary_manager(
-        all_bounds=all_bounds,
-        visible_bounds=bounds,
-        area_fn=boundary_area_ha,
-        key_prefix="topo",
-        on_clear_all=_clear,
-        smart_select_fn=_smart_select,
-    )
-    if remove_ids:
-        st.session_state["topo_boundaries"] = [
-            b for b in all_bounds if b["id"] not in remove_ids
-        ]
-        st.rerun()
 
 def boundary_area_ha(polygon_coords):
     """Approximate polygon area (ha). Vertices are (lon, lat) tuples."""
@@ -1089,75 +1006,33 @@ def export_dxf(X, Y, Z, lat_c, lon_c, minor_int=0.5, major_int=1.0):
     return stream.getvalue().encode("utf-8")
 
 
-def _boundaries_from_file_dict(all_polys: dict, source_key: str):
-    """Build session-state boundary list from parsed DXF shapes."""
-    out = []
-    for i, (name, coords) in enumerate(all_polys.items()):
-        area = boundary_area_ha(coords)
-        out.append({
-            "id": f"{source_key}_{i}",
-            "name": name,
-            "full_name": name,
-            "layer_group": boundary_layer_group(name),
-            "coords": coords,
-            "enabled": guess_boundary_enabled(name, area),
+def _boundaries_from_project(proj):
+    """Read-only site boundaries from saved project (vertices as lon, lat tuples)."""
+    if proj.get("polygon_boundaries"):
+        loaded = filter_boundary_list(list(proj["polygon_boundaries"]), latlon=True)
+        return [
+            {
+                "id": b.get("id", f"proj_{i}"),
+                "name": b.get("name", f"Boundary {i + 1}"),
+                "full_name": b.get("full_name", b.get("name", "")),
+                "layer_group": b.get("layer_group"),
+                "coords": [(c[1], c[0]) for c in b["coords"]],
+                "enabled": b.get("enabled", True),
+                "is_primary": b.get("is_primary", True),
+            }
+            for i, b in enumerate(loaded)
+            if b.get("coords")
+        ]
+    pc = proj.get("polygon_coords")
+    if proj.get("mode") == "full" and pc:
+        return [{
+            "id": "proj_0",
+            "name": "Project boundary",
+            "coords": [(c[1], c[0]) for c in pc],
+            "enabled": True,
             "is_primary": True,
-            "is_styled_boundary": False,
-        })
-    return out
-
-
-def parse_dxf_polygons(raw_bytes):
-    if not HAS_EZDXF:
-        return {}
-    try:
-        doc = ezdxf.read(io.StringIO(raw_bytes.decode("utf-8", errors="ignore")))
-    except Exception:
-        try:
-            doc = ezdxf.read(io.StringIO(raw_bytes.decode("latin-1", errors="ignore")))
-        except Exception:
-            return {}
-
-    results = {}
-    msp = doc.modelspace()
-    idx = 0
-    for ent in msp:
-        pts = None
-        if ent.dxftype() == "LWPOLYLINE":
-            if ent.is_closed or ent.dxf.flags & 1:
-                pts = [(p[0], p[1]) for p in ent.get_points()]
-        elif ent.dxftype() == "POLYLINE":
-            verts = list(ent.vertices)
-            if len(verts) >= 3:
-                pts = [(v.dxf.location.x, v.dxf.location.y) for v in verts]
-
-        if pts and len(pts) >= 3:
-            layer = ent.dxf.layer if hasattr(ent.dxf, "layer") else "0"
-            key = f"Layer {layer} #{idx}"
-            results[key] = pts
-            idx += 1
-
-    return results
-
-
-def load_boundary_file(uploaded):
-    raw = uploaded.read()
-    name = uploaded.name.lower()
-    if name.endswith(".kmz"):
-        return raw, "kmz"
-    elif name.endswith(".kml"):
-        return raw, "kml"
-    elif name.endswith(".dxf"):
-        return raw, "dxf"
-    elif name.endswith(".dwg"):
-        if HAS_EZDXF:
-            try:
-                doc = ezdxf.readfile(io.BytesIO(raw))
-                return raw, "dwg_ok"
-            except Exception:
-                pass
-        return raw, "dwg_unsupported"
-    return raw, "unknown"
+        }]
+    return []
 
 
 # ─── Main UI ─────────────────────────────────────────────────────────────────
@@ -1172,59 +1047,7 @@ if _proj.get("lat") and _proj.get("lon") and not st.session_state.get("topo_cent
     st.session_state["topo_center"] = [_proj["lat"], _proj["lon"]]
     st.session_state["topo_zoom"] = 14
 
-# Full Mode project with drawn polygon — skip re-entry
-# project.py stores polygon as [[lat,lon],...]; topoiq internally uses (lon,lat) — convert
-_preloaded_polygon = (
-    [(c[1], c[0]) for c in _proj["polygon_coords"]]
-    if (_proj.get("mode") == "full" and _proj.get("polygon_coords"))
-    else None
-)
-
-if "topo_boundaries" not in st.session_state:
-    st.session_state["topo_boundaries"] = []
-
-def _proj_boundaries_fingerprint(proj):
-    bounds = proj.get("polygon_boundaries")
-    if bounds:
-        return ("multi", len(bounds), tuple(b.get("id", i) for i, b in enumerate(bounds)))
-    pc = proj.get("polygon_coords")
-    if pc:
-        return ("single", len(pc), round(pc[0][0], 5), round(pc[0][1], 5))
-    return None
-
-_proj_fp = _proj_boundaries_fingerprint(_proj)
-if _proj_fp and st.session_state.get("topo_proj_fp") != _proj_fp:
-    st.session_state["topo_proj_fp"] = _proj_fp
-    st.session_state.pop("topo_from_proj", None)
-
-if _proj.get("polygon_boundaries"):
-    st.session_state.setdefault("topo_boundaries", [])
-    if not st.session_state.get("topo_from_proj"):
-        _loaded = filter_boundary_list(
-            list(_proj["polygon_boundaries"]), latlon=True
-        )
-        st.session_state["topo_boundaries"] = [
-            {
-                "id": b.get("id", f"proj_{i}"),
-                "name": b.get("name", f"Boundary {i + 1}"),
-                "full_name": b.get("full_name", b.get("name", "")),
-                "layer_group": b.get("layer_group"),
-                "coords": [(c[1], c[0]) for c in b["coords"]],
-                "enabled": b.get("enabled", True),
-                "is_primary": b.get("is_primary", True),
-            }
-            for i, b in enumerate(_loaded)
-            if b.get("coords")
-        ]
-        st.session_state["topo_from_proj"] = True
-elif _preloaded_polygon and not st.session_state.get("topo_from_proj"):
-    st.session_state["topo_boundaries"] = [{
-        "id": "proj_0",
-        "name": "Project boundary",
-        "coords": _preloaded_polygon,
-        "enabled": True,
-    }]
-    st.session_state["topo_from_proj"] = True
+_boundaries = _boundaries_from_project(_proj)
 
 if _has_proj:
     st.markdown(f"""
@@ -1264,8 +1087,6 @@ with left:
         unsafe_allow_html=True,
     )
 
-    _boundaries = st.session_state.get("topo_boundaries", [])
-
     if not _has_proj:
         st.warning(
             "No project loaded. Open **Project Setup**, choose **Full Mode**, upload your KMZ "
@@ -1283,34 +1104,37 @@ with left:
             st.switch_page("pages/project.py")
         _enabled_polys = []
     else:
+        _enabled_n = sum(1 for b in _boundaries if b.get("enabled"))
+        _total_ha = boundaries_union_area_ha(
+            [b["coords"] for b in _boundaries if b.get("enabled")]
+        ) if _enabled_n else 0.0
         st.markdown(
             '<div style="background:#e8f5ee;border:1.5px solid #b8ddc8;border-radius:10px;'
             'padding:0.75rem 1rem;margin-bottom:0.6rem;">'
             '<span style="font-weight:700;color:#145f34;font-size:0.88rem;">'
             '<i class="fa-solid fa-circle-check"></i> Boundaries from Project Setup</span><br>'
             '<span style="font-size:0.8rem;color:#3a5a3a;">'
-            'Choose parcels below, or draw a custom analysis polygon on the map. '
-            'To change the KMZ, edit the project in Project Setup.</span>'
+            f'{_enabled_n} enabled parcel{"s" if _enabled_n != 1 else ""} '
+            f'· {_total_ha:,.1f} ha — edit parcels in <strong>Project Setup</strong>, '
+            'or draw a custom analysis polygon below.</span>'
             '</div>',
             unsafe_allow_html=True,
         )
-        if len(_boundaries) == 1 and _boundaries[0].get("name") == "Project boundary":
-            st.info(
-                "Only one boundary is saved (older format). Re-upload your KMZ in **Project Setup** "
-                "for the full parcel tree."
+        if _enabled_n == 0:
+            st.warning(
+                "No parcels are enabled. Open **Project Setup**, check the parcels you want "
+                "in the layer tree, and **Save Project**."
             )
 
-        _render_boundary_manager()
-
         st.session_state.setdefault("topo_analysis_mode", "parcels")
-        _mode_options = ("Selected parcels", "Custom polygon (draw on map)")
+        _mode_options = ("Project parcels", "Custom polygon (draw on map)")
         _cur_mode = st.session_state.get("topo_analysis_mode", "parcels")
         _mode_pick = st.radio(
             "Terrain analysis boundary",
             _mode_options,
             index=0 if _cur_mode == "parcels" else 1,
             horizontal=True,
-            help="Use checked KMZ parcels, or draw one polygon on the map for the terrain run.",
+            help="Use enabled parcels from Project Setup, or draw one polygon on the map for this run.",
         )
         st.session_state["topo_analysis_mode"] = (
             "parcels" if _mode_pick == _mode_options[0] else "drawn"
@@ -1341,7 +1165,7 @@ with left:
                     "draw a new polygon to replace it, or clear it."
                 )
         else:
-            st.caption("Map shows **checked parcels only** — it updates when you change the layer tree.")
+            st.caption("Map shows **enabled parcels from Project Setup** (read-only here).")
 
         with st.container(key="topoiq_map_panel"):
             _map_data = _render_topo_boundary_map(
@@ -1415,7 +1239,7 @@ with left:
                 if st.session_state.get("topo_analysis_mode") == "drawn":
                     st.caption("Draw your analysis boundary on the map above.")
                 else:
-                    st.caption("Check at least one parcel in the layer tree above.")
+                    st.caption("Enable at least one parcel in **Project Setup** and save the project.")
             elif _area_over_limit:
                 st.caption(f"Reduce selected area below {MAX_SITE_AREA_HA:,} ha to run analysis.")
 
@@ -1687,7 +1511,7 @@ with right:
         """, unsafe_allow_html=True)
 
     else:
-        st.caption("Draw or upload your site boundary on the left, then click Run Terrain Analysis.")
+        st.caption("Set up your site boundary in **Project Setup**, then run terrain analysis on the left.")
         wc1, wc2 = st.columns(2)
         _wcards = [
             (wc1, "Satellite DEM",

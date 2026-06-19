@@ -1,4 +1,4 @@
-"""Grouped, collapsible boundary checklist for Project Setup and TopoIQ."""
+"""Grouped, collapsible boundary checklist for Project Setup."""
 import re
 import streamlit as st
 from pvmath_kml import group_boundaries_by_layer, apply_site_areas_only_selection
