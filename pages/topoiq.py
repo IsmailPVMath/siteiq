@@ -51,10 +51,11 @@ DEM_ZOOM_MAX = 14
 TILE_FETCH_WORKERS = 8
 from pvmath_kml import (
     BOUNDARY_COLORS,
+    boundaries_from_features,
     guess_boundary_enabled,
     normalize_ring_lonlat,
-    parse_kml_all_polygons,
-    parse_kmz_all_polygons,
+    parse_kml_features,
+    parse_kmz_features,
     read_kml_bytes,
 )
 def boundaries_union_area_ha(polygon_list):
@@ -121,42 +122,79 @@ def _render_boundaries_map(boundaries, height=380, interactive=False):
     )
 
 
+def _visible_boundaries(bounds, show_all: bool):
+    if show_all:
+        return bounds
+    return [b for b in bounds if b.get("is_primary", True)]
+
+
 def _render_boundary_manager():
-    """Checkbox list to include/exclude/delete uploaded boundaries."""
-    bounds = st.session_state.get("topo_boundaries", [])
-    if not bounds:
+    """Checkbox list — site parcels only by default; full layer list on demand."""
+    all_bounds = st.session_state.get("topo_boundaries", [])
+    if not all_bounds:
         return
+    show_all = st.session_state.get("topo_show_all_layers", False)
+    hidden_n = sum(1 for b in all_bounds if not b.get("is_primary", True))
+    bounds = _visible_boundaries(all_bounds, show_all)
+
     st.markdown(
         '<div class="section-hdr" style="margin-top:0.6rem;">'
         '<i class="fa-solid fa-layer-group" style="color:#1565c0;"></i> '
         'Site Boundaries — select for analysis</div>',
         unsafe_allow_html=True,
     )
-    st.caption(
-        "All shapes from your file are listed below. "
-        "Check the parcels you want in the terrain run — tracker rows and "
-        "restricted zones are usually left unchecked."
-    )
+    if hidden_n and not show_all:
+        st.caption(
+            f"Showing **{len(bounds)}** site parcel{'s' if len(bounds) != 1 else ''} "
+            f"(magenta boundaries & buildable areas). "
+            f"**{hidden_n}** circuit/layout layers hidden."
+        )
+    else:
+        st.caption(
+            "Site parcels are pre-selected. Uncheck anything you do not want in the terrain run."
+        )
+
+    if hidden_n:
+        if not show_all:
+            if st.button(
+                f"Show all layers ({hidden_n} hidden)",
+                use_container_width=True,
+                key="topo_show_hidden",
+            ):
+                st.session_state["topo_show_all_layers"] = True
+                st.rerun()
+        elif st.button("Site parcels only", use_container_width=True, key="topo_hide_extra"):
+            st.session_state["topo_show_all_layers"] = False
+            st.rerun()
+
     qa, qb, qc = st.columns(3)
     if qa.button("✓ Enable all", use_container_width=True, key="topo_en_all"):
         for b in bounds:
             b["enabled"] = True
         st.rerun()
     if qb.button("Site areas only", use_container_width=True, key="topo_en_smart"):
-        for b in bounds:
+        for b in all_bounds:
+            if not show_all and not b.get("is_primary", True):
+                continue
             b["enabled"] = guess_boundary_enabled(
-                b["name"], boundary_area_ha(b["coords"])
-            )
+                b.get("full_name", b["name"]),
+                boundary_area_ha(b["coords"]),
+                None, None,
+            ) or b.get("is_magenta", False)
         st.rerun()
     if qc.button("Clear all", use_container_width=True, key="topo_clr_all"):
         st.session_state["topo_boundaries"] = []
         st.session_state.pop("topo_upload_key", None)
+        st.session_state.pop("topo_show_all_layers", None)
         st.rerun()
 
     remove_ids = []
     for b in bounds:
         area = boundary_area_ha(b["coords"])
-        n_vert = max(0, len(b["coords"]) - 1)
+        n_vert = len(b["coords"])
+        tag = ""
+        if b.get("is_magenta"):
+            tag = ' <span style="color:#c026d3;font-size:0.75rem;">● boundary</span>'
         row_cb, row_txt, row_rm = st.columns([0.06, 0.84, 0.10])
         with row_cb:
             b["enabled"] = st.checkbox(
@@ -167,8 +205,9 @@ def _render_boundary_manager():
             )
         with row_txt:
             st.markdown(
-                f"**{b['name']}** &nbsp;·&nbsp; {area:,.1f} ha &nbsp;·&nbsp; "
-                f"{n_vert} vertices"
+                f"**{b['name']}**{tag} &nbsp;·&nbsp; {area:,.1f} ha &nbsp;·&nbsp; "
+                f"{n_vert} vertices",
+                unsafe_allow_html=True,
             )
         with row_rm:
             if st.button("✕", key=f"topo_rm_{b['id']}", help="Remove this boundary"):
@@ -176,11 +215,11 @@ def _render_boundary_manager():
 
     if remove_ids:
         st.session_state["topo_boundaries"] = [
-            b for b in bounds if b["id"] not in remove_ids
+            b for b in all_bounds if b["id"] not in remove_ids
         ]
         st.rerun()
 
-    enabled = [b for b in bounds if b.get("enabled")]
+    enabled = [b for b in all_bounds if b.get("enabled")]
     if enabled:
         total = boundaries_union_area_ha([b["coords"] for b in enabled])
         st.success(
@@ -969,15 +1008,18 @@ def export_dxf(X, Y, Z, lat_c, lon_c, minor_int=0.5, major_int=1.0):
 
 
 def _boundaries_from_file_dict(all_polys: dict, source_key: str):
-    """Build session-state boundary list from parsed file shapes."""
+    """Build session-state boundary list from parsed DXF shapes."""
     out = []
     for i, (name, coords) in enumerate(all_polys.items()):
         area = boundary_area_ha(coords)
         out.append({
             "id": f"{source_key}_{i}",
             "name": name,
+            "full_name": name,
             "coords": coords,
             "enabled": guess_boundary_enabled(name, area),
+            "is_primary": True,
+            "is_magenta": False,
         })
     return out
 
@@ -1312,32 +1354,52 @@ with left:
                         "In your CAD software: **File → Save As → AutoCAD DXF** (takes ~5 seconds). "
                         "Then re-upload the `.dxf` file here."
                     )
-                    all_polys = {}
+                    new_bounds = []
                 elif ftype == "kmz":
-                    all_polys = parse_kmz_all_polygons(raw)
+                    new_bounds = boundaries_from_features(
+                        parse_kmz_features(raw), file_key
+                    )
                 elif ftype == "kml":
-                    all_polys = parse_kml_all_polygons(raw)
+                    new_bounds = boundaries_from_features(
+                        parse_kml_features(raw), file_key
+                    )
                 elif ftype in ("dxf", "dwg_ok"):
-                    all_polys = parse_dxf_polygons(raw)
+                    new_bounds = _boundaries_from_file_dict(
+                        parse_dxf_polygons(raw), file_key
+                    )
                 else:
-                    all_polys = {}
+                    new_bounds = []
 
-                if not all_polys:
+                primary = [b for b in new_bounds if b.get("is_primary", True)]
+                if not primary and not new_bounds:
                     st.error(
-                        "No closed polygons found. Ensure the file contains site boundary "
-                        "polylines or polygons (not just points or tracker centre-lines)."
+                        "No site boundaries found. Ensure the KMZ contains buildable-area "
+                        "or project-boundary polylines (magenta in Google Earth)."
                     )
-                else:
-                    st.session_state["topo_boundaries"] = _boundaries_from_file_dict(
-                        all_polys, file_key
+                elif not primary:
+                    st.warning(
+                        "No site parcels auto-detected — showing all layers. "
+                        "Use **Site areas only** or check parcels manually."
                     )
+                    st.session_state["topo_boundaries"] = new_bounds
                     st.session_state["topo_upload_key"] = file_key
+                    st.session_state["topo_show_all_layers"] = True
                     st.session_state.pop("topo_from_proj", None)
-                    n_en = sum(1 for b in st.session_state["topo_boundaries"] if b["enabled"])
-                    st.success(
-                        f"Loaded **{len(all_polys)}** shapes from **{f.name}** — "
-                        f"**{n_en}** auto-selected as site areas. Adjust the checklist below."
+                    st.rerun()
+                else:
+                    st.session_state["topo_boundaries"] = new_bounds
+                    st.session_state["topo_upload_key"] = file_key
+                    st.session_state["topo_show_all_layers"] = False
+                    st.session_state.pop("topo_from_proj", None)
+                    hidden_n = len(new_bounds) - len(primary)
+                    n_en = sum(1 for b in primary if b["enabled"])
+                    msg = (
+                        f"Loaded **{len(primary)}** site parcel{'s' if len(primary) != 1 else ''}"
                     )
+                    if hidden_n:
+                        msg += f" · **{hidden_n}** circuit/layout layers hidden"
+                    msg += f" · **{n_en}** ready for analysis"
+                    st.success(msg)
                     st.rerun()
 
     if _new_draw:

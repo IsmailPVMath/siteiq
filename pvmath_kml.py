@@ -12,7 +12,8 @@ KML = f"{{{KML_NS}}}"
 _EXCLUDE_BOUNDARY_RE = re.compile(
     r"tracker|row|string|module|panel|restricted|exclusion|buffer|road|easement|"
     r"cable|inverter|subst|transformer|fence|layout|block(?!able)|"
-    r"gentie|gen.?tie|bess|substation|access|parking|tie.?line|collection",
+    r"gentie|gen.?tie|bess|substation|access|parking|tie.?line|collection|"
+    r"combiner|pile|rack",
     re.I,
 )
 _INCLUDE_BOUNDARY_RE = re.compile(
@@ -20,21 +21,81 @@ _INCLUDE_BOUNDARY_RE = re.compile(
     r"usable|solar|pv|plot|project",
     re.I,
 )
+_EXCLUDE_FOLDER_RE = re.compile(
+    r"mv[\s\-]?circuit|circuit\s*\d|future\s*phase|collection|string|inverter|"
+    r"combiner|tracker|module|row|layout|block\b|pile|rack|road|gentie|gen.?tie|"
+    r"subst|bess|poi\b|access|gen[\s\-]?tie|wire|conduit|fence",
+    re.I,
+)
+_UNNAMED_RE = re.compile(r"\bunnamed\b", re.I)
 
 
 def _local_tag(tag: str) -> str:
     return tag.split("}")[-1] if "}" in tag else tag
 
 
-def guess_boundary_enabled(name: str, area_ha: float) -> bool:
-    """Auto-select likely site parcels; skip tracker rows and tiny layout shapes."""
-    if _EXCLUDE_BOUNDARY_RE.search(name or ""):
+def _kml_color_to_rgb(kml_color: str):
+    """KML colours are aabbggrr; return (r, g, b) or None."""
+    if not kml_color:
+        return None
+    c = kml_color.strip().lstrip("#").lower()
+    if len(c) == 8:
+        _, bb, gg, rr = c[0:2], c[2:4], c[4:6], c[6:8]
+    elif len(c) == 6:
+        bb, gg, rr = c[0:2], c[2:4], c[4:6]
+    else:
+        return None
+    try:
+        return int(rr, 16), int(gg, 16), int(bb, 16)
+    except ValueError:
+        return None
+
+
+def is_magenta_boundary_color(rgb) -> bool:
+    """Detect magenta / pink GIS boundary strokes (Google Earth shapefile exports)."""
+    if not rgb:
+        return False
+    r, g, b = rgb
+    if r < 100 or b < 100:
+        return False
+    if g > min(r, b) * 0.45:
+        return False
+    return (r + b) / 2 >= 140
+
+
+def _display_name(full_name: str) -> str:
+    """Short label for UI — drop long KMZ filename prefixes."""
+    parts = [p.strip() for p in (full_name or "").split("/") if p.strip()]
+    if not parts:
+        return "Unnamed"
+    for i, part in enumerate(parts):
+        if _INCLUDE_BOUNDARY_RE.search(part):
+            tail = parts[i:]
+            return " / ".join(tail[-2:]) if len(tail) > 2 else " / ".join(tail)
+    if len(parts) >= 2 and _UNNAMED_RE.search(parts[-1]):
+        return f"{parts[-2]} / {parts[-1]}"
+    return parts[-1]
+
+
+def is_primary_site_feature(name: str, area_ha: float, line_rgb=None, poly_rgb=None) -> bool:
+    """True for magenta site boundaries and named buildable parcels — not MV circuits."""
+    rgb = line_rgb or poly_rgb
+    if is_magenta_boundary_color(rgb):
+        return True
+    if _EXCLUDE_FOLDER_RE.search(name or ""):
+        return False
+    if _EXCLUDE_BOUNDARY_RE.search(name or "") and area_ha < 20.0:
         return False
     if _INCLUDE_BOUNDARY_RE.search(name or ""):
         return True
-    if area_ha < 2.0:
+    if _UNNAMED_RE.search(name or ""):
         return False
-    return area_ha >= 5.0
+    return area_ha >= 10.0 and not _EXCLUDE_BOUNDARY_RE.search(name or "")
+
+
+def guess_boundary_enabled(name: str, area_ha: float, line_rgb=None, poly_rgb=None) -> bool:
+    """Auto-select site parcels for analysis; skip layout / circuit geometry."""
+    return is_primary_site_feature(name, area_ha, line_rgb, poly_rgb)
 
 
 def normalize_ring_lonlat(pts):
@@ -81,7 +142,6 @@ def _gap_meters(pts):
 
 
 def _ring_area_ha_lonlat(pts):
-    """Rough area (ha) for a (lon,lat) ring — for filtering tiny shapes."""
     if len(pts) < 3:
         return 0.0
     lats = [p[1] for p in pts]
@@ -98,7 +158,6 @@ def _ring_area_ha_lonlat(pts):
 
 
 def _line_to_ring(pts, label, force_close=False):
-    """Turn Polygon ring or GIS boundary LineString into a closed ring."""
     if not pts or len(pts) < 3:
         return None
     label = label or ""
@@ -111,25 +170,20 @@ def _line_to_ring(pts, label, force_close=False):
     closed = normalize_ring_lonlat(list(pts) + [pts[0]])
     area_ha = _ring_area_ha_lonlat(closed)
 
-    # Shapefile → KML exports use open LineStrings for parcel boundaries
     if force_close and len(pts) >= 4:
         return closed
 
     max_gap = 2000.0 if is_site else 500.0
     if gap <= max_gap:
         return closed
-
     if is_site and len(pts) >= 4:
         return closed
-
     if area_ha >= 3.0 and len(pts) >= 4:
         return closed
-
     return None
 
 
 def read_kml_bytes(raw: bytes, filename: str = "") -> bytes:
-    """Return inner KML bytes from .kml or .kmz upload."""
     if filename.lower().endswith(".kmz") or raw[:2] == b"PK":
         try:
             with zipfile.ZipFile(io.BytesIO(raw)) as z:
@@ -141,50 +195,141 @@ def read_kml_bytes(raw: bytes, filename: str = "") -> bytes:
     return raw
 
 
-def _parse_kml_root(root) -> dict:
-    """Parse one KML ElementTree root into {name: [(lon,lat),...]}."""
-    results = {}
+def _colors_from_style_el(style_el):
+    if style_el is None:
+        return None, None
+    line = style_el.find(f"{KML}LineStyle")
+    if line is None:
+        line = style_el.find("LineStyle")
+    poly = style_el.find(f"{KML}PolyStyle")
+    if poly is None:
+        poly = style_el.find("PolyStyle")
+    line_rgb, poly_rgb = None, None
+    if line is not None:
+        c = line.find(f"{KML}color")
+        if c is None:
+            c = line.find("color")
+        if c is not None and c.text:
+            line_rgb = _kml_color_to_rgb(c.text)
+    if poly is not None:
+        c = poly.find(f"{KML}color")
+        if c is None:
+            c = poly.find("color")
+        if c is not None and c.text:
+            poly_rgb = _kml_color_to_rgb(c.text)
+    return line_rgb, poly_rgb
+
+
+def _build_style_map(root):
+    """Map style id → (line_rgb, poly_rgb), resolving StyleMap → normal Style."""
+    styles = {}
+
+    def _store(sid, line_rgb, poly_rgb):
+        if sid:
+            styles[sid] = (line_rgb, poly_rgb)
+
+    for el in root.iter():
+        if _local_tag(el.tag) != "Style":
+            continue
+        sid = el.get("id")
+        _store(sid, *_colors_from_style_el(el))
+
+    for sm in root.iter():
+        if _local_tag(sm.tag) != "StyleMap":
+            continue
+        sid = sm.get("id")
+        for pair in sm:
+            if _local_tag(pair.tag) != "Pair":
+                continue
+            key_el = pair.find(f"{KML}key")
+            if key_el is None:
+                key_el = pair.find("key")
+            if key_el is not None and (key_el.text or "").strip() != "normal":
+                continue
+            url_el = pair.find(f"{KML}styleUrl")
+            if url_el is None:
+                url_el = pair.find("styleUrl")
+            if url_el is None or not url_el.text:
+                continue
+            ref = url_el.text.strip().lstrip("#")
+            if ref in styles:
+                _store(sid, *styles[ref])
+
+    return styles
+
+
+def _placemark_colors(pm, style_map):
+    for child in pm:
+        if _local_tag(child.tag) == "Style":
+            return _colors_from_style_el(child)
+    url_el = pm.find(f"{KML}styleUrl")
+    if url_el is None:
+        url_el = pm.find("styleUrl")
+    if url_el is not None and url_el.text:
+        ref = url_el.text.strip().lstrip("#")
+        if ref in style_map:
+            return style_map[ref]
+    return None, None
+
+
+def _parse_kml_root(root) -> list:
+    """Parse KML into feature dicts with coords and style metadata."""
+    features = []
     seen = set()
     counter = [0]
+    style_map = _build_style_map(root)
 
     def _unique_key(label):
         counter[0] += 1
         base = (label or "Unnamed").strip()
-        return base if base not in results else f"{base} ({counter[0]})"
+        return base if not any(f["name"] == base for f in features) else f"{base} ({counter[0]})"
 
-    def _add_ring(pts, label, force_close=False):
+    def _add_ring(pts, label, force_close=False, line_rgb=None, poly_rgb=None):
         ring = _line_to_ring(pts, label, force_close=force_close)
         if not ring or len(ring) < 4:
             return
         area_ha = _ring_area_ha_lonlat(ring)
-        # Skip thousands of small tracker/module rectangles from layout exports
         if area_ha < 0.5 and not _INCLUDE_BOUNDARY_RE.search(label or ""):
             return
         if _EXCLUDE_BOUNDARY_RE.search(label or "") and area_ha < 15.0:
-            return
+            if not is_magenta_boundary_color(line_rgb or poly_rgb):
+                return
         sig = (round(ring[0][0], 5), round(ring[0][1], 5), len(ring))
         if sig in seen:
             return
         seen.add(sig)
-        results[_unique_key(label)] = ring
+        name = _unique_key(label)
+        features.append({
+            "name": name,
+            "display_name": _display_name(name),
+            "coords": ring,
+            "area_ha": round(area_ha, 2),
+            "line_rgb": line_rgb,
+            "poly_rgb": poly_rgb,
+            "is_magenta": is_magenta_boundary_color(line_rgb or poly_rgb),
+            "is_primary": is_primary_site_feature(name, area_ha, line_rgb, poly_rgb),
+        })
 
-    def _geom_parts(geom_el, base_name):
+    def _geom_parts(geom_el, base_name, line_rgb, poly_rgb):
         tag = _local_tag(geom_el.tag)
         idx = [0]
 
         def _one(el, suffix=""):
-            tag = _local_tag(el.tag)
+            lt = _local_tag(el.tag)
             label = f"{base_name}{suffix}"
-            if tag == "Polygon":
+            if lt == "Polygon":
                 outer = el.find(f"{KML}outerBoundaryIs/{KML}LinearRing")
                 if outer is None:
                     outer = el.find("outerBoundaryIs/LinearRing")
-                _add_ring(_coords_from_el(outer), label)
-            elif tag == "LinearRing":
-                _add_ring(_coords_from_el(el), label)
-            elif tag == "LineString":
-                _add_ring(_coords_from_el(el), label, force_close=True)
-            elif tag == "MultiGeometry":
+                _add_ring(_coords_from_el(outer), label, line_rgb=line_rgb, poly_rgb=poly_rgb)
+            elif lt == "LinearRing":
+                _add_ring(_coords_from_el(el), label, line_rgb=line_rgb, poly_rgb=poly_rgb)
+            elif lt == "LineString":
+                _add_ring(
+                    _coords_from_el(el), label, force_close=True,
+                    line_rgb=line_rgb, poly_rgb=poly_rgb,
+                )
+            elif lt == "MultiGeometry":
                 for child in el:
                     idx[0] += 1
                     _one(child, f" — part {idx[0]}" if idx[0] > 1 else "")
@@ -202,11 +347,12 @@ def _parse_kml_root(root) -> dict:
             name_el = pm.find("name")
         pm_name = name_el.text.strip() if (name_el is not None and name_el.text) else "Unnamed"
         full_name = f"{folder_path}{pm_name}" if folder_path else pm_name
+        line_rgb, poly_rgb = _placemark_colors(pm, style_map)
 
         for child in pm:
             lt = _local_tag(child.tag)
             if lt in ("Polygon", "LineString", "LinearRing", "MultiGeometry"):
-                _geom_parts(child, full_name)
+                _geom_parts(child, full_name, line_rgb, poly_rgb)
 
     def _walk(node, folder_path=""):
         tag = _local_tag(node.tag)
@@ -226,43 +372,72 @@ def _parse_kml_root(root) -> dict:
 
     _walk(root)
 
-    # Fallback without namespaces
-    if not results:
+    if not features:
         for pm in root.iter("Placemark"):
             _process_placemark(pm, "")
 
-    return results
+    return features
 
 
-def parse_kml_all_polygons(raw_bytes) -> dict:
-    """Extract every boundary ring from KML (values: list of (lon, lat))."""
+def parse_kml_features(raw_bytes) -> list:
     try:
         root = ET.fromstring(raw_bytes)
     except Exception:
-        return {}
+        return []
     return _parse_kml_root(root)
 
 
-def parse_kmz_all_polygons(raw: bytes) -> dict:
-    """Parse KMZ — merge polygons from every .kml file in the archive."""
+def parse_kmz_features(raw: bytes) -> list:
     if raw[:2] != b"PK":
-        return parse_kml_all_polygons(raw)
-    merged = {}
+        return parse_kml_features(raw)
+    merged = []
     try:
         with zipfile.ZipFile(io.BytesIO(raw)) as z:
             for name in z.namelist():
                 if name.lower().endswith(".kml"):
-                    part = parse_kml_all_polygons(z.read(name))
-                    for k, v in part.items():
-                        key = k if k not in merged else f"{name}: {k}"
-                        merged[key] = v
+                    merged.extend(parse_kml_features(z.read(name)))
     except Exception:
-        return parse_kml_all_polygons(read_kml_bytes(raw))
-    return merged or parse_kml_all_polygons(read_kml_bytes(raw))
+        return parse_kml_features(read_kml_bytes(raw))
+    return merged or parse_kml_features(read_kml_bytes(raw))
+
+
+def features_to_lonlat_dict(features: list, primary_only: bool = False) -> dict:
+    out = {}
+    for f in features:
+        if primary_only and not f.get("is_primary"):
+            continue
+        out[f["name"]] = f["coords"]
+    return out
+
+
+def parse_kml_all_polygons(raw_bytes) -> dict:
+    return features_to_lonlat_dict(parse_kml_features(raw_bytes))
+
+
+def parse_kmz_all_polygons(raw: bytes) -> dict:
+    return features_to_lonlat_dict(parse_kmz_features(raw))
+
+
+def boundaries_from_features(features: list, source_key: str) -> list:
+    """Build boundary dicts for session state (lon/lat coords)."""
+    out = []
+    for i, f in enumerate(features):
+        out.append({
+            "id": f"{source_key}_{i}",
+            "name": f.get("display_name") or f["name"],
+            "full_name": f["name"],
+            "coords": f["coords"],
+            "enabled": guess_boundary_enabled(
+                f["name"], f.get("area_ha", 0),
+                f.get("line_rgb"), f.get("poly_rgb"),
+            ),
+            "is_magenta": f.get("is_magenta", False),
+            "is_primary": f.get("is_primary", True),
+        })
+    return out
 
 
 def lonlat_polys_to_latlon(all_polys: dict) -> dict:
-    """Convert {name: [(lon,lat)...]} → {name: [[lat,lon],...]}."""
     out = {}
     for name, coords in all_polys.items():
         ring = [[c[1], c[0]] for c in coords]
@@ -270,3 +445,23 @@ def lonlat_polys_to_latlon(all_polys: dict) -> dict:
             ring = ring[:-1]
         out[name] = ring
     return out
+
+
+def boundaries_from_kmz_latlon(raw: bytes, source_key: str) -> tuple:
+    """KMZ → lat/lon boundary dicts for Project Setup. Returns (boundaries, hidden_count, total)."""
+    features = parse_kmz_features(raw)
+    bounds_lonlat = boundaries_from_features(features, source_key)
+    latlon = lonlat_polys_to_latlon({b["full_name"]: b["coords"] for b in bounds_lonlat})
+    out = []
+    for b in bounds_lonlat:
+        out.append({
+            "id": b["id"],
+            "name": b["name"],
+            "full_name": b["full_name"],
+            "coords": latlon[b["full_name"]],
+            "enabled": b["enabled"],
+            "is_magenta": b.get("is_magenta", False),
+            "is_primary": b.get("is_primary", True),
+        })
+    hidden = sum(1 for b in out if not b.get("is_primary"))
+    return out, hidden, len(features)

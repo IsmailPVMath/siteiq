@@ -18,9 +18,8 @@ from pvmath_styles import inject_styles
 from pvmath_auth import save_project, _refresh_session
 from pvmath_kml import (
     BOUNDARY_COLORS,
+    boundaries_from_kmz_latlon,
     guess_boundary_enabled,
-    lonlat_polys_to_latlon,
-    parse_kmz_all_polygons,
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -105,48 +104,70 @@ def boundaries_union_area_ha(coords_list):
         return round(sum(polygon_area_ha(p) for p in polys), 2)
 
 
-def _boundaries_from_kml_dict(all_polys_lonlat: dict, source_key: str):
-    latlon = lonlat_polys_to_latlon(all_polys_lonlat)
-    out = []
-    for i, (name, coords) in enumerate(latlon.items()):
-        area = polygon_area_ha(coords)
-        out.append({
-            "id": f"{source_key}_{i}",
-            "name": name,
-            "coords": coords,
-            "enabled": guess_boundary_enabled(name, area),
-        })
-    return out
+def _visible_proj_boundaries(bounds, show_all: bool):
+    if show_all:
+        return bounds
+    return [b for b in bounds if b.get("is_primary", True)]
 
 
 def _render_proj_boundary_manager():
-    bounds = st.session_state.get("proj_boundaries", [])
-    if not bounds:
+    all_bounds = st.session_state.get("proj_boundaries", [])
+    if not all_bounds:
         return
+    show_all = st.session_state.get("proj_show_all_layers", False)
+    hidden_n = sum(1 for b in all_bounds if not b.get("is_primary", True))
+    bounds = _visible_proj_boundaries(all_bounds, show_all)
+
     st.markdown("**Site boundaries** — check parcels to include in this project")
-    st.caption(
-        "Tracker rows and small layout shapes are usually unchecked. "
-        "TopoIQ uses all checked boundaries; SiteIQ uses combined area."
-    )
+    if hidden_n and not show_all:
+        st.caption(
+            f"Showing **{len(bounds)}** site parcel{'s' if len(bounds) != 1 else ''}. "
+            f"**{hidden_n}** circuit/layout layers hidden."
+        )
+    else:
+        st.caption(
+            "Site parcels pre-selected. TopoIQ and SiteIQ use checked boundaries."
+        )
+
+    if hidden_n:
+        if not show_all:
+            if st.button(
+                f"Show all layers ({hidden_n} hidden)",
+                use_container_width=True,
+                key="proj_show_hidden",
+            ):
+                st.session_state["proj_show_all_layers"] = True
+                st.rerun()
+        elif st.button("Site parcels only", use_container_width=True, key="proj_hide_extra"):
+            st.session_state["proj_show_all_layers"] = False
+            st.rerun()
+
     qa, qb, qc = st.columns(3)
     if qa.button("✓ Enable all", use_container_width=True, key="proj_en_all"):
         for b in bounds:
             b["enabled"] = True
         st.rerun()
     if qb.button("Site areas only", use_container_width=True, key="proj_en_smart"):
-        for b in bounds:
-            b["enabled"] = guess_boundary_enabled(b["name"], polygon_area_ha(b["coords"]))
+        for b in all_bounds:
+            if not show_all and not b.get("is_primary", True):
+                continue
+            b["enabled"] = guess_boundary_enabled(
+                b.get("full_name", b["name"]),
+                polygon_area_ha(b["coords"]),
+            ) or b.get("is_magenta", False)
         st.rerun()
     if qc.button("Clear all", use_container_width=True, key="proj_clr_bounds"):
         st.session_state["proj_boundaries"] = []
         st.session_state.pop("proj_polygon_draft", None)
         st.session_state.pop("proj_kml_upload_key", None)
+        st.session_state.pop("proj_show_all_layers", None)
         st.session_state["proj_polygon_cleared"] = True
         st.rerun()
 
     remove_ids = []
     for b in bounds:
         area = polygon_area_ha(b["coords"])
+        tag = ' <span style="color:#c026d3;font-size:0.75rem;">● boundary</span>' if b.get("is_magenta") else ""
         row_cb, row_txt, row_rm = st.columns([0.06, 0.84, 0.10])
         with row_cb:
             b["enabled"] = st.checkbox(
@@ -154,15 +175,18 @@ def _render_proj_boundary_manager():
                 key=f"proj_en_{b['id']}", label_visibility="collapsed",
             )
         with row_txt:
-            st.markdown(f"**{b['name']}** · {area:,.1f} ha · {len(b['coords'])} vertices")
+            st.markdown(
+                f"**{b['name']}**{tag} · {area:,.1f} ha · {len(b['coords'])} vertices",
+                unsafe_allow_html=True,
+            )
         with row_rm:
             if st.button("✕", key=f"proj_rm_{b['id']}", help="Remove"):
                 remove_ids.append(b["id"])
     if remove_ids:
-        st.session_state["proj_boundaries"] = [b for b in bounds if b["id"] not in remove_ids]
+        st.session_state["proj_boundaries"] = [b for b in all_bounds if b["id"] not in remove_ids]
         st.rerun()
 
-    enabled = [b for b in bounds if b.get("enabled")]
+    enabled = [b for b in all_bounds if b.get("enabled")]
     if enabled:
         total = boundaries_union_area_ha([b["coords"] for b in enabled])
         st.success(f"**{len(enabled)}** selected · **{total:,.1f} ha** combined")
@@ -418,39 +442,44 @@ if True:
             _file_key = f"{kml_file.name}_{kml_file.size}"
             if st.session_state.get("proj_kml_upload_key") != _file_key:
                 _raw = kml_file.read()
-                _all_polys = parse_kmz_all_polygons(_raw)
+                _bounds, _hidden, _total = boundaries_from_kmz_latlon(_raw, _file_key)
+                _primary = [b for b in _bounds if b.get("is_primary", True)]
 
-                if not _all_polys:
+                if not _primary and not _bounds:
                     st.warning(
-                        "No closed polygons found. Ensure the file contains site boundary "
-                        "polylines or polygons (not just points)."
+                        "No site boundaries found. Ensure the file contains buildable-area "
+                        "or project-boundary polylines."
                     )
                 else:
-                    st.session_state["proj_boundaries"] = _boundaries_from_kml_dict(
-                        _all_polys, _file_key
-                    )
+                    st.session_state["proj_boundaries"] = _bounds
                     st.session_state["proj_kml_upload_key"] = _file_key
+                    st.session_state["proj_show_all_layers"] = not bool(_primary) and bool(_bounds)
                     st.session_state.pop("proj_polygon_draft", None)
                     st.session_state.pop("proj_polygon_cleared", None)
 
-                    _enabled = [b for b in st.session_state["proj_boundaries"] if b["enabled"]]
-                    _all_bounds = st.session_state["proj_boundaries"]
+                    _enabled = [b for b in _bounds if b["enabled"]]
                     if _enabled:
-                        _primary = max(_enabled, key=lambda b: polygon_area_ha(b["coords"]))
-                        lat, lon = centroid_of(_primary["coords"])
-                        polygon_coords = _primary["coords"]
+                        _primary = _primary or _bounds
+                        _primary_en = [b for b in _enabled if b.get("is_primary", True)] or _enabled
+                        _p = max(_primary_en, key=lambda b: polygon_area_ha(b["coords"]))
+                        lat, lon = centroid_of(_p["coords"])
+                        polygon_coords = _p["coords"]
                         st.session_state["proj_pin_lat"] = lat
                         st.session_state["proj_pin_lon"] = lon
                         _coord_center = [lat, lon]
-                        _total = boundaries_union_area_ha([b["coords"] for b in _enabled])
-                        st.success(
-                            f"✅ Loaded **{len(_all_bounds)}** shapes from **{kml_file.name}** — "
-                            f"**{len(_enabled)}** site areas auto-selected · **{_total:,.1f} ha** combined"
+                        _total_area = boundaries_union_area_ha([b["coords"] for b in _enabled])
+                        msg = (
+                            f"✅ Loaded **{len(_primary) or len(_bounds)}** site parcel"
+                            f"{'s' if (len(_primary) or len(_bounds)) != 1 else ''}"
                         )
+                        if _hidden:
+                            msg += f" · **{_hidden}** layout layers hidden"
+                        msg += f" · **{_total_area:,.1f} ha** combined"
+                        st.success(msg)
                     else:
                         st.info(
-                            f"Loaded **{len(_all_bounds)}** shapes — none auto-selected. "
-                            f"Check the site parcels below."
+                            f"Loaded **{len(_primary) or len(_bounds)}** shapes — "
+                            f"check site parcels below."
                         )
                     st.rerun()
 
