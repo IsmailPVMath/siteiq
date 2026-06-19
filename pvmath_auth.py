@@ -637,7 +637,10 @@ def render_auth_page(app_name: str = "PVMath"):
 
     # ── Auto-restore session from URL param (survives browser refresh / back) ──
     if not st.session_state.get("pvm_user_id"):
-        _stored_rt = st.query_params.get("s", "")
+        _stored_rt = (
+            st.query_params.get("s", "")
+            or st.session_state.get("pvm_refresh_token", "")
+        )
         if _stored_rt:
             _restored = _refresh_session(_stored_rt)
             if _restored.get("success"):

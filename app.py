@@ -41,6 +41,10 @@ components.html(
       var _params     = new URLSearchParams(_win.location.search);
       var _urlToken    = _params.get('s') || '';
       var _freshToken  = localStorage.getItem('pvm_s') || '';
+      if (!_freshToken) {
+        var _cm = document.cookie.match(/(?:^|;\\s*)pvm_s=([^;]*)/);
+        if (_cm) { _freshToken = decodeURIComponent(_cm[1]); }
+      }
       var _lastHealed  = sessionStorage.getItem('pvm_s_healed_to') || '';
       if (_freshToken && _freshToken !== _urlToken && _freshToken !== _lastHealed) {
         sessionStorage.setItem('pvm_s_healed_to', _freshToken);
@@ -93,6 +97,19 @@ if _user_email in _ADMIN:
     _pages.append(st.Page("pages/_layoutiq.py", title="LayoutIQ"))
 
 pg = st.navigation(_pages, position="hidden")
+
+# ── Server-readable session token (survives hard refresh before JS runs) ───────
+# localStorage heal (components.html above) only runs in the browser AFTER the
+# first server response. On a hard refresh with no ?s= in the URL, that first
+# pass used to hit the auth gate with no token and bounce to login — even when
+# the browser still had a valid token in localStorage. Mirroring the token into
+# an HttpOnly-less cookie lets Python read it on the very first request.
+try:
+    _cookie_rt = (st.context.cookies.get("pvm_s") or "").strip()
+except Exception:
+    _cookie_rt = ""
+if _cookie_rt and not st.query_params.get("s"):
+    st.query_params["s"] = _cookie_rt
 
 # ── Auth gate ─────────────────────────────────────────────────────────────────
 if not render_auth_page("PVMath"):
@@ -255,6 +272,24 @@ st.markdown(f"""
     min-width: {_sb_width} !important;
     display: block !important;
   }}
+  /* Streamlit 1.46+ slides the inner wrapper off-canvas when aria-expanded=false.
+     Our Python toggle can still think the sidebar is "open" while the frontend
+     has it fully hidden — and we hide Streamlit's native re-expand control.
+     Force every inner wrapper to stay on-canvas. */
+  section[data-testid="stSidebar"] > div,
+  section[data-testid="stSidebar"] [data-testid="stSidebarContent"],
+  section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {{
+    margin-left: 0 !important;
+    transform: none !important;
+    -webkit-transform: none !important;
+    left: 0 !important;
+    min-width: inherit !important;
+    width: 100% !important;
+  }}
+  [data-testid="stAppViewContainer"] > section[data-testid="stSidebar"] {{
+    flex: 0 0 {_sb_width} !important;
+    max-width: {_sb_width} !important;
+  }}
   /* Fail-safe "Show sidebar" button rendered in the MAIN content area —
      reachable even if the sidebar's own DOM subtree is fully hidden/off-canvas. */
   div[data-testid="stVerticalBlock"]:has(div.pvm-mainshow-anchor) div[data-testid="stButton"] > button {{
@@ -274,8 +309,62 @@ st.markdown(f"""
     color: #ffffff !important;
     opacity: 1 !important;
   }}
+  /* Always-reachable menu control — fixed in the main area, outside the sidebar
+     DOM subtree, so it survives Streamlit's native off-canvas collapse. */
+  div[data-testid="stVerticalBlock"]:has(div.pvm-menu-float-anchor) {{
+    position: fixed !important;
+    top: 0.65rem !important;
+    left: 0.65rem !important;
+    z-index: 999999 !important;
+    width: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }}
+  div[data-testid="stVerticalBlock"]:has(div.pvm-menu-float-anchor) div[data-testid="stButton"] > button {{
+    background: #145f34 !important;
+    color: #ffffff !important;
+    border: 1px solid #145f34 !important;
+    font-weight: 700 !important;
+    font-size: 0.78rem !important;
+    padding: 0.28rem 0.7rem !important;
+    min-height: 0 !important;
+    height: auto !important;
+    line-height: 1.3 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18) !important;
+  }}
 </style>
 """, unsafe_allow_html=True)
+
+# Heal Streamlit's native collapsed state when our toggle says "open".
+components.html(
+    f"""
+    <script>
+    (function() {{
+      try {{
+        var _win = window.parent;
+        if (!_win || !{json.dumps(bool(_sb_open))}) return;
+        function _expandSidebar() {{
+          var sb = _win.document.querySelector('section[data-testid="stSidebar"]');
+          if (!sb || sb.getAttribute('aria-expanded') !== 'false') return;
+          var btn = _win.document.querySelector('[data-testid="stSidebarCollapsedControl"]')
+            || _win.document.querySelector('[data-testid="collapsedControl"]');
+          if (btn) {{ btn.click(); return; }}
+          sb.setAttribute('aria-expanded', 'true');
+        }}
+        _expandSidebar();
+        setTimeout(_expandSidebar, 120);
+        setTimeout(_expandSidebar, 500);
+      }} catch (e) {{}}
+    }})();
+    </script>
+    """,
+    height=0,
+)
+
+st.markdown('<div class="pvm-menu-float-anchor"></div>', unsafe_allow_html=True)
+if st.button("☰  Menu", key="pvm_menu_float"):
+    st.session_state["pvm_sidebar_open"] = True
+    st.rerun()
 
 if not _sb_open:
     st.markdown('<div class="pvm-mainshow-anchor"></div>', unsafe_allow_html=True)
@@ -476,6 +565,8 @@ if _rt:
             _win.history.replaceState(null, '', _win.location.pathname + '?' + _params.toString());
           }}
           _win.localStorage.setItem('pvm_s', {json.dumps(_rt)});
+          _win.document.cookie = 'pvm_s=' + encodeURIComponent({json.dumps(_rt)})
+            + ';path=/;max-age=2592000;SameSite=Lax';
         }} catch (e) {{}}
         </script>
         """,
