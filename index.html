@@ -236,7 +236,7 @@
     .price-tier { font-size: 0.72rem; font-weight: 700; color: var(--green); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem; }
     .price-amount { font-size: 2.6rem; font-weight: 800; line-height: 1; letter-spacing: -0.03em; }
     .price-amount span { font-size: 1rem; font-weight: 400; color: var(--muted); }
-    .price-annual-note { font-size: 0.78rem; color: var(--green); font-weight: 600; margin-top: 0.3rem; min-height: 1.2rem; }
+    .price-annual-note { font-size: 0.85rem; color: var(--green); font-weight: 600; margin-top: 0.35rem; min-height: 1.2rem; line-height: 1.4; }
     .price-desc { font-size: 0.84rem; color: var(--muted); margin: 0.8rem 0 1.5rem; line-height: 1.6; }
     .price-features { list-style: none; display: flex; flex-direction: column; gap: 0.55rem; margin-bottom: 2rem; flex: 1; }
     .price-features li { font-size: 0.84rem; display: flex; align-items: center; gap: 0.5rem; }
@@ -1060,7 +1060,9 @@ var T = {
     'pf.t.f5':'Priority support','pf.t.f6':'YieldIQ — Full Access','pf.t.f7':'Custom invoice & billing',
     'pricing.btn.start':'Get Started →','pricing.btn.sub':'Subscribe →','pricing.btn.contact':'Contact Us →',
     'pricing.note':'Free tier: 5 tries per module every month. No credit card required. Cancel anytime. VAT (19%) added for EU customers.',
-    'pricing.per.monthly':'/ month','pricing.per.annual':'/ month*','pricing.year':'year',
+    'pricing.per.monthly':'/ month','pricing.per.annual':'/ year','pricing.year':'year',
+    'pricing.save.pro':'Save €298 vs monthly — 2 months free',
+    'pricing.save.dev':'Save €499 vs monthly — 1 month free',
     'about.label':'About PVMath','about.title':'From the field.<br>Not a desk.',
     'about.p1':'PVMath was founded by a Solar Engineering Expert with hands-on experience in utility-scale solar — tracker systems, terrain analysis, site design, and EPC project delivery worldwide. Built in Germany.',
     'about.p2':'Our tools are built to solve problems that cost real project hours — not features invented in a boardroom. The result is a platform that speaks the same language as the engineers using it.',
@@ -1171,7 +1173,9 @@ var T = {
     'pf.t.f5':'Prioritäts-Support','pf.t.f6':'YieldIQ — Vollzugang','pf.t.f7':'Individuelle Rechnung & Abrechnung',
     'pricing.btn.start':'Jetzt starten →','pricing.btn.sub':'Abonnieren →','pricing.btn.contact':'Kontakt →',
     'pricing.note':'Free-Tarif: 5 Versuche pro Modul und Monat. Keine Kreditkarte erforderlich. Jederzeit kündbar. Zzgl. MwSt. 19% für EU-Kunden.',
-    'pricing.per.monthly':'/ Monat','pricing.per.annual':'/ Monat*','pricing.year':'Jahr',
+    'pricing.per.monthly':'/ Monat','pricing.per.annual':'/ Jahr','pricing.year':'Jahr',
+    'pricing.save.pro':'€298 gegenüber Monatlich sparen — 2 Monate gratis',
+    'pricing.save.dev':'€499 gegenüber Monatlich sparen — 1 Monat gratis',
     'about.label':'Über PVMath','about.title':'Aus der Praxis.<br>Nicht vom Schreibtisch.',
     'about.p1':'PVMath wurde von einem Solar Engineering Expert mit praktischer Erfahrung in Utility-Scale-Solar gegründet — Trackersysteme, Geländeanalyse, Standortplanung und EPC-Projektabwicklung weltweit. Entwickelt in Deutschland.',
     'about.p2':'Unsere Tools sind gebaut, um Probleme zu lösen, die echte Projektstunden kosten — keine Features, die im Konferenzraum erfunden wurden. Das Ergebnis ist eine Plattform, die dieselbe Sprache spricht wie die Ingenieure, die sie nutzen.',
@@ -1231,29 +1235,27 @@ function setLanguage(lang) {
 var isAnnual = false;
 var prices = {
   monthly: { pro: '€149', dev: '€499' },
-  annual:  { pro: '€149', dev: '€499' }
+  annual:  { pro: '€1,490', dev: '€5,489' }
 };
-var annualData = {
-  pro: { total: '€1,788' },
-  dev: { total: '€5,988' }
-};
+var annualSaveKeys = { pro: 'pricing.save.pro', dev: 'pricing.save.dev' };
 
 function renderPricingNotes() {
   var lang = currentLang;
   var mode = isAnnual ? 'annual' : 'monthly';
-  var perStr     = isAnnual ? '/ month*' : '/ month';
-  var yearWord   = (lang === 'de') ? 'Jahr' : 'year';
-  var billedWord = (lang === 'de') ? 'jährlich abgerechnet zu' : 'billed annually at';
+  var perKey = isAnnual ? 'pricing.per.annual' : 'pricing.per.monthly';
+  var perStr = ' ' + ((T[lang] && T[lang][perKey]) || (isAnnual ? '/ year' : '/ month'));
 
   ['pro','dev'].forEach(function(plan) {
     var amtEl  = document.getElementById('price-' + plan);
     var perEl  = document.getElementById('per-'   + plan);
     var noteEl = document.getElementById('note-'  + plan);
     if (amtEl && amtEl.childNodes[0]) amtEl.childNodes[0].textContent = prices[mode][plan];
-    if (perEl)  perEl.textContent = ' ' + perStr;
-    if (noteEl) noteEl.textContent = isAnnual
-      ? billedWord + ' ' + annualData[plan].total + ' / ' + yearWord
-      : '';
+    if (perEl)  perEl.textContent = perStr;
+    if (noteEl) {
+      noteEl.textContent = (isAnnual && T[lang] && T[lang][annualSaveKeys[plan]])
+        ? T[lang][annualSaveKeys[plan]]
+        : '';
+    }
   });
 }
 
