@@ -154,11 +154,12 @@ st.markdown(f"""
   }}
   /* We replace Streamlit's native collapse controls with our own — hide them so
      they can't be triggered and leave the sidebar stuck. */
-  [data-testid="stSidebarCollapseButton"],
-  [data-testid="stSidebarCollapsedControl"],
-  [data-testid="collapsedControl"] {{
+  [data-testid="stSidebarCollapseButton"] {{
     display: none !important;
   }}
+  /* Keep Streamlit's expand control visible — our custom hide toggle lives inside
+     the sidebar, so if Streamlit slides the sidebar off-canvas the native expand
+     icon is the only way back without breaking the main layout with fixed CSS. */
   section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] {{
     height: 100%;
   }}
@@ -263,9 +264,7 @@ st.markdown(f"""
     transform: none !important;
     -webkit-transform: none !important;
     margin-left: 0 !important;
-    left: 0 !important;
     visibility: visible !important;
-    position: relative !important;
   }}
   section[data-testid="stSidebar"][aria-expanded="false"] {{
     width: {_sb_width} !important;
@@ -282,13 +281,6 @@ st.markdown(f"""
     margin-left: 0 !important;
     transform: none !important;
     -webkit-transform: none !important;
-    left: 0 !important;
-    min-width: inherit !important;
-    width: 100% !important;
-  }}
-  [data-testid="stAppViewContainer"] > section[data-testid="stSidebar"] {{
-    flex: 0 0 {_sb_width} !important;
-    max-width: {_sb_width} !important;
   }}
   /* Fail-safe "Show sidebar" button rendered in the MAIN content area —
      reachable even if the sidebar's own DOM subtree is fully hidden/off-canvas. */
@@ -308,29 +300,6 @@ st.markdown(f"""
   .pvm-signedin-box, .pvm-signedin-box * {{
     color: #ffffff !important;
     opacity: 1 !important;
-  }}
-  /* Always-reachable menu control — fixed in the main area, outside the sidebar
-     DOM subtree, so it survives Streamlit's native off-canvas collapse. */
-  div[data-testid="stVerticalBlock"]:has(div.pvm-menu-float-anchor) {{
-    position: fixed !important;
-    top: 0.65rem !important;
-    left: 0.65rem !important;
-    z-index: 999999 !important;
-    width: auto !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }}
-  div[data-testid="stVerticalBlock"]:has(div.pvm-menu-float-anchor) div[data-testid="stButton"] > button {{
-    background: #145f34 !important;
-    color: #ffffff !important;
-    border: 1px solid #145f34 !important;
-    font-weight: 700 !important;
-    font-size: 0.78rem !important;
-    padding: 0.28rem 0.7rem !important;
-    min-height: 0 !important;
-    height: auto !important;
-    line-height: 1.3 !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.18) !important;
   }}
 </style>
 """, unsafe_allow_html=True)
@@ -360,11 +329,6 @@ components.html(
     """,
     height=0,
 )
-
-st.markdown('<div class="pvm-menu-float-anchor"></div>', unsafe_allow_html=True)
-if st.button("☰  Menu", key="pvm_menu_float"):
-    st.session_state["pvm_sidebar_open"] = True
-    st.rerun()
 
 if not _sb_open:
     st.markdown('<div class="pvm-mainshow-anchor"></div>', unsafe_allow_html=True)
