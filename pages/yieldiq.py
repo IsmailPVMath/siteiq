@@ -7,7 +7,6 @@ Data source: PVGIS JRC API (EU Commission)
 
 import re
 import io
-import concurrent.futures
 from datetime import date
 from typing import Optional
 
@@ -46,6 +45,18 @@ from pvmath_capacity import (
     GCR_SCREEN_LO,
     GCR_SCREEN_HI,
 )
+from pvmath_yield import (
+    PVGIS_URL,
+    CONFIG_ORDER,
+    MONTHS,
+    format_pvgis_total_loss,
+    run_all_configs,
+    fetch_screening_yields,
+    yield_cross_ref_yieldiq_html,
+    yield_cross_ref_yieldiq_pdf_text,
+)
+
+CHART_COLORS = ["#e85d04", "#c24a00", "#1d9e52", "#145f34"]  # Fixed: orange / Tracker: green
 
 # ─────────────────────────────────────────────────────────────────────────────
 # AUTH
@@ -137,229 +148,7 @@ def parse_location(raw: str):
     return None, None
 
 
-# GCR → row shading loss (%) lookup table + linear interpolation
-_GCR_TABLE = [
-    (0.20, 0.3), (0.25, 0.5), (0.30, 1.0), (0.35, 2.0),
-    (0.40, 3.5), (0.45, 5.5), (0.50, 8.0), (0.60, 12.0),
-]
-
-def gcr_shading(gcr: float, tracker: bool) -> float:
-    """Shading loss (%) from GCR. Tracker uses backtracking → ~40 % of fixed shading."""
-    if gcr <= _GCR_TABLE[0][0]:
-        fs = _GCR_TABLE[0][1]
-    elif gcr >= _GCR_TABLE[-1][0]:
-        fs = _GCR_TABLE[-1][1]
-    else:
-        fs = _GCR_TABLE[0][1]
-        for i in range(len(_GCR_TABLE) - 1):
-            g0, s0 = _GCR_TABLE[i]
-            g1, s1 = _GCR_TABLE[i + 1]
-            if g0 <= gcr <= g1:
-                t = (gcr - g0) / (g1 - g0)
-                fs = s0 + t * (s1 - s0)
-                break
-    return round(fs * (0.40 if tracker else 1.0), 1)
-
-
-PVGIS_URL = "https://re.jrc.ec.europa.eu/api/v5_2/PVcalc"
-MONTHS    = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
-CONFIG_ORDER  = ["1P Fixed", "2P Fixed", "1P Tracker", "2P Tracker"]
-CHART_COLORS  = ["#e85d04", "#c24a00", "#1d9e52", "#145f34"]  # Fixed: orange / Tracker: green
-
-
-def call_pvgis(lat: float, lon: float, total_loss_pct: float, tracker: bool,
-               raddatabase: str = None) -> dict:
-    """
-    Call PVGIS PVcalc with peakpower=1 kWp.
-    Returns specific yield (kWh/kWp/yr), monthly values, PR, CF, optimal tilt.
-
-    raddatabase: pin an explicit radiation database (e.g. "PVGIS-ERA5"). If
-    left None, PVGIS auto-selects one (PVGIS-SARAH2 where it has coverage).
-    Auto-selection is resolved ONCE per site by run_all_configs() and then
-    passed in explicitly here for every config — see note there on why.
-    """
-    params = {
-        "lat": round(lat, 5), "lon": round(lon, 5),
-        "peakpower": 1,                    # always 1 → results = specific yield
-        "loss": round(total_loss_pct, 1),
-        "pvtechchoice": "crystSi",
-        "mountingplace": "free",
-        "outputformat": "json",
-        "browser": 0,
-    }
-    # IMPORTANT: PVGIS's PVcalc tool (this endpoint) has NO "trackingtype"
-    # parameter — that field only exists on PVGIS's separate hourly/seriescalc
-    # endpoint. PVcalc's own tracking controls are different flags entirely
-    # (confirmed against PVGIS's official "API non-interactive service" docs):
-    #   fixed=1 (default)         → flat-tilt fixed system
-    #   inclined_axis=1 + inclinedaxisangle=0  → single horizontal-axis N-S
-    #                                             tracker (= standard SAT)
-    #   vertical_axis / twoaxis   → other tracking types, unused here
-    # The old code sent "trackingtype": 1 for trackers, which PVcalc silently
-    # ignores (unrecognized param) — it then fell back to its own default
-    # fixed=1, angle=0° (since optimalinclination/optimalangles were only set
-    # on the non-tracker branch), i.e. every "tracker" call was actually
-    # returning a flat, non-optimized FIXED-tilt result. That's the real
-    # cause of trackers consistently showing lower yield than fixed tilt.
-    if tracker:
-        params["fixed"]            = 0   # disable PVGIS's default fixed calc
-        params["inclined_axis"]    = 1
-        params["inclinedaxisangle"] = 0  # axis itself is horizontal (true SAT)
-    else:
-        params["fixed"]            = 1
-        params["optimalinclination"] = 1
-        params["optimalangles"]      = 1
-    if raddatabase:
-        params["raddatabase"] = raddatabase
-
-    resp = requests.get(
-        PVGIS_URL, params=params, timeout=30,
-        headers={"User-Agent": "YieldIQ/1.0 (pvmath.com; contact@pvmath.com)"}
-    )
-    resp.raise_for_status()
-    data = resp.json()
-
-    out        = data["outputs"]
-    totals_d   = out.get("totals",  {})
-    monthly_d  = out.get("monthly", {})
-    radiation_db = data.get("inputs", {}).get("meteo_data", {}).get("radiation_db")
-
-    # PVcalc nests results under a key matching whichever system type was
-    # actually requested: "fixed" for fixed=1, "inclined_axis" for the
-    # single-axis tracker config requested above. With fixed=0 explicitly set
-    # for trackers, "fixed" should no longer appear in the response at all —
-    # but we still check the tracker-specific key FIRST as a safety net,
-    # since blindly preferring "fixed" (the old behavior) is exactly what
-    # caused tracker calls to silently read back fixed-tilt results before.
-    if tracker:
-        key = "inclined_axis" if "inclined_axis" in totals_d else next(iter(totals_d), None)
-    else:
-        key = "fixed" if "fixed" in totals_d else next(iter(totals_d), None)
-    if not key:
-        raise ValueError("Unexpected PVGIS response structure")
-
-    tot          = totals_d[key]
-    monthly_raw  = monthly_d.get(key, [])
-
-    # E_y and E_m are in kWh (PVGIS v5.2, peakpower=1 kWp)
-    spec_y    = float(tot.get("E_y", 0))                    # kWh/kWp/yr
-    h_y       = float(tot.get("H(i)_y", 0))                 # kWh/m²/yr in-plane
-    monthly   = [float(m.get("E_m", 0)) for m in monthly_raw]  # kWh/kWp/month × 12
-
-    pr = round(spec_y / h_y * 100, 1) if h_y else None
-    cf = round(spec_y / 8760 * 100,  1)
-
-    # PVGIS computes its OWN physics-based loss components on top of the
-    # "loss" % we send in (which only covers what we tell it — wiring,
-    # inverter, soiling, mismatch, row shading). These three are added
-    # automatically by the model based on technology/location/mounting:
-    #   l_aoi   — angle-of-incidence reflection loss (%)
-    #   l_spec  — spectral mismatch loss (%) — can be "not calculated" for
-    #             some technologies, hence the float() guard below
-    #   l_tg    — temperature & low-irradiance loss (%) — this is the real,
-    #             physics-derived "Temperature" loss line item, not a guess
-    #   l_total — true total loss (%), i.e. our input loss + l_aoi + l_spec
-    #             + l_tg combined. More accurate than self-tracking total_loss
-    #             since it includes effects PVGIS models that we don't.
-    def _safe_float(v):
-        try:
-            return float(v)
-        except (TypeError, ValueError):
-            return None
-
-    l_aoi   = _safe_float(tot.get("l_aoi"))
-    l_spec  = _safe_float(tot.get("l_spec"))
-    l_tg    = _safe_float(tot.get("l_tg"))
-    l_total = _safe_float(tot.get("l_total"))
-
-    # Optimal tilt (fixed only)
-    opt_tilt = None
-    if not tracker:
-        meta  = data.get("meta", {})
-        slope = meta.get("slope", {})
-        if isinstance(slope, dict):
-            v = slope.get("value")
-            opt_tilt = float(v) if v is not None else None
-        elif isinstance(slope, (int, float)):
-            opt_tilt = float(slope)
-
-    return {
-        "spec_y":   round(spec_y, 0),
-        "monthly":  [round(x, 1) for x in monthly],
-        "h_y":      round(h_y, 1),
-        "pr":       pr,
-        "cf":       cf,
-        "opt_tilt": opt_tilt,
-        "radiation_db": radiation_db,
-        "l_aoi":    round(l_aoi, 1) if l_aoi is not None else None,
-        "l_spec":   round(l_spec, 1) if l_spec is not None else None,
-        "l_tg":     round(l_tg, 1) if l_tg is not None else None,
-        "l_total":  round(l_total, 1) if l_total is not None else None,
-    }
-
-
-def run_all_configs(lat, lon, gcr_1p, gcr_2p, soiling_loss, other_loss):
-    """Run 4 PVGIS calls concurrently. Returns dict keyed by config name.
-
-    soiling_loss + other_loss together form the same combined "system loss %"
-    that used to be a single base_loss input — split in two now so Soiling
-    can be shown as its own line item (PVGIS has no native soiling output,
-    so this is the only honest way to surface it: as a user-specified input,
-    not a number we invent).
-    """
-    base_loss = soiling_loss + other_loss
-    cfg_params = {
-        "1P Fixed":   (gcr_1p, False),
-        "2P Fixed":   (gcr_2p, False),
-        "1P Tracker": (gcr_1p, True),
-        "2P Tracker": (gcr_2p, True),
-    }
-
-    # Resolve ONE radiation database for this site and reuse it for all 4
-    # configs below. Left unpinned, PVGIS auto-selects per-call (PVGIS-SARAH2
-    # where it has coverage, otherwise it errors/falls back on its own) — and
-    # that auto-selection is not guaranteed to land on the same database for
-    # fixed=1 (Fixed) vs inclined_axis=1 (Tracker) calls at the same
-    # coordinates. Comparing Fixed vs Tracker yield is only meaningful if
-    # both numbers came from the same underlying radiation data, so we probe
-    # once, fall back to PVGIS-ERA5 (true global coverage) on failure exactly
-    # like siteiq.py's get_solar_data() already does, and pin that result for
-    # every config in this run.
-    raddatabase = None
-    try:
-        probe = call_pvgis(lat, lon, base_loss, False)
-        raddatabase = probe.get("radiation_db")
-    except Exception:
-        try:
-            probe = call_pvgis(lat, lon, base_loss, False, raddatabase="PVGIS-ERA5")
-            raddatabase = probe.get("radiation_db") or "PVGIS-ERA5"
-        except Exception:
-            raddatabase = None  # let each call auto-select as a last resort
-
-    def _call(name, gcr, tracker):
-        shade      = gcr_shading(gcr, tracker)
-        total_loss = min(base_loss + shade, 30.0)
-        try:
-            res = call_pvgis(lat, lon, total_loss, tracker, raddatabase=raddatabase)
-        except Exception:
-            # Pinned database rejected this call (rare) — fall back to letting
-            # PVGIS auto-select rather than losing the config entirely.
-            res = call_pvgis(lat, lon, total_loss, tracker)
-        res["gcr"]          = gcr
-        res["shading"]      = shade
-        res["total_loss"]   = round(total_loss, 1)
-        res["tracker"]      = tracker
-        res["soiling_loss"] = soiling_loss
-        res["other_loss"]   = other_loss
-        return name, res
-
-    results = {}
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
-        futs = {ex.submit(_call, n, g, t): n for n, (g, t) in cfg_params.items()}
-        for fut in concurrent.futures.as_completed(futs):
-            name, res = fut.result()
-            results[name] = res
-    return results, raddatabase
+# GCR shading, call_pvgis, run_all_configs → pvmath_yield.py (single source of truth)
 
 
 def get_ghi(lat, lon, raddatabase=None) -> Optional[float]:
@@ -512,7 +301,7 @@ def make_monthly_chart(results: dict, mwp_mid: float, title_cfg: str = "") -> by
 def build_pdf(project_name, lat, lon, area_ha, land_use, gcr_1p, gcr_2p,
               soiling_loss, other_loss, results, chart_bytes,
               best_mwh, best_cfg, ghi=None, dni=None, dhi=None,
-              screening_note: str = "") -> bytes:
+              screening_note: str = "", cross_ref_text: str = "") -> bytes:
     """Generate ReportLab PDF report."""
     buf  = io.BytesIO()
     doc  = SimpleDocTemplate(buf, pagesize=A4,
@@ -704,7 +493,7 @@ def build_pdf(project_name, lat, lon, area_ha, land_use, gcr_1p, gcr_2p,
             lp(f"{GCR_SCREEN_LO:.2f}–{GCR_SCREEN_HI:.2f}", bod),
             lp(_mwp_txt, bod),
             lp(f"{r['shading']:.1f}%", bod),
-            lp(f"{r['total_loss']:.1f}%", bod),
+            lp(format_pvgis_total_loss(r), bod),
             lp(f"{r['h_y']:,.0f}", bod),
             lp(f"{r['spec_y']:,.0f}", sy_style),
             lp(_mwh_txt, bod),
@@ -729,9 +518,19 @@ def build_pdf(project_name, lat, lon, area_ha, land_use, gcr_1p, gcr_2p,
         _tbl_style.append(("BACKGROUND", (0, _ri+1), (-1, _ri+1), _bg))
     res_tbl.setStyle(TableStyle(_tbl_style))
     story += [res_tbl]
+    story.append(Spacer(1, 0.15*cm))
+    story.append(lp(
+        "Total Loss is PVGIS's combined l_total (soiling + other + shading input, plus temperature, "
+        "angle-of-incidence, and spectral derates) — same figure as the Losses Breakdown box, "
+        "not the user-input subtotal alone.",
+        note,
+    ))
     if screening_note:
         story.append(Spacer(1, 0.15*cm))
         story.append(lp(screening_note, note))
+    if cross_ref_text:
+        story.append(Spacer(1, 0.15*cm))
+        story.append(lp(cross_ref_text, note))
     story.append(Spacer(1, 0.15*cm))
     story.append(lp(capacity_footnote_global(), note))
     story.append(Spacer(1, 0.35*cm))
@@ -1003,6 +802,9 @@ if submitted:
         ghi        = get_ghi(lat, lon, raddatabase=raddatabase)
         dni, dhi   = get_dni_dhi(lat, lon, raddatabase=raddatabase, ghi_ref=ghi)
 
+    with st.spinner("Fetching SiteIQ screening reference for cross-check…"):
+        _screening_yields = fetch_screening_yields(lat, lon, raddatabase)
+
     increment_usage(_uid, "yieldiq")
 
     _area_for_cap = float(_area_ha) if _area_ha and _area_ha > 0 else 0.0
@@ -1108,7 +910,7 @@ if submitted:
             f'<div style="padding:6px 0;color:#d4840a;font-weight:600;">{r["shading"]:.1f}%</div>',
             unsafe_allow_html=True)
         row_cols[5].markdown(
-            f'<div style="padding:6px 0;color:#5a7a5a;">{r["total_loss"]:.1f}%</div>',
+            f'<div style="padding:6px 0;color:#5a7a5a;">{format_pvgis_total_loss(r)}</div>',
             unsafe_allow_html=True)
         row_cols[6].markdown(
             f'<div style="padding:6px 0;color:#3a5a3a;">{r["h_y"]:,.0f} kWh/m²</div>',
@@ -1128,6 +930,19 @@ if submitted:
         row_cols[10].markdown(
             f'<div style="padding:6px 0;">{r["cf"]:.1f}%</div>',
             unsafe_allow_html=True)
+
+    st.caption(
+        "Total Loss is PVGIS's combined figure (l_total): your soiling + other + shading input, "
+        "plus PVGIS temperature, angle-of-incidence, and spectral derates — same value as the "
+        "Losses Breakdown box above, not the user-input subtotal alone."
+    )
+
+    st.markdown(
+        yield_cross_ref_yieldiq_html(
+            _screening_yields, results, gcr_1p, soiling_loss, other_loss,
+        ),
+        unsafe_allow_html=True,
+    )
 
     # ── Tracker gain (specific yield + energy where area known) ───────────────
     gain_cols = st.columns(2)
@@ -1167,6 +982,7 @@ if submitted:
         gcr_1p, gcr_2p, soiling_loss, other_loss,
         results, chart_bytes, best_mwh, best_cfg, ghi, dni, dhi,
         screening_note=_scr_note,
+        cross_ref_text=yield_cross_ref_yieldiq_pdf_text(_screening_yields, results),
     )
     safe_name = re.sub(r"[^\w\- ]", "", project_name).strip().replace(" ", "_")
     st.download_button(

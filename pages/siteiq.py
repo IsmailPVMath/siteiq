@@ -25,6 +25,15 @@ from pvmath_capacity import (
     capacity_basis_sentence,
     capacity_footnote_global,
 )
+from pvmath_yield import (
+    get_solar_data,
+    fetch_analysis_reference,
+    profile_description,
+    yield_cross_ref_siteiq_html,
+    yield_cross_ref_pdf_text,
+    PROFILE_SCREENING,
+    SCREENING_LOSS_PCT,
+)
 
 # Shared rating legend — UI expander + PDF must stay in sync
 SITEIQ_RATING_LEGEND_MD = """
@@ -423,87 +432,6 @@ def _incentive_row_label(project_country, country):
     if any(x in c for x in ["germany", "deutschland", "de"]):
         return "EEG / Incentive"
     return "Incentive / Tariff"
-
-
-def _fetch_pvgis(lat, lon, tracker=False, raddatabase=None):
-    """One PVcalc call. raddatabase=None lets PVGIS auto-pick (PVGIS-SARAH2),
-    which only covers roughly -66° to 66° longitude (Europe/Africa/most of Asia)
-    — most of India (68-97°E) falls outside it and the call fails/errors."""
-    params = {
-        "lat": round(lat, 5), "lon": round(lon, 5),
-        "peakpower": 1, "loss": 14,
-        "outputformat": "json",
-        "mountingplace": "free",
-        "pvtechchoice": "crystSi",
-        "browser": 0,
-    }
-    if tracker:
-        params["fixed"] = 0
-        params["inclined_axis"] = 1
-        params["inclinedaxisangle"] = 0
-    else:
-        params["fixed"] = 1
-        params["optimalinclination"] = 1
-        params["optimalangles"] = 1
-    if raddatabase:
-        params["raddatabase"] = raddatabase
-    r = requests.get(
-        "https://re.jrc.ec.europa.eu/api/v5_2/PVcalc",
-        params=params, timeout=20,
-        headers={"User-Agent": "SiteIQ/1.0 (pvmath.com; contact@pvmath.com)"},
-    )
-    data = r.json()
-    totals_d = data["outputs"]["totals"]
-    monthly_d = data["outputs"]["monthly"]
-    if tracker:
-        key = "inclined_axis" if "inclined_axis" in totals_d else next(iter(totals_d), None)
-    else:
-        key = "fixed" if "fixed" in totals_d else next(iter(totals_d), None)
-    if not key:
-        raise ValueError("Unexpected PVGIS response structure")
-    totals = totals_d[key]
-    monthly = monthly_d.get(key, [])
-
-    opt_tilt = None
-    if not tracker:
-        fixed_ms = data.get("inputs", {}).get("mounting_system", {}).get("fixed", {})
-        slope = fixed_ms.get("slope", {})
-        if isinstance(slope, dict):
-            v = slope.get("value")
-            opt_tilt = float(v) if v is not None else None
-        elif isinstance(slope, (int, float)):
-            opt_tilt = float(slope)
-
-    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-    monthly_ghi = [
-        {"Month": months[i], "GHI (kWh/m²)": round(m.get("H(i)_m", 0), 1)}
-        for i, m in enumerate(monthly[:12])
-    ]
-    return {
-        "success": True,
-        "annual_ghi": round(totals.get("H(i)_y", 0), 1),
-        "annual_yield": round(totals.get("E_y", 0), 1),
-        "optimal_tilt": opt_tilt,
-        "monthly": monthly_ghi,
-        "tracker": tracker,
-    }
-
-
-def get_solar_data(lat, lon, mount_type="Fixed Tilt"):
-    # PVGIS auto-selects PVGIS-SARAH2 by default, which doesn't cover most of
-    # India, the Americas, or Australia/Oceania. Falling back to PVGIS-ERA5
-    # (true global coverage, coarser resolution) is what actually fixes those
-    # regions — previously a failed call here silently became "0 kWh/m²/yr —
-    # Poor resource", which read as a real (and very wrong) site assessment
-    # for sunny locations like Rajasthan instead of "data unavailable".
-    tracker = mount_type == "Single-Axis Tracker"
-    try:
-        return _fetch_pvgis(lat, lon, tracker=tracker)
-    except Exception as e1:
-        try:
-            return _fetch_pvgis(lat, lon, tracker=tracker, raddatabase="PVGIS-ERA5")
-        except Exception as e2:
-            return {"success": False, "error": f"{e1} / ERA5 fallback: {e2}"}
 
 
 def _point_in_polygon(plat, plon, poly):
@@ -952,7 +880,8 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
               cap,
               land_use="Standard", mount_type="Fixed Tilt",
               project_country="", location_label="",
-              flood_risk="", flood_detail="", coord_note=""):
+              flood_risk="", flood_detail="", coord_note="",
+              analysis_ref=None):
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4,
                             rightMargin=2*cm, leftMargin=2*cm,
@@ -1113,7 +1042,8 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
     _slope_badge = _badge(slope_lbl)
     _solar_badge = _badge(solar_lbl)
     _flood_badge = _badge(flood_risk.replace("🟢 ", "").replace("🟡 ", "").replace("🟠 ", "").replace("🔴 ", "").replace("⚠️ ", ""))
-    _yield_lbl = "Specific Yield" if mount_type == "Single-Axis Tracker" else "Annual Yield"
+    _yield_lbl = "Specific Yield"
+    _yield_rating = f"{SCREENING_LOSS_PCT:.0f}% flat loss; no row-shading"
     _incentive_lbl = _incentive_row_label(project_country, country)
     _cap_mwp = format_mwp_range(cap["mwp_lo"], cap["mwp_hi"])
     _cap_dens = format_capacity_rating(cap)
@@ -1124,7 +1054,7 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
          lp("Value",           colors.white, bold=True, size=9),
          lp("Rating",          colors.white, bold=True, size=9)],
         [lp("In-plane Irradiation", MUTED, size=9), lp(f"{solar.get('annual_ghi','—')} kWh/m²/yr", bold=True, size=9),   _solar_badge],
-        [lp(_yield_lbl,       MUTED, size=9), lp(f"{solar.get('annual_yield','—')} kWh/kWp/yr", bold=True, size=9), lp("—", MUTED, size=8)],
+        [lp(_yield_lbl,       MUTED, size=9), lp(f"{solar.get('annual_yield','—')} kWh/kWp/yr", bold=True, size=9), lp(_yield_rating, MUTED, size=8)],
     ]
     if mount_type == "Single-Axis Tracker":
         rows.append([lp("Mounting", MUTED, size=9), lp("Single-axis tracker (horizontal N–S axis)", bold=True, size=9), lp("—", MUTED, size=8)])
@@ -1160,6 +1090,15 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
     story.append(Paragraph(capacity_basis_sentence(cap), _cap_note_style))
     story.append(Spacer(1, 0.08*cm))
     story.append(Paragraph(capacity_footnote_global(), _cap_note_style))
+    story.append(Spacer(1, 0.08*cm))
+    if solar.get("success"):
+        _scr_y = solar.get("annual_yield")
+        _ana_y = analysis_ref.get("spec_y") if analysis_ref else None
+        _gcr = analysis_ref.get("gcr") if analysis_ref else None
+        story.append(Paragraph(
+            yield_cross_ref_pdf_text(_scr_y, _ana_y, mount_type, gcr=_gcr or 0.30),
+            _cap_note_style,
+        ))
 
     if terrain.get("success"):
         if terrain.get("boundary_sampled"):
@@ -1607,6 +1546,13 @@ with right:
 
             with st.spinner("Fetching solar resource data from EU PVGIS…"):
                 solar = get_solar_data(lat, lon, _mount_type)
+            _analysis_ref = None
+            if solar.get("success"):
+                with st.spinner("Fetching YieldIQ analysis reference for cross-check…"):
+                    _analysis_ref = fetch_analysis_reference(
+                        lat, lon, _mount_type,
+                        raddatabase=solar.get("radiation_db"),
+                    )
             with st.spinner("Analysing terrain & slope…"):
                 terrain = get_terrain_data(
                     lat, lon,
@@ -1618,6 +1564,7 @@ with right:
                 "project_name": project_name, "project_country_input": project_country_input,
                 "land_use": _land_use, "mount_type": _mount_type,
                 "solar": solar, "terrain": terrain,
+                "analysis_ref": _analysis_ref,
                 "location_label": _location_label, "coord_note": _coord_note,
             }
         else:
@@ -1630,6 +1577,7 @@ with right:
             _land_use                  = _run_cache["land_use"]
             _mount_type                = _run_cache["mount_type"]
             solar, terrain              = _run_cache["solar"], _run_cache["terrain"]
+            _analysis_ref              = _run_cache.get("analysis_ref")
             _location_label            = _run_cache.get("location_label", _proj.get("location_label", ""))
             _coord_note                = _run_cache.get("coord_note", "")
 
@@ -1696,6 +1644,14 @@ with right:
         ]
         st.markdown(f'<div class="metric-grid">{"".join(_cards)}</div>', unsafe_allow_html=True)
 
+        if solar.get("success") and _analysis_ref:
+            st.markdown(
+                yield_cross_ref_siteiq_html(
+                    solar["annual_yield"], _analysis_ref, _mount_type,
+                ),
+                unsafe_allow_html=True,
+            )
+
         _notes = []
         if _proj.get("mode") == "full" and _enabled_polys_latlon:
             _notes.append(
@@ -1730,9 +1686,7 @@ with right:
         _notes.append(
             "Pre-feasibility screening only — not a substitute for a bankable energy study or confirmed layout."
         )
-        _notes.append(
-            "Specific yield uses 14% system loss, no row-shading — YieldIQ applies GCR-based shading at your selected GCR."
-        )
+        _notes.append(profile_description(PROFILE_SCREENING))
         _notes_html = "".join(f"<li>{n}</li>" for n in _notes)
 
         st.divider()
@@ -1816,6 +1770,7 @@ with right:
             location_label=_location_label,
             flood_risk=flood_risk, flood_detail=flood_detail,
             coord_note=_coord_note,
+            analysis_ref=_analysis_ref,
         )
         st.download_button(
             label="⬇️  Download PDF Report",
