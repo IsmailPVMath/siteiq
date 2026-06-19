@@ -57,8 +57,14 @@ from pvmath_terrain_report import (
     generate_pdf_report,
     render_slope_map_png,
     site_capacity_mwp,
-    site_capacity_screen,
     _verdict_from_mean,
+)
+from pvmath_capacity import (
+    capacity_band,
+    format_mwp_range,
+    capacity_footnote_global,
+    GCR_SCREEN_LO,
+    GCR_SCREEN_HI,
 )
 def boundaries_union_area_ha(polygon_list):
     """Total area (ha) — union when shapely available, else sum of parts."""
@@ -1108,19 +1114,14 @@ with right:
         with vc2:
             st.success(f"**Tracker:** {_vt_label} — {_vt_detail}")
 
-        _ft_lo, _ft_hi, _, _ = site_capacity_screen(area_ha, _land_use, "Fixed Tilt")
-        _tr_lo, _tr_hi, _, _ = site_capacity_screen(area_ha, _land_use, "Single-Axis Tracker")
-        if _ft_lo == _ft_hi:
-            _cap_ft_txt = f"**Fixed tilt ~{_ft_lo:,.0f} MWp DC**"
-        else:
-            _cap_ft_txt = f"**Fixed tilt ~{_ft_lo:,.0f}–{_ft_hi:,.0f} MWp DC** (1P, GCR 0.30–0.42)"
-        if _tr_lo == _tr_hi:
-            _cap_tr_txt = f"**Tracker ~{_tr_lo:,.0f} MWp DC**"
-        else:
-            _cap_tr_txt = f"**Tracker ~{_tr_lo:,.0f}–{_tr_hi:,.0f} MWp DC** (1P SAT, GCR 0.30–0.42)"
+        _ft_band = capacity_band(area_ha, _land_use, "Fixed Tilt")
+        _tr_band = capacity_band(area_ha, _land_use, "Single-Axis Tracker")
         st.caption(
-            f"Indicative DC capacity — {_cap_ft_txt} · "
-            f"{_cap_tr_txt} — screening densities, not layout-optimised"
+            f"Indicative DC capacity — "
+            f"Fixed tilt {format_mwp_range(_ft_band['mwp_lo'], _ft_band['mwp_hi'])} · "
+            f"Tracker {format_mwp_range(_tr_band['mwp_lo'], _tr_band['mwp_hi'])} "
+            f"@ GCR {GCR_SCREEN_LO:.2f}–{GCR_SCREEN_HI:.2f} (1P screening). "
+            f"{capacity_footnote_global()}"
         )
 
         _extras = compute_terrain_extras(X, Y, Z, grid_m_used)

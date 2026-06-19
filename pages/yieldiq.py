@@ -34,6 +34,18 @@ from pvmath_auth import (
     remaining, FREE_LIMIT, UPGRADE_CONTACT,
 )
 from pvmath_styles import inject_styles
+from pvmath_capacity import (
+    capacity_band_for_config,
+    capacity_with_yield,
+    format_mwp_range,
+    format_mwh_range,
+    format_density_range,
+    capacity_all_configs_summary,
+    capacity_footnote_global,
+    GCR_REF,
+    GCR_SCREEN_LO,
+    GCR_SCREEN_HI,
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # AUTH
@@ -381,16 +393,12 @@ def get_ghi(lat, lon, raddatabase=None) -> Optional[float]:
         return None
 
 
-def get_dni_dhi(lat, lon, raddatabase=None) -> tuple:
-    """Best-effort annual DNI/DHI (kWh/m²/yr) via PVGIS's MRcalc endpoint.
+def get_dni_dhi(lat, lon, raddatabase=None, ghi_ref=None) -> tuple:
+    """Annual DNI/DHI (kWh/m²/yr) via PVGIS MRcalc — climatological mean.
 
-    UNVERIFIED: this sandbox cannot reach PVGIS's live API, so the exact
-    JSON field names below are inferred from PVGIS's published parameter
-    docs (input params "mr_dni", "horirrad", "d2g"), not confirmed against
-    a real response. Parsing is intentionally defensive — any KeyError/
-    shape mismatch returns (None, None) rather than a silently-wrong number.
-    Treat these two values as experimental until checked against a live
-    PVGIS call.
+    MRcalc returns monthly rows for every year in the database (typically
+    ~11 years × 12 months). Summing all rows without averaging would inflate
+    annual totals by ~12× — the bug that produced DNI > 20,000 kWh/m²/yr.
     """
     params = {
         "lat": round(lat, 5), "lon": round(lon, 5),
@@ -405,47 +413,57 @@ def get_dni_dhi(lat, lon, raddatabase=None) -> tuple:
             headers={"User-Agent": "YieldIQ/1.0 (pvmath.com; contact@pvmath.com)"}
         )
         resp.raise_for_status()
-        data = resp.json()
-        monthly = data["outputs"].get("monthly", [])
+        monthly = resp.json()["outputs"].get("monthly", [])
         if not monthly:
             return None, None
 
-        def _sum_key(candidates):
-            total = 0.0
-            found = False
-            for row in monthly:
-                for k in candidates:
-                    if k in row:
-                        total += float(row[k])
-                        found = True
-                        break
-            return round(total, 1) if found else None
+        from collections import defaultdict
+        by_month = defaultdict(lambda: {"h": [], "hb": [], "kd": []})
+        for row in monthly:
+            mo = row.get("month")
+            if not mo:
+                continue
+            if "H(h)_m" in row:
+                by_month[mo]["h"].append(float(row["H(h)_m"]))
+            if "Hb(n)_m" in row:
+                by_month[mo]["hb"].append(float(row["Hb(n)_m"]))
+            for k in ("Kd", "d2g"):
+                if k in row:
+                    by_month[mo]["kd"].append(float(row[k]))
 
-        ghi_h = _sum_key(["H(h)_m", "H(h)", "Hh_m"])
-        dni   = _sum_key(["Hb(n)_m", "Hb(n)", "DNI_m", "Hbn_m"])
-        d2g   = None
-        # diffuse-to-global ratio is monthly; weight by that month's GHI
-        if ghi_h:
-            dhi_total, dhi_found = 0.0, False
-            for row in monthly:
-                ghi_m = None
-                for k in ["H(h)_m", "H(h)", "Hh_m"]:
-                    if k in row:
-                        ghi_m = float(row[k]); break
-                ratio_m = None
-                for k in ["d2g", "Kd"]:
-                    if k in row:
-                        ratio_m = float(row[k]); break
-                if ghi_m is not None and ratio_m is not None:
-                    dhi_total += ghi_m * ratio_m
-                    dhi_found = True
-            d2g = round(dhi_total, 1) if dhi_found else None
-        return dni, d2g
+        if not by_month:
+            return None, None
+
+        dni = 0.0
+        dhi = 0.0
+        dni_ok = dhi_ok = False
+        for mo in sorted(by_month):
+            bucket = by_month[mo]
+            if bucket["hb"]:
+                dni += sum(bucket["hb"]) / len(bucket["hb"])
+                dni_ok = True
+            if bucket["h"] and bucket["kd"]:
+                ghi_m = sum(bucket["h"]) / len(bucket["h"])
+                kd_m = sum(bucket["kd"]) / len(bucket["kd"])
+                dhi += ghi_m * kd_m
+                dhi_ok = True
+
+        dni = round(dni, 1) if dni_ok else None
+        dhi = round(dhi, 1) if dhi_ok else None
+
+        # Reject physically impossible combinations (bad parse / wrong units)
+        if ghi_ref and dhi is not None and dhi > ghi_ref * 1.02:
+            dhi = None
+        if dni is not None and dni > 4000:
+            dni = None
+        if dhi is not None and ghi_ref and dhi > ghi_ref:
+            dhi = None
+        return dni, dhi
     except Exception:
         return None, None
 
 
-def make_monthly_chart(results: dict, mwp: float, title_cfg: str = "") -> bytes:
+def make_monthly_chart(results: dict, mwp_mid: float, title_cfg: str = "") -> bytes:
     """Grouped bar chart — monthly energy output (MWh) for all 4 configs."""
     x     = np.arange(12)
     width = 0.18
@@ -456,7 +474,10 @@ def make_monthly_chart(results: dict, mwp: float, title_cfg: str = "") -> bytes:
     for i, (cfg, color) in enumerate(zip(CONFIG_ORDER, CHART_COLORS)):
         if cfg not in results:
             continue
-        cfg_mwp = results[cfg].get("mwp") or mwp
+        r = results[cfg]
+        cfg_mwp = r.get("mwp_mid") or (
+            (r.get("mwp_lo", 0) + r.get("mwp_hi", 0)) / 2 if r.get("mwp_lo") is not None else mwp_mid
+        )
         vals_mwh = [v * cfg_mwp for v in results[cfg]["monthly"]]
         offset   = (i - 1.5) * width
         ax.bar(x + offset, vals_mwh, width, label=cfg, color=color,
@@ -472,9 +493,12 @@ def make_monthly_chart(results: dict, mwp: float, title_cfg: str = "") -> bytes:
     ax.grid(axis="y", alpha=0.25, linewidth=0.5, color="#d4e0d4")
     ax.spines[["top", "right"]].set_visible(False)
     ax.spines[["left", "bottom"]].set_color("#d4e0d4")
-    _title_mwp = results.get(title_cfg, {}).get("mwp", mwp) if title_cfg else mwp
+    _title_r = results.get(title_cfg, {}) if title_cfg else {}
+    _title_mwp = _title_r.get("mwp_mid") or (
+        (_title_r.get("mwp_lo", 0) + _title_r.get("mwp_hi", 0)) / 2 if _title_r.get("mwp_lo") is not None else mwp_mid
+    )
     ax.set_title(
-        f"Monthly Energy Output — {_title_mwp:,.1f} MWp ({title_cfg or 'system'})",
+        f"Monthly Energy Output — {_title_mwp:,.1f} MWp midpoint ({title_cfg or 'system'})",
         fontsize=11, fontweight="bold", pad=10, color="#1a2e1a"
     )
     plt.tight_layout()
@@ -487,7 +511,8 @@ def make_monthly_chart(results: dict, mwp: float, title_cfg: str = "") -> bytes:
 
 def build_pdf(project_name, lat, lon, area_ha, land_use, gcr_1p, gcr_2p,
               soiling_loss, other_loss, results, chart_bytes,
-              best_mwh, best_cfg, ghi=None, dni=None, dhi=None) -> bytes:
+              best_mwh, best_cfg, ghi=None, dni=None, dhi=None,
+              screening_note: str = "") -> bytes:
     """Generate ReportLab PDF report."""
     buf  = io.BytesIO()
     doc  = SimpleDocTemplate(buf, pagesize=A4,
@@ -594,6 +619,13 @@ def build_pdf(project_name, lat, lon, area_ha, land_use, gcr_1p, gcr_2p,
             "unverified estimate. GHI is sourced from the same verified PVGIS endpoint used for "
             "the yield calculation below.", note
         ))
+    else:
+        story.append(Spacer(1, 0.1*cm))
+        story.append(lp(
+            "DNI/DHI from PVGIS MRcalc — monthly values averaged across all years in the "
+            "database, then summed to an annual climatological mean. DHI is derived from "
+            "horizontal irradiance × diffuse fraction (Kd); DHI ≤ GHI by definition.", note
+        ))
     story.append(Spacer(1, 0.45*cm))
 
     # ── Performance (POA) ─────────────────────────────────────────────────────
@@ -648,7 +680,7 @@ def build_pdf(project_name, lat, lon, area_ha, land_use, gcr_1p, gcr_2p,
     story.append(section_hdr("RESULTS — CONFIGURATION COMPARISON"))
     story.append(Spacer(1, 0.15*cm))
     hdr_row = [lp(h, lbl) for h in [
-        "Configuration","GCR","MWp","Shading\nLoss","Total\nLoss",
+        "Configuration","GCR\n(yield)","GCR\nband","MWp DC","Shading\nLoss","Total\nLoss",
         "POA Irrad.\n(kWh/m²/yr)","Specific Yield\n(kWh/kWp/yr)","Annual Energy\n(MWh/yr)","PR (%)","CF (%)"
     ]]
     rows = [hdr_row]
@@ -664,23 +696,26 @@ def build_pdf(project_name, lat, lon, area_ha, land_use, gcr_1p, gcr_2p,
         cfg_style = S("cf", fontSize=9,
                       fontName="Helvetica-Bold" if is_best else "Helvetica",
                       textColor=GREEN_DK if is_tracker else colors.HexColor("#c24a00"))
+        _mwp_txt = format_mwp_range(r.get("mwp_lo", 0), r.get("mwp_hi", 0))
+        _mwh_txt = format_mwh_range(r.get("mwh_lo"), r.get("mwh_hi")) or "—"
         rows.append([
             lp(cfg + (" ★" if is_best else ""), cfg_style),
             lp(f"{r['gcr']:.2f}", bod),
-            lp(f"{r.get('mwp', 0):,.1f}", bod),
+            lp(f"{GCR_SCREEN_LO:.2f}–{GCR_SCREEN_HI:.2f}", bod),
+            lp(_mwp_txt, bod),
             lp(f"{r['shading']:.1f}%", bod),
             lp(f"{r['total_loss']:.1f}%", bod),
             lp(f"{r['h_y']:,.0f}", bod),
             lp(f"{r['spec_y']:,.0f}", sy_style),
-            lp(f"{r.get('mwh_yr', 0):,.1f}", bod),
+            lp(_mwh_txt, bod),
             lp(f"{r['pr']:.1f}%" if r["pr"] else "—", bod),
             lp(f"{r['cf']:.1f}%", bod),
         ])
         _cfg_row_colors.append(
             colors.HexColor("#f0faf4") if is_tracker else colors.HexColor("#fff4ee")
         )
-    res_tbl = Table(rows, colWidths=[2.4*cm, 1.1*cm, 1.2*cm, 1.3*cm, 1.3*cm,
-                                     1.6*cm, 2.2*cm, 2.0*cm, 1.1*cm, 1.1*cm])
+    res_tbl = Table(rows, colWidths=[2.2*cm, 1.0*cm, 1.0*cm, 1.6*cm, 1.2*cm, 1.2*cm,
+                                     1.5*cm, 2.0*cm, 1.8*cm, 1.0*cm, 1.0*cm])
     _tbl_style = [
         ("BACKGROUND",    (0,0),(-1, 0), AMBER),
         ("BOX",           (0,0),(-1,-1), 0.5, BORDER),
@@ -693,7 +728,13 @@ def build_pdf(project_name, lat, lon, area_ha, land_use, gcr_1p, gcr_2p,
     for _ri, _bg in enumerate(_cfg_row_colors):
         _tbl_style.append(("BACKGROUND", (0, _ri+1), (-1, _ri+1), _bg))
     res_tbl.setStyle(TableStyle(_tbl_style))
-    story += [res_tbl, Spacer(1, 0.5*cm)]
+    story += [res_tbl]
+    if screening_note:
+        story.append(Spacer(1, 0.15*cm))
+        story.append(lp(screening_note, note))
+    story.append(Spacer(1, 0.15*cm))
+    story.append(lp(capacity_footnote_global(), note))
+    story.append(Spacer(1, 0.35*cm))
 
     # ── Tracker gain summary ──────────────────────────────────────────────────
     gain_lines = []
@@ -764,16 +805,6 @@ _proj_ctry = _proj.get("country", "")
 _proj_area = _proj.get("area_ha")
 _has_proj  = _proj_lat is not None and _proj_lon is not None
 
-# Capacity density table (MW/ha) — reference values at GCR 0.30, 1P portrait
-_DENSITY = {
-    ("Standard",  "Fixed Tilt"):          0.40,
-    ("Standard",  "Single-Axis Tracker"): 0.35,
-    ("Agri-PV",   "Fixed Tilt"):          0.20,
-    ("Agri-PV",   "Single-Axis Tracker"): 0.18,
-}
-_GCR_REF = 0.30          # density table calibrated at this GCR (1P)
-_P2_FACTOR = 1.85        # 2P module count vs 1P at same row pitch (approx.)
-
 _CONFIG_CAPACITY = {
     "1P Fixed":   (False, False, "1p"),
     "2P Fixed":   (False, True,  "2p"),
@@ -782,33 +813,21 @@ _CONFIG_CAPACITY = {
 }
 
 
-def config_mwp(area_ha: float, land_use: str, tracker: bool,
-                 gcr: float, two_portrait: bool) -> float:
-    """Installable DC capacity (MWp) from site area and GCR.
-
-    Base MW/ha is defined at _GCR_REF for 1P. Higher GCR → shorter pitch →
-    more MWp (and more row shading, modelled separately in gcr_shading()).
-    """
-    if not area_ha or area_ha <= 0:
-        return 0.0
-    mount = "Single-Axis Tracker" if tracker else "Fixed Tilt"
-    base = _DENSITY[(land_use, mount)]
-    mwp = area_ha * base * (gcr / _GCR_REF)
-    if two_portrait:
-        mwp *= _P2_FACTOR
-    return round(mwp, 2)
-
-
-def attach_capacity(results: dict, area_ha: float, land_use: str,
-                    gcr_1p: float, gcr_2p: float) -> None:
-    """Add mwp and mwh_yr to each config in results (in place)."""
-    for cfg, (tracker, two_p, gcr_key) in _CONFIG_CAPACITY.items():
+def attach_capacity(results: dict, area_ha: float, land_use: str) -> None:
+    """Add screening-band MWp/MWh ranges to each config (in place)."""
+    for cfg in _CONFIG_CAPACITY:
         if cfg not in results:
             continue
-        gcr = gcr_1p if gcr_key == "1p" else gcr_2p
-        mwp = config_mwp(area_ha, land_use, tracker, gcr, two_p) if area_ha else 0.0
-        results[cfg]["mwp"] = mwp
-        results[cfg]["mwh_yr"] = round(results[cfg]["spec_y"] * mwp, 1) if mwp else 0.0
+        band = capacity_band_for_config(area_ha, land_use, cfg)
+        cap = capacity_with_yield(band, results[cfg]["spec_y"])
+        results[cfg]["mwp_lo"] = band["mwp_lo"]
+        results[cfg]["mwp_hi"] = band["mwp_hi"]
+        results[cfg]["mwh_lo"] = cap["mwh_lo"]
+        results[cfg]["mwh_hi"] = cap["mwh_hi"]
+        results[cfg]["mwp_mid"] = (band["mwp_lo"] + band["mwp_hi"]) / 2
+        results[cfg]["mwh_yr"] = (
+            round(results[cfg]["spec_y"] * results[cfg]["mwp_mid"], 1) if area_ha else 0.0
+        )
 
 if _has_proj:
     st.markdown(f"""
@@ -853,43 +872,44 @@ elif _has_proj:
 _gcr_c1, _gcr_c2 = st.columns(2)
 with _gcr_c1:
     gcr_1p = st.slider(
-        "GCR — 1-portrait", min_value=0.15, max_value=0.55,
-        value=0.28, step=0.01,
-        help="Ground Cover Ratio for 1P configs. Typical: 0.25–0.33. Higher GCR → more MWp, more shading."
+        "GCR for yield/shading model — 1-portrait", min_value=0.15, max_value=0.55,
+        value=GCR_REF, step=0.01,
+        help="Used for row-shading loss in the yield run only — not for MWp capacity (screening band GCR 0.30–0.42)."
     )
 with _gcr_c2:
     gcr_2p = st.slider(
-        "GCR — 2-portrait", min_value=0.20, max_value=0.65,
+        "GCR for yield/shading model — 2-portrait", min_value=0.20, max_value=0.65,
         value=0.40, step=0.01,
-        help="Ground Cover Ratio for 2P configs. Typical: 0.35–0.50."
+        help="Used for row-shading loss in the yield run only — not for MWp capacity."
     )
 
 if _area_ha and _area_ha > 0:
-    _prev_hdr = st.columns([1.6, 0.9, 1.0, 1.2])
-    for col, txt in zip(_prev_hdr, ["Configuration", "GCR", "MWp", "MW/ha eff."]):
+    _prev_hdr = st.columns([1.6, 0.9, 1.2, 1.2])
+    for col, txt in zip(_prev_hdr, ["Configuration", "GCR band", "MWp DC", "MWp/ha eff."]):
         col.markdown(
             f"<div style='font-size:0.77rem;font-weight:700;color:#6a8a6a;"
             f"text-transform:uppercase;letter-spacing:0.04em;"
             f"border-bottom:1px solid #dde8dd;padding-bottom:4px;'>{txt}</div>",
             unsafe_allow_html=True,
         )
-    for cfg, (tracker, two_p, gcr_key) in _CONFIG_CAPACITY.items():
-        gcr = gcr_1p if gcr_key == "1p" else gcr_2p
-        mwp = config_mwp(_area_ha, _yiq_land_use, tracker, gcr, two_p)
-        eff = round(mwp / _area_ha, 3) if _area_ha else 0
-        _pr = st.columns([1.6, 0.9, 1.0, 1.2])
+    for cfg in _CONFIG_CAPACITY:
+        band = capacity_band_for_config(_area_ha, _yiq_land_use, cfg)
+        _pr = st.columns([1.6, 0.9, 1.2, 1.2])
         _pr[0].markdown(f"**{cfg}**")
-        _pr[1].markdown(f"{gcr:.2f}")
-        _pr[2].markdown(f"**{mwp:,.1f}**")
-        _pr[3].markdown(f"{eff:.3f}")
+        _pr[1].markdown(f"{GCR_SCREEN_LO:.2f}–{GCR_SCREEN_HI:.2f}")
+        _pr[2].markdown(f"**{format_mwp_range(band['mwp_lo'], band['mwp_hi'])}**")
+        _pr[3].markdown(format_density_range(
+            band["dens_lo"], band["dens_hi"], band["gcr_lo"], band["gcr_hi"],
+        ))
 
     st.markdown(
         '<div style="font-size:0.82rem;color:#7a6a2a;background:#fff8e1;'
         'border-left:3px solid #d4840a;border-radius:6px;padding:0.55rem 0.8rem;'
         'margin:0.5rem 0 0.9rem 0;">'
-        '⚠️ <strong>MWp scales with GCR</strong> (tighter pitch → more modules). '
-        'Row shading is modelled separately in the yield run. '
-        '<strong>Best configuration = highest MWh/yr</strong>, not highest MWp or kWh/kWp.'
+        '⚠️ <strong>MWp capacity uses the screening GCR band</strong> (0.30–0.42) — same as SiteIQ / TopoIQ. '
+        'GCR sliders above affect row-shading in the yield model only. '
+        '<strong>Best configuration = highest MWh/yr</strong> (midpoint MWp × specific yield).<br>'
+        f'<span style="color:#5a4a2a;">{capacity_all_configs_summary(_area_ha, _yiq_land_use)}</span>'
         '</div>', unsafe_allow_html=True,
     )
 
@@ -981,19 +1001,21 @@ if submitted:
 
     with st.spinner("Fetching solar resource data (GHI/DNI/DHI)…"):
         ghi        = get_ghi(lat, lon, raddatabase=raddatabase)
-        dni, dhi   = get_dni_dhi(lat, lon, raddatabase=raddatabase)
+        dni, dhi   = get_dni_dhi(lat, lon, raddatabase=raddatabase, ghi_ref=ghi)
 
     increment_usage(_uid, "yieldiq")
 
     _area_for_cap = float(_area_ha) if _area_ha and _area_ha > 0 else 0.0
     if _area_for_cap:
-        attach_capacity(results, _area_for_cap, _yiq_land_use, gcr_1p, gcr_2p)
+        attach_capacity(results, _area_for_cap, _yiq_land_use)
+        _scr_note = capacity_all_configs_summary(_area_for_cap, _yiq_land_use)
         best_cfg = max(
             (c for c in CONFIG_ORDER if c in results),
             key=lambda c: results[c].get("mwh_yr", 0),
         )
         best_mwh = results[best_cfg]["mwh_yr"]
     else:
+        _scr_note = ""
         best_cfg = max(
             (c for c in CONFIG_ORDER if c in results),
             key=lambda c: results[c]["spec_y"],
@@ -1046,10 +1068,10 @@ if submitted:
     st.markdown('<div class="yiq-section">📊 Results — Configuration Comparison</div>', unsafe_allow_html=True)
 
     # Column headers
-    _COL_W = [1.4, 0.6, 0.9, 0.9, 0.9, 1.0, 1.3, 1.2, 0.7, 0.7]
+    _COL_W = [1.4, 0.55, 0.75, 1.1, 0.9, 0.9, 1.0, 1.3, 1.3, 0.7, 0.7]
     hdr_cols = st.columns(_COL_W)
     for col, txt in zip(hdr_cols, [
-        "Configuration","GCR","MWp","Shading","Total Loss",
+        "Configuration","GCR\n(yield)","GCR\nband","MWp DC","Shading","Total Loss",
         "POA Irrad.","Specific Yield","Annual MWh","PR","CF"
     ]):
         col.markdown(
@@ -1074,33 +1096,36 @@ if submitted:
         row_cols[1].markdown(
             f'<div style="padding:6px 0;color:#3a5a3a;">{r["gcr"]:.2f}</div>',
             unsafe_allow_html=True)
-        _mwp = r.get("mwp", 0)
         row_cols[2].markdown(
-            f'<div style="padding:6px 0;font-weight:600;">'
-            f'{f"{_mwp:,.1f} MWp" if _mwp else "—"}</div>',
+            f'<div style="padding:6px 0;color:#6a8a6a;">{GCR_SCREEN_LO:.2f}–{GCR_SCREEN_HI:.2f}</div>',
             unsafe_allow_html=True)
+        _mwp_txt = format_mwp_range(r.get("mwp_lo", 0), r.get("mwp_hi", 0))
         row_cols[3].markdown(
-            f'<div style="padding:6px 0;color:#d4840a;font-weight:600;">{r["shading"]:.1f}%</div>',
+            f'<div style="padding:6px 0;font-weight:600;">'
+            f'{_mwp_txt if r.get("mwp_lo") is not None else "—"}</div>',
             unsafe_allow_html=True)
         row_cols[4].markdown(
-            f'<div style="padding:6px 0;color:#5a7a5a;">{r["total_loss"]:.1f}%</div>',
+            f'<div style="padding:6px 0;color:#d4840a;font-weight:600;">{r["shading"]:.1f}%</div>',
             unsafe_allow_html=True)
         row_cols[5].markdown(
-            f'<div style="padding:6px 0;color:#3a5a3a;">{r["h_y"]:,.0f} kWh/m²</div>',
+            f'<div style="padding:6px 0;color:#5a7a5a;">{r["total_loss"]:.1f}%</div>',
             unsafe_allow_html=True)
         row_cols[6].markdown(
+            f'<div style="padding:6px 0;color:#3a5a3a;">{r["h_y"]:,.0f} kWh/m²</div>',
+            unsafe_allow_html=True)
+        row_cols[7].markdown(
             f'<div style="padding:6px 0;font-weight:700;color:#1565c0;font-size:1.05rem;">'
             f'{r["spec_y"]:,.0f} kWh/kWp</div>', unsafe_allow_html=True)
-        _mwh = r.get("mwh_yr", 0)
-        row_cols[7].markdown(
+        _mwh_txt = format_mwh_range(r.get("mwh_lo"), r.get("mwh_hi"))
+        row_cols[8].markdown(
             f'<div style="padding:6px 0;font-weight:600;">'
-            f'{f"{_mwh:,.1f} MWh/yr" if _mwh else "— (set area)"}</div>',
+            f'{_mwh_txt if _mwh_txt else "— (set area)"}</div>',
             unsafe_allow_html=True)
         _pr_str = f'{r["pr"]:.1f}%' if r["pr"] else "—"
-        row_cols[8].markdown(
+        row_cols[9].markdown(
             f'<div style="padding:6px 0;">{_pr_str}</div>',
             unsafe_allow_html=True)
-        row_cols[9].markdown(
+        row_cols[10].markdown(
             f'<div style="padding:6px 0;">{r["cf"]:.1f}%</div>',
             unsafe_allow_html=True)
 
@@ -1131,7 +1156,7 @@ if submitted:
 
     # ── Monthly chart ─────────────────────────────────────────────────────────
     st.markdown('<div class="yiq-section">📅 Monthly Energy Profile</div>', unsafe_allow_html=True)
-    _chart_mwp = results[best_cfg].get("mwp") or 1.0
+    _chart_mwp = results[best_cfg].get("mwp_mid") or 1.0
     chart_bytes = make_monthly_chart(results, _chart_mwp, title_cfg=best_cfg)
     st.image(chart_bytes, use_container_width=True)
 
@@ -1140,7 +1165,8 @@ if submitted:
     pdf_bytes = build_pdf(
         project_name, lat, lon, _area_for_cap, _yiq_land_use,
         gcr_1p, gcr_2p, soiling_loss, other_loss,
-        results, chart_bytes, best_mwh, best_cfg, ghi, dni, dhi
+        results, chart_bytes, best_mwh, best_cfg, ghi, dni, dhi,
+        screening_note=_scr_note,
     )
     safe_name = re.sub(r"[^\w\- ]", "", project_name).strip().replace(" ", "_")
     st.download_button(

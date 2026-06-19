@@ -14,79 +14,24 @@ try:
 except ImportError:
     HAS_SCIPY = False
 
-# ── Capacity (aligned with SiteIQ / YieldIQ — DC MWp at reference GCR) ────────
-
-GCR_REF = 0.30
-_BASE_DENSITY = {
-    ("Standard", "Fixed Tilt"): 0.40,
-    ("Standard", "Single-Axis Tracker"): 0.35,
-    ("Agri-PV", "Fixed Tilt"): 0.20,
-    ("Agri-PV", "Single-Axis Tracker"): 0.18,
-}
-# Typical pre-layout GCR band for screening (1P portrait)
-GCR_SCREEN_LO = 0.30
-GCR_SCREEN_HI = 0.42
-_SCREENING_GCR = {
-    "Fixed Tilt": (GCR_SCREEN_LO, GCR_SCREEN_HI),
-    "Single-Axis Tracker": (GCR_SCREEN_LO, GCR_SCREEN_HI),
-}
-
-
-def config_mwp_screen(
-    area_ha: float,
-    land_use: str,
-    mount_type: str,
-    gcr: float,
-) -> float:
-    """Installable DC capacity (MWp) from area and GCR — 1P portrait baseline."""
-    if not area_ha or area_ha <= 0:
-        return 0.0
-    base = _BASE_DENSITY.get((land_use, mount_type), 0.35)
-    return round(area_ha * base * (gcr / GCR_REF), 0)
-
-
-def site_capacity_mwp(
-    area_ha: float,
-    land_use: str = "Standard",
-    mount_type: str = "Fixed Tilt",
-    gcr: float = GCR_REF,
-) -> tuple[float, str]:
-    """Indicative DC capacity (MWp) and density note for screening."""
-    mwp = config_mwp_screen(area_ha, land_use, mount_type, gcr)
-    density = _BASE_DENSITY.get((land_use, mount_type), 0.35) * (gcr / GCR_REF)
-    note = (
-        f"{density:.2f} MWp/ha · {land_use} · {mount_type} · 1P @ GCR {gcr:.2f} "
-        f"(screening — not layout-optimised)"
-    )
-    return mwp, note
-
-
-def site_capacity_screen(
-    area_ha: float,
-    land_use: str = "Standard",
-    mount_type: str = "Fixed Tilt",
-) -> tuple[float, float, float, float]:
-    """Return (mwp_lo, mwp_hi, dens_lo, dens_hi) for PDF/UI screening band."""
-    gcr_lo, gcr_hi = _SCREENING_GCR.get(mount_type, (GCR_REF, GCR_REF))
-    base = _BASE_DENSITY.get((land_use, mount_type), 0.35)
-    mwp_lo = config_mwp_screen(area_ha, land_use, mount_type, gcr_lo)
-    mwp_hi = config_mwp_screen(area_ha, land_use, mount_type, gcr_hi)
-    dens_lo = round(base * (gcr_lo / GCR_REF), 2)
-    dens_hi = round(base * (gcr_hi / GCR_REF), 2)
-    return mwp_lo, mwp_hi, dens_lo, dens_hi
-
-
-# Back-compat alias used by TopoIQ UI
-site_capacity_mw = site_capacity_mwp
-
-
-def capacity_range_mw(area_ha: float, land_use: str = "Standard") -> str:
-    """Show fixed-tilt and tracker DC screening bands."""
-    ft_lo, ft_hi, _, _ = site_capacity_screen(area_ha, land_use, "Fixed Tilt")
-    tr_lo, tr_hi, _, _ = site_capacity_screen(area_ha, land_use, "Single-Axis Tracker")
-    ft_s = f"{ft_lo:,.0f}" if ft_lo == ft_hi else f"{ft_lo:,.0f}–{ft_hi:,.0f}"
-    tr_s = f"{tr_lo:,.0f}" if tr_lo == tr_hi else f"{tr_lo:,.0f}–{tr_hi:,.0f}"
-    return f"Fixed {ft_s} · Tracker {tr_s} MWp DC (1P screening @ GCR {GCR_SCREEN_LO:.2f}–{GCR_SCREEN_HI:.2f})"
+from pvmath_capacity import (  # noqa: F401 — re-export for backward compatibility
+    GCR_REF,
+    GCR_SCREEN_LO,
+    GCR_SCREEN_HI,
+    _SCREENING_GCR,
+    config_mwp_screen,
+    config_mwp_screen_2p,
+    site_capacity_mwp,
+    site_capacity_mw,
+    site_capacity_screen,
+    site_capacity_screen_2p,
+    capacity_range_mw,
+    capacity_band,
+    format_mwp_range,
+    format_density_range,
+    capacity_footnote_global,
+    capacity_basis_sentence,
+)
 
 
 # ── Slope thresholds ───────────────────────────────────────────────────────────
@@ -588,41 +533,39 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
             _lp(ctx["mount_type"]),
         ])
     if ctx.get("cap_ft_mwp") is not None:
-        ft_lo = ctx["cap_ft_mwp"]
-        ft_hi = ctx.get("cap_ft_mwp_hi", ft_lo)
-        dens_ft_lo = ctx.get("density_ft", 0.40)
-        dens_ft_hi = ctx.get("density_ft_hi", dens_ft_lo)
-        if ft_lo == ft_hi:
-            ft_val = (
-                f"~{ft_lo:,.0f} MWp · GCR {ctx.get('gcr_ft', GCR_REF):.2f} · "
-                f"{dens_ft_lo:.2f} MWp/ha"
-            )
-        else:
-            ft_val = (
-                f"~{ft_lo:,.0f}–{ft_hi:,.0f} MWp · 1P · GCR "
-                f"{ctx.get('gcr_ft', GCR_REF):.2f}–{ctx.get('gcr_ft_hi', GCR_SCREEN_HI):.2f} · "
-                f"{dens_ft_lo:.2f}–{dens_ft_hi:.2f} MWp/ha"
-            )
+        ft_band = {
+            "mwp_lo": ctx["cap_ft_mwp"],
+            "mwp_hi": ctx.get("cap_ft_mwp_hi", ctx["cap_ft_mwp"]),
+            "dens_lo": ctx.get("density_ft", 0.40),
+            "dens_hi": ctx.get("density_ft_hi", ctx.get("density_ft", 0.40)),
+            "gcr_lo": ctx.get("gcr_ft", GCR_REF),
+            "gcr_hi": ctx.get("gcr_ft_hi", GCR_SCREEN_HI),
+            "portrait": "1P",
+            "mount_type": "Fixed Tilt",
+        }
+        ft_val = (
+            f"{format_mwp_range(ft_band['mwp_lo'], ft_band['mwp_hi'])} · 1P · "
+            f"{format_density_range(ft_band['dens_lo'], ft_band['dens_hi'], ft_band['gcr_lo'], ft_band['gcr_hi'])}"
+        )
         info_rows.append([
             _lp("Fixed tilt DC (1P)", bold=True, color=DARK_BLUE),
             _lp(ft_val),
         ])
     if ctx.get("cap_tr_mwp_lo") is not None:
-        tr_lo = ctx["cap_tr_mwp_lo"]
-        tr_hi = ctx.get("cap_tr_mwp_hi", tr_lo)
-        dens_lo = ctx.get("density_tr_lo", 0.35)
-        dens_hi = ctx.get("density_tr_hi", dens_lo)
-        if tr_lo == tr_hi:
-            tr_val = (
-                f"~{tr_lo:,.0f} MWp · GCR {ctx.get('gcr_tr_lo', GCR_REF):.2f} · "
-                f"{dens_lo:.2f} MWp/ha"
-            )
-        else:
-            tr_val = (
-                f"~{tr_lo:,.0f}–{tr_hi:,.0f} MWp · 1P SAT · GCR "
-                f"{ctx.get('gcr_tr_lo', GCR_REF):.2f}–{ctx.get('gcr_tr_hi', GCR_SCREEN_HI):.2f} · "
-                f"{dens_lo:.2f}–{dens_hi:.2f} MWp/ha"
-            )
+        tr_band = {
+            "mwp_lo": ctx["cap_tr_mwp_lo"],
+            "mwp_hi": ctx.get("cap_tr_mwp_hi", ctx["cap_tr_mwp_lo"]),
+            "dens_lo": ctx.get("density_tr_lo", 0.35),
+            "dens_hi": ctx.get("density_tr_hi", ctx.get("density_tr_lo", 0.35)),
+            "gcr_lo": ctx.get("gcr_tr_lo", GCR_REF),
+            "gcr_hi": ctx.get("gcr_tr_hi", GCR_SCREEN_HI),
+            "portrait": "1P",
+            "mount_type": "Single-Axis Tracker",
+        }
+        tr_val = (
+            f"{format_mwp_range(tr_band['mwp_lo'], tr_band['mwp_hi'])} · 1P SAT · "
+            f"{format_density_range(tr_band['dens_lo'], tr_band['dens_hi'], tr_band['gcr_lo'], tr_band['gcr_hi'])}"
+        )
         info_rows.append([
             _lp("Tracker DC (1P SAT)", bold=True, color=DARK_BLUE),
             _lp(tr_val),
@@ -630,11 +573,7 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
     if ctx.get("cap_ft_mwp") is not None:
         info_rows.append([
             _lp("Capacity note", bold=True, color=DARK_BLUE),
-            _lp(
-                "Indicative DC MWp from area × screening density (1P portrait, "
-                f"GCR {GCR_SCREEN_LO:.2f}–{GCR_SCREEN_HI:.2f}). "
-                "Layout-optimised designs can exceed this band — confirm with full layout."
-            ),
+            _lp(capacity_footnote_global()),
         ])
     if ctx.get("prepared_by"):
         info_rows.append([
@@ -880,14 +819,8 @@ def build_report_context(
     z_range = float(z_max - z_min)
     ha_over5 = area_ha * pct_over5 / 100.0
     ha_over10 = area_ha * pct_over10 / 100.0
-    ft_lo, ft_hi, dens_ft_lo, dens_ft_hi = site_capacity_screen(
-        area_ha, land_use, "Fixed Tilt",
-    )
-    tr_lo, tr_hi, dens_tr_lo, dens_tr_hi = site_capacity_screen(
-        area_ha, land_use, "Single-Axis Tracker",
-    )
-    gcr_ft_lo, gcr_ft_hi = _SCREENING_GCR["Fixed Tilt"]
-    gcr_tr_lo, gcr_tr_hi = _SCREENING_GCR["Single-Axis Tracker"]
+    ft_band = capacity_band(area_ha, land_use, "Fixed Tilt")
+    tr_band = capacity_band(area_ha, land_use, "Single-Axis Tracker")
 
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     rid_suffix = (project_row_id or f"{lat_c:.3f}_{lon_c:.3f}")[:12]
@@ -926,18 +859,18 @@ def build_report_context(
         "slope_img_buf": slope_img_buf,
         "land_use": land_use,
         "mount_type": mount_type,
-        "cap_ft_mwp": ft_lo,
-        "cap_ft_mwp_hi": ft_hi,
-        "cap_tr_mwp_lo": tr_lo,
-        "cap_tr_mwp_hi": tr_hi,
-        "density_ft": dens_ft_lo,
-        "density_ft_hi": dens_ft_hi,
-        "density_tr_lo": dens_tr_lo,
-        "density_tr_hi": dens_tr_hi,
-        "gcr_ft": gcr_ft_lo,
-        "gcr_ft_hi": gcr_ft_hi,
-        "gcr_tr_lo": gcr_tr_lo,
-        "gcr_tr_hi": gcr_tr_hi,
+        "cap_ft_mwp": ft_band["mwp_lo"],
+        "cap_ft_mwp_hi": ft_band["mwp_hi"],
+        "cap_tr_mwp_lo": tr_band["mwp_lo"],
+        "cap_tr_mwp_hi": tr_band["mwp_hi"],
+        "density_ft": ft_band["dens_lo"],
+        "density_ft_hi": ft_band["dens_hi"],
+        "density_tr_lo": tr_band["dens_lo"],
+        "density_tr_hi": tr_band["dens_hi"],
+        "gcr_ft": ft_band["gcr_lo"],
+        "gcr_ft_hi": ft_band["gcr_hi"],
+        "gcr_tr_lo": tr_band["gcr_lo"],
+        "gcr_tr_hi": tr_band["gcr_hi"],
         "dem_zoom": dem_zoom,
         "boundary_provenance": boundary_provenance,
         "prepared_by": prepared_by,

@@ -17,7 +17,14 @@ from pvmath_auth import (
 from pvmath_styles import inject_styles
 from pvmath_kml import filter_boundary_list
 from pvmath_geocode import reverse_geocode
-from pvmath_terrain_report import site_capacity_screen, GCR_REF, GCR_SCREEN_HI, _SCREENING_GCR
+from pvmath_capacity import (
+    screening_capacity,
+    format_mwp_range,
+    format_mwh_range,
+    format_capacity_rating,
+    capacity_basis_sentence,
+    capacity_footnote_global,
+)
 
 # Shared rating legend — UI expander + PDF must stay in sync
 SITEIQ_RATING_LEGEND_MD = """
@@ -781,42 +788,6 @@ def assess_eeg(lat, lon, land_use="Standard", project_country=""):
         return name, "Check local renewable energy incentive scheme", "Contact national energy regulatory authority for grid connection"
 
 
-def screening_capacity(area_ha, land_use="Standard", mount_type="Fixed Tilt", annual_yield_kwh_kwp=None):
-    """Indicative DC MWp band — same GCR-scaled logic as TopoIQ PDF."""
-    mwp_lo, mwp_hi, dens_lo, dens_hi = site_capacity_screen(area_ha, land_use, mount_type)
-    gcr_lo, gcr_hi = _SCREENING_GCR.get(mount_type, (GCR_REF, GCR_REF))
-    mwh_lo = mwh_hi = None
-    if annual_yield_kwh_kwp and annual_yield_kwh_kwp > 0:
-        mwh_lo = round(mwp_lo * annual_yield_kwh_kwp, 0)
-        mwh_hi = round(mwp_hi * annual_yield_kwh_kwp, 0)
-    return {
-        "mwp_lo": mwp_lo, "mwp_hi": mwp_hi,
-        "mwh_lo": mwh_lo, "mwh_hi": mwh_hi,
-        "dens_lo": dens_lo, "dens_hi": dens_hi,
-        "gcr_lo": gcr_lo, "gcr_hi": gcr_hi,
-    }
-
-
-def _cap_mwp_text(mwp_lo, mwp_hi):
-    if mwp_lo == mwp_hi:
-        return f"~{mwp_lo:,.0f} MWp DC"
-    return f"~{mwp_lo:,.0f}–{mwp_hi:,.0f} MWp DC"
-
-
-def _cap_density_text(dens_lo, dens_hi, gcr_lo, gcr_hi):
-    if dens_lo == dens_hi:
-        return f"{dens_lo:.2f} MWp DC/ha @ GCR {gcr_lo:.2f}"
-    return f"{dens_lo:.2f}–{dens_hi:.2f} MWp DC/ha · GCR {gcr_lo:.2f}–{gcr_hi:.2f}"
-
-
-def _cap_mwh_text(mwh_lo, mwh_hi):
-    if mwh_lo is None:
-        return None
-    if mwh_lo == mwh_hi:
-        return f"{mwh_lo:,.0f} MWh/yr"
-    return f"{mwh_lo:,.0f}–{mwh_hi:,.0f} MWh/yr"
-
-
 def _fmt_metric_num(val, decimals=1):
     if val is None or val == "—":
         return "—"
@@ -1144,9 +1115,9 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
     _flood_badge = _badge(flood_risk.replace("🟢 ", "").replace("🟡 ", "").replace("🟠 ", "").replace("🔴 ", "").replace("⚠️ ", ""))
     _yield_lbl = "Specific Yield" if mount_type == "Single-Axis Tracker" else "Annual Yield"
     _incentive_lbl = _incentive_row_label(project_country, country)
-    _cap_mwp = _cap_mwp_text(cap["mwp_lo"], cap["mwp_hi"])
-    _cap_dens = _cap_density_text(cap["dens_lo"], cap["dens_hi"], cap["gcr_lo"], cap["gcr_hi"])
-    _output_val = _cap_mwh_text(cap["mwh_lo"], cap["mwh_hi"]) or "— (yield data unavailable)"
+    _cap_mwp = format_mwp_range(cap["mwp_lo"], cap["mwp_hi"])
+    _cap_dens = format_capacity_rating(cap)
+    _output_val = format_mwh_range(cap["mwh_lo"], cap["mwh_hi"]) or "— (yield data unavailable)"
 
     rows = [
         [lp("Metric",          colors.white, bold=True, size=9),
@@ -1180,6 +1151,15 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
         ("VALIGN",        (0,0),(-1,-1), "MIDDLE"),
     ]))
     story.append(mt)
+
+    _cap_note_style = ParagraphStyle(
+        "CapNote", parent=styles["Normal"], fontSize=8,
+        textColor=MUTED, leading=11,
+    )
+    story.append(Spacer(1, 0.15*cm))
+    story.append(Paragraph(capacity_basis_sentence(cap), _cap_note_style))
+    story.append(Spacer(1, 0.08*cm))
+    story.append(Paragraph(capacity_footnote_global(), _cap_note_style))
 
     if terrain.get("success"):
         if terrain.get("boundary_sampled"):
@@ -1690,10 +1670,12 @@ with right:
         else:
             st.error(f"**{verdict}** — {verdict_txt}")
 
-        if cap["mwp_lo"] == cap["mwp_hi"]:
-            _cap_num = f"~{cap['mwp_lo']:,.0f}"
-        else:
-            _cap_num = f"~{cap['mwp_lo']:,.0f}–{cap['mwp_hi']:,.0f}"
+        _cap_display = format_mwp_range(cap["mwp_lo"], cap["mwp_hi"]).replace(" MWp DC", "")
+        _cap_unit = (
+            f"MWp DC · GCR {cap['gcr_lo']:.2f}–{cap['gcr_hi']:.2f}"
+            if cap["gcr_lo"] != cap["gcr_hi"]
+            else f"MWp DC · GCR {cap['gcr_lo']:.2f}"
+        )
 
         _mc4_lbl = "Specific Yield" if _mount_type == "Single-Axis Tracker" else "Optimal Tilt"
         if _mount_type == "Single-Axis Tracker":
@@ -1709,32 +1691,31 @@ with right:
                               _fmt_metric_num(solar.get("annual_ghi"), 1), "kWh/m²/yr"),
             _metric_card_html("fa-mountain", "#5b9bd5", "Max Slope",
                               _fmt_metric_num(terrain.get("max_slope_pct") if terrain.get("success") else None, 1), "%"),
-            _metric_card_html("fa-bolt", "#2ecc71", "Est. DC Capacity", _cap_num, "MWp DC"),
+            _metric_card_html("fa-bolt", "#2ecc71", "Est. DC Capacity", _cap_display, _cap_unit),
             _metric_card_html("fa-ruler-combined", "#a87fd4", _mc4_lbl, _mc4_num, _mc4_unit),
         ]
         st.markdown(f'<div class="metric-grid">{"".join(_cards)}</div>', unsafe_allow_html=True)
 
         _notes = []
         if _proj.get("mode") == "full" and _enabled_polys_latlon:
-            _gcr = (
-                f"GCR {cap['gcr_lo']:.2f}–{cap['gcr_hi']:.2f}"
-                if cap["gcr_lo"] != cap["gcr_hi"]
-                else f"GCR {cap['gcr_lo']:.2f}"
-            )
             _notes.append(
-                f"DC capacity from <b>{area_ha:,.2f} ha</b> site boundary "
-                f"({_gcr}, 1P screening — same band as TopoIQ). Layout-optimised designs may differ."
+                f"DC capacity from <b>{area_ha:,.2f} ha</b> site boundary. "
+                + capacity_basis_sentence(cap) + ". Layout-optimised designs may differ."
             )
         else:
             _notes.append(
                 f"DC capacity from manually entered area (<b>{area_ha:,.2f} ha</b>). "
+                + capacity_basis_sentence(cap) + "."
+            )
+            _notes.append(
                 "Draw a boundary in Project Setup for boundary-based figures."
             )
         if cap["mwh_lo"] is not None:
             _notes.append(
-                f"Est. output <b>{_cap_mwh_text(cap['mwh_lo'], cap['mwh_hi'])}</b> "
+                f"Est. output <b>{format_mwh_range(cap['mwh_lo'], cap['mwh_hi'])}</b> "
                 f"at {_fmt_metric_num(solar.get('annual_yield'), 1)} kWh/kWp/yr — indicative only."
             )
+        _notes.append(capacity_footnote_global())
         if terrain.get("success"):
             if terrain.get("boundary_sampled"):
                 _notes.append(
@@ -1748,6 +1729,9 @@ with right:
                 )
         _notes.append(
             "Pre-feasibility screening only — not a substitute for a bankable energy study or confirmed layout."
+        )
+        _notes.append(
+            "Specific yield uses 14% system loss, no row-shading — YieldIQ applies GCR-based shading at your selected GCR."
         )
         _notes_html = "".join(f"<li>{n}</li>" for n in _notes)
         st.markdown(
