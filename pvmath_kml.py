@@ -118,6 +118,35 @@ def is_primary_site_feature(name: str, area_ha: float, line_rgb=None, poly_rgb=N
     return not is_infrastructure_layer(name)
 
 
+def boundary_layer_group(name: str) -> str:
+    """KMZ folder / layer name for tree grouping (e.g. ProjectBoundary, Buildable Area)."""
+    parts = [p.strip() for p in (name or "").split("/") if p.strip()]
+    if not parts:
+        return "Other"
+    last = parts[-1]
+    if _UNNAMED_RE.search(last) or re.search(r"Unnamed\s*\(\d+\)", last, re.I):
+        return parts[-2] if len(parts) >= 2 else parts[0]
+    if len(parts) >= 2:
+        return parts[-2]
+    return parts[0]
+
+
+def group_boundaries_by_layer(boundaries: list) -> list:
+    """Return [(layer_name, [boundary, ...]), ...] preserving first-seen layer order."""
+    order = []
+    buckets = {}
+    for b in boundaries:
+        g = b.get("layer_group") or boundary_layer_group(
+            b.get("full_name") or b.get("name", "")
+        )
+        b["layer_group"] = g
+        if g not in buckets:
+            buckets[g] = []
+            order.append(g)
+        buckets[g].append(b)
+    return [(g, buckets[g]) for g in order]
+
+
 def guess_boundary_enabled(name: str, area_ha: float, line_rgb=None, poly_rgb=None) -> bool:
     """Auto-select site parcels for analysis; skip layout / circuit geometry."""
     return is_primary_site_feature(name, area_ha, line_rgb, poly_rgb)
@@ -323,9 +352,11 @@ def _parse_kml_root(root) -> list:
             return
         seen.add(sig)
         name = _unique_key(label)
+        layer = boundary_layer_group(name)
         features.append({
             "name": name,
             "display_name": _display_name(name),
+            "layer_group": layer,
             "coords": ring,
             "area_ha": round(area_ha, 2),
             "line_rgb": line_rgb,
@@ -450,6 +481,7 @@ def boundaries_from_features(features: list, source_key: str) -> list:
             "id": f"{source_key}_{i}",
             "name": f.get("display_name") or f["name"],
             "full_name": f["name"],
+            "layer_group": f.get("layer_group") or boundary_layer_group(f["name"]),
             "coords": f["coords"],
             "enabled": guess_boundary_enabled(
                 f["name"], f.get("area_ha", 0),
@@ -482,6 +514,7 @@ def boundaries_from_kmz_latlon(raw: bytes, source_key: str) -> tuple:
             "id": b["id"],
             "name": b["name"],
             "full_name": b["full_name"],
+            "layer_group": b.get("layer_group") or boundary_layer_group(b["full_name"]),
             "coords": latlon[b["full_name"]],
             "enabled": b["enabled"],
             "is_styled_boundary": b.get("is_styled_boundary", False),
@@ -519,6 +552,7 @@ def filter_boundary_list(boundaries: list, latlon: bool = True) -> list:
         out.append({
             **b,
             "full_name": name,
+            "layer_group": b.get("layer_group") or boundary_layer_group(name),
             "is_primary": True,
             "enabled": guess_boundary_enabled(name, area),
         })

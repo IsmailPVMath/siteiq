@@ -49,9 +49,11 @@ MAX_GRID_POINTS = 300_000    # coarsen output grid above this point count
 DEM_ZOOM_MIN = 11
 DEM_ZOOM_MAX = 14
 TILE_FETCH_WORKERS = 8
+from pvmath_boundary_ui import render_grouped_boundary_manager
 from pvmath_kml import (
     BOUNDARY_COLORS,
     boundaries_from_features,
+    boundary_layer_group,
     filter_boundary_list,
     guess_boundary_enabled,
     normalize_ring_lonlat,
@@ -130,7 +132,7 @@ def _visible_boundaries(bounds, show_all: bool):
 
 
 def _render_boundary_manager():
-    """Checkbox list — site parcels only by default; full layer list on demand."""
+    """Collapsible KMZ layer tree — per-layer and per-parcel selection."""
     all_bounds = st.session_state.get("topo_boundaries", [])
     if not all_bounds:
         return
@@ -168,67 +170,35 @@ def _render_boundary_manager():
             st.session_state["topo_show_all_layers"] = False
             st.rerun()
 
-    qa, qb, qc = st.columns(3)
-    if qa.button("✓ Enable all", use_container_width=True, key="topo_en_all"):
-        for b in bounds:
-            b["enabled"] = True
-        st.rerun()
-    if qb.button("Site areas only", use_container_width=True, key="topo_en_smart"):
-        for b in all_bounds:
-            if not show_all and not b.get("is_primary", True):
+    def _smart_select(all_b, visible):
+        visible_ids = {b["id"] for b in visible}
+        for b in all_b:
+            if b["id"] not in visible_ids and not show_all:
                 continue
             b["enabled"] = guess_boundary_enabled(
                 b.get("full_name", b["name"]),
                 boundary_area_ha(b["coords"]),
                 None, None,
             ) or b.get("is_styled_boundary", False)
-        st.rerun()
-    if qc.button("Clear all", use_container_width=True, key="topo_clr_all"):
+
+    def _clear():
         st.session_state["topo_boundaries"] = []
         st.session_state.pop("topo_upload_key", None)
         st.session_state.pop("topo_show_all_layers", None)
-        st.rerun()
 
-    remove_ids = []
-    for b in bounds:
-        area = boundary_area_ha(b["coords"])
-        n_vert = len(b["coords"])
-        tag = ""
-        if b.get("is_styled_boundary"):
-            tag = ' <span style="color:#1565c0;font-size:0.75rem;">● site parcel</span>'
-        row_cb, row_txt, row_rm = st.columns([0.06, 0.84, 0.10])
-        with row_cb:
-            b["enabled"] = st.checkbox(
-                "on",
-                value=b.get("enabled", True),
-                key=f"topo_en_{b['id']}",
-                label_visibility="collapsed",
-            )
-        with row_txt:
-            st.markdown(
-                f"**{b['name']}**{tag} &nbsp;·&nbsp; {area:,.1f} ha &nbsp;·&nbsp; "
-                f"{n_vert} vertices",
-                unsafe_allow_html=True,
-            )
-        with row_rm:
-            if st.button("✕", key=f"topo_rm_{b['id']}", help="Remove this boundary"):
-                remove_ids.append(b["id"])
-
+    remove_ids = render_grouped_boundary_manager(
+        all_bounds=all_bounds,
+        visible_bounds=bounds,
+        area_fn=boundary_area_ha,
+        key_prefix="topo",
+        on_clear_all=_clear,
+        smart_select_fn=_smart_select,
+    )
     if remove_ids:
         st.session_state["topo_boundaries"] = [
             b for b in all_bounds if b["id"] not in remove_ids
         ]
         st.rerun()
-
-    enabled = [b for b in all_bounds if b.get("enabled")]
-    if enabled:
-        total = boundaries_union_area_ha([b["coords"] for b in enabled])
-        st.success(
-            f"**{len(enabled)}** boundar{'y' if len(enabled) == 1 else 'ies'} selected "
-            f"· **{total:,.1f} ha** combined"
-        )
-    else:
-        st.warning("No boundaries selected — check at least one to run analysis.")
 
 def boundary_area_ha(polygon_coords):
     """Approximate polygon area (ha). Vertices are (lon, lat) tuples."""
@@ -1017,6 +987,7 @@ def _boundaries_from_file_dict(all_polys: dict, source_key: str):
             "id": f"{source_key}_{i}",
             "name": name,
             "full_name": name,
+            "layer_group": boundary_layer_group(name),
             "coords": coords,
             "enabled": guess_boundary_enabled(name, area),
             "is_primary": True,
@@ -1126,6 +1097,7 @@ if _proj.get("polygon_boundaries"):
                 "id": b.get("id", f"proj_{i}"),
                 "name": b.get("name", f"Boundary {i + 1}"),
                 "full_name": b.get("full_name", b.get("name", "")),
+                "layer_group": b.get("layer_group"),
                 "coords": [(c[1], c[0]) for c in b["coords"]],
                 "enabled": b.get("enabled", True),
                 "is_primary": True,

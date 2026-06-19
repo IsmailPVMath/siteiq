@@ -16,6 +16,7 @@ from folium.plugins import Draw
 from streamlit_folium import st_folium
 from pvmath_styles import inject_styles
 from pvmath_auth import save_project, _refresh_session
+from pvmath_boundary_ui import render_grouped_boundary_manager
 from pvmath_kml import (
     BOUNDARY_COLORS,
     boundaries_from_kmz_latlon,
@@ -144,54 +145,36 @@ def _render_proj_boundary_manager():
             st.session_state["proj_show_all_layers"] = False
             st.rerun()
 
-    qa, qb, qc = st.columns(3)
-    if qa.button("✓ Enable all", use_container_width=True, key="proj_en_all"):
-        for b in bounds:
-            b["enabled"] = True
-        st.rerun()
-    if qb.button("Site areas only", use_container_width=True, key="proj_en_smart"):
-        for b in all_bounds:
-            if not show_all and not b.get("is_primary", True):
+    def _smart_select(all_b, visible):
+        visible_ids = {b["id"] for b in visible}
+        for b in all_b:
+            if b["id"] not in visible_ids and not show_all:
                 continue
             b["enabled"] = guess_boundary_enabled(
                 b.get("full_name", b["name"]),
                 polygon_area_ha(b["coords"]),
             ) or b.get("is_styled_boundary", False)
-        st.rerun()
-    if qc.button("Clear all", use_container_width=True, key="proj_clr_bounds"):
+
+    def _clear():
         st.session_state["proj_boundaries"] = []
         st.session_state.pop("proj_polygon_draft", None)
         st.session_state.pop("proj_kml_upload_key", None)
         st.session_state.pop("proj_show_all_layers", None)
         st.session_state["proj_polygon_cleared"] = True
-        st.rerun()
 
-    remove_ids = []
-    for b in bounds:
-        area = polygon_area_ha(b["coords"])
-        tag = ' <span style="color:#1565c0;font-size:0.75rem;">● site parcel</span>' if b.get("is_styled_boundary") else ""
-        row_cb, row_txt, row_rm = st.columns([0.06, 0.84, 0.10])
-        with row_cb:
-            b["enabled"] = st.checkbox(
-                "on", value=b.get("enabled", True),
-                key=f"proj_en_{b['id']}", label_visibility="collapsed",
-            )
-        with row_txt:
-            st.markdown(
-                f"**{b['name']}**{tag} · {area:,.1f} ha · {len(b['coords'])} vertices",
-                unsafe_allow_html=True,
-            )
-        with row_rm:
-            if st.button("✕", key=f"proj_rm_{b['id']}", help="Remove"):
-                remove_ids.append(b["id"])
+    remove_ids = render_grouped_boundary_manager(
+        all_bounds=all_bounds,
+        visible_bounds=bounds,
+        area_fn=polygon_area_ha,
+        key_prefix="proj",
+        on_clear_all=_clear,
+        smart_select_fn=_smart_select,
+    )
     if remove_ids:
-        st.session_state["proj_boundaries"] = [b for b in all_bounds if b["id"] not in remove_ids]
+        st.session_state["proj_boundaries"] = [
+            b for b in all_bounds if b["id"] not in remove_ids
+        ]
         st.rerun()
-
-    enabled = [b for b in all_bounds if b.get("enabled")]
-    if enabled:
-        total = boundaries_union_area_ha([b["coords"] for b in enabled])
-        st.success(f"**{len(enabled)}** selected · **{total:,.1f} ha** combined")
 
 
 def parse_kml_polygon(data: bytes):
