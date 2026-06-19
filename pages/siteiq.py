@@ -19,6 +19,13 @@ from pvmath_styles import inject_styles
 from pvmath_kml import filter_boundary_list
 from pvmath_geocode import reverse_geocode, format_coords
 from pvmath_topo_cache import resolve_terrain_for_siteiq, get_topo_cache, topo_cache_valid_for_siteiq
+from pvmath_screening_library import (
+    calculate_pvmath_score,
+    get_verdict_from_score,
+    build_screening_record,
+    save_site_screening_result,
+    get_global_benchmark_summary,
+)
 from pvmath_capacity import (
     screening_capacity,
     format_mwp_range,
@@ -1106,17 +1113,7 @@ def _regulatory_to_score(country: str, eeg_status: str, project_country: str) ->
 
 
 def _verdict_label_from_score(score: int) -> str:
-    if score >= 92:
-        return "EXCELLENT"
-    if score >= 82:
-        return "VERY GOOD"
-    if score >= 72:
-        return "GOOD"
-    if score >= 62:
-        return "ACCEPTABLE"
-    if score >= 50:
-        return "CHALLENGING"
-    return "CRITICAL"
+    return get_verdict_from_score(score)
 
 
 SUITABILITY_WEIGHTS = (
@@ -1175,13 +1172,7 @@ def compute_site_suitability(
         "land": land_score,
         "regulatory": reg_score,
     }
-    overall = round(
-        raw["solar"] * 0.35
-        + raw["terrain"] * 0.25
-        + raw["flood"] * 0.15
-        + raw["land"] * 0.15
-        + raw["regulatory"] * 0.10
-    )
+    overall = calculate_pvmath_score(raw)
 
     drivers = []
     if solar.get("success"):
@@ -1216,8 +1207,9 @@ def compute_site_suitability(
     return {
         "scores": raw,
         "overall": overall,
-        "verdict_label": _verdict_label_from_score(overall),
+        "verdict_label": get_verdict_from_score(overall),
         "drivers": drivers,
+        "pvmath_score": overall,
     }
 
 
@@ -1250,7 +1242,8 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
               flood_risk="", flood_detail="", flood_source="", flood_confidence="",
               flood_reason="", coord_note="",
               prepared_by="", module_confidence="",
-              analysis_ref=None):
+              analysis_ref=None,
+              pvmath_score=None, pvmath_verdict="", benchmark=None):
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4,
                             rightMargin=2*cm, leftMargin=2*cm,
@@ -1464,6 +1457,25 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
                            textColor=DARK_TXT, leading=12, leftIndent=2),
         ))
         story.append(Spacer(1, 0.12*cm))
+    story.append(Spacer(1, 0.35*cm))
+
+    _pvm = pvmath_score if pvmath_score is not None else _suit.get("pvmath_score", _suit["overall"])
+    _pvm_verdict = pvmath_verdict or _suit.get("verdict_label", "")
+    _bench = benchmark or {}
+    story.append(section_hdr("PVMATH SCORE"))
+    story.append(Spacer(1, 0.12*cm))
+    _pvm_lines = [
+        f"<b>PVMath Score:</b> {_pvm}/100",
+        f"<b>Verdict:</b> {_pvm_verdict}",
+        "<b>Score basis:</b> Deterministic engineering screening model",
+        f"<b>Benchmark status:</b> {_bench.get('status_message', 'Benchmarking requires more PVMath screening history. Current score is based on deterministic engineering rules.')}",
+    ]
+    for line in _pvm_lines:
+        story.append(Paragraph(
+            line,
+            ParagraphStyle("PvmSc", parent=styles["Normal"], fontSize=9,
+                           textColor=DARK_TXT, leading=13),
+        ))
     story.append(Spacer(1, 0.35*cm))
 
     story.append(section_hdr("KEY METRICS"))
@@ -2076,6 +2088,59 @@ with right:
         flood_portal = _flood["portal"]
         flood_portal_name = _flood["portal_name"]
 
+        _suit_ui = compute_site_suitability(
+            g_lbl, s_lbl, flood_risk, _land_use, solar, terrain, _mount_type,
+            country=country, eeg_status=eeg_status, project_country=project_country_input,
+            cap=cap,
+        )
+        _pvmath_score = _suit_ui["pvmath_score"]
+        _pvmath_verdict = _suit_ui["verdict_label"]
+        _benchmark = get_global_benchmark_summary(
+            _pvmath_score, project_country_input or country,
+        )
+
+        if go_clicked:
+            _mod_conf = module_confidence_label("siteiq")
+            _record = build_screening_record(
+                user_id=_username,
+                project_name=project_name,
+                lat=lat, lon=lon,
+                area_ha=area_ha,
+                land_use=_land_use,
+                mount_type=_mount_type,
+                solar=solar,
+                terrain=terrain,
+                cap=cap,
+                flood=_flood,
+                scores=_suit_ui["scores"],
+                pvmath_score=_pvmath_score,
+                verdict_label=_pvmath_verdict,
+                module_confidence=_mod_conf,
+                country=country,
+                project_country=project_country_input,
+                location_label=_location_label,
+                eeg_status=eeg_status,
+                coord_note=_coord_note,
+                project_row_id=st.session_state.get("pvm_project_row_id"),
+                used_topo_cache=bool(
+                    st.session_state.get("siteiq_run_cache", {}).get("used_topo_cache")
+                ),
+            )
+            _saved_report_id = save_site_screening_result(_record)
+            st.session_state["siteiq_run_cache"]["pvmath_score"] = _pvmath_score
+            st.session_state["siteiq_run_cache"]["pvmath_verdict"] = _pvmath_verdict
+            st.session_state["siteiq_run_cache"]["benchmark"] = _benchmark
+            st.session_state["siteiq_run_cache"]["screening_report_id"] = _saved_report_id
+            if not _saved_report_id:
+                st.caption(
+                    "Note: This screening could not be saved to your PVMath library "
+                    "(database unavailable). Your report was generated normally."
+                )
+        elif _run_cache:
+            _pvmath_score = _run_cache.get("pvmath_score", _pvmath_score)
+            _pvmath_verdict = _run_cache.get("pvmath_verdict", _pvmath_verdict)
+            _benchmark = _run_cache.get("benchmark", _benchmark)
+
         badge_color = "#1a5c2e" if _land_use == "Agri-PV" else "#1565c0"
         st.markdown(
             f'<span style="background:{badge_color};color:white;padding:3px 10px;border-radius:4px;font-size:0.8rem;">'
@@ -2103,6 +2168,21 @@ with right:
             st.error(f"**{verdict}** — {verdict_txt}")
 
         st.caption(module_confidence_label("siteiq"))
+
+        st.markdown(
+            f'<div style="background:#f0f7f2;border:1px solid #c8e6d0;border-radius:10px;'
+            f'padding:0.85rem 1rem;margin:0.75rem 0;">'
+            f'<div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;'
+            f'letter-spacing:0.1em;color:#1d9e52;margin-bottom:0.35rem;">PVMath Score</div>'
+            f'<div style="font-size:1.35rem;font-weight:800;color:#1a2e1a;">{_pvmath_score}/100 '
+            f'<span style="font-size:0.95rem;color:#1d9e52;">({_pvmath_verdict})</span></div>'
+            f'<div style="font-size:0.82rem;color:#4a6a4a;margin-top:0.35rem;">'
+            f'Score basis: Deterministic engineering screening model</div>'
+            f'<div style="font-size:0.82rem;color:#5a7a5a;margin-top:0.25rem;">'
+            f'Benchmark: {_benchmark.get("status_message", "")}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
 
         _cap_display = format_mwp_range(cap["mwp_lo"], cap["mwp_hi"]).replace(" MWp DC", "")
         _cap_unit = (
@@ -2278,6 +2358,9 @@ with right:
             prepared_by=prepared_by_line(),
             module_confidence=module_confidence_label("siteiq"),
             analysis_ref=_analysis_ref,
+            pvmath_score=_pvmath_score,
+            pvmath_verdict=_pvmath_verdict,
+            benchmark=_benchmark,
         )
         st.download_button(
             label="⬇️  Download PDF Report",
