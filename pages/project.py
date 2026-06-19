@@ -84,6 +84,33 @@ def centroid_of(coords):
     return sum(lats) / len(lats), sum(lons) / len(lons)
 
 
+def _resolve_site_location(proj, lat, lon):
+    """
+    Site lat/lon for save and module routing.
+    Priority: explicit inputs → map pin → saved project → largest enabled KMZ parcel.
+    """
+    if lat is not None and lon is not None:
+        return lat, lon
+
+    pin_lat = st.session_state.get("proj_pin_lat")
+    pin_lon = st.session_state.get("proj_pin_lon")
+    if pin_lat is not None and pin_lon is not None:
+        return pin_lat, pin_lon
+
+    if proj.get("lat") is not None and proj.get("lon") is not None:
+        return proj["lat"], proj["lon"]
+
+    boundaries = st.session_state.get("proj_boundaries", [])
+    enabled = [b for b in boundaries if b.get("enabled")]
+    if not enabled:
+        enabled = [b for b in boundaries if b.get("coords")]
+    if enabled:
+        largest = max(enabled, key=lambda b: polygon_area_ha(b["coords"]))
+        return centroid_of(largest["coords"])
+
+    return None, None
+
+
 def boundaries_union_area_ha(coords_list):
     """Combined area (ha) for one or more [lat, lon] rings."""
     polys = [p for p in coords_list if p and len(p) >= 3]
@@ -473,6 +500,14 @@ if True:
 
         if st.session_state.get("proj_boundaries"):
             _render_proj_boundary_manager()
+            _auto_lat, _auto_lon = _resolve_site_location(proj, lat, lon)
+            if _auto_lat is not None and _auto_lon is not None:
+                st.session_state["proj_pin_lat"] = _auto_lat
+                st.session_state["proj_pin_lon"] = _auto_lon
+                st.caption(
+                    f"📍 Site location auto-set from boundary file: "
+                    f"**{_auto_lat:.5f}°**, **{_auto_lon:.5f}°**"
+                )
 
     # ── MAP ───────────────────────────────────────────────────────────────────
     if _is_map or (is_full and _coord_center):
@@ -696,8 +731,12 @@ if True:
         save_clicked = st.button("💾 Save Project", type="primary", use_container_width=True)
 
     if save_clicked:
+        lat, lon = _resolve_site_location(proj, lat, lon)
         if lat is None or lon is None:
-            st.error("Please select a site location before saving.")
+            st.error(
+                "Please set a site location — upload a KMZ with boundaries, drop a pin on the map, "
+                "or enter coordinates."
+            )
         elif not proj_name.strip():
             st.error("Please enter a project name.")
         else:
