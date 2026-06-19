@@ -206,8 +206,7 @@ def capacity_basis_sentence(band: dict) -> str:
     return (
         f"Indicative DC capacity at GCR {band['gcr_lo']:.2f}–{band['gcr_hi']:.2f} "
         f"({portrait} {mount} screening): "
-        f"{format_mwp_range(band['mwp_lo'], band['mwp_hi'])}. "
-        f"{CAPACITY_SCREENING_DISCLAIMER}"
+        f"{format_mwp_range(band['mwp_lo'], band['mwp_hi'])}."
     )
 
 

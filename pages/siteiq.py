@@ -26,7 +26,6 @@ from pvmath_capacity import (
     format_capacity_rating,
     capacity_basis_sentence,
     capacity_footnote_global,
-    CAPACITY_SCREENING_DISCLAIMER,
 )
 from pvmath_yield import (
     get_solar_data,
