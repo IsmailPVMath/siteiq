@@ -12,6 +12,14 @@ def _layer_all_on(items: list) -> bool:
     return all(bool(b.get("enabled", True)) for b in items)
 
 
+def _pop_boundary_keys(key_prefix: str, boundary_ids, layer_slug: str | None = None) -> None:
+    for bid in boundary_ids:
+        st.session_state.pop(f"{key_prefix}_en_{bid}", None)
+    if layer_slug:
+        st.session_state.pop(f"{key_prefix}_layer_{layer_slug}", None)
+        st.session_state.pop(f"{key_prefix}_layer_prev_{layer_slug}", None)
+
+
 def _clear_widget_keys(key_prefix: str, all_bounds: list, groups: list) -> None:
     """Drop cached checkbox state so widgets re-read the boundary data model."""
     for b in all_bounds:
@@ -112,7 +120,8 @@ def render_grouped_boundary_manager(
     st.caption(
         "**Enable all** — every visible parcel. **Site areas only** — Project Boundary / site fence "
         "layers (unchecks buildable area, laydown, etc.). **Clear all** — remove loaded boundaries. "
-        "Use the box beside each **layer** to include or exclude a whole group."
+        "Use the box beside each **layer** to include or exclude a whole group; **✕** on a layer "
+        "removes that entire folder from the project."
     )
 
     remove_ids = []
@@ -140,7 +149,7 @@ def render_grouped_boundary_manager(
 
         st.session_state[prev_key] = all_on
 
-        hdr_cb, hdr_tree = st.columns([0.055, 0.945])
+        hdr_cb, hdr_tree, hdr_rm = st.columns([0.055, 0.845, 0.10])
         with hdr_cb:
             st.checkbox(
                 "layer",
@@ -179,5 +188,14 @@ def render_grouped_boundary_manager(
                             "✕", key=f"{key_prefix}_rm_{b['id']}", help="Remove parcel"
                         ):
                             remove_ids.append(b["id"])
+
+        with hdr_rm:
+            if st.button(
+                "✕",
+                key=f"{key_prefix}_rm_layer_{slug}",
+                help=f"Remove entire {layer_name} layer ({len(items)} parcel{'s' if len(items) != 1 else ''})",
+            ):
+                remove_ids.extend(b["id"] for b in items)
+                _pop_boundary_keys(key_prefix, [b["id"] for b in items], slug)
 
     return remove_ids
