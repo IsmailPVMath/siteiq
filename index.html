@@ -158,33 +158,36 @@
 
     /* ── MODULES ── */
     #modules { background: var(--card); }
-    .modules-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
-    .module-card { border: 1.5px solid var(--border); border-radius: 14px; padding: 2rem; background: var(--bg); position: relative; transition: transform .25s, box-shadow .25s, border-color .25s; display: flex; flex-direction: column; }
+    .modules-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; align-items: stretch; }
+    .module-card { border: 1.5px solid var(--border); border-radius: 14px; padding: 1.75rem 1.65rem; background: var(--bg); position: relative; transition: transform .25s, box-shadow .25s, border-color .25s; display: flex; flex-direction: column; height: 100%; }
     .module-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,.08); }
     .module-card.live { border-color: rgba(29,158,82,.35); }
     .module-card.live:hover { border-color: var(--green); }
     .module-card.siteiq { border-color: rgba(232,93,4,.3); }
     .module-card.siteiq:hover { border-color: var(--coral); }
     .module-card.soon { border-color: rgba(245,158,11,.3); opacity: .9; }
-    .module-pill { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.3rem 0.75rem; border-radius: 100px; margin-bottom: 1.2rem; width: fit-content; }
+    .module-pill { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.32rem 0.8rem; border-radius: 100px; margin-bottom: 0.9rem; width: fit-content; }
     .pill-live { background: var(--green-lt); color: var(--green-dk); }
     .pill-live::before { content:''; width:6px; height:6px; background:var(--green); border-radius:50%; animation: pulse 1.8s infinite; }
     .pill-soon { background: var(--amber-lt); color: #92400e; }
-    .module-num { font-size: 0.72rem; font-weight: 700; color: var(--muted); letter-spacing: 0.1em; margin-bottom: 0.5rem; }
-    .module-name { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.6rem; }
+    .module-num { font-size: 0.8rem; font-weight: 700; color: var(--muted); letter-spacing: 0.1em; margin-bottom: 0.4rem; }
+    .module-name { font-size: 1.65rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.45rem; }
     .module-name.green { color: var(--coral); }
     .module-name.blue  { color: var(--blue); }
     .module-name.amber { color: #92400e; }
-    .module-tagline { font-size: 0.82rem; font-weight: 700; margin: 0.35rem 0 0.5rem 0; font-style: italic; line-height: 1.45; }
+    .module-tagline { font-size: 1rem; font-weight: 700; margin: 0.25rem 0 0.55rem 0; font-style: italic; line-height: 1.5; }
     .module-tagline.coral { color: var(--coral); }
     .module-tagline.blue  { color: var(--blue); }
     .module-tagline.amber { color: #d4840a; }
-    .module-desc { font-size: 0.88rem; color: var(--muted); line-height: 1.65; margin-bottom: 1.5rem; flex: 1; }
-    .module-features { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.8rem; }
-    .module-features li { font-size: 0.83rem; color: var(--muted); display: flex; align-items: center; gap: 0.5rem; }
-    .module-features li::before { content:'✓'; color: var(--green); font-weight: 700; flex-shrink: 0; }
+    .module-desc { font-size: 1.02rem; color: var(--muted); line-height: 1.6; margin-bottom: 1rem; }
+    .module-features { list-style: none; display: flex; flex-direction: column; gap: 0.45rem; margin-bottom: 1.25rem; }
+    .module-features li { font-size: 0.98rem; color: var(--muted); display: flex; align-items: flex-start; gap: 0.5rem; line-height: 1.45; }
+    .module-features li::before { content:'✓'; color: var(--green); font-weight: 700; flex-shrink: 0; margin-top: 0.1rem; }
     .module-features li.soon-item::before { content:'◷'; color: var(--amber); }
-    .module-link { display: block; text-align: center; padding: 0.7rem; border-radius: 8px; font-weight: 700; font-size: 0.88rem; text-decoration: none; transition: all .2s; }
+    .module-disclaimer { background:#fff8e6; border:1.5px solid #f0b429; border-radius:8px; padding:0.65rem 0.85rem; margin-bottom:1rem; display:flex; align-items:flex-start; gap:0.45rem; }
+    .module-disclaimer-icon { font-size:1rem; flex-shrink:0; line-height:1.4; }
+    .module-disclaimer-text { font-size:0.92rem; color:#7a4f00; line-height:1.5; font-weight:600; }
+    .module-link { display: block; text-align: center; padding: 0.75rem; border-radius: 8px; font-weight: 700; font-size: 1rem; text-decoration: none; transition: all .2s; margin-top: auto; }
     .link-green { background: var(--coral); color: #fff; }
     .link-green:hover { background: #c24a00; box-shadow: 0 4px 14px rgba(232,93,4,.3); }
     .link-blue { background: var(--blue); color: #fff; }
@@ -597,9 +600,9 @@
           <li class="feat-item" data-i18n="yieldiq.f5">Tracker vs fixed-tilt comparison</li>
           <li class="feat-item" data-i18n="yieldiq.f6">Preliminary yield PDF report</li>
         </ul>
-        <div style="background:#fff8e6;border:1.5px solid #f0b429;border-radius:8px;padding:0.6rem 0.8rem;margin-bottom:1rem;display:flex;align-items:flex-start;gap:0.4rem;">
-          <span style="font-size:0.85rem;flex-shrink:0;">&#9888;&#65039;</span>
-          <div style="font-size:0.73rem;color:#7a4f00;line-height:1.55;font-weight:600;">Early-stage feasibility only. Not a substitute for bankable energy assessment (PVsyst, DNV SolarFarmer, Aurora).</div>
+        <div class="module-disclaimer">
+          <span class="module-disclaimer-icon">&#9888;&#65039;</span>
+          <div class="module-disclaimer-text">Early-stage feasibility only. Not a substitute for bankable energy assessment (PVsyst, DNV SolarFarmer, Aurora).</div>
         </div>
         <a href="https://siteiq.pvmath.com" target="_blank" class="module-link link-amber" data-i18n="yieldiq.btn">Open in App &rarr;</a>
       </div>
