@@ -56,7 +56,8 @@ from pvmath_terrain_report import (
     compute_terrain_extras,
     generate_pdf_report,
     render_slope_map_png,
-    site_capacity_mw,
+    site_capacity_mwp,
+    site_capacity_screen,
     _verdict_from_mean,
 )
 def boundaries_union_area_ha(polygon_list):
@@ -1108,11 +1109,15 @@ with right:
         with vc2:
             st.success(f"**Tracker:** {_vt_label} — {_vt_detail}")
 
-        _cap_ft, _ = site_capacity_mw(area_ha, _land_use, "Fixed Tilt")
-        _cap_tr, _ = site_capacity_mw(area_ha, _land_use, "Single-Axis Tracker")
+        _ft_lo, _ft_hi, _, _ = site_capacity_screen(area_ha, _land_use, "Fixed Tilt")
+        _tr_lo, _tr_hi, _, _ = site_capacity_screen(area_ha, _land_use, "Single-Axis Tracker")
+        if _tr_lo == _tr_hi:
+            _cap_tr_txt = f"**Tracker ~{_tr_lo:,.0f} MWp DC**"
+        else:
+            _cap_tr_txt = f"**Tracker ~{_tr_lo:,.0f}–{_tr_hi:,.0f} MWp DC** (1P SAT, GCR 0.30–0.42)"
         st.caption(
-            f"Indicative capacity — **Fixed tilt ~{_cap_ft:,.0f} MWac** · "
-            f"**Tracker ~{_cap_tr:,.0f} MWac** (screening densities, not layout-optimised)"
+            f"Indicative DC capacity — **Fixed tilt ~{_ft_lo:,.0f} MWp** · "
+            f"{_cap_tr_txt} — screening densities, not layout-optimised"
         )
 
         _extras = compute_terrain_extras(X, Y, Z, grid_m_used)

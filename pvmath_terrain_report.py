@@ -14,28 +14,79 @@ try:
 except ImportError:
     HAS_SCIPY = False
 
-# ── Capacity (aligned with SiteIQ) ───────────────────────────────────────────
+# ── Capacity (aligned with SiteIQ / YieldIQ — DC MWp at reference GCR) ────────
 
-def site_capacity_mw(area_ha: float, land_use: str = "Standard",
-                     mount_type: str = "Fixed Tilt") -> tuple[float, str]:
-    """Indicative AC capacity (MW) and density note for screening."""
-    if land_use == "Agri-PV":
-        density = 0.18 if mount_type == "Single-Axis Tracker" else 0.20
-    else:
-        density = 0.35 if mount_type == "Single-Axis Tracker" else 0.40
-    mw = round(area_ha * density, 1)
+GCR_REF = 0.30
+_BASE_DENSITY = {
+    ("Standard", "Fixed Tilt"): 0.40,
+    ("Standard", "Single-Axis Tracker"): 0.35,
+    ("Agri-PV", "Fixed Tilt"): 0.20,
+    ("Agri-PV", "Single-Axis Tracker"): 0.18,
+}
+# Typical pre-layout GCR band for screening (1P portrait)
+_SCREENING_GCR = {
+    "Fixed Tilt": (0.30, 0.30),
+    "Single-Axis Tracker": (0.30, 0.42),
+}
+
+
+def config_mwp_screen(
+    area_ha: float,
+    land_use: str,
+    mount_type: str,
+    gcr: float,
+) -> float:
+    """Installable DC capacity (MWp) from area and GCR — 1P portrait baseline."""
+    if not area_ha or area_ha <= 0:
+        return 0.0
+    base = _BASE_DENSITY.get((land_use, mount_type), 0.35)
+    return round(area_ha * base * (gcr / GCR_REF), 0)
+
+
+def site_capacity_mwp(
+    area_ha: float,
+    land_use: str = "Standard",
+    mount_type: str = "Fixed Tilt",
+    gcr: float = GCR_REF,
+) -> tuple[float, str]:
+    """Indicative DC capacity (MWp) and density note for screening."""
+    mwp = config_mwp_screen(area_ha, land_use, mount_type, gcr)
+    density = _BASE_DENSITY.get((land_use, mount_type), 0.35) * (gcr / GCR_REF)
     note = (
-        f"{density:.2f} MW/ha screening density · {land_use} · {mount_type} "
-        f"(not layout-optimised)"
+        f"{density:.2f} MWp/ha · {land_use} · {mount_type} · 1P @ GCR {gcr:.2f} "
+        f"(screening — not layout-optimised)"
     )
-    return mw, note
+    return mwp, note
+
+
+def site_capacity_screen(
+    area_ha: float,
+    land_use: str = "Standard",
+    mount_type: str = "Fixed Tilt",
+) -> tuple[float, float, float, float]:
+    """Return (mwp_lo, mwp_hi, dens_lo, dens_hi) for PDF/UI screening band."""
+    gcr_lo, gcr_hi = _SCREENING_GCR.get(mount_type, (GCR_REF, GCR_REF))
+    base = _BASE_DENSITY.get((land_use, mount_type), 0.35)
+    mwp_lo = config_mwp_screen(area_ha, land_use, mount_type, gcr_lo)
+    mwp_hi = config_mwp_screen(area_ha, land_use, mount_type, gcr_hi)
+    dens_lo = round(base * (gcr_lo / GCR_REF), 2)
+    dens_hi = round(base * (gcr_hi / GCR_REF), 2)
+    return mwp_lo, mwp_hi, dens_lo, dens_hi
+
+
+# Back-compat alias used by TopoIQ UI
+site_capacity_mw = site_capacity_mwp
 
 
 def capacity_range_mw(area_ha: float, land_use: str = "Standard") -> str:
-    """Show fixed-tilt and tracker range when mount not fixed."""
-    ft, _ = site_capacity_mw(area_ha, land_use, "Fixed Tilt")
-    tr, _ = site_capacity_mw(area_ha, land_use, "Single-Axis Tracker")
-    return f"{tr:,.0f}–{ft:,.0f} MWac (tracker–fixed tilt range)"
+    """Show fixed-tilt and tracker DC range when mount not fixed."""
+    ft_lo, ft_hi, _, _ = site_capacity_screen(area_ha, land_use, "Fixed Tilt")
+    tr_lo, tr_hi, _, _ = site_capacity_screen(area_ha, land_use, "Single-Axis Tracker")
+    if tr_lo == tr_hi:
+        tr_s = f"{tr_lo:,.0f} MWp"
+    else:
+        tr_s = f"{tr_lo:,.0f}–{tr_hi:,.0f} MWp"
+    return f"{tr_s}–{ft_lo:,.0f} MWp tracker–fixed (1P DC screening)"
 
 
 # ── Slope thresholds ───────────────────────────────────────────────────────────
@@ -498,49 +549,96 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
 
     info_rows = []
     if ctx.get("project_name"):
-        info_rows.append(["Project", ctx["project_name"]])
-    info_rows.append(["Location", loc_line])
-    info_rows.append(["Coordinates", f"Lat {ctx['lat_c']:.5f}°, Lon {ctx['lon_c']:.5f}°"])
+        info_rows.append([
+            _lp("Project", bold=True, color=DARK_BLUE),
+            _lp(ctx["project_name"]),
+        ])
     info_rows.append([
-        "Site area",
-        f"{ctx['area_ha']:.1f} ha (union of enabled parcels)",
+        _lp("Location", bold=True, color=DARK_BLUE),
+        _lp(loc_line),
     ])
-    info_rows.append(["Grid resolution", f"{ctx['grid_spacing']:.0f} m"])
+    info_rows.append([
+        _lp("Coordinates", bold=True, color=DARK_BLUE),
+        _lp(f"Lat {ctx['lat_c']:.5f}°, Lon {ctx['lon_c']:.5f}°"),
+    ])
+    info_rows.append([
+        _lp("Site area", bold=True, color=DARK_BLUE),
+        _lp(f"{ctx['area_ha']:.1f} ha (union of enabled parcels)"),
+    ])
+    info_rows.append([
+        _lp("Grid resolution", bold=True, color=DARK_BLUE),
+        _lp(f"{ctx['grid_spacing']:.0f} m"),
+    ])
     if ctx.get("boundary_provenance"):
-        info_rows.append(["Boundary source", ctx["boundary_provenance"]])
+        info_rows.append([
+            _lp("Boundary source", bold=True, color=DARK_BLUE),
+            _lp(ctx["boundary_provenance"]),
+        ])
     if ctx.get("land_use"):
-        info_rows.append(["Land use", ctx["land_use"]])
+        info_rows.append([
+            _lp("Land use", bold=True, color=DARK_BLUE),
+            _lp(ctx["land_use"]),
+        ])
     if ctx.get("mount_type"):
-        info_rows.append(["Project mount (ref.)", ctx["mount_type"]])
-    if ctx.get("cap_ft_mw") is not None:
         info_rows.append([
-            "Indicative capacity (Fixed Tilt)",
-            f"~{ctx['cap_ft_mw']:,.0f} MWac @ {ctx.get('density_ft', 0.40):.2f} MW/ha",
+            _lp("Project mount (ref.)", bold=True, color=DARK_BLUE),
+            _lp(ctx["mount_type"]),
         ])
-    if ctx.get("cap_tr_mw") is not None:
+    if ctx.get("cap_ft_mwp") is not None:
         info_rows.append([
-            "Indicative capacity (Tracker)",
-            f"~{ctx['cap_tr_mw']:,.0f} MWac @ {ctx.get('density_tr', 0.35):.2f} MW/ha",
+            _lp("Fixed tilt DC (1P)", bold=True, color=DARK_BLUE),
+            _lp(
+                f"~{ctx['cap_ft_mwp']:,.0f} MWp · GCR {ctx.get('gcr_ft', GCR_REF):.2f} · "
+                f"{ctx.get('density_ft', 0.40):.2f} MWp/ha"
+            ),
         ])
-    if ctx.get("cap_ft_mw") is not None:
+    if ctx.get("cap_tr_mwp_lo") is not None:
+        tr_lo = ctx["cap_tr_mwp_lo"]
+        tr_hi = ctx.get("cap_tr_mwp_hi", tr_lo)
+        dens_lo = ctx.get("density_tr_lo", 0.35)
+        dens_hi = ctx.get("density_tr_hi", dens_lo)
+        if tr_lo == tr_hi:
+            tr_val = (
+                f"~{tr_lo:,.0f} MWp · GCR {ctx.get('gcr_tr_lo', GCR_REF):.2f} · "
+                f"{dens_lo:.2f} MWp/ha"
+            )
+        else:
+            tr_val = (
+                f"~{tr_lo:,.0f}–{tr_hi:,.0f} MWp · 1P SAT · GCR "
+                f"{ctx.get('gcr_tr_lo', GCR_REF):.2f}–{ctx.get('gcr_tr_hi', 0.42):.2f} · "
+                f"{dens_lo:.2f}–{dens_hi:.2f} MWp/ha"
+            )
         info_rows.append([
-            "Capacity note",
-            "Screening densities only — not layout-optimised. Earthworks volumes require layout.",
+            _lp("Tracker DC (1P SAT)", bold=True, color=DARK_BLUE),
+            _lp(tr_val),
+        ])
+    if ctx.get("cap_ft_mwp") is not None:
+        info_rows.append([
+            _lp("Capacity note", bold=True, color=DARK_BLUE),
+            _lp(
+                "Indicative DC MWp from area × screening density (1P portrait). "
+                "Layout-optimised designs can exceed this band — confirm with full layout."
+            ),
         ])
     if ctx.get("prepared_by"):
-        info_rows.append(["Prepared by", ctx["prepared_by"]])
+        info_rows.append([
+            _lp("Prepared by", bold=True, color=DARK_BLUE),
+            _lp(ctx["prepared_by"]),
+        ])
 
-    info_tbl = Table(info_rows, colWidths=[42 * mm, usable - 42 * mm])
+    label_w = 48 * mm
+    info_tbl = Table(info_rows, colWidths=[label_w, usable - label_w])
     info_tbl.setStyle(TableStyle([
-        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
         ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("TEXTCOLOR", (0, 0), (0, -1), DARK_BLUE),
         ("BACKGROUND", (0, 0), (-1, -1), LIGHT_BG),
         ("ROWBACKGROUNDS", (0, 0), (-1, -1), [colors.white, LIGHT_BG]),
         ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#cccccc")),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
     ]))
     story.append(info_tbl)
     story.append(Spacer(1, 4 * mm))
@@ -760,12 +858,14 @@ def build_report_context(
     z_range = float(z_max - z_min)
     ha_over5 = area_ha * pct_over5 / 100.0
     ha_over10 = area_ha * pct_over10 / 100.0
-    cap_ft_mw, _ = site_capacity_mw(area_ha, land_use, "Fixed Tilt")
-    cap_tr_mw, _ = site_capacity_mw(area_ha, land_use, "Single-Axis Tracker")
-    if land_use == "Agri-PV":
-        density_ft, density_tr = 0.20, 0.18
-    else:
-        density_ft, density_tr = 0.40, 0.35
+    ft_lo, ft_hi, dens_ft_lo, dens_ft_hi = site_capacity_screen(
+        area_ha, land_use, "Fixed Tilt",
+    )
+    tr_lo, tr_hi, dens_tr_lo, dens_tr_hi = site_capacity_screen(
+        area_ha, land_use, "Single-Axis Tracker",
+    )
+    gcr_ft_lo, gcr_ft_hi = _SCREENING_GCR["Fixed Tilt"]
+    gcr_tr_lo, gcr_tr_hi = _SCREENING_GCR["Single-Axis Tracker"]
 
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     rid_suffix = (project_row_id or f"{lat_c:.3f}_{lon_c:.3f}")[:12]
@@ -804,10 +904,15 @@ def build_report_context(
         "slope_img_buf": slope_img_buf,
         "land_use": land_use,
         "mount_type": mount_type,
-        "cap_ft_mw": cap_ft_mw,
-        "cap_tr_mw": cap_tr_mw,
-        "density_ft": density_ft,
-        "density_tr": density_tr,
+        "cap_ft_mwp": ft_lo,
+        "cap_tr_mwp_lo": tr_lo,
+        "cap_tr_mwp_hi": tr_hi,
+        "density_ft": dens_ft_lo,
+        "density_tr_lo": dens_tr_lo,
+        "density_tr_hi": dens_tr_hi,
+        "gcr_ft": gcr_ft_lo,
+        "gcr_tr_lo": gcr_tr_lo,
+        "gcr_tr_hi": gcr_tr_hi,
         "dem_zoom": dem_zoom,
         "boundary_provenance": boundary_provenance,
         "prepared_by": prepared_by,
