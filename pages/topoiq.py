@@ -523,6 +523,43 @@ st.markdown("""
     .accuracy-card h4 { color: #0d47a1; margin-bottom: 0.35rem; font-size: 0.88rem; font-weight: 800; }
     .accuracy-card p  { color: #1a2a3a; margin: 0.12rem 0; line-height: 1.6; font-weight: 500; }
 
+    .topo-feature-card {
+        background: #ffffff;
+        border: 1.5px solid #dce8f5;
+        border-radius: 12px;
+        padding: 0.95rem 1rem;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 1px 4px rgba(21, 101, 192, 0.06);
+        display: flex;
+        gap: 0.85rem;
+        align-items: flex-start;
+        min-height: 74px;
+    }
+    .topo-feature-icon {
+        width: 38px; height: 38px;
+        border-radius: 10px;
+        background: #e8f2fc;
+        color: #1565c0;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+        font-size: 1rem;
+    }
+    .topo-feature-title {
+        font-size: 0.8rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: #0d1a0d;
+        line-height: 1.3;
+    }
+    .topo-feature-desc {
+        font-size: 0.8rem;
+        color: #4a6a8a;
+        font-weight: 500;
+        margin-top: 0.28rem;
+        line-height: 1.5;
+    }
+
     div[data-testid="metric-container"] {
         background: #f4f8ff; border: 1.5px solid #c8dcf5;
         border-radius: 12px; padding: 1.1rem;
@@ -1631,25 +1668,26 @@ with right:
         st.caption("Draw or upload your site boundary on the left, then click Run Terrain Analysis.")
         wc1, wc2 = st.columns(2)
         _wcards = [
-            (wc1, "#1a2a3a", "#0f1e2a", "#2a4060", "#5b9bd5",
-             "SATELLITE DEM", "Copernicus GLO-30 · ~2.4m resolution · Global coverage"),
-            (wc2, "#1a3a2a", "#0f2a1e", "#2a6040", "#4caf82",
-             "CIVIL 3D READY", "LandXML TIN surface · import directly, no conversion"),
-            (wc1, "#2a2a1a", "#1e1e0f", "#5a5a20", "#d4c44a",
-             "DXF CONTOURS", "Major & minor contour lines · configurable intervals"),
-            (wc2, "#2a1a3a", "#1e0f2a", "#5a3a80", "#a87fd4",
-             "XYZ POINT CLOUD", "Easting / Northing / Elevation CSV for any tool"),
-            (wc1, "#1a3a2a", "#0f2a1e", "#2a6040", "#4caf82",
-             "SLOPE ANALYSIS", "Mean slope · % area over threshold · tracker suitability"),
-            (wc2, "#2a1a1a", "#1e0f0f", "#6a2a2a", "#d47a4a",
-             "ACCURACY REPORT", "Source · resolution · RMSE · vegetation warnings"),
+            (wc1, "fa-satellite", "Satellite DEM",
+             "Copernicus GLO-30 · ~2.4 m resolution · global coverage"),
+            (wc2, "fa-cube", "Civil 3D ready",
+             "LandXML TIN surface · import directly, no conversion"),
+            (wc1, "fa-layer-group", "DXF contours",
+             "Major & minor contour lines · configurable intervals"),
+            (wc2, "fa-table-cells", "XYZ point cloud",
+             "Easting / Northing / Elevation CSV for any tool"),
+            (wc1, "fa-chart-line", "Slope analysis",
+             "Mean slope · % area over threshold · tracker suitability"),
+            (wc2, "fa-clipboard-check", "Accuracy report",
+             "Source · resolution · RMSE · vegetation warnings"),
         ]
-        for _col, _bg1, _bg2, _bd, _tc, _title, _desc in _wcards:
+        for _col, _icon, _title, _desc in _wcards:
             _col.markdown(
-                f'<div style="background:linear-gradient(135deg,{_bg1},{_bg2});'
-                f'border:1px solid {_bd};border-radius:10px;padding:1rem;margin-bottom:0.75rem;">'
-                f'<div style="color:{_tc};font-weight:700;font-size:0.9rem;">{_title}</div>'
-                f'<div style="color:#ccc;font-size:0.78rem;margin-top:0.3rem;">{_desc}</div>'
-                f'</div>',
-                unsafe_allow_html=True
+                f'<div class="topo-feature-card">'
+                f'<div class="topo-feature-icon"><i class="fa-solid {_icon}"></i></div>'
+                f'<div>'
+                f'<div class="topo-feature-title">{_title}</div>'
+                f'<div class="topo-feature-desc">{_desc}</div>'
+                f'</div></div>',
+                unsafe_allow_html=True,
             )
