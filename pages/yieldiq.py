@@ -45,6 +45,7 @@ from pvmath_capacity import (
     GCR_SCREEN_LO,
     GCR_SCREEN_HI,
 )
+from pvmath_geocode import format_coords
 from pvmath_yield import (
     PVGIS_URL,
     CONFIG_ORDER,
@@ -54,6 +55,7 @@ from pvmath_yield import (
     fetch_screening_yields,
     yield_cross_ref_yieldiq_html,
     yield_cross_ref_yieldiq_pdf_text,
+    config_display_name,
 )
 
 CHART_COLORS = ["#e85d04", "#c24a00", "#1d9e52", "#145f34"]  # Fixed: orange / Tracker: green
@@ -269,7 +271,7 @@ def make_monthly_chart(results: dict, mwp_mid: float, title_cfg: str = "") -> by
         )
         vals_mwh = [v * cfg_mwp for v in results[cfg]["monthly"]]
         offset   = (i - 1.5) * width
-        ax.bar(x + offset, vals_mwh, width, label=cfg, color=color,
+        ax.bar(x + offset, vals_mwh, width, label=config_display_name(cfg), color=color,
                alpha=0.88, edgecolor="white", linewidth=0.5)
 
     ax.set_xlabel("Month", fontsize=10, labelpad=5, color="#5a7a5a")
@@ -363,7 +365,7 @@ def build_pdf(project_name, lat, lon, area_ha, land_use, gcr_1p, gcr_2p,
     # ── Project info ──────────────────────────────────────────────────────────
     info = Table([
         [lp("PROJECT",     lbl), lp(project_name, bod),
-         lp("LOCATION",    lbl), lp(f"{lat:.5f}°N, {lon:.5f}°E", bod)],
+         lp("LOCATION",    lbl), lp(format_coords(lat, lon), bod)],
         [lp("SITE AREA",   lbl), lp(f"{area_ha:,.1f} ha" if area_ha else "—", bod),
          lp("LAND USE",    lbl), lp(land_use, bod)],
         [lp("GCR — 1P",   lbl), lp(f"{gcr_1p:.2f}", bod),
@@ -488,7 +490,7 @@ def build_pdf(project_name, lat, lon, area_ha, land_use, gcr_1p, gcr_2p,
         _mwp_txt = format_mwp_range(r.get("mwp_lo", 0), r.get("mwp_hi", 0))
         _mwh_txt = format_mwh_range(r.get("mwh_lo"), r.get("mwh_hi")) or "—"
         rows.append([
-            lp(cfg + (" ★" if is_best else ""), cfg_style),
+            lp(config_display_name(cfg) + (" ★" if is_best else ""), cfg_style),
             lp(f"{r['gcr']:.2f}", bod),
             lp(f"{GCR_SCREEN_LO:.2f}–{GCR_SCREEN_HI:.2f}", bod),
             lp(_mwp_txt, bod),
@@ -634,7 +636,7 @@ if _has_proj:
                 padding:0.65rem 1rem;margin-bottom:0.9rem;font-size:0.89rem;color:#1a3a1a;">
       <strong>📋 Project:</strong>&nbsp; {_proj_name}
       &nbsp;·&nbsp; {_proj_ctry}
-      &nbsp;·&nbsp; {_proj_lat:.5f}°N, {_proj_lon:.5f}°E
+      &nbsp;·&nbsp; {format_coords(_proj_lat, _proj_lon)}
       {f"&nbsp;·&nbsp; <strong>{_proj_area} ha</strong>" if _proj_area else ""}
     </div>
     """, unsafe_allow_html=True)
@@ -694,7 +696,7 @@ if _area_ha and _area_ha > 0:
     for cfg in _CONFIG_CAPACITY:
         band = capacity_band_for_config(_area_ha, _yiq_land_use, cfg)
         _pr = st.columns([1.6, 0.9, 1.2, 1.2])
-        _pr[0].markdown(f"**{cfg}**")
+        _pr[0].markdown(f"**{config_display_name(cfg)}**")
         _pr[1].markdown(f"{GCR_SCREEN_LO:.2f}–{GCR_SCREEN_HI:.2f}")
         _pr[2].markdown(f"**{format_mwp_range(band['mwp_lo'], band['mwp_hi'])}**")
         _pr[3].markdown(format_density_range(
@@ -721,7 +723,7 @@ with st.form("yieldiq_form"):
     if _has_proj:
         st.markdown(
             f"**Site Location** — from Project: "
-            f"`{_proj_lat:.5f}°N, {_proj_lon:.5f}°E`",
+            f"`{format_coords(_proj_lat, _proj_lon)}`",
             help="Change site location in the Project page."
         )
         location_raw = ""
@@ -894,7 +896,7 @@ if submitted:
         row_cols = st.columns(_COL_W)
         row_cols[0].markdown(
             f'<div style="padding:6px 0;font-weight:700;font-size:0.95rem;">'
-            f'{cfg}{best_badge}</div>', unsafe_allow_html=True)
+            f'{config_display_name(cfg)}{best_badge}</div>', unsafe_allow_html=True)
         row_cols[1].markdown(
             f'<div style="padding:6px 0;color:#3a5a3a;">{r["gcr"]:.2f}</div>',
             unsafe_allow_html=True)

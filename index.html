@@ -416,8 +416,9 @@
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.73rem;">
               <span style="color:#5a7a5a;">Est. Capacity (FT)</span>
-              <span style="font-weight:700;">~280&ndash;320 MWp</span>
+              <span style="font-weight:700;">~75&ndash;105 MWp DC</span>
             </div>
+            <div style="font-size:0.58rem;color:#aaa;margin-top:-0.35rem;margin-bottom:0.5rem;text-align:right;">1P fixed tilt @ GCR 0.30&ndash;0.42 screening</div>
           </div>
           <div style="font-size:0.62rem;color:#888;margin-bottom:0.4rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Monthly GHI (kWh/m&sup2;)</div>
           <div style="display:flex;align-items:flex-end;gap:2px;height:38px;margin-bottom:0.7rem;">
@@ -482,6 +483,7 @@
           <div style="display:flex;flex-direction:column;gap:0.4rem;margin-bottom:0.8rem;">
             <div style="display:flex;justify-content:space-between;font-size:0.73rem;"><span style="color:#5a7a5a;">Elevation range</span><span style="font-weight:700;">68 m</span></div>
             <div style="display:flex;justify-content:space-between;font-size:0.73rem;"><span style="color:#5a7a5a;">Max N&ndash;S slope</span><span style="font-weight:700;">4.8% &nbsp;<span style="background:#d1fae5;color:#065f46;border-radius:4px;padding:1px 5px;font-size:0.6rem;font-weight:700;">ACCEPTABLE</span></span></div>
+            <div style="display:flex;justify-content:space-between;font-size:0.73rem;"><span style="color:#5a7a5a;">Analysis grid</span><span style="font-weight:700;">~11 m &nbsp;<span style="font-size:0.62rem;font-weight:600;color:#888;">(GLO-30 ~30 m native)</span></span></div>
             <div style="display:flex;justify-content:space-between;font-size:0.73rem;"><span style="color:#5a7a5a;">Contour spacing</span><span style="font-weight:700;">5 m</span></div>
           </div>
           <div style="display:flex;gap:0.5rem;">
@@ -503,19 +505,19 @@
           <div style="font-size:0.62rem;color:#888;margin-bottom:0.5rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Specific Yield (kWh/kWp/yr)</div>
           <div style="display:flex;flex-direction:column;gap:0.55rem;margin-bottom:0.85rem;">
             <div>
-              <div style="display:flex;justify-content:space-between;font-size:0.7rem;margin-bottom:2px;"><span style="font-weight:700;">1P Tracker</span><span style="font-weight:800;color:#1d9e52;">2,041</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:0.7rem;margin-bottom:2px;"><span style="font-weight:700;">SAT — single portrait (1P)</span><span style="font-weight:800;color:#1d9e52;">2,041</span></div>
               <div style="height:15px;background:#f0f4f0;border-radius:4px;overflow:hidden;"><div style="height:100%;width:95%;background:linear-gradient(135deg,#1d9e52,#145f34);border-radius:4px;"></div></div>
             </div>
             <div>
-              <div style="display:flex;justify-content:space-between;font-size:0.7rem;margin-bottom:2px;"><span style="font-weight:700;">2P Tracker</span><span style="font-weight:800;color:#1d9e52;">1,978</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:0.7rem;margin-bottom:2px;"><span style="font-weight:700;">SAT — double portrait (2P)</span><span style="font-weight:800;color:#1d9e52;">1,978</span></div>
               <div style="height:15px;background:#f0f4f0;border-radius:4px;overflow:hidden;"><div style="height:100%;width:92%;background:linear-gradient(135deg,#1d9e52,#145f34);border-radius:4px;opacity:0.8;"></div></div>
             </div>
             <div>
-              <div style="display:flex;justify-content:space-between;font-size:0.7rem;margin-bottom:2px;"><span style="font-weight:700;">1P Fixed Tilt</span><span style="font-weight:800;color:#e85d04;">1,732</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:0.7rem;margin-bottom:2px;"><span style="font-weight:700;">Fixed — single portrait (1P)</span><span style="font-weight:800;color:#e85d04;">1,732</span></div>
               <div style="height:15px;background:#f0f4f0;border-radius:4px;overflow:hidden;"><div style="height:100%;width:81%;background:linear-gradient(135deg,#e85d04,#c24a00);border-radius:4px;opacity:0.85;"></div></div>
             </div>
             <div>
-              <div style="display:flex;justify-content:space-between;font-size:0.7rem;margin-bottom:2px;"><span style="font-weight:700;">2P Fixed Tilt</span><span style="font-weight:800;color:#e85d04;">1,668</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:0.7rem;margin-bottom:2px;"><span style="font-weight:700;">Fixed — double portrait (2P)</span><span style="font-weight:800;color:#e85d04;">1,668</span></div>
               <div style="height:15px;background:#f0f4f0;border-radius:4px;overflow:hidden;"><div style="height:100%;width:78%;background:linear-gradient(135deg,#e85d04,#c24a00);border-radius:4px;opacity:0.7;"></div></div>
             </div>
           </div>
@@ -569,7 +571,7 @@
         <p class="module-desc" data-i18n="topoiq.desc">Copernicus DEM terrain screening for ground-mount solar. Slope direction, cross-row tracker grades, dual fixed-tilt/tracker capacity and engineering verdicts, and client-ready PDF reports — with honest accuracy disclaimers built in.</p>
         <ul class="module-features">
           <li data-i18n="topoiq.f1">Site boundary from Project Setup (KMZ / draw once)</li>
-          <li data-i18n="topoiq.f2">Copernicus GLO-30 DEM (~30m native, resampled grid)</li>
+          <li data-i18n="topoiq.f2">Copernicus GLO-30 (~30 m native, resampled to ~5&ndash;11 m analysis grid)</li>
           <li data-i18n="topoiq.f3">Tracker-aware slope &amp; cross-row screening</li>
           <li data-i18n="topoiq.f4">Slope maps with north arrow &amp; scale bar</li>
           <li data-i18n="topoiq.f5">DXF &amp; LandXML terrain file export</li>
@@ -689,7 +691,7 @@
       </div>
       <div class="steps">
         <div class="step"><div class="step-num" style="background:#d4840a;">2</div><h3 data-i18n="yieldiq.s1.h">Set System Parameters</h3><p data-i18n="yieldiq.s1.p">Enter DC capacity (MWp), ground cover ratios for 1P and 2P configurations, and base system losses. Site location is used from Project Setup &mdash; no coordinate entry needed.</p></div>
-        <div class="step"><div class="step-num" style="background:#d4840a;">3</div><h3 data-i18n="yieldiq.s2.h">Compare 4 Configurations</h3><p data-i18n="yieldiq.s2.p">YieldIQ runs 1P Fixed, 2P Fixed, 1P Tracker, and 2P Tracker simultaneously using PVGIS JRC data. Results include specific yield, performance ratio, capacity factor, and GCR-based shading losses.</p></div>
+        <div class="step"><div class="step-num" style="background:#d4840a;">3</div><h3 data-i18n="yieldiq.s2.h">Compare 4 Configurations</h3><p data-i18n="yieldiq.s2.p">YieldIQ runs fixed tilt and single-axis tracker in single- and double-portrait table layouts simultaneously using PVGIS JRC data. Results include specific yield, performance ratio, capacity factor, and GCR-based shading losses.</p></div>
         <div class="step"><div class="step-num" style="background:#d4840a;">4</div><h3 data-i18n="yieldiq.s3.h">Download Yield Report</h3><p data-i18n="yieldiq.s3.p">Get a PDF comparing all 4 configurations with monthly energy charts in MWh, tracker gain analysis, and a pre-layout disclaimer. Ready for internal review before committing to a full layout.</p></div>
       </div>
     </div>
@@ -701,7 +703,7 @@
   <div class="container">
     <div class="section-header">
       <div class="section-label" data-i18n="why.label">Why PVMath</div>
-      <h2 class="section-title" data-i18n-html="why.title">Engineering-grade data.<br>Not estimates.</h2>
+      <h2 class="section-title" data-i18n-html="why.title">Engineering-grade screening estimates.<br>Not a bankable study.</h2>
       <p class="section-sub" data-i18n="why.sub">Built on the same satellite, solar, and terrain datasets used in bankable energy assessments. Outputs are preliminary screening-stage results &mdash; fast enough for a go/no-go call, not a substitute for a full engineering study.</p>
     </div>
     <div class="why-grid">
@@ -989,7 +991,7 @@ var T = {
     'siteiq.f5':'Flood risk indicator','siteiq.f6':'PDF report — client-ready','siteiq.btn':'Open in App →',
     'topoiq.tagline':'From satellite to civil screen in minutes — tracker-aware terrain PDFs your EPC team can actually defend.',
     'topoiq.desc':'Copernicus DEM terrain screening for ground-mount solar. Slope direction, cross-row tracker grades, dual fixed-tilt/tracker capacity and engineering verdicts, and client-ready PDF reports — with honest accuracy disclaimers built in.',
-    'topoiq.f1':'Site boundary from Project Setup (KMZ / draw once)','topoiq.f2':'Copernicus GLO-30 DEM (~30m native, resampled grid)',
+    'topoiq.f1':'Site boundary from Project Setup (KMZ / draw once)','topoiq.f2':'Copernicus GLO-30 (~30 m native, resampled to ~5–11 m analysis grid)',
     'topoiq.f3':'Tracker-aware slope & cross-row screening','topoiq.f4':'Slope maps with north arrow & scale bar',
     'topoiq.f5':'DXF & LandXML terrain file export','topoiq.f6':'Executive terrain PDF with report ID & metadata','topoiq.btn':'Open in App →',
     'yieldiq.desc':'Quick pre-layout energy yield estimation using PVGIS JRC data. Get preliminary yield estimates before committing to full PV layout design.',
@@ -1007,7 +1009,7 @@ var T = {
     'how.topoiq.title':'TopoIQ — Terrain Extraction','how.topoiq.sub':'Module 02 · Live Now · Full Mode Only',
     'how.yieldiq.title':'YieldIQ — Energy Yield Estimation','how.yieldiq.sub':'Module 03 · Live Now',
     'yieldiq.s1.h':'Set System Parameters','yieldiq.s1.p':'Enter DC capacity (MWp), ground cover ratios for 1P and 2P configurations, and base system losses. Site location is used from Project Setup — no coordinate entry needed.',
-    'yieldiq.s2.h':'Compare 4 Configurations','yieldiq.s2.p':'YieldIQ runs 1P Fixed, 2P Fixed, 1P Tracker, and 2P Tracker simultaneously using PVGIS JRC data. Results include specific yield, performance ratio, capacity factor, and GCR-based shading losses.',
+    'yieldiq.s2.h':'Compare 4 Configurations','yieldiq.s2.p':'YieldIQ runs fixed tilt and single-axis tracker in single- and double-portrait table layouts simultaneously using PVGIS JRC data. Results include specific yield, performance ratio, capacity factor, and GCR-based shading losses.',
     'yieldiq.s3.h':'Download Yield Report','yieldiq.s3.p':'Get a PDF comparing all 4 configurations with monthly energy charts in MWh, tracker gain analysis, and a pre-layout disclaimer. Ready for internal review before committing to a full layout.',
     'how.launch':'Open in App →',
     'siteiq.s1.h':'Choose Project Type & Area','siteiq.s1.p':'Select land use (Standard or Agri-PV) and mounting system (Fixed Tilt or Single-Axis Tracker). Enter site area in hectares. SiteIQ fetches GHI, irradiation, terrain overview, flood risk, and regulatory flags automatically.',
@@ -1016,7 +1018,7 @@ var T = {
     'topoiq.s1.h':'Site Boundary from Project Setup','topoiq.s1.p':'Your site boundary drawn in Full Mode is loaded automatically. Adjust contour line spacing and profile line positions. No re-drawing needed if you already set up your project.',
     'topoiq.s2.h':'Extract Terrain Data','topoiq.s2.p':'TopoIQ fetches Copernicus GLO-30 satellite DEM for your site boundary, computes elevation profiles, slope heatmaps, and contour lines at your chosen interval automatically.',
     'topoiq.s3.h':'Export DXF, LandXML & PDF','topoiq.s3.p':'Download a DXF or Civil 3D-ready LandXML terrain file with contour lines at your chosen spacing — ready for detailed 3D study in any CAD software — plus a PDF terrain report with elevation and slope maps.',
-    'why.label':'Why PVMath','why.title':'Engineering-grade data.<br>Not estimates.',
+    'why.label':'Why PVMath','why.title':'Engineering-grade screening estimates.<br>Not a bankable study.',
     'why.sub':'Built on the same satellite, solar, and terrain datasets used in bankable energy assessments. Outputs are preliminary screening-stage results — fast enough for a go/no-go call, not a substitute for a full engineering study.',
     'why.c1.h':'Industry-Standard Solar Data','why.c1.p':'GHI and irradiation from PVGIS (EC JRC) — the same data source used by engineers in bankable pre-feasibility studies worldwide.',
     'why.c2.h':'Satellite Terrain Data','why.c2.p':'Copernicus GLO-30 DEM (~30m horizontal resolution). Slope maps, elevation profiles, and contour lines — extracted in seconds, not days.',

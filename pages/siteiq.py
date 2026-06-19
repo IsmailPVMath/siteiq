@@ -16,7 +16,7 @@ from pvmath_auth import (
 )
 from pvmath_styles import inject_styles
 from pvmath_kml import filter_boundary_list
-from pvmath_geocode import reverse_geocode
+from pvmath_geocode import reverse_geocode, format_coords
 from pvmath_capacity import (
     screening_capacity,
     format_mwp_range,
@@ -385,13 +385,6 @@ def get_flood_risk(lat, lon, elevation):
     return risk, detail, portal, portal_name
 
 
-def format_coords(lat, lon):
-    """Signed hemisphere labels — never append °E to a negative longitude."""
-    ns = "N" if lat >= 0 else "S"
-    ew = "E" if lon >= 0 else "W"
-    return f"{abs(lat):.5f}°{ns}, {abs(lon):.5f}°{ew}"
-
-
 def _boundary_center(polygons):
     """BBox centre of enabled boundary rings — matches TopoIQ report coordinates."""
     if not polygons:
@@ -630,8 +623,8 @@ def assess_slope(pct, mount_type="Fixed Tilt", sparse_screening=False, sample_po
         n = sample_points or "few"
         lbl = "⚠️ Indicative only"
         detail = (
-            f"{pct}% max from {n} sparse OpenTopoData sample points — not confirmed terrain. "
-            f"Run TopoIQ before treating slope as bankable. Underlying estimate: {detail}"
+            f"Sparse sample slope: {pct}% max ({n} OpenTopoData points) — not confirmed terrain. "
+            "Run TopoIQ for confirmed slope metrics before bankable use."
         )
     return lbl, color, detail
 
@@ -1634,11 +1627,18 @@ with right:
             _mc4_num = _fmt_metric_num(_tilt, 0) if _tilt is not None else "—"
             _mc4_unit = "deg tilt"
 
+        _slope_num = _fmt_metric_num(terrain.get("max_slope_pct") if terrain.get("success") else None, 1)
+        if _sparse_slope and terrain.get("success"):
+            _slope_lbl = "Sparse Sample Slope"
+            _slope_unit = "max % · run TopoIQ"
+        else:
+            _slope_lbl = "Max Slope"
+            _slope_unit = "%"
+
         _cards = [
             _metric_card_html("fa-sun", "#f5a623", "In-plane Irradiation",
                               _fmt_metric_num(solar.get("annual_ghi"), 1), "kWh/m²/yr"),
-            _metric_card_html("fa-mountain", "#5b9bd5", "Max Slope",
-                              _fmt_metric_num(terrain.get("max_slope_pct") if terrain.get("success") else None, 1), "%"),
+            _metric_card_html("fa-mountain", "#5b9bd5", _slope_lbl, _slope_num, _slope_unit),
             _metric_card_html("fa-bolt", "#2ecc71", "Est. DC Capacity", _cap_display, _cap_unit),
             _metric_card_html("fa-ruler-combined", "#a87fd4", _mc4_lbl, _mc4_num, _mc4_unit),
         ]
@@ -1667,8 +1667,9 @@ with right:
         if terrain.get("success"):
             if terrain.get("boundary_sampled"):
                 _notes.append(
-                    f"Slope is <b>indicative only</b> ({terrain.get('sample_points', '—')} sparse samples; "
-                    f"{terrain.get('pct_over5', '—')}% &gt;5%). Confirm in <b>TopoIQ</b> before treating as bankable."
+                    f"Sparse sample slope: <b>{terrain.get('max_slope_pct', '—')}%</b> max "
+                    f"({terrain.get('sample_points', '—')} points) — not confirmed. "
+                    "Run <b>TopoIQ</b> for confirmed terrain metrics."
                 )
             else:
                 _notes.append(

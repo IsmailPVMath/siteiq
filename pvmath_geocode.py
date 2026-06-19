@@ -41,3 +41,10 @@ def reverse_geocode(lat: float, lon: float) -> Optional[str]:
     except Exception:
         pass
     return None
+
+
+def format_coords(lat: float, lon: float) -> str:
+    """Signed hemisphere labels — never append °E to a negative longitude."""
+    ns = "N" if lat >= 0 else "S"
+    ew = "E" if lon >= 0 else "W"
+    return f"{abs(lat):.5f}°{ns}, {abs(lon):.5f}°{ew}"

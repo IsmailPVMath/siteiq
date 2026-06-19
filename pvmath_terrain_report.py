@@ -85,6 +85,46 @@ def _verdict_from_mean(mean_pct: float, mount_type: str) -> tuple[str, str]:
     )
 
 
+def verdict_for_mount(
+    mean_pct: float,
+    mount_type: str,
+    extras: dict | None = None,
+) -> tuple[str, str]:
+    """Engineering verdict — tracker wording softens when cross-row grades flag review zones."""
+    label, detail = _verdict_from_mean(mean_pct, mount_type)
+    if mount_type != "Single-Axis Tracker" or not extras:
+        return label, detail
+
+    cross_p95 = extras.get("cross_row_p95")
+    pct_over_6 = extras.get("pct_cross_over_6")
+    if cross_p95 is None:
+        return label, detail
+
+    needs_review = cross_p95 > 5.0 or (pct_over_6 is not None and pct_over_6 > 2.0)
+    if not needs_review:
+        return label, detail
+
+    if "Excellent" in label:
+        zone_note = (
+            f"{pct_over_6:.1f}% of area >6% cross-row" if pct_over_6 is not None else "elevated cross-row grades"
+        )
+        return (
+            "Mostly Excellent (Tracker) — Review Zones",
+            (
+                f"Mean slope {mean_pct:.1f}% — mostly excellent tracker terrain, but cross-row "
+                f"95th percentile is {cross_p95:.1f}% and {zone_note} — localized grading/clearance "
+                "review recommended before pile layout."
+            ),
+        )
+
+    detail += (
+        f" Cross-row 95th %ile {cross_p95:.1f}%"
+        + (f"; {pct_over_6:.1f}% of area >6% cross-row" if pct_over_6 is not None else "")
+        + " — review clearance in steeper zones."
+    )
+    return label, detail
+
+
 # ── Extended terrain analytics ───────────────────────────────────────────────
 
 def _aspect_compass(deg: float) -> str:
@@ -876,7 +916,7 @@ def build_report_context(
         "prepared_by": prepared_by,
         "extras": extras,
         "verdict_fixed": _verdict_from_mean(mean_slope, "Fixed Tilt"),
-        "verdict_tracker": _verdict_from_mean(mean_slope, "Single-Axis Tracker"),
+        "verdict_tracker": verdict_for_mount(mean_slope, "Single-Axis Tracker", extras=extras),
         "report_id": report_id,
         "generated_at": ts,
         "revision": 1,

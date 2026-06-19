@@ -34,6 +34,18 @@ MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
 
 CONFIG_ORDER = ["1P Fixed", "2P Fixed", "1P Tracker", "2P Tracker"]
 
+CONFIG_DISPLAY = {
+    "1P Fixed": "Fixed Tilt — single portrait table (1P)",
+    "2P Fixed": "Fixed Tilt — double portrait table (2P)",
+    "1P Tracker": "Single-Axis Tracker — single portrait (1P)",
+    "2P Tracker": "Single-Axis Tracker — double portrait (2P)",
+}
+
+
+def config_display_name(config_key: str) -> str:
+    """User-facing configuration label (YieldIQ tables, PDF, website)."""
+    return CONFIG_DISPLAY.get(config_key, config_key)
+
 _GCR_TABLE = [
     (0.20, 0.3), (0.25, 0.5), (0.30, 1.0), (0.35, 2.0),
     (0.40, 3.5), (0.45, 5.5), (0.50, 8.0), (0.60, 12.0),

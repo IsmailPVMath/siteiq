@@ -58,7 +58,9 @@ from pvmath_terrain_report import (
     render_slope_map_png,
     site_capacity_mwp,
     _verdict_from_mean,
+    verdict_for_mount,
 )
+from pvmath_geocode import format_coords
 from pvmath_capacity import (
     capacity_band,
     format_mwp_range,
@@ -828,7 +830,7 @@ if _has_proj:
                 padding:0.65rem 1rem;margin-bottom:0.9rem;font-size:0.89rem;color:#1a3a1a;">
       <strong>📋 Project:</strong>&nbsp; {_proj_name or "Unnamed"}
       &nbsp;·&nbsp; {_proj_ctry or "—"}
-      &nbsp;·&nbsp; {_proj["lat"]:.5f}°N, {_proj["lon"]:.5f}°E
+      &nbsp;·&nbsp; {format_coords(_proj["lat"], _proj["lon"])}
     </div>
     """, unsafe_allow_html=True)
 elif not _has_proj:
@@ -985,8 +987,11 @@ with left:
         )
         st.markdown('<div class="pvm-topo-settings"></div>', unsafe_allow_html=True)
         sc1, sc2, sc3 = st.columns(3)
-        grid_spacing = sc1.slider("Grid spacing (m)", min_value=3, max_value=10, value=5, step=1,
-                                   help="Smaller = finer mesh, more detail, slower processing")
+        grid_spacing = sc1.slider(
+            "Analysis grid request (m)", min_value=3, max_value=10, value=5, step=1,
+            help="Requested slope-analysis grid. GLO-30 is ~30 m native; large sites auto-coarsen "
+                 "(e.g. 11 m) — actual spacing is shown in the report.",
+        )
         contour_minor = sc2.slider("Minor contour (m)", min_value=0.1, max_value=2.0, value=0.5, step=0.1)
         contour_major = sc3.slider("Major contour (m)", min_value=0.5, max_value=10.0, value=1.0, step=0.5)
 
@@ -1105,14 +1110,18 @@ with right:
 
         _siq_cache = st.session_state.get("siteiq_run_cache") or {}
         _land_use = _siq_cache.get("land_use", "Standard")
-        _vf_label, _vf_detail = _verdict_from_mean(mean_slope, "Fixed Tilt")
-        _vt_label, _vt_detail = _verdict_from_mean(mean_slope, "Single-Axis Tracker")
+        _extras = compute_terrain_extras(X, Y, Z, grid_m_used)
+        _vf_label, _vf_detail = verdict_for_mount(mean_slope, "Fixed Tilt")
+        _vt_label, _vt_detail = verdict_for_mount(
+            mean_slope, "Single-Axis Tracker", extras=_extras,
+        )
 
         vc1, vc2 = st.columns(2)
         with vc1:
             st.success(f"**Fixed Tilt:** {_vf_label} — {_vf_detail}")
         with vc2:
-            st.success(f"**Tracker:** {_vt_label} — {_vt_detail}")
+            _vt_style = st.success if "Excellent" in _vt_label and "Review" not in _vt_label else st.warning
+            _vt_style(f"**Tracker:** {_vt_label} — {_vt_detail}")
 
         _ft_band = capacity_band(area_ha, _land_use, "Fixed Tilt")
         _tr_band = capacity_band(area_ha, _land_use, "Single-Axis Tracker")
@@ -1124,7 +1133,6 @@ with right:
             f"{capacity_footnote_global()}"
         )
 
-        _extras = compute_terrain_extras(X, Y, Z, grid_m_used)
         if _extras.get("cross_row_mean") is not None:
             st.caption(
                 f"Cross-row slope (tracker screening): mean **{_extras['cross_row_mean']:.1f}%** · "
