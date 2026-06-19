@@ -19,13 +19,24 @@
 ---
 
 ## Live Assets
-| Asset | URL |
+| Asset | URL / target |
 |---|---|
-| Live app (SiteIQ) | https://siteiq.pvmath.com (Railway, custom domain) |
-| Live app (TopoIQ) | https://topoiq.pvmath.com (same Railway deployment, second custom domain) |
-| GitHub repo | https://github.com/IsmailPVMath/siteiq (branch: main) |
-| Website | https://pvmath.com → GitHub Pages → index.html |
+| **Production app** (SiteIQ + TopoIQ) | https://siteiq.pvmath.com · https://topoiq.pvmath.com |
+| **Production Railway project** | `exemplary-balance` — deploys **`main`** only |
+| **Staging Railway project** | `cozy-enjoyment` — deploys **`staging`** branch |
+| GitHub repo | https://github.com/IsmailPVMath/siteiq |
+| Website (GitHub Pages) | https://pvmath.com → `index.html` on **`main`** |
 | Local dev folder | ~/Desktop/solarscout/ |
+
+**Production is frozen by default.** Only push to `main` when explicitly promoting a tested staging release. Day-to-day TopoIQ / app fixes go to **`staging`** first.
+
+**Railway branch wiring** (Settings → Service → Source → Branch):
+| Railway project | Branch | Role |
+|---|---|---|
+| `exemplary-balance` | `main` | Production — siteiq.pvmath.com / topoiq.pvmath.com |
+| `cozy-enjoyment` | `staging` | Pre-production testing |
+
+Copy production env vars (Supabase, Brevo, etc.) into staging; use the same Supabase project or a dedicated staging DB if you prefer isolation later.
 
 **Hosting note:** the app moved from Streamlit Community Cloud to **Railway** (Streamlit Cloud doesn't support a true custom top-level domain — only a `*.streamlit.app` subdomain rename — which is why Railway is used now). Domain registrar is **Namecheap**; DNS records for `pvmath.com`:
 | Type | Host | Value |
@@ -58,7 +69,7 @@ These `siteiq`/`topoiq` CNAMEs are true reverse-proxy records (Railway terminate
 - **Solar data:** EU PVGIS API (JRC)
 - **Terrain data:** OpenTopoData — eudem25m for Europe (34–72°N, −25–45°E), srtm30m globally
 - **PDF:** ReportLab — use Paragraph objects for all table cells (plain strings don't wrap)
-- **Deployment:** Railway (GitHub integration, auto-deploy on push to main), exposed via two custom domains (siteiq.pvmath.com, topoiq.pvmath.com) — see Hosting note above
+- **Deployment:** Railway — **production** (`exemplary-balance`) tracks `main`; **staging** (`cozy-enjoyment`) tracks `staging`. Custom domains on production only.
 - **Auth/DB:** Supabase (email/password auth, `user_projects` + `usage_tracking` tables, REST API via `pvmath_auth.py` — no supabase-py SDK)
 - **Email (OTP/notifications):** Brevo HTTP API (`BREVO_API_KEY` Railway env var), SMTP fallback for local/Streamlit dev
 
@@ -155,13 +166,33 @@ st.rerun()  # force map to redraw after geocoding
 ---
 
 ## Git Workflow
+
+### Day-to-day (staging first)
 ```bash
 cd ~/Desktop/solarscout
-git add -A
-git commit -m "your message"
-git push origin main
-# Railway auto-deploys on push (GitHub integration)
+git checkout staging
+git pull origin staging
+# … fix TopoIQ / app issues …
+git add -A && git commit -m "your message"
+git push origin staging
+# → Railway staging (cozy-enjoyment) auto-deploys
+# Test on staging *.up.railway.app URL before promoting
 ```
+
+### Promote to production (only when staging is verified)
+```bash
+git checkout main
+git pull origin main
+git merge staging   # or cherry-pick specific commits
+git push origin main
+# → Railway production (exemplary-balance) auto-deploys siteiq / topoiq
+```
+
+### Website (pvmath.com)
+GitHub Pages still builds from **`main`** only. Marketing copy changes can go with a production promote, or directly to `main` if app-agnostic.
+
+### One-time note (Mar 2026)
+Remote `staging` was ~60 commits behind `main`. Before the next fix, run **`sync staging`** (merge `main` → `staging`) so staging matches current production baseline.
 
 ---
 
