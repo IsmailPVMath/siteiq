@@ -18,15 +18,42 @@ def _clear_widget_keys(key_prefix: str, all_bounds: list, groups: list) -> None:
         st.session_state.pop(f"{key_prefix}_en_{b['id']}", None)
     for layer_name, _items in groups:
         st.session_state.pop(f"{key_prefix}_layer_{_slug(layer_name)}", None)
+        st.session_state.pop(f"{key_prefix}_layer_prev_{_slug(layer_name)}", None)
 
 
-def _on_layer_toggle(key_prefix: str, slug: str, items: list) -> None:
-    """Layer checkbox changed — apply to every parcel in the group."""
-    val = bool(st.session_state.get(f"{key_prefix}_layer_{slug}", False))
+def _set_group_enabled(items: list, enabled: bool) -> None:
     for b in items:
-        b["enabled"] = val
-    for b in items:
-        st.session_state.pop(f"{key_prefix}_en_{b['id']}", None)
+        b["enabled"] = enabled
+
+
+def _apply_layer_widget_to_data(
+    key_prefix: str,
+    slug: str,
+    items: list,
+    *,
+    want: bool,
+    all_on: bool,
+    prev_all_on: bool,
+) -> bool:
+    """
+    Reconcile layer checkbox vs parcel data.
+    Returns True if children were rewritten and the page should rerun.
+    """
+    if want == all_on:
+        return False
+
+    layer_key = f"{key_prefix}_layer_{slug}"
+
+    # Layer box changed (not a lone child toggle) → apply to the whole group.
+    if want != prev_all_on:
+        _set_group_enabled(items, want)
+        for b in items:
+            st.session_state.pop(f"{key_prefix}_en_{b['id']}", None)
+        return True
+
+    # A child parcel changed — update the layer indicator only.
+    st.session_state[layer_key] = all_on
+    return False
 
 
 def _layer_expanded_default(layer_name: str, parcel_count: int) -> bool:
@@ -95,20 +122,30 @@ def render_grouped_boundary_manager(
         all_on = _layer_all_on(items)
         expanded = _layer_expanded_default(layer_name, len(items))
         layer_key = f"{key_prefix}_layer_{slug}"
+        prev_key = f"{key_prefix}_layer_prev_{slug}"
+        prev_all_on = bool(st.session_state.get(prev_key, all_on))
 
-        # Child parcel toggles changed — update the layer box to match (no child writes).
-        if layer_key in st.session_state and bool(st.session_state[layer_key]) != all_on:
+        if layer_key not in st.session_state:
             st.session_state[layer_key] = all_on
+        elif _apply_layer_widget_to_data(
+            key_prefix,
+            slug,
+            items,
+            want=bool(st.session_state[layer_key]),
+            all_on=all_on,
+            prev_all_on=prev_all_on,
+        ):
+            st.session_state[prev_key] = all_on
+            st.rerun()
+
+        st.session_state[prev_key] = all_on
 
         hdr_cb, hdr_tree = st.columns([0.055, 0.945])
         with hdr_cb:
             st.checkbox(
                 "layer",
-                value=all_on,
                 key=layer_key,
                 label_visibility="collapsed",
-                on_change=_on_layer_toggle,
-                args=(key_prefix, slug, items),
             )
 
         with hdr_tree:
@@ -125,14 +162,11 @@ def render_grouped_boundary_manager(
                         parcel_label = parcel_label[len(prefix):]
                     parcel_key = f"{key_prefix}_en_{b['id']}"
                     desired = bool(b.get("enabled", True))
-                    # Widget cache can disagree with the data model after bulk/layer actions.
-                    if parcel_key in st.session_state and bool(st.session_state[parcel_key]) != desired:
-                        st.session_state.pop(parcel_key, None)
+                    st.session_state[parcel_key] = desired
                     row_cb, row_txt, row_rm = st.columns([0.06, 0.84, 0.10])
                     with row_cb:
                         b["enabled"] = st.checkbox(
                             "on",
-                            value=desired,
                             key=parcel_key,
                             label_visibility="collapsed",
                         )
