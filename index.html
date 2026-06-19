@@ -175,6 +175,10 @@
     .module-name.green { color: var(--coral); }
     .module-name.blue  { color: var(--blue); }
     .module-name.amber { color: #92400e; }
+    .module-tagline { font-size: 0.82rem; font-weight: 700; margin: 0.35rem 0 0.5rem 0; font-style: italic; line-height: 1.45; }
+    .module-tagline.coral { color: var(--coral); }
+    .module-tagline.blue  { color: var(--blue); }
+    .module-tagline.amber { color: #d4840a; }
     .module-desc { font-size: 0.88rem; color: var(--muted); line-height: 1.65; margin-bottom: 1.5rem; flex: 1; }
     .module-features { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.8rem; }
     .module-features li { font-size: 0.83rem; color: var(--muted); display: flex; align-items: center; gap: 0.5rem; }
@@ -547,6 +551,7 @@
         <div class="module-pill pill-live" data-i18n="pill.live">Live Now</div>
         <div class="module-num">Module 01</div>
         <div class="module-name green">SiteIQ</div>
+        <p class="module-tagline coral" data-i18n="siteiq.tagline">From coordinates to defendable site verdict in minutes — solar, terrain, flood, and regulatory screening in one client-ready PDF.</p>
         <p class="module-desc" data-i18n="siteiq.desc">Fast solar site pre-screening for any location globally. Get GHI, irradiation, terrain overview, regulatory flags, and capacity estimates in under 2 minutes.</p>
         <ul class="module-features">
           <li data-i18n="siteiq.f1">Satellite map with coordinate input</li>
@@ -564,7 +569,7 @@
         <div class="module-pill pill-live" data-i18n="pill.live">Live Now</div>
         <div class="module-num">Module 02</div>
         <div class="module-name blue">TopoIQ</div>
-        <p class="module-tagline" style="font-size:0.82rem;color:#1565c0;font-weight:700;margin:0.35rem 0 0.5rem 0;font-style:italic;" data-i18n="topoiq.tagline">From satellite to civil screen in minutes — tracker-aware terrain PDFs your EPC team can actually defend.</p>
+        <p class="module-tagline blue" data-i18n="topoiq.tagline">From satellite to civil screen in minutes — tracker-aware terrain PDFs your EPC team can actually defend.</p>
         <p class="module-desc" data-i18n="topoiq.desc">Copernicus DEM terrain screening for ground-mount solar. Slope direction, cross-row tracker grades, dual fixed-tilt/tracker capacity and engineering verdicts, and client-ready PDF reports — with honest accuracy disclaimers built in.</p>
         <ul class="module-features">
           <li data-i18n="topoiq.f1">Site boundary from Project Setup (KMZ / draw once)</li>
@@ -582,6 +587,7 @@
         <div class="module-pill pill-live" data-i18n="pill.live">Live Now</div>
         <div class="module-num">Module 03</div>
         <div class="module-name amber">YieldIQ</div>
+        <p class="module-tagline amber" data-i18n="yieldiq.tagline">From site pin to four-layout yield comparison in minutes — fixed tilt vs tracker, 1P vs 2P, before you open PVsyst.</p>
         <p class="module-desc" data-i18n="yieldiq.desc">Quick pre-layout energy yield estimation using PVGIS JRC data. Get preliminary yield estimates before committing to full PV layout design.</p>
         <ul class="module-features">
           <li class="feat-item" data-i18n="yieldiq.f1">Specific yield estimation (kWh/kWp)</li>
@@ -983,6 +989,7 @@ var T = {
     'modules.sub':'From site screening to energy yield — each tool covers a real stage of ground-mount solar development, powered by PVGIS JRC, Copernicus DEM, and OpenStreetMap.',
     'pill.live':'Live Now','pill.soon':'Coming Soon',
     'siteiq.desc':'Fast solar site pre-screening for any location globally. Get GHI, irradiation, terrain overview, regulatory flags, and capacity estimates in under 2 minutes.',
+    'siteiq.tagline':'From coordinates to defendable site verdict in minutes — solar, terrain, flood, and regulatory screening in one client-ready PDF.',
     'siteiq.f1':'Satellite map with coordinate input','siteiq.f2':'Annual & monthly GHI / irradiation',
     'siteiq.f3':'Terrain & slope overview','siteiq.f4':'Regulatory flags (protected areas)',
     'siteiq.f5':'Flood risk indicator','siteiq.f6':'PDF report — client-ready','siteiq.btn':'Open in App →',
@@ -992,6 +999,7 @@ var T = {
     'topoiq.f3':'Tracker-aware slope & cross-row screening','topoiq.f4':'Slope maps with north arrow & scale bar',
     'topoiq.f5':'DXF & LandXML terrain file export','topoiq.f6':'Executive terrain PDF with report ID & metadata','topoiq.btn':'Open in App →',
     'yieldiq.desc':'Quick pre-layout energy yield estimation using PVGIS JRC data. Get preliminary yield estimates before committing to full PV layout design.',
+    'yieldiq.tagline':'From site pin to four-layout yield comparison in minutes — fixed tilt vs tracker, 1P vs 2P, before you open PVsyst.',
     'yieldiq.f1':'Specific yield estimation (kWh/kWp)','yieldiq.f2':'PR and capacity factor',
     'yieldiq.f3':'Monthly energy profile','yieldiq.f4':'Temperature & shading correction',
     'yieldiq.f5':'Tracker vs fixed-tilt comparison','yieldiq.f6':'Preliminary yield PDF report',
@@ -1092,6 +1100,7 @@ var T = {
     'modules.sub':'Von der Standortprüfung bis zur Ertragsprognose — jedes Tool deckt eine reale Phase der Freiflächen-Solarentwicklung ab, basierend auf PVGIS JRC, Copernicus DEM und OpenStreetMap.',
     'pill.live':'Jetzt Live','pill.soon':'Demnächst',
     'siteiq.desc':'Schnelle Solarstandort-Vorprüfung für jeden Standort weltweit. GHI, Einstrahlung, Geländeübersicht, Regulierungshinweise und Kapazitätsschätzung in unter 2 Minuten.',
+    'siteiq.tagline':'Vom Standort zum vertretbaren Site-Verdict in Minuten — Solar, Gelände, Hochwasser und Regulierung in einem kundenfähigen PDF.',
     'siteiq.f1':'Satellitenkarte mit Koordinateneingabe','siteiq.f2':'Jährliche & monatliche GHI / Einstrahlung',
     'siteiq.f3':'Gelände- & Neigungsübersicht','siteiq.f4':'Regulierungshinweise (Schutzgebiete)',
     'siteiq.f5':'Hochwasserrisiko-Indikator','siteiq.f6':'PDF-Bericht — kundenfähig','siteiq.btn':'In der App öffnen →',
@@ -1101,6 +1110,7 @@ var T = {
     'topoiq.f3':'Tracker-bewusste Neigung & Querneigung','topoiq.f4':'Neigungskarten mit Nordpfeil & Maßstab',
     'topoiq.f5':'DXF- & LandXML-Geländedatei-Export','topoiq.f6':'Executive-Gelände-PDF mit Report-ID & Metadaten','topoiq.btn':'In der App öffnen →',
     'yieldiq.desc':'Schnelle Energieertragschätzung vor dem Layout mit PVGIS JRC-Daten. Vorläufige Ertragszahlen vor dem vollständigen PV-Layout.',
+    'yieldiq.tagline':'Vom Standort-Pin zum 4-Layout-Ertragsvergleich in Minuten — Festaufständerung vs. Tracker, 1P vs. 2P, bevor Sie PVsyst öffnen.',
     'yieldiq.f1':'Spezifischer Ertrag (kWh/kWp)','yieldiq.f2':'PR und Kapazitätsfaktor',
     'yieldiq.f3':'Monatliches Energieprofil','yieldiq.f4':'Temperatur- & Verschattungskorrektur',
     'yieldiq.f5':'Tracker vs. Festaufständerung','yieldiq.f6':'Vorläufiger PDF-Ertragsbericht',
