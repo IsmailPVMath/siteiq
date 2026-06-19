@@ -118,6 +118,43 @@ def is_primary_site_feature(name: str, area_ha: float, line_rgb=None, poly_rgb=N
     return not is_infrastructure_layer(name)
 
 
+_SITE_ANALYSIS_LAYER_RE = re.compile(
+    r"project\s*boundary|site\s*boundary|project\s*site|site\s*limit|"
+    r"project\s*fence|site\s*fence|outer\s*boundary|perimeter",
+    re.I,
+)
+
+
+def is_site_analysis_layer(layer_name: str) -> bool:
+    """KMZ folder names that define the site shell — not internal buildable subdivisions."""
+    if not layer_name:
+        return False
+    compact = re.sub(r"[^a-z0-9]", "", layer_name.lower())
+    if compact in (
+        "projectboundary", "siteboundary", "projectsite", "sitefence",
+        "projectfence", "sitelimit", "outerboundary", "siteperimeter",
+    ):
+        return True
+    return bool(_SITE_ANALYSIS_LAYER_RE.search(layer_name))
+
+
+def apply_site_areas_only_selection(boundaries: list) -> None:
+    """
+    Smart-select for the 'Site areas only' button: enable site-shell layers
+    (Project Boundary, site fence, styled boundary strokes); disable buildable
+    subdivisions, laydown, and infrastructure geometry.
+    """
+    for b in boundaries:
+        name = b.get("full_name") or b.get("name", "")
+        layer = b.get("layer_group") or boundary_layer_group(name)
+        if is_infrastructure_layer(name):
+            b["enabled"] = False
+        elif is_site_analysis_layer(layer) or b.get("is_styled_boundary"):
+            b["enabled"] = True
+        else:
+            b["enabled"] = False
+
+
 def boundary_layer_group(name: str) -> str:
     """KMZ folder / layer name for tree grouping (e.g. ProjectBoundary, Buildable Area)."""
     parts = [p.strip() for p in (name or "").split("/") if p.strip()]

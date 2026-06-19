@@ -1,7 +1,7 @@
 """Grouped, collapsible boundary checklist for Project Setup and TopoIQ."""
 import re
 import streamlit as st
-from pvmath_kml import group_boundaries_by_layer, guess_boundary_enabled
+from pvmath_kml import group_boundaries_by_layer, guess_boundary_enabled, apply_site_areas_only_selection
 
 
 def _slug(text: str) -> str:
@@ -55,11 +55,7 @@ def render_grouped_boundary_manager(
         if smart_select_fn:
             smart_select_fn(all_bounds, visible_bounds)
         else:
-            for b in all_bounds:
-                b["enabled"] = guess_boundary_enabled(
-                    b.get("full_name", b.get("name", "")),
-                    area_fn(b["coords"]),
-                )
+            apply_site_areas_only_selection(all_bounds)
         _pop_parcel_checkbox_keys(key_prefix, [b["id"] for b in all_bounds])
         for layer_name, items in groups:
             _pop_layer_checkbox_key(key_prefix, _slug(layer_name))
@@ -79,8 +75,9 @@ def render_grouped_boundary_manager(
         st.warning("No parcels selected — check at least one layer or parcel.")
 
     st.caption(
-        "Use the box beside each **layer** to include or exclude the whole group. "
-        "Expand a layer to pick individual parcels."
+        "**Enable all** — every visible parcel. **Site areas only** — Project Boundary / site fence "
+        "layers (unchecks buildable area, laydown, etc.). **Clear all** — remove loaded boundaries. "
+        "Use the box beside each **layer** to include or exclude a whole group."
     )
 
     remove_ids = []

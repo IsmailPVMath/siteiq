@@ -20,6 +20,7 @@ from pvmath_session import clear_blank_project_flag
 from pvmath_boundary_ui import render_grouped_boundary_manager
 from pvmath_kml import (
     BOUNDARY_COLORS,
+    apply_site_areas_only_selection,
     boundaries_from_kmz_latlon,
     filter_boundary_list,
     guess_boundary_enabled,
@@ -175,13 +176,8 @@ def _render_proj_boundary_manager():
 
     def _smart_select(all_b, visible):
         visible_ids = {b["id"] for b in visible}
-        for b in all_b:
-            if b["id"] not in visible_ids and not show_all:
-                continue
-            b["enabled"] = guess_boundary_enabled(
-                b.get("full_name", b["name"]),
-                polygon_area_ha(b["coords"]),
-            ) or b.get("is_styled_boundary", False)
+        targets = all_b if show_all else [b for b in all_b if b["id"] in visible_ids]
+        apply_site_areas_only_selection(targets)
 
     def _clear():
         st.session_state["proj_boundaries"] = []

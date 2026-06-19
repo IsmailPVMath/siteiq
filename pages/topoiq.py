@@ -1,3 +1,4 @@
+import hashlib
 import streamlit as st
 import numpy as np
 import requests
@@ -52,6 +53,7 @@ TILE_FETCH_WORKERS = 8
 from pvmath_boundary_ui import render_grouped_boundary_manager
 from pvmath_kml import (
     BOUNDARY_COLORS,
+    apply_site_areas_only_selection,
     boundaries_from_features,
     boundary_layer_group,
     filter_boundary_list,
@@ -113,6 +115,21 @@ def _extract_drawn_polygon(map_data):
             polygon_coords = [(c[0], c[1]) for c in geom["coordinates"][0]]
             break
     return polygon_coords
+
+
+def _topo_map_component_key(boundaries, *, enable_draw, show_reference_layers):
+    """Force st_folium to remount when selection or draw mode changes (avoids stale map)."""
+    en_ids = ",".join(sorted(b["id"] for b in boundaries if b.get("enabled")))
+    mode = "draw" if enable_draw else "sel"
+    ref = "ref" if show_reference_layers else "filt"
+    ap = st.session_state.get("topo_analysis_polygon") or []
+    ap_sig = "none"
+    if ap and not enable_draw:
+        ap_sig = "_".join(f"{round(c[0], 4)}_{round(c[1], 4)}" for c in ap[:6])
+    raw = f"{mode}|{ref}|{en_ids}|{ap_sig}|{len(boundaries)}"
+    if len(raw) > 160:
+        raw = hashlib.sha256(raw.encode()).hexdigest()[:28]
+    return f"topo_map_{raw}"
 
 
 def _render_topo_boundary_map(
@@ -179,7 +196,7 @@ def _render_topo_boundary_map(
             tooltip=f"{b['name']} ({'reference' if show_reference_layers and not on else 'selected'})",
         ).add_to(m)
 
-    if analysis_polygon and len(analysis_polygon) >= 3:
+    if analysis_polygon and len(analysis_polygon) >= 3 and not enable_draw:
         folium.Polygon(
             locations=[(c[1], c[0]) for c in analysis_polygon],
             color="#ffeb3b",
@@ -191,14 +208,15 @@ def _render_topo_boundary_map(
 
     if enable_draw:
         _style = {
-            "color": "#ffeb3b",
+            "color": "#f5c518",
             "weight": 4,
             "opacity": 1.0,
-            "fillColor": "#ffeb3b",
-            "fillOpacity": 0.12,
+            "fillColor": "#f5c518",
+            "fillOpacity": 0.15,
         }
         Draw(
             export=False,
+            position="topleft",
             draw_options={
                 "polyline": False,
                 "polygon": {
@@ -214,11 +232,17 @@ def _render_topo_boundary_map(
             edit_options={"edit": True, "remove": True},
         ).add_to(m)
 
+    map_key = _topo_map_component_key(
+        boundaries,
+        enable_draw=enable_draw,
+        show_reference_layers=show_reference_layers,
+    )
     return st_folium(
         m,
         width=None,
         height=height,
         returned_objects=["all_drawings"] if enable_draw else [],
+        key=map_key,
     )
 
 
@@ -269,14 +293,8 @@ def _render_boundary_manager():
 
     def _smart_select(all_b, visible):
         visible_ids = {b["id"] for b in visible}
-        for b in all_b:
-            if b["id"] not in visible_ids and not show_all:
-                continue
-            b["enabled"] = guess_boundary_enabled(
-                b.get("full_name", b["name"]),
-                boundary_area_ha(b["coords"]),
-                None, None,
-            ) or b.get("is_styled_boundary", False)
+        targets = all_b if show_all else [b for b in all_b if b["id"] in visible_ids]
+        apply_site_areas_only_selection(targets)
 
     def _clear():
         st.session_state["topo_boundaries"] = []
@@ -1471,11 +1489,23 @@ with left:
                 'border-radius:8px;padding:0.45rem 0.85rem;font-size:0.82rem;color:#5a4a00;'
                 'margin-bottom:0.35rem;">'
                 '<i class="fa-solid fa-pen-ruler" style="margin-right:0.4rem;"></i>'
-                'All parcels are shown for reference. Draw <strong>one polygon</strong> covering '
-                'the area you want analysed — use the toolbar to edit or delete it.'
+                'Use the <strong>polygon tool</strong> (left toolbar) to draw your analysis boundary. '
+                'Select a shape and use <strong>edit</strong> or <strong>delete</strong> in the toolbar.'
                 '</div>',
                 unsafe_allow_html=True,
             )
+            _dc1, _dc2 = st.columns([1, 2])
+            with _dc1:
+                if st.button("Clear drawn boundary", key="topo_clear_drawn_poly", use_container_width=True):
+                    st.session_state.pop("topo_analysis_polygon", None)
+                    st.session_state.pop("topo_last_draw_sig", None)
+                    st.rerun()
+            if st.session_state.get("topo_analysis_polygon"):
+                _saved_ha = boundary_area_ha(st.session_state["topo_analysis_polygon"])
+                st.caption(
+                    f"Saved analysis boundary: **{_saved_ha:,.1f} ha** — "
+                    "draw a new polygon to replace it, or clear it."
+                )
         else:
             st.caption("Map shows **checked parcels only** — it updates when you change the layer tree.")
 
@@ -1487,6 +1517,7 @@ with left:
             enable_draw=_use_draw,
         )
         if _use_draw and _map_data:
+            raw_drawings = _map_data.get("all_drawings")
             _drawn = _extract_drawn_polygon(_map_data)
             if _drawn:
                 _sig = tuple(round(c[0], 5) for c in _drawn[: min(8, len(_drawn))])
@@ -1500,8 +1531,12 @@ with left:
                     st.success(
                         f"Analysis boundary — {len(_drawn) - 1} vertices · {_da:,.1f} ha"
                     )
+            elif isinstance(raw_drawings, list) and not raw_drawings:
+                if st.session_state.pop("topo_analysis_polygon", None):
+                    st.session_state.pop("topo_last_draw_sig", None)
+                    st.rerun()
             elif not st.session_state.get("topo_analysis_polygon"):
-                st.caption("Draw your analysis boundary on the map above.")
+                st.caption("Draw your analysis boundary on the map above — polygon tool in the left toolbar.")
 
     if st.session_state.get("topo_analysis_mode") == "drawn":
         _ap = st.session_state.get("topo_analysis_polygon")
