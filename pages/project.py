@@ -214,6 +214,266 @@ def _map_viewport_from_boundaries(boundaries):
     return [sum(lats) / len(lats), sum(lons) / len(lons)], 13
 
 
+def _stable_proj_map_key(is_full: bool) -> str:
+    """Stable key — remounting the map on every parcel toggle breaks polygon drawing."""
+    return "proj_map_full" if is_full else "proj_map_quick"
+
+
+def _polygon_from_drawings(drawings):
+    """Last completed Folium Draw polygon, or None while the user is still placing vertices."""
+    if not isinstance(drawings, list):
+        return None
+    for drawing in reversed(drawings):
+        geom = drawing.get("geometry", {})
+        if geom.get("type") != "Polygon":
+            continue
+        ring = geom.get("coordinates", [[]])[0]
+        if len(ring) < 4:
+            continue
+        return [[c[1], c[0]] for c in ring]
+    return None
+
+
+def _draw_signature(poly: list):
+    if not poly or len(poly) < 3:
+        return None
+    pts = poly[:-1] if len(poly) > 1 and poly[0] == poly[-1] else poly
+    return tuple(round(p[0], 5) for p in pts[:16])
+
+
+@st.fragment
+def _render_proj_map_fragment(is_full: bool, show_search: bool, coord_center):
+    """
+    Map + draw tools in a Streamlit fragment so placing polygon vertices only
+    reruns this block — not the whole page (no dim / reload per click).
+    """
+    proj = st.session_state.get("pvm_project", {})
+    _proj_bounds = st.session_state.get("proj_boundaries", [])
+
+    if st.session_state.get("proj_polygon_cleared"):
+        polygon_coords = None
+    elif st.session_state.get("proj_polygon_draft"):
+        polygon_coords = st.session_state["proj_polygon_draft"]
+    else:
+        _enabled = [b["coords"] for b in _proj_bounds if b.get("enabled")]
+        polygon_coords = _enabled[0] if _enabled else None
+
+    if show_search:
+        search_q = st.text_input(
+            "Search by place name",
+            placeholder="e.g. Munich, Bavaria  or  Rajasthan India",
+            label_visibility="collapsed",
+            key="proj_map_search_in",
+        )
+        if search_q and search_q != st.session_state.get("proj_last_search", ""):
+            with st.spinner("Searching…"):
+                slat, slon, _ = geocode_address(search_q)
+            if slat:
+                st.session_state["proj_map_center"] = [slat, slon]
+                st.session_state["proj_map_zoom"] = 13
+                st.session_state["proj_pin_lat"] = slat
+                st.session_state["proj_pin_lon"] = slon
+                st.session_state["proj_last_search"] = search_q
+            else:
+                st.session_state["proj_last_search"] = search_q
+                st.warning("Location not found — try adding the country name.")
+
+    if coord_center:
+        _cc_sig = f"{coord_center[0]:.5f}|{coord_center[1]:.5f}"
+        if st.session_state.get("proj_coord_jump_sig") != _cc_sig:
+            st.session_state["proj_coord_jump_sig"] = _cc_sig
+            st.session_state["proj_map_center"] = coord_center
+            st.session_state["proj_map_zoom"] = 13
+    elif _proj_bounds:
+        _bc, _bz = _map_viewport_from_boundaries(_proj_bounds)
+        if _bc:
+            _bsig = ",".join(sorted(b["id"] for b in _proj_bounds if b.get("enabled")))
+            if st.session_state.get("proj_bounds_jump_sig") != _bsig:
+                st.session_state["proj_bounds_jump_sig"] = _bsig
+                st.session_state["proj_map_center"] = _bc
+                st.session_state["proj_map_zoom"] = _bz
+
+    _pin_lat = st.session_state.get("proj_pin_lat")
+    _pin_lon = st.session_state.get("proj_pin_lon")
+    center = st.session_state.get("proj_map_center", proj.get("map_center_cache", [30.0, 10.0]))
+    zoom = st.session_state.get("proj_map_zoom", 4)
+
+    m = folium.Map(
+        location=center,
+        zoom_start=zoom,
+        tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+        attr="Google Satellite",
+    )
+
+    if is_full:
+        Draw(
+            export=False,
+            position="topleft",
+            draw_options={
+                "polyline": False,
+                "polygon": {"shapeOptions": {"color": "#f5c518", "weight": 4, "fillOpacity": 0.15}},
+                "circle": False,
+                "rectangle": False,
+                "circlemarker": False,
+                "marker": False,
+            },
+            edit_options={"edit": True, "remove": True},
+        ).add_to(m)
+
+    for _bi, _bb in enumerate(_proj_bounds):
+        _bc = BOUNDARY_COLORS[_bi % len(BOUNDARY_COLORS)] if _bb.get("enabled") else "#888888"
+        folium.Polygon(
+            locations=[[c[0], c[1]] for c in _bb["coords"]],
+            color=_bc,
+            fill=True,
+            fill_opacity=0.24 if _bb.get("enabled") else 0.05,
+            weight=3 if _bb.get("enabled") else 1,
+            dash_array=None if _bb.get("enabled") else "6,4",
+            tooltip=_bb["name"],
+        ).add_to(m)
+
+    if polygon_coords and len(polygon_coords) >= 3 and not _proj_bounds:
+        folium.Polygon(
+            locations=[[c[0], c[1]] for c in polygon_coords],
+            color="#f5c518",
+            fill=True,
+            fill_opacity=0.15,
+            weight=4,
+            tooltip="Site boundary",
+        ).add_to(m)
+
+    if _pin_lat is not None and _pin_lon is not None:
+        folium.Marker(
+            [_pin_lat, _pin_lon],
+            tooltip="Site location",
+            icon=folium.Icon(color="green", icon="star"),
+        ).add_to(m)
+
+    _map_key = _stable_proj_map_key(is_full)
+
+    if is_full:
+        st.caption(
+            "Checked parcels are solid; unchecked are faint. "
+            "Use the **polygon tool** (Full Mode) to draw a site boundary, or click the map to move the pin."
+        )
+        # Do not subscribe to last_clicked when KMZ parcels are on the map — every
+        # vertex click during drawing is also a map click and was forcing a full rerun.
+        _returns = ["all_drawings"]
+        if not _proj_bounds:
+            _returns.append("last_clicked")
+        map_result = st_folium(
+            m, width=None, height=420,
+            returned_objects=_returns,
+            key=_map_key,
+        )
+        if map_result and map_result.get("last_clicked") and not _proj_bounds:
+            lc = map_result["last_clicked"]
+            st.session_state["proj_pin_lat"] = lc["lat"]
+            st.session_state["proj_pin_lon"] = lc["lng"]
+            st.session_state["proj_map_center"] = [lc["lat"], lc["lng"]]
+        if map_result:
+            raw_drawings = map_result.get("all_drawings")
+            _poly = _polygon_from_drawings(raw_drawings)
+            if _poly:
+                _sig = _draw_signature(_poly)
+                if _sig and st.session_state.get("proj_last_draw_sig") != _sig:
+                    st.session_state["proj_last_draw_sig"] = _sig
+                    st.session_state["proj_polygon_draft"] = _poly
+                    st.session_state["proj_boundaries"] = [{
+                        "id": "draw_1",
+                        "name": "Drawn boundary",
+                        "coords": _poly,
+                        "enabled": True,
+                    }]
+                    _clat, _clon = centroid_of(_poly)
+                    st.session_state["proj_pin_lat"] = _clat
+                    st.session_state["proj_pin_lon"] = _clon
+                    st.session_state.pop("proj_polygon_cleared", None)
+                    st.session_state.pop("proj_kml_upload_key", None)
+            elif isinstance(raw_drawings, list) and not raw_drawings and \
+                    st.session_state.get("proj_polygon_draft"):
+                st.session_state.pop("proj_polygon_draft", None)
+                st.session_state.pop("proj_pin_lat", None)
+                st.session_state.pop("proj_pin_lon", None)
+                st.session_state.pop("proj_last_draw_sig", None)
+                st.session_state["proj_boundaries"] = []
+                st.session_state["proj_polygon_cleared"] = True
+    else:
+        st.caption("Click the map to place or move the site pin. KMZ parcels are shown for reference.")
+        map_result = st_folium(
+            m, width=None, height=400,
+            returned_objects=["last_clicked"],
+            key=_map_key,
+        )
+        if map_result and map_result.get("last_clicked"):
+            lc = map_result["last_clicked"]
+            st.session_state["proj_pin_lat"] = lc["lat"]
+            st.session_state["proj_pin_lon"] = lc["lng"]
+            st.session_state["proj_map_center"] = [lc["lat"], lc["lng"]]
+
+    _pin_lat = st.session_state.get("proj_pin_lat")
+    _pin_lon = st.session_state.get("proj_pin_lon")
+    if st.session_state.get("proj_polygon_cleared"):
+        polygon_coords = None
+    elif st.session_state.get("proj_polygon_draft"):
+        polygon_coords = st.session_state["proj_polygon_draft"]
+    else:
+        _enabled = [b["coords"] for b in _proj_bounds if b.get("enabled")]
+        polygon_coords = _enabled[0] if _enabled else None
+
+    _enabled_bounds = [b for b in _proj_bounds if b.get("enabled")]
+    if _enabled_bounds:
+        lat, lon = _resolve_site_location(proj, _pin_lat, _pin_lon)
+        if lat is not None and lon is not None:
+            _total = boundaries_union_area_ha([b["coords"] for b in _enabled_bounds])
+            _ps1, _ps2 = st.columns([4, 1])
+            with _ps1:
+                st.success(
+                    f"✅ **{len(_enabled_bounds)}** boundar{'y' if len(_enabled_bounds) == 1 else 'ies'} · "
+                    f"Site: {lat:.5f}°N, {lon:.5f}°E · Combined: **{_total:,.1f} ha**"
+                )
+            with _ps2:
+                if st.button("🗑️ Clear", use_container_width=True, help="Remove all boundaries",
+                             key="proj_frag_clear_bounds"):
+                    st.session_state.pop("proj_polygon_draft", None)
+                    st.session_state.pop("proj_pin_lat", None)
+                    st.session_state.pop("proj_pin_lon", None)
+                    st.session_state.pop("proj_kml_upload_key", None)
+                    st.session_state.pop("proj_last_draw_sig", None)
+                    st.session_state["proj_boundaries"] = []
+                    st.session_state["proj_polygon_cleared"] = True
+                    st.rerun()
+    elif polygon_coords and len(polygon_coords) >= 3:
+        lat = st.session_state.get("proj_pin_lat")
+        lon = st.session_state.get("proj_pin_lon")
+        if lat is not None and lon is not None:
+            area_from_poly = polygon_area_ha(polygon_coords)
+            _ps1, _ps2 = st.columns([4, 1])
+            with _ps1:
+                st.success(
+                    f"✅ Boundary drawn · Site: {lat:.5f}°N, {lon:.5f}°E · Area: **{area_from_poly} ha**"
+                )
+            with _ps2:
+                if st.button("🗑️ Clear", use_container_width=True, help="Remove the drawn boundary",
+                             key="proj_frag_clear_draw"):
+                    st.session_state.pop("proj_polygon_draft", None)
+                    st.session_state.pop("proj_pin_lat", None)
+                    st.session_state.pop("proj_pin_lon", None)
+                    st.session_state.pop("proj_last_draw_sig", None)
+                    st.session_state["proj_boundaries"] = []
+                    st.session_state["proj_polygon_cleared"] = True
+                    st.rerun()
+    elif _pin_lat is not None and _pin_lon is not None:
+        st.success(f"📌 Site pin: {_pin_lat:.5f}°N, {_pin_lon:.5f}°E")
+    elif is_full:
+        st.markdown(
+            '<div style="background:#7a4800;color:#fff;border-radius:7px;padding:0.4rem 0.8rem;'
+            'font-size:0.84rem;font-weight:600;margin-top:0.3rem;">'
+            '✏️ Draw a polygon on the map, upload a KMZ, or enter coordinates above.</div>',
+            unsafe_allow_html=True,
+        )
+
+
 def _proj_map_component_key(*, is_full, boundaries, pin_lat, pin_lon):
     en = ",".join(sorted(b["id"] for b in boundaries if b.get("enabled")))
     mode = "full" if is_full else "quick"
@@ -304,6 +564,8 @@ st.markdown("""
   </p>
 </div>
 """, unsafe_allow_html=True)
+
+st.session_state["_pvm_active_page"] = "Project"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SHOW CURRENT PROJECT BANNER (if already set)
@@ -488,6 +750,7 @@ if True:
                     st.session_state["proj_show_all_layers"] = not bool(_primary) and bool(_bounds)
                     st.session_state.pop("proj_polygon_draft", None)
                     st.session_state.pop("proj_polygon_cleared", None)
+                    st.session_state.pop("proj_last_draw_sig", None)
 
                     _enabled = [b for b in _bounds if b["enabled"]]
                     if _enabled:
@@ -524,223 +787,22 @@ if True:
             st.session_state["proj_pin_lat"] = lat
             st.session_state["proj_pin_lon"] = lon
 
-    # ── Unified map (all input methods) ─────────────────────────────────────
-    if _is_map:
-        search_q = st.text_input(
-            "Search by place name",
-            placeholder="e.g. Munich, Bavaria  or  Rajasthan India",
-            label_visibility="collapsed",
-        )
-        if search_q and search_q != st.session_state.get("proj_last_search", ""):
-            with st.spinner("Searching…"):
-                slat, slon, _ = geocode_address(search_q)
-            if slat:
-                st.session_state["proj_map_center"] = [slat, slon]
-                st.session_state["proj_map_zoom"] = 13
-                st.session_state["proj_pin_lat"] = slat
-                st.session_state["proj_pin_lon"] = slon
-                st.session_state["proj_last_search"] = search_q
-                lat, lon = slat, slon
-                st.rerun()
-            else:
-                st.session_state["proj_last_search"] = search_q
-                st.warning("Location not found — try adding the country name.")
+    # ── Unified map (fragment — no full-page dim while drawing vertices) ───
+    _render_proj_map_fragment(is_full, _is_map, _coord_center)
 
-    if _coord_center:
-        _cc_sig = f"{_coord_center[0]:.5f}|{_coord_center[1]:.5f}"
-        if st.session_state.get("proj_coord_jump_sig") != _cc_sig:
-            st.session_state["proj_coord_jump_sig"] = _cc_sig
-            st.session_state["proj_map_center"] = _coord_center
-            st.session_state["proj_map_zoom"] = 13
-    elif _proj_bounds:
-        _bc, _bz = _map_viewport_from_boundaries(_proj_bounds)
-        if _bc:
-            _bsig = ",".join(sorted(b["id"] for b in _proj_bounds if b.get("enabled")))
-            if st.session_state.get("proj_bounds_jump_sig") != _bsig:
-                st.session_state["proj_bounds_jump_sig"] = _bsig
-                st.session_state["proj_map_center"] = _bc
-                st.session_state["proj_map_zoom"] = _bz
-
-    _pin_lat = st.session_state.get("proj_pin_lat")
-    _pin_lon = st.session_state.get("proj_pin_lon")
-    if _pin_lat is not None and _pin_lon is not None:
-        lat, lon = _pin_lat, _pin_lon
-    center = st.session_state.get("proj_map_center", proj.get("map_center_cache", [30.0, 10.0]))
-    zoom = st.session_state.get("proj_map_zoom", 4)
-
-    m = folium.Map(
-        location=center,
-        zoom_start=zoom,
-        tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
-        attr="Google Satellite",
-    )
-
-    if is_full:
-        Draw(
-            export=False,
-            position="topleft",
-            draw_options={
-                "polyline": False,
-                "polygon": {"shapeOptions": {"color": "#f5c518", "weight": 4, "fillOpacity": 0.15}},
-                "circle": False,
-                "rectangle": False,
-                "circlemarker": False,
-                "marker": False,
-            },
-            edit_options={"edit": True, "remove": True},
-        ).add_to(m)
-
-    for _bi, _bb in enumerate(_proj_bounds):
-        _bc = BOUNDARY_COLORS[_bi % len(BOUNDARY_COLORS)] if _bb.get("enabled") else "#888888"
-        folium.Polygon(
-            locations=[[c[0], c[1]] for c in _bb["coords"]],
-            color=_bc,
-            fill=True,
-            fill_opacity=0.24 if _bb.get("enabled") else 0.05,
-            weight=3 if _bb.get("enabled") else 1,
-            dash_array=None if _bb.get("enabled") else "6,4",
-            tooltip=_bb["name"],
-        ).add_to(m)
-
-    if polygon_coords and len(polygon_coords) >= 3 and not _proj_bounds:
-        folium.Polygon(
-            locations=[[c[0], c[1]] for c in polygon_coords],
-            color="#f5c518",
-            fill=True,
-            fill_opacity=0.15,
-            weight=4,
-            tooltip="Site boundary",
-        ).add_to(m)
-
-    if _pin_lat is not None and _pin_lon is not None:
-        folium.Marker(
-            [_pin_lat, _pin_lon],
-            tooltip="Site location",
-            icon=folium.Icon(color="green", icon="star"),
-        ).add_to(m)
-
-    _map_key = _proj_map_component_key(
-        is_full=is_full,
-        boundaries=_proj_bounds,
-        pin_lat=_pin_lat,
-        pin_lon=_pin_lon,
-    )
-
-    if is_full:
-        st.caption(
-            "Checked parcels are solid; unchecked are faint. "
-            "Use the **polygon tool** (Full Mode) to draw a site boundary, or click the map to move the pin."
-        )
-        map_result = st_folium(
-            m, width=None, height=420,
-            returned_objects=["all_drawings", "last_clicked"],
-            key=_map_key,
-        )
-        if map_result and map_result.get("last_clicked"):
-            lc = map_result["last_clicked"]
-            st.session_state["proj_pin_lat"] = lc["lat"]
-            st.session_state["proj_pin_lon"] = lc["lng"]
-            st.session_state["proj_map_center"] = [lc["lat"], lc["lng"]]
-            lat, lon = lc["lat"], lc["lng"]
-            st.rerun()
-        if map_result:
-            raw_drawings = map_result.get("all_drawings")
-            drawings = raw_drawings if isinstance(raw_drawings, list) else []
-            polygon_found = False
-            for drawing in drawings:
-                geom = drawing.get("geometry", {})
-                if geom.get("type") == "Polygon":
-                    raw = geom["coordinates"][0]
-                    _poly = [[c[1], c[0]] for c in raw]
-                    st.session_state["proj_polygon_draft"] = _poly
-                    st.session_state["proj_boundaries"] = [{
-                        "id": "draw_1",
-                        "name": "Drawn boundary",
-                        "coords": _poly,
-                        "enabled": True,
-                    }]
-                    polygon_coords = _poly
-                    _clat, _clon = centroid_of(_poly)
-                    st.session_state["proj_pin_lat"] = _clat
-                    st.session_state["proj_pin_lon"] = _clon
-                    lat, lon = _clat, _clon
-                    polygon_found = True
-                    st.session_state.pop("proj_polygon_cleared", None)
-                    st.session_state.pop("proj_kml_upload_key", None)
-                    break
-            if isinstance(raw_drawings, list) and not polygon_found and \
-                    st.session_state.get("proj_polygon_draft"):
-                st.session_state.pop("proj_polygon_draft", None)
-                st.session_state.pop("proj_pin_lat", None)
-                st.session_state.pop("proj_pin_lon", None)
-                st.session_state["proj_boundaries"] = []
-                st.session_state["proj_polygon_cleared"] = True
-                polygon_coords = None
-                st.rerun()
+    if st.session_state.get("proj_polygon_cleared"):
+        polygon_coords = None
+    elif st.session_state.get("proj_polygon_draft"):
+        polygon_coords = st.session_state["proj_polygon_draft"]
     else:
-        st.caption("Click the map to place or move the site pin. KMZ parcels are shown for reference.")
-        map_result = st_folium(
-            m, width=None, height=400,
-            returned_objects=["last_clicked"],
-            key=_map_key,
-        )
-        if map_result and map_result.get("last_clicked"):
-            lc = map_result["last_clicked"]
-            st.session_state["proj_pin_lat"] = lc["lat"]
-            st.session_state["proj_pin_lon"] = lc["lng"]
-            st.session_state["proj_map_center"] = [lc["lat"], lc["lng"]]
-            lat, lon = lc["lat"], lc["lng"]
-            st.rerun()
-
-    _enabled_bounds = [b for b in st.session_state.get("proj_boundaries", []) if b.get("enabled")]
-    if _enabled_bounds:
-        lat, lon = _resolve_site_location(proj, lat, lon)
-        if lat is not None and lon is not None:
-            _total = boundaries_union_area_ha([b["coords"] for b in _enabled_bounds])
-            _ps1, _ps2 = st.columns([4, 1])
-            with _ps1:
-                st.success(
-                    f"✅ **{len(_enabled_bounds)}** boundar{'y' if len(_enabled_bounds) == 1 else 'ies'} · "
-                    f"Site: {lat:.5f}°N, {lon:.5f}°E · Combined: **{_total:,.1f} ha**"
-                )
-            with _ps2:
-                if st.button("🗑️ Clear", use_container_width=True, help="Remove all boundaries"):
-                    st.session_state.pop("proj_polygon_draft", None)
-                    st.session_state.pop("proj_pin_lat", None)
-                    st.session_state.pop("proj_pin_lon", None)
-                    st.session_state.pop("proj_kml_upload_key", None)
-                    st.session_state["proj_boundaries"] = []
-                    st.session_state["proj_polygon_cleared"] = True
-                    st.rerun()
-    elif polygon_coords and len(polygon_coords) >= 3:
-        lat = st.session_state.get("proj_pin_lat")
-        lon = st.session_state.get("proj_pin_lon")
-        if lat is not None and lon is not None:
-            area_from_poly = polygon_area_ha(polygon_coords)
-            _ps1, _ps2 = st.columns([4, 1])
-            with _ps1:
-                st.success(
-                    f"✅ Boundary drawn · Site: {lat:.5f}°N, {lon:.5f}°E · Area: **{area_from_poly} ha**"
-                )
-            with _ps2:
-                if st.button("🗑️ Clear", use_container_width=True, help="Remove the drawn boundary"):
-                    st.session_state.pop("proj_polygon_draft", None)
-                    st.session_state.pop("proj_pin_lat", None)
-                    st.session_state.pop("proj_pin_lon", None)
-                    st.session_state["proj_boundaries"] = []
-                    st.session_state["proj_polygon_cleared"] = True
-                    st.rerun()
-    elif _pin_lat is not None and _pin_lon is not None:
-        st.success(f"📌 Site pin: {_pin_lat:.5f}°N, {_pin_lon:.5f}°E")
-    elif is_full:
-        st.markdown(
-            '<div style="background:#7a4800;color:#fff;border-radius:7px;padding:0.4rem 0.8rem;'
-            'font-size:0.84rem;font-weight:600;margin-top:0.3rem;">'
-            '✏️ Draw a polygon on the map, upload a KMZ, or enter coordinates above.</div>',
-            unsafe_allow_html=True,
-        )
-    else:
-        st.info("Search a place, enter coordinates, upload a KMZ, or click the map to set your site.")
+        _enabled = [
+            b["coords"] for b in st.session_state.get("proj_boundaries", []) if b.get("enabled")
+        ]
+        polygon_coords = _enabled[0] if _enabled else None
+    _plat = st.session_state.get("proj_pin_lat")
+    _plon = st.session_state.get("proj_pin_lon")
+    if _plat is not None and _plon is not None:
+        lat, lon = _plat, _plon
 
     st.divider()
 

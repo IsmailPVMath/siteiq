@@ -1,5 +1,5 @@
-import hashlib
 import streamlit as st
+import streamlit.components.v1 as components
 import numpy as np
 import requests
 import math
@@ -117,19 +117,31 @@ def _extract_drawn_polygon(map_data):
     return polygon_coords
 
 
-def _topo_map_component_key(boundaries, *, enable_draw, show_reference_layers):
-    """Force st_folium to remount when selection or draw mode changes (avoids stale map)."""
-    en_ids = ",".join(sorted(b["id"] for b in boundaries if b.get("enabled")))
-    mode = "draw" if enable_draw else "sel"
-    ref = "ref" if show_reference_layers else "filt"
-    ap = st.session_state.get("topo_analysis_polygon") or []
-    ap_sig = "none"
-    if ap and not enable_draw:
-        ap_sig = "_".join(f"{round(c[0], 4)}_{round(c[1], 4)}" for c in ap[:6])
-    raw = f"{mode}|{ref}|{en_ids}|{ap_sig}|{len(boundaries)}"
-    if len(raw) > 160:
-        raw = hashlib.sha256(raw.encode()).hexdigest()[:28]
-    return f"topo_map_{raw}"
+TOPO_MAP_KEY = "topo_boundary_map"
+
+
+def _prune_stale_folium_maps():
+    """Hide orphan folium iframes left by Streamlit SPA navigation or old dynamic keys."""
+    components.html(
+        """
+        <script>
+        (function () {
+          try {
+            var doc = window.parent.document;
+            var frames = Array.from(
+              doc.querySelectorAll('[data-testid="stCustomComponentV1"] iframe')
+            );
+            if (frames.length <= 1) return;
+            for (var i = 0; i < frames.length - 1; i++) {
+              var block = frames[i].closest('[data-testid="element-container"]');
+              if (block) block.style.display = "none";
+            }
+          } catch (e) {}
+        })();
+        </script>
+        """,
+        height=0,
+    )
 
 
 def _render_topo_boundary_map(
@@ -232,17 +244,12 @@ def _render_topo_boundary_map(
             edit_options={"edit": True, "remove": True},
         ).add_to(m)
 
-    map_key = _topo_map_component_key(
-        boundaries,
-        enable_draw=enable_draw,
-        show_reference_layers=show_reference_layers,
-    )
     return st_folium(
         m,
         width=None,
         height=height,
         returned_objects=["all_drawings"] if enable_draw else [],
-        key=map_key,
+        key=TOPO_MAP_KEY,
     )
 
 
@@ -1234,6 +1241,14 @@ elif not _has_proj:
         icon="ℹ️",
     )
 
+_prev_page = st.session_state.get("_pvm_active_page")
+st.session_state["_pvm_active_page"] = "TopoIQ"
+if _prev_page != "TopoIQ":
+    for _k in list(st.session_state.keys()):
+        if _k.startswith("proj_map_"):
+            st.session_state.pop(_k, None)
+    _prune_stale_folium_maps()
+
 left, right = st.columns([1, 1.4])
 
 _enabled_polys = []
@@ -1328,13 +1343,15 @@ with left:
         else:
             st.caption("Map shows **checked parcels only** — it updates when you change the layer tree.")
 
-        _map_data = _render_topo_boundary_map(
-            _boundaries,
-            height=430,
-            show_reference_layers=_use_draw,
-            analysis_polygon=st.session_state.get("topo_analysis_polygon") if _use_draw else None,
-            enable_draw=_use_draw,
-        )
+        with st.container(key="topoiq_map_panel"):
+            _map_data = _render_topo_boundary_map(
+                _boundaries,
+                height=430,
+                show_reference_layers=_use_draw,
+                analysis_polygon=st.session_state.get("topo_analysis_polygon") if _use_draw else None,
+                enable_draw=_use_draw,
+            )
+        _prune_stale_folium_maps()
         if _use_draw and _map_data:
             raw_drawings = _map_data.get("all_drawings")
             _drawn = _extract_drawn_polygon(_map_data)
