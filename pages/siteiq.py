@@ -45,7 +45,7 @@ SITEIQ_RATING_LEGEND_MD = """
 | ⚠️ Acceptable | Feasible with constraints | Proceed with attention to this factor |
 | ⚠️ Challenging | Near viability limit — significant effort | Detailed study mandatory |
 | ❌ Critical | Exceeds viability threshold | High risk — reconsider site or system type |
-| ⚠️ Indicative only | Sparse OpenTopoData slope sample — not confirmed terrain | Run **TopoIQ** before treating slope as bankable |
+| ⚠️ Indicative (slope) | Sparse OpenTopoData sample — quality tag reflects the sample, not confirmed site-wide terrain | Run **TopoIQ** before bankable use; overall verdict uses sample quality, not a blanket downgrade |
 | ⚠️ Data unavailable | Solar or terrain data could not be retrieved | Retry or check API coverage for this location |
 | — (capacity / output) | Screening MWp DC band from area × density @ GCR | Indicative only — confirm with layout / bankable study |
 | ✅ EXCELLENT (overall) | All key parameters in ideal range | Proceed to detailed feasibility study |
@@ -662,10 +662,18 @@ def assess_slope(pct, mount_type="Fixed Tilt", sparse_screening=False, sample_po
 
     if sparse_screening:
         n = sample_points or "few"
-        lbl = "⚠️ Indicative only"
+        q_word = lbl.replace("✅ ", "").replace("⚠️ ", "").replace("❌ ", "").split("—")[0].strip()
+        if q_word in ("Excellent", "Good"):
+            lbl = f"✅ {q_word} (Indicative)"
+            color = "green"
+        elif q_word in ("Acceptable",):
+            lbl = f"⚠️ {q_word} (Indicative)"
+            color = "yellow"
+        else:
+            lbl = f"⚠️ {q_word} (Indicative)"
         detail = (
-            f"Sparse sample slope: {pct}% max ({n} OpenTopoData points) — not confirmed terrain. "
-            "Run TopoIQ for confirmed slope metrics before bankable use."
+            f"Sparse sample: {pct}% max ({n} OpenTopoData points) — {q_word.lower()} "
+            f"indicators in the sample; confirm site-wide terrain in TopoIQ before bankable use."
         )
     return lbl, color, detail
 
@@ -775,12 +783,45 @@ def _metric_card_html(icon, color, label, number, unit):
     )
 
 
+def _slope_quality_tier(pct, mount_type="Fixed Tilt") -> int:
+    """Tier from slope % alone — used when boundary sparse sample has favorable readings."""
+    if pct is None:
+        return 1
+    if mount_type == "Single-Axis Tracker":
+        if pct <= 3:
+            return 5
+        if pct <= 6:
+            return 3
+        if pct <= 10:
+            return 2
+        return 0
+    if pct <= 5:
+        return 5
+    if pct <= 10:
+        return 3
+    if pct <= 15:
+        return 2
+    return 0
+
+
 def _param_tier(lbl: str) -> int:
     """Higher = better. 0 = critical / failed."""
     if "❌" in lbl:
         return 0
-    if "Indicative only" in lbl or "Data unavailable" in lbl:
+    if "Data unavailable" in lbl:
         return 1
+    if "(Indicative)" in lbl or "Indicative only" in lbl:
+        if "Excellent" in lbl:
+            return 5
+        if "Good" in lbl:
+            return 4
+        if "Acceptable" in lbl or "Moderate" in lbl:
+            return 3
+        if "Challenging" in lbl:
+            return 2
+        if "Critical" in lbl or "Poor" in lbl:
+            return 0
+        return 3
     if "Challenging" in lbl:
         return 2
     if "Acceptable" in lbl or "Moderate" in lbl:
@@ -792,8 +833,30 @@ def _param_tier(lbl: str) -> int:
     return 3
 
 
-def overall_verdict(slope_lbl, solar_lbl, land_use="Standard", mount_type="Fixed Tilt"):
-    tiers = [_param_tier(slope_lbl), _param_tier(solar_lbl)]
+def _sparse_topo_note(sample_points: int = 0) -> str:
+    n = sample_points or "sparse"
+    return (
+        f" Terrain from an OpenTopoData boundary sample ({n} points) — "
+        f"favorable sample indicators; run TopoIQ to confirm before bankable use."
+    )
+
+
+def overall_verdict(
+    slope_lbl,
+    solar_lbl,
+    land_use="Standard",
+    mount_type="Fixed Tilt",
+    slope_pct=None,
+    sparse_screening=False,
+    sample_points=0,
+):
+    sparse = sparse_screening or "(Indicative)" in slope_lbl or "Indicative only" in slope_lbl
+    if sparse and slope_pct is not None:
+        slope_tier = _slope_quality_tier(slope_pct, mount_type)
+    else:
+        slope_tier = _param_tier(slope_lbl)
+    solar_tier = _param_tier(solar_lbl)
+    tiers = [slope_tier, solar_tier]
     worst = min(tiers)
     best = max(tiers)
     if land_use == "Agri-PV":
@@ -808,8 +871,13 @@ def overall_verdict(slope_lbl, solar_lbl, land_use="Standard", mount_type="Fixed
         )
     if worst == 1:
         return "⚠️ CHALLENGING", (
-            "Unconfirmed terrain or missing solar data — detailed study mandatory "
+            "Missing solar or terrain data — detailed study mandatory "
             "before treating this screening as bankable."
+        )
+    if worst == 2 and sparse and slope_tier <= 2:
+        return "⚠️ CHALLENGING", (
+            "Sparse terrain sample indicates steep or near-limit slopes — "
+            "detailed civil study mandatory; run TopoIQ for confirmed metrics."
         )
     if worst == 2:
         return "⚠️ CHALLENGING", (
@@ -817,29 +885,46 @@ def overall_verdict(slope_lbl, solar_lbl, land_use="Standard", mount_type="Fixed
             "Detailed civil and energy study mandatory before commitment."
         )
     if worst == 5:
-        return "✅ EXCELLENT", (
+        verdict = "✅ EXCELLENT"
+        txt = (
             f"Strong {label} potential. All parameters in ideal range — "
             f"proceed to detailed feasibility study."
         )
+        if sparse:
+            verdict = "✅ VERY GOOD"
+            txt += _sparse_topo_note(sample_points)
+        return verdict, txt
     if worst == 4 and best == 5:
-        return "✅ VERY GOOD", (
+        txt = (
             f"Strong {label} site — key parameters are good to excellent. "
             f"Proceed to detailed feasibility study."
         )
+        if sparse:
+            txt += _sparse_topo_note(sample_points)
+        return "✅ VERY GOOD", txt
     if worst == 4:
-        return "✅ GOOD", (
+        txt = (
             f"Strong {label} potential. Key parameters are in the good range — "
             f"proceed to detailed feasibility study."
         )
+        if sparse:
+            txt += _sparse_topo_note(sample_points)
+        return "✅ GOOD", txt
     if worst == 3 and best >= 4:
-        return "✅ GOOD", (
+        txt = (
             f"Strong {label} site with one noted constraint. "
             f"Proceed to detailed feasibility — address the moderate factor in design."
         )
-    return "⚠️ ACCEPTABLE", (
+        if sparse:
+            txt += _sparse_topo_note(sample_points)
+        return "✅ GOOD", txt
+    txt = (
         f"Site is viable with noted considerations. "
         f"Address constraints in detailed {label} design."
     )
+    if sparse:
+        txt += _sparse_topo_note(sample_points)
+    return "⚠️ ACCEPTABLE", txt
 
 
 def get_next_steps(project_country, land_use="Standard", lat=None, lon=None):
@@ -1702,7 +1787,12 @@ with right:
         country, eeg_status, eeg_note = assess_eeg(lat, lon, _land_use, project_country_input)
         _yield = solar.get("annual_yield") if solar.get("success") else None
         cap = screening_capacity(area_ha, _land_use, _mount_type, _yield)
-        verdict, verdict_txt = overall_verdict(s_lbl, g_lbl, _land_use, _mount_type)
+        verdict, verdict_txt = overall_verdict(
+            s_lbl, g_lbl, _land_use, _mount_type,
+            slope_pct=terrain.get("max_slope_pct") if terrain.get("success") else None,
+            sparse_screening=_sparse_slope,
+            sample_points=terrain.get("sample_points", 0) if terrain.get("success") else 0,
+        )
         _flood = get_flood_risk(
             lat, lon, terrain.get("center_elev") if terrain.get("success") else None
         )
