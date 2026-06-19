@@ -146,7 +146,7 @@ def _render_boundary_manager():
     if hidden_n and not show_all:
         st.caption(
             f"Showing **{len(bounds)}** site parcel{'s' if len(bounds) != 1 else ''} "
-            f"(magenta boundaries & buildable areas). "
+            f"(site boundaries & buildable areas). "
             f"**{hidden_n}** circuit/layout layers hidden."
         )
     else:
@@ -180,7 +180,7 @@ def _render_boundary_manager():
                 b.get("full_name", b["name"]),
                 boundary_area_ha(b["coords"]),
                 None, None,
-            ) or b.get("is_magenta", False)
+            ) or b.get("is_styled_boundary", False)
         st.rerun()
     if qc.button("Clear all", use_container_width=True, key="topo_clr_all"):
         st.session_state["topo_boundaries"] = []
@@ -193,8 +193,8 @@ def _render_boundary_manager():
         area = boundary_area_ha(b["coords"])
         n_vert = len(b["coords"])
         tag = ""
-        if b.get("is_magenta"):
-            tag = ' <span style="color:#c026d3;font-size:0.75rem;">● boundary</span>'
+        if b.get("is_styled_boundary"):
+            tag = ' <span style="color:#1565c0;font-size:0.75rem;">● site parcel</span>'
         row_cb, row_txt, row_rm = st.columns([0.06, 0.84, 0.10])
         with row_cb:
             b["enabled"] = st.checkbox(
@@ -1019,7 +1019,7 @@ def _boundaries_from_file_dict(all_polys: dict, source_key: str):
             "coords": coords,
             "enabled": guess_boundary_enabled(name, area),
             "is_primary": True,
-            "is_magenta": False,
+            "is_styled_boundary": False,
         })
     return out
 
@@ -1374,7 +1374,7 @@ with left:
                 if not primary and not new_bounds:
                     st.error(
                         "No site boundaries found. Ensure the KMZ contains buildable-area "
-                        "or project-boundary polylines (magenta in Google Earth)."
+                        "or project-boundary polylines from your GIS export."
                     )
                 elif not primary:
                     st.warning(

@@ -154,7 +154,7 @@ def _render_proj_boundary_manager():
             b["enabled"] = guess_boundary_enabled(
                 b.get("full_name", b["name"]),
                 polygon_area_ha(b["coords"]),
-            ) or b.get("is_magenta", False)
+            ) or b.get("is_styled_boundary", False)
         st.rerun()
     if qc.button("Clear all", use_container_width=True, key="proj_clr_bounds"):
         st.session_state["proj_boundaries"] = []
@@ -167,7 +167,7 @@ def _render_proj_boundary_manager():
     remove_ids = []
     for b in bounds:
         area = polygon_area_ha(b["coords"])
-        tag = ' <span style="color:#c026d3;font-size:0.75rem;">● boundary</span>' if b.get("is_magenta") else ""
+        tag = ' <span style="color:#1565c0;font-size:0.75rem;">● site parcel</span>' if b.get("is_styled_boundary") else ""
         row_cb, row_txt, row_rm = st.columns([0.06, 0.84, 0.10])
         with row_cb:
             b["enabled"] = st.checkbox(

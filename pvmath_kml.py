@@ -51,16 +51,21 @@ def _kml_color_to_rgb(kml_color: str):
         return None
 
 
-def is_magenta_boundary_color(rgb) -> bool:
-    """Detect magenta / pink GIS boundary strokes (Google Earth shapefile exports)."""
+def is_vivid_boundary_stroke(rgb) -> bool:
+    """True when KML assigns a non-default vivid line/fill colour (any hue)."""
     if not rgb:
         return False
     r, g, b = rgb
-    if r < 100 or b < 100:
+    if max(r, g, b) < 90:
         return False
-    if g > min(r, b) * 0.45:
+    if max(r, g, b) - min(r, g, b) < 35:
         return False
-    return (r + b) / 2 >= 140
+    return max(r, g, b) >= 110
+
+
+def is_magenta_boundary_color(rgb) -> bool:
+    """Backward-compatible alias — prefer is_vivid_boundary_stroke."""
+    return is_vivid_boundary_stroke(rgb)
 
 
 def _display_name(full_name: str) -> str:
@@ -78,16 +83,19 @@ def _display_name(full_name: str) -> str:
 
 
 def is_primary_site_feature(name: str, area_ha: float, line_rgb=None, poly_rgb=None) -> bool:
-    """True for magenta site boundaries and named buildable parcels — not MV circuits."""
-    rgb = line_rgb or poly_rgb
-    if is_magenta_boundary_color(rgb):
-        return True
+    """
+    True for site parcels — primarily layer/folder names, not a specific colour.
+    Vivid KML stroke colour is a secondary signal when names are generic.
+    """
     if _EXCLUDE_FOLDER_RE.search(name or ""):
-        return False
-    if _EXCLUDE_BOUNDARY_RE.search(name or "") and area_ha < 20.0:
         return False
     if _INCLUDE_BOUNDARY_RE.search(name or ""):
         return True
+    if _EXCLUDE_BOUNDARY_RE.search(name or "") and area_ha < 20.0:
+        return False
+    rgb = line_rgb or poly_rgb
+    if is_vivid_boundary_stroke(rgb) and area_ha >= 3.0:
+        return not _UNNAMED_RE.search(name or "") or area_ha >= 8.0
     if _UNNAMED_RE.search(name or ""):
         return False
     return area_ha >= 10.0 and not _EXCLUDE_BOUNDARY_RE.search(name or "")
@@ -292,7 +300,7 @@ def _parse_kml_root(root) -> list:
         if area_ha < 0.5 and not _INCLUDE_BOUNDARY_RE.search(label or ""):
             return
         if _EXCLUDE_BOUNDARY_RE.search(label or "") and area_ha < 15.0:
-            if not is_magenta_boundary_color(line_rgb or poly_rgb):
+            if not is_vivid_boundary_stroke(line_rgb or poly_rgb):
                 return
         sig = (round(ring[0][0], 5), round(ring[0][1], 5), len(ring))
         if sig in seen:
@@ -306,7 +314,7 @@ def _parse_kml_root(root) -> list:
             "area_ha": round(area_ha, 2),
             "line_rgb": line_rgb,
             "poly_rgb": poly_rgb,
-            "is_magenta": is_magenta_boundary_color(line_rgb or poly_rgb),
+            "is_styled_boundary": is_vivid_boundary_stroke(line_rgb or poly_rgb),
             "is_primary": is_primary_site_feature(name, area_ha, line_rgb, poly_rgb),
         })
 
@@ -431,7 +439,7 @@ def boundaries_from_features(features: list, source_key: str) -> list:
                 f["name"], f.get("area_ha", 0),
                 f.get("line_rgb"), f.get("poly_rgb"),
             ),
-            "is_magenta": f.get("is_magenta", False),
+            "is_styled_boundary": f.get("is_styled_boundary", False),
             "is_primary": f.get("is_primary", True),
         })
     return out
@@ -460,7 +468,7 @@ def boundaries_from_kmz_latlon(raw: bytes, source_key: str) -> tuple:
             "full_name": b["full_name"],
             "coords": latlon[b["full_name"]],
             "enabled": b["enabled"],
-            "is_magenta": b.get("is_magenta", False),
+            "is_styled_boundary": b.get("is_styled_boundary", False),
             "is_primary": b.get("is_primary", True),
         })
     hidden = sum(1 for b in out if not b.get("is_primary"))
