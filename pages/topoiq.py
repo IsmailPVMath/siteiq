@@ -789,6 +789,36 @@ def export_dxf(X, Y, Z, lat_c, lon_c, minor_int=0.5, major_int=1.0):
     return stream.getvalue().encode("utf-8")
 
 
+def build_topo_export_zip(
+    fname: str,
+    *,
+    pdf_bytes=None,
+    lxml=None,
+    xyz=None,
+    dxf_data=None,
+    xyz_geo=None,
+) -> tuple[bytes | None, list[str]]:
+    """Bundle TopoIQ exports into one ZIP. Returns (zip_bytes, list of included filenames)."""
+    entries: list[tuple[str, bytes]] = []
+    if pdf_bytes:
+        entries.append((f"{fname}_report.pdf", pdf_bytes))
+    if lxml:
+        entries.append((f"{fname}.xml", lxml))
+    if xyz:
+        entries.append((f"{fname}_xyz.csv", xyz))
+    if dxf_data:
+        entries.append((f"{fname}_contours.dxf", dxf_data))
+    if xyz_geo:
+        entries.append((f"{fname}_geo.csv", xyz_geo))
+    if not entries:
+        return None, []
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name, data in entries:
+            zf.writestr(name, data)
+    return buf.getvalue(), [name for name, _ in entries]
+
+
 def _boundaries_from_project(proj):
     """Read-only site boundaries from saved project (vertices as lon, lat tuples)."""
     if proj.get("polygon_boundaries"):
@@ -1312,10 +1342,41 @@ with right:
             )
             st.divider()
 
+        with st.spinner("Preparing export files…"):
+            lxml = export_landxml(X, Y, Z, site_name=fname)
+            xyz = export_xyz_projected(X, Y, Z, lat_c, lon_c)
+            xyz_geo = export_xyz(X, Y, Z)
+            dxf_data = None
+            if HAS_EZDXF:
+                dxf_data = export_dxf(
+                    X, Y, Z, lat_c, lon_c,
+                    minor_int=contour_minor,
+                    major_int=contour_major,
+                )
+
+        _zip_bytes, _zip_files = build_topo_export_zip(
+            fname,
+            pdf_bytes=pdf_bytes,
+            lxml=lxml,
+            xyz=xyz,
+            dxf_data=dxf_data,
+            xyz_geo=xyz_geo,
+        )
+        if _zip_bytes:
+            _zip_label = ", ".join(_zip_files)
+            st.download_button(
+                "📦 Download All (ZIP)",
+                _zip_bytes,
+                file_name=f"{fname}_exports.zip",
+                mime="application/zip",
+                use_container_width=True,
+                type="primary",
+                help=f"One ZIP with all exports: {_zip_label}",
+            )
+            st.caption(f"Includes: {_zip_label}")
+
         ex1, ex2, ex3, ex4 = st.columns(4)
 
-        with st.spinner("Generating LandXML…"):
-            lxml = export_landxml(X, Y, Z, site_name=fname)
         if lxml:
             ex1.download_button("⬇ LandXML", lxml,
                                 file_name=f"{fname}.xml",
@@ -1323,28 +1384,21 @@ with right:
                                 use_container_width=True,
                                 help="Import directly into CAD software as TIN surface")
 
-        xyz = export_xyz_projected(X, Y, Z, lat_c, lon_c)
         ex2.download_button("⬇ XYZ Points", xyz,
                             file_name=f"{fname}_xyz.csv",
                             mime="text/csv",
                             use_container_width=True,
                             help="Easting / Northing / Elevation CSV")
 
-        if HAS_EZDXF:
-            with st.spinner("Generating DXF contours…"):
-                dxf_data = export_dxf(X, Y, Z, lat_c, lon_c,
-                                      minor_int=contour_minor,
-                                      major_int=contour_major)
-            if dxf_data:
-                ex3.download_button("⬇ DXF Contours", dxf_data,
-                                    file_name=f"{fname}_contours.dxf",
-                                    mime="application/dxf",
-                                    use_container_width=True,
-                                    help="Major + minor contour lines for CAD software / AutoCAD")
-        else:
+        if dxf_data:
+            ex3.download_button("⬇ DXF Contours", dxf_data,
+                                file_name=f"{fname}_contours.dxf",
+                                mime="application/dxf",
+                                use_container_width=True,
+                                help="Major + minor contour lines for CAD software / AutoCAD")
+        elif not HAS_EZDXF:
             ex3.info("Install ezdxf for DXF export")
 
-        xyz_geo = export_xyz(X, Y, Z)
         ex4.download_button("⬇ XYZ (Geo)", xyz_geo,
                             file_name=f"{fname}_geo.csv",
                             mime="text/csv",
