@@ -56,6 +56,7 @@ from pvmath_kml import BOUNDARY_COLORS, filter_boundary_list
 from pvmath_terrain_report import (
     build_report_context,
     compute_terrain_extras,
+    compute_terrain_drivers_summary,
     generate_pdf_report,
     render_slope_map_png,
     site_capacity_mwp,
@@ -1114,6 +1115,14 @@ with right:
         pct_over5  = float((s_valid > 5).sum() / len(s_valid) * 100)
         pct_over10 = float((s_valid > 10).sum() / len(s_valid) * 100)
         ha_over10 = area_ha * pct_over10 / 100.0
+        _n_slope = len(s_valid)
+        _slope_bins = (
+            float((s_valid <= 2.5).sum() / _n_slope * 100),
+            float(((s_valid > 2.5) & (s_valid <= 5)).sum() / _n_slope * 100),
+            float(((s_valid > 5) & (s_valid <= 7.5)).sum() / _n_slope * 100),
+            float(((s_valid > 7.5) & (s_valid <= 10)).sum() / _n_slope * 100),
+            float((s_valid > 10).sum() / _n_slope * 100),
+        ) if _n_slope else None
 
         _siq_cache = st.session_state.get("siteiq_run_cache") or {}
         _land_use = _siq_cache.get("land_use", "Standard")
@@ -1156,6 +1165,57 @@ with right:
         with vc2:
             _vt_style = st.success if "Excellent" in _vt_label and "Review" not in _vt_label else st.warning
             _vt_style(f"**Tracker:** {_vt_label} — {_vt_detail}")
+
+        _tds = compute_terrain_drivers_summary(
+            mean_slope, float(s_valid.max()), _slope_bins, _extras,
+            (_vf_label, _vf_detail), (_vt_label, _vt_detail),
+        )
+        _driver_rows = ""
+        for _drv, _imp, _kind in _tds["drivers"]:
+            if _kind == "positive":
+                _imp_html = f'<span style="color:#1b5e20;font-weight:600;">✓ {_imp}</span>'
+            elif _kind == "warn":
+                _imp_html = f'<span style="color:#c65d00;font-weight:600;">⚠ {_imp}</span>'
+            else:
+                _imp_html = f'<span style="color:#555;">{_imp}</span>'
+            _driver_rows += (
+                f'<tr>'
+                f'<td style="padding:0.45rem 0.6rem;border-bottom:1px solid #e8edf2;">{_drv}</td>'
+                f'<td style="padding:0.45rem 0.6rem;border-bottom:1px solid #e8edf2;">{_imp_html}</td>'
+                f'</tr>'
+            )
+        _why_items = ""
+        for _wk, _wt in _tds["why_bullets"]:
+            if _wk == "positive":
+                _why_items += (
+                    f'<li style="margin:0.35rem 0;color:#1a3a2a;">'
+                    f'<span style="color:#1b5e20;font-weight:700;">✓</span> {_wt}</li>'
+                )
+            else:
+                _why_items += (
+                    f'<li style="margin:0.35rem 0;color:#4a3a2a;">'
+                    f'<span style="color:#c65d00;font-weight:700;">⚠</span> {_wt}</li>'
+                )
+        st.markdown(
+            f'<div style="background:#f0f4f8;border:1px solid #c5d4e3;border-radius:10px;'
+            f'padding:0.9rem 1rem;margin:0.75rem 0;">'
+            f'<div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;'
+            f'letter-spacing:0.1em;color:#1565c0;margin-bottom:0.4rem;">Terrain Drivers</div>'
+            f'<div style="font-size:1.2rem;font-weight:800;color:#0d2137;margin-bottom:0.65rem;">'
+            f'Terrain Score: {_tds["terrain_score"]}/100 '
+            f'<span style="font-size:0.95rem;color:#1565c0;">'
+            f'({_tds["terrain_score_label"]})</span></div>'
+            f'<table style="width:100%;border-collapse:collapse;font-size:0.84rem;margin-bottom:0.75rem;">'
+            f'<thead><tr style="background:#1565c0;color:#fff;">'
+            f'<th style="padding:0.45rem 0.6rem;text-align:left;font-weight:700;">Driver</th>'
+            f'<th style="padding:0.45rem 0.6rem;text-align:left;font-weight:700;">Impact</th>'
+            f'</tr></thead><tbody>{_driver_rows}</tbody></table>'
+            f'<div style="font-size:0.82rem;font-weight:700;color:#0d2137;margin-bottom:0.35rem;">'
+            f'Why this verdict?</div>'
+            f'<ul style="margin:0;padding-left:1.1rem;font-size:0.82rem;">{_why_items}</ul>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
 
         _ft_band = capacity_band(area_ha, _land_use, "Fixed Tilt")
         _tr_band = capacity_band(area_ha, _land_use, "Single-Axis Tracker")
@@ -1216,14 +1276,6 @@ with right:
         fname = f"TopoIQ_{lat_c:.3f}_{lon_c:.3f}_{grid_m_used:.0f}m"
 
         with st.spinner("Generating PDF report…"):
-            _n_slope = len(s_valid)
-            _slope_bins = (
-                float((s_valid <= 2.5).sum() / _n_slope * 100),
-                float(((s_valid > 2.5) & (s_valid <= 5)).sum() / _n_slope * 100),
-                float(((s_valid > 5) & (s_valid <= 7.5)).sum() / _n_slope * 100),
-                float(((s_valid > 7.5) & (s_valid <= 10)).sum() / _n_slope * 100),
-                float((s_valid > 10).sum() / _n_slope * 100),
-            ) if _n_slope else None
             _slope_pdf = io.BytesIO(pdf_slope_buf.getvalue()) if pdf_slope_buf else None
             _ctx = build_report_context(
                 project_name=_proj.get("name", ""),

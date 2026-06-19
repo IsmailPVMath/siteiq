@@ -125,6 +125,191 @@ def verdict_for_mount(
     return label, detail
 
 
+def calculate_terrain_score(
+    mean_slope: float,
+    max_slope: float,
+    extras: dict | None = None,
+) -> int:
+    """Deterministic 0–100 terrain score from mean slope, peaks, and cross-row grades."""
+    m = float(mean_slope)
+    if m <= 2.5:
+        base = 94
+    elif m <= 3:
+        base = 92
+    elif m <= 5:
+        base = 88
+    elif m <= 6:
+        base = 80
+    elif m <= 10:
+        base = 66
+    elif m <= 15:
+        base = 52
+    else:
+        base = 38
+
+    if max_slope > 10:
+        base -= 3
+    if max_slope > 15:
+        base -= 5
+
+    ex = extras or {}
+    cr_p95 = ex.get("cross_row_p95")
+    pct_over_6 = ex.get("pct_cross_over_6")
+    if cr_p95 is not None and cr_p95 > 5:
+        base -= 4
+    if pct_over_6 is not None and pct_over_6 > 2:
+        base -= 3
+
+    return max(0, min(100, round(base)))
+
+
+def get_terrain_score_label(score: int, verdict_tracker_label: str) -> str:
+    """Short label for Terrain Score line — aligns with engineering verdict wording."""
+    if "Mostly Excellent" in verdict_tracker_label:
+        return "Mostly Excellent"
+    if score >= 90:
+        return "Excellent"
+    if score >= 80:
+        return "Very Good"
+    if score >= 70:
+        return "Good"
+    if score >= 60:
+        return "Acceptable"
+    if score >= 45:
+        return "Challenging"
+    return "Critical"
+
+
+def _driver_impact_for_mean(mean_pct: float) -> tuple[str, str]:
+    if mean_pct <= 2.5:
+        return "Strong positive", "positive"
+    if mean_pct <= 5:
+        return "Strong positive", "positive"
+    if mean_pct <= 6:
+        return "Acceptable", "neutral"
+    if mean_pct <= 10:
+        return "Moderate constraint", "warn"
+    return "Significant constraint", "warn"
+
+
+def build_terrain_drivers(
+    mean_slope: float,
+    max_slope: float,
+    slope_bins: tuple | list | None,
+    extras: dict | None = None,
+) -> list[tuple[str, str, str]]:
+    """Driver rows as (driver_text, impact_text, kind) with kind positive|warn|neutral."""
+    impact, kind = _driver_impact_for_mean(mean_slope)
+    drivers: list[tuple[str, str, str]] = [
+        (f"Mean slope {mean_slope:.1f}%", impact, kind),
+    ]
+
+    if slope_bins and len(slope_bins) >= 2:
+        pct_below_25 = float(slope_bins[0])
+        pct_below_5 = float(slope_bins[0]) + float(slope_bins[1])
+        drivers.append((
+            f"{pct_below_25:.1f}% of site below 2.5% slope",
+            "Strong positive" if pct_below_25 >= 40 else "Moderate",
+            "positive" if pct_below_25 >= 25 else "neutral",
+        ))
+        drivers.append((
+            f"{pct_below_5:.1f}% of site below 5% slope",
+            "Strong positive" if pct_below_5 >= 70 else "Moderate",
+            "positive" if pct_below_5 >= 50 else "warn",
+        ))
+
+    ex = extras or {}
+    if ex.get("cross_row_mean") is not None:
+        cr_m = float(ex["cross_row_mean"])
+        drivers.append((
+            f"Mean cross-row slope {cr_m:.1f}%",
+            "Tracker-friendly" if cr_m <= 3 else ("Review required" if cr_m > 4 else "Acceptable"),
+            "positive" if cr_m <= 3 else ("warn" if cr_m > 4 else "neutral"),
+        ))
+    if ex.get("cross_row_p95") is not None:
+        p95 = float(ex["cross_row_p95"])
+        drivers.append((
+            f"95th percentile cross-row {p95:.1f}%",
+            "Tracker-friendly" if p95 <= 5 else "Review required",
+            "positive" if p95 <= 5 else "warn",
+        ))
+    if ex.get("pct_cross_over_6") is not None:
+        p6 = float(ex["pct_cross_over_6"])
+        drivers.append((
+            f"{p6:.1f}% area >6% cross-row",
+            "Local grading zones" if p6 > 1 else "Within limits",
+            "warn" if p6 > 1 else "positive",
+        ))
+
+    drivers.append((
+        f"Maximum slope {max_slope:.1f}%",
+        (
+            "Small isolated areas"
+            if max_slope > 8 and max_slope <= 15
+            else "Steep constraint zones" if max_slope > 15 else "Within screening limits"
+        ),
+        "warn" if max_slope > 8 else "positive",
+    ))
+    return drivers
+
+
+def build_terrain_verdict_why(
+    mean_slope: float,
+    verdict_fixed_label: str,
+    verdict_tracker_label: str,
+    extras: dict | None = None,
+) -> list[tuple[str, str]]:
+    """Bullet points for 'Why this verdict?' — (kind, text)."""
+    bullets: list[tuple[str, str]] = []
+    ex = extras or {}
+
+    if mean_slope <= 10 and "Challenging" not in verdict_fixed_label:
+        bullets.append(("positive", "Terrain suitable for utility-scale fixed tilt"))
+    else:
+        bullets.append(("warn", "Fixed-tilt layout may require significant earthworks"))
+
+    if "Mostly Excellent" in verdict_tracker_label:
+        bullets.append(("positive", "Terrain suitable for single-axis trackers"))
+        bullets.append(("warn", "Localized tracker clearance review recommended"))
+    elif "Excellent" in verdict_tracker_label or "Good" in verdict_tracker_label:
+        bullets.append(("positive", "Terrain suitable for single-axis trackers"))
+    elif "Moderate" in verdict_tracker_label:
+        bullets.append(("warn", "Tracker deployment requires detailed civil study"))
+    else:
+        bullets.append(("warn", "Tracker layout likely constrained by terrain"))
+
+    if mean_slope <= 5 and (ex.get("pct_cross_over_6") or 0) < 5:
+        bullets.append(("positive", "Majority of site requires limited grading"))
+    elif mean_slope <= 8:
+        bullets.append(("warn", "Moderate grading expected across portions of site"))
+    else:
+        bullets.append(("warn", "Significant grading likely required"))
+
+    bullets.append(("warn", "LiDAR survey required before FEED and pile design"))
+    return bullets
+
+
+def compute_terrain_drivers_summary(
+    mean_slope: float,
+    max_slope: float,
+    slope_bins: tuple | list | None,
+    extras: dict | None,
+    verdict_fixed: tuple[str, str],
+    verdict_tracker: tuple[str, str],
+) -> dict:
+    """Full Terrain Drivers block for UI and PDF."""
+    score = calculate_terrain_score(mean_slope, max_slope, extras)
+    label = get_terrain_score_label(score, verdict_tracker[0])
+    return {
+        "terrain_score": score,
+        "terrain_score_label": label,
+        "drivers": build_terrain_drivers(mean_slope, max_slope, slope_bins, extras),
+        "why_bullets": build_terrain_verdict_why(
+            mean_slope, verdict_fixed[0], verdict_tracker[0], extras,
+        ),
+    }
+
+
 # ── Extended terrain analytics ───────────────────────────────────────────────
 
 def _aspect_compass(deg: float) -> str:
@@ -413,6 +598,87 @@ def _img_flowable(buf, usable_w, max_ratio=0.72):
         ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
     ]))
     return tbl
+
+
+def _impact_paragraph(text: str, kind: str):
+    from reportlab.lib import colors
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.platypus import Paragraph
+
+    if kind == "positive":
+        col = colors.HexColor("#1b5e20")
+        prefix = "+ "
+    elif kind == "warn":
+        col = colors.HexColor("#e65100")
+        prefix = "! "
+    else:
+        col = colors.HexColor("#555555")
+        prefix = ""
+    return Paragraph(
+        f"{prefix}{text}",
+        ParagraphStyle("imp", fontName="Helvetica", fontSize=8.5, textColor=col, leading=12),
+    )
+
+
+def _append_terrain_drivers_section(story, ctx: dict, usable, hdr_style, body_style):
+    from reportlab.lib import colors
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.platypus import Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.units import mm
+
+    td = ctx.get("terrain_drivers") or {}
+    if not td:
+        return
+
+    story.append(Spacer(1, 2 * mm))
+    story.append(Paragraph("Terrain Drivers", hdr_style))
+    story.append(Spacer(1, 1.5 * mm))
+    story.append(Paragraph(
+        f"<b>Terrain Score: {td['terrain_score']}/100 "
+        f"({td['terrain_score_label']})</b>",
+        ParagraphStyle(
+            "tsc", parent=body_style, fontSize=11,
+            fontName="Helvetica-Bold", leading=15,
+        ),
+    ))
+    story.append(Spacer(1, 2 * mm))
+
+    rows = [[_lp("Driver", bold=True, color="#ffffff"), _lp("Impact", bold=True, color="#ffffff")]]
+    for driver, impact, kind in td.get("drivers", []):
+        rows.append([_lp(driver, size=8.5), _impact_paragraph(impact, kind)])
+
+    d_tbl = Table(rows, colWidths=[usable * 0.62, usable * 0.38])
+    d_tbl.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1565c0")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f0f4f8")]),
+        ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#cccccc")),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]))
+    story.append(d_tbl)
+    story.append(Spacer(1, 3 * mm))
+
+    story.append(Paragraph(
+        "<b>Why this verdict?</b>",
+        ParagraphStyle("whyh", parent=body_style, fontName="Helvetica-Bold", fontSize=9),
+    ))
+    story.append(Spacer(1, 1.5 * mm))
+    for kind, text in td.get("why_bullets", []):
+        if kind == "positive":
+            icon, icol = "+", "#1b5e20"
+        else:
+            icon, icol = "!", "#e65100"
+        story.append(Paragraph(
+            f'<font color="{icol}"><b>{icon}</b></font>&nbsp;&nbsp;{text}',
+            ParagraphStyle("whyb", parent=body_style, fontSize=8.5, leading=12, leftIndent=2),
+        ))
+        story.append(Spacer(1, 1.2 * mm))
+    story.append(Spacer(1, 2 * mm))
 
 
 def generate_pdf_report(ctx: dict) -> Optional[bytes]:
@@ -795,6 +1061,7 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
         "Cross-row metrics above apply to tracker screening.</i>",
         ParagraphStyle("vnote", fontSize=8, textColor=MUTED, leading=11),
     ))
+    _append_terrain_drivers_section(story, ctx, usable, hdr_style, body_style)
     story.append(Spacer(1, 4 * mm))
 
     # Threshold tables
@@ -878,6 +1145,13 @@ def build_report_context(
     rid_suffix = (project_row_id or f"{lat_c:.3f}_{lon_c:.3f}")[:12]
     report_id = f"TQ-{rid_suffix}-{datetime.now(timezone.utc).strftime('%Y%m%d')}"
 
+    verdict_fixed = _verdict_from_mean(mean_slope, "Fixed Tilt")
+    verdict_tracker = verdict_for_mount(mean_slope, "Single-Axis Tracker", extras=extras)
+    terrain_drivers = compute_terrain_drivers_summary(
+        mean_slope, max_slope, slope_bins, extras,
+        verdict_fixed, verdict_tracker,
+    )
+
     siteiq_note = (
         "Run SiteIQ on the same project for solar resource, flood risk, regulatory "
         "pathway, and overall site verdict. Terrain screening is one layer of the "
@@ -928,8 +1202,9 @@ def build_report_context(
         "prepared_by": prepared_by,
         "module_confidence": module_confidence,
         "extras": extras,
-        "verdict_fixed": _verdict_from_mean(mean_slope, "Fixed Tilt"),
-        "verdict_tracker": verdict_for_mount(mean_slope, "Single-Axis Tracker", extras=extras),
+        "verdict_fixed": verdict_fixed,
+        "verdict_tracker": verdict_tracker,
+        "terrain_drivers": terrain_drivers,
         "report_id": report_id,
         "generated_at": ts,
         "revision": 1,
