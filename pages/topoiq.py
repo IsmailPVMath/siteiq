@@ -3,6 +3,7 @@ import numpy as np
 import requests
 import math
 import io
+import re
 import concurrent.futures
 import csv
 import xml.etree.ElementTree as ET
@@ -49,7 +50,172 @@ MAX_GRID_POINTS = 300_000    # coarsen output grid above this point count
 DEM_ZOOM_MIN = 11
 DEM_ZOOM_MAX = 14
 TILE_FETCH_WORKERS = 8
+BOUNDARY_COLORS = ["#22c55e", "#3b82f6", "#f59e0b", "#ec4899", "#8b5cf6", "#14b8a6"]
+_EXCLUDE_BOUNDARY_RE = re.compile(
+    r"tracker|row|string|module|panel|restricted|exclusion|buffer|road|easement|"
+    r"cable|inverter|subst|transformer|fence|layout|block(?!able)",
+    re.I,
+)
+_INCLUDE_BOUNDARY_RE = re.compile(
+    r"site|boundary|buildable|parcel|field|area|limit|perimeter|develop|zone|"
+    r"usable|solar|pv|plot",
+    re.I,
+)
 
+
+def _normalize_ring(pts):
+    """Ensure closed (lon, lat) ring."""
+    if not pts or len(pts) < 3:
+        return pts
+    out = [(float(p[0]), float(p[1])) for p in pts]
+    if out[0] != out[-1]:
+        out.append(out[0])
+    return out
+
+
+def _guess_boundary_enabled(name: str, area_ha: float) -> bool:
+    """Auto-select likely site parcels; skip tracker rows and tiny layout shapes."""
+    if _EXCLUDE_BOUNDARY_RE.search(name or ""):
+        return False
+    if _INCLUDE_BOUNDARY_RE.search(name or ""):
+        return True
+    if area_ha < 2.0:
+        return False
+    return area_ha >= 5.0
+
+
+def boundaries_union_area_ha(polygon_list):
+    """Total area (ha) — union when shapely available, else sum of parts."""
+    polys = [p for p in polygon_list if p and len(p) >= 3]
+    if not polys:
+        return 0.0
+    if len(polys) == 1:
+        return boundary_area_ha(polys[0])
+    if HAS_SHAPELY:
+        try:
+            shapes = []
+            for coords in polys:
+                lats = [c[1] for c in coords]
+                mean_lat = sum(lats) / len(lats)
+                lat_m = 111320.0
+                lon_m = 111320.0 * math.cos(math.radians(mean_lat))
+                pts = [(c[0] * lon_m, c[1] * lat_m) for c in coords]
+                shapes.append(ShapelyPolygon(pts))
+            u = unary_union(shapes)
+            return round(u.area / 10_000, 2)
+        except Exception:
+            pass
+    return round(sum(boundary_area_ha(p) for p in polys), 2)
+
+
+def _polygons_mask(X, Y, polygon_list):
+    if not polygon_list:
+        return np.ones(X.shape, dtype=bool)
+    mask = np.zeros(X.shape, dtype=bool)
+    for coords in polygon_list:
+        if coords and len(coords) >= 3:
+            mask |= _polygon_mask(X, Y, coords)
+    return mask
+
+
+def _render_boundaries_map(boundaries, height=380, interactive=False):
+    """Show all boundaries — enabled = colour, disabled = grey outline."""
+    if not boundaries:
+        return None
+    all_lats = [c[1] for b in boundaries for c in b["coords"]]
+    all_lons = [c[0] for b in boundaries for c in b["coords"]]
+    m = folium.Map(
+        location=[float(np.mean(all_lats)), float(np.mean(all_lons))],
+        zoom_start=13,
+        tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+        attr="Google Satellite",
+    )
+    for i, b in enumerate(boundaries):
+        on = b.get("enabled", True)
+        color = BOUNDARY_COLORS[i % len(BOUNDARY_COLORS)] if on else "#666666"
+        folium.Polygon(
+            locations=[(c[1], c[0]) for c in b["coords"]],
+            color=color,
+            fill=True,
+            fill_opacity=0.28 if on else 0.04,
+            weight=3 if on else 1,
+            dash_array=None if on else "6,4",
+            tooltip=f"{b['name']} ({'included' if on else 'excluded'})",
+        ).add_to(m)
+    return st_folium(
+        m, width=None, height=height,
+        returned_objects=["all_drawings"] if interactive else [],
+    )
+
+
+def _render_boundary_manager():
+    """Checkbox list to include/exclude/delete uploaded boundaries."""
+    bounds = st.session_state.get("topo_boundaries", [])
+    if not bounds:
+        return
+    st.markdown(
+        '<div class="section-hdr" style="margin-top:0.6rem;">'
+        '<i class="fa-solid fa-layer-group" style="color:#1565c0;"></i> '
+        'Site Boundaries — select for analysis</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "All shapes from your file are listed below. "
+        "Check the parcels you want in the terrain run — tracker rows and "
+        "restricted zones are usually left unchecked."
+    )
+    qa, qb, qc = st.columns(3)
+    if qa.button("✓ Enable all", use_container_width=True, key="topo_en_all"):
+        for b in bounds:
+            b["enabled"] = True
+        st.rerun()
+    if qb.button("Site areas only", use_container_width=True, key="topo_en_smart"):
+        for b in bounds:
+            b["enabled"] = _guess_boundary_enabled(
+                b["name"], boundary_area_ha(b["coords"])
+            )
+        st.rerun()
+    if qc.button("Clear all", use_container_width=True, key="topo_clr_all"):
+        st.session_state["topo_boundaries"] = []
+        st.session_state.pop("topo_upload_key", None)
+        st.rerun()
+
+    remove_ids = []
+    for b in bounds:
+        area = boundary_area_ha(b["coords"])
+        n_vert = max(0, len(b["coords"]) - 1)
+        row_cb, row_txt, row_rm = st.columns([0.06, 0.84, 0.10])
+        with row_cb:
+            b["enabled"] = st.checkbox(
+                "on",
+                value=b.get("enabled", True),
+                key=f"topo_en_{b['id']}",
+                label_visibility="collapsed",
+            )
+        with row_txt:
+            st.markdown(
+                f"**{b['name']}** &nbsp;·&nbsp; {area:,.1f} ha &nbsp;·&nbsp; "
+                f"{n_vert} vertices"
+            )
+        with row_rm:
+            if st.button("✕", key=f"topo_rm_{b['id']}", help="Remove this boundary"):
+                remove_ids.append(b["id"])
+
+    if remove_ids:
+        st.session_state["topo_boundaries"] = [
+            b for b in bounds if b["id"] not in remove_ids
+        ]
+        st.rerun()
+
+    enabled = [b for b in bounds if b.get("enabled")]
+    if enabled:
+        total = boundaries_union_area_ha([b["coords"] for b in enabled])
+        st.success(
+            f"**{len(enabled)}** boundar{'y' if len(enabled) == 1 else 'ies'} selected "
+            f"· **{total:,.1f} ha** combined"
+        )
+    else:
+        st.warning("No boundaries selected — check at least one to run analysis.")
 
 def boundary_area_ha(polygon_coords):
     """Approximate polygon area (ha). Vertices are (lon, lat) tuples."""
@@ -599,17 +765,21 @@ def _polygon_mask(X, Y, polygon_coords):
 
 
 def resample_to_grid(mosaic, lat_n, lat_s, lon_w, lon_e,
-                     polygon_coords, grid_m=5.0):
+                     polygon_coords=None, polygon_list=None, grid_m=5.0):
     h, w = mosaic.shape
     lat_c = (lat_n + lat_s) / 2
     m_per_deg_lat = 111320.0
     m_per_deg_lon = 111320.0 * math.cos(math.radians(lat_c))
 
-    if polygon_coords:
-        lons_p = [c[0] for c in polygon_coords]
-        lats_p = [c[1] for c in polygon_coords]
-        p_w, p_e = min(lons_p), max(lons_p)
-        p_s, p_n = min(lats_p), max(lats_p)
+    polys = polygon_list if polygon_list else (
+        [polygon_coords] if polygon_coords else []
+    )
+
+    if polys:
+        all_lons = [c[0] for p in polys for c in p]
+        all_lats = [c[1] for p in polys for c in p]
+        p_w, p_e = min(all_lons), max(all_lons)
+        p_s, p_n = min(all_lats), max(all_lats)
     else:
         p_w, p_e, p_s, p_n = lon_w, lon_e, lat_s, lat_n
 
@@ -631,8 +801,8 @@ def resample_to_grid(mosaic, lat_n, lat_s, lon_w, lon_e,
     row = np.clip(row, 0, h - 2).astype(int)
     Z = mosaic[row, col].astype(float)
 
-    if polygon_coords and len(polygon_coords) >= 3:
-        Z = np.where(_polygon_mask(X, Y, polygon_coords), Z, np.nan)
+    if polys:
+        Z = np.where(_polygons_mask(X, Y, polys), Z, np.nan)
 
     return X, Y, Z, grid_m
 
@@ -803,52 +973,66 @@ def _parse_kml_coords(text):
 
 
 def parse_kml_all_polygons(raw_bytes):
-    import xml.etree.ElementTree as ET2
+    """Extract every closed polygon / ring from KML/KMZ (incl. MultiGeometry)."""
     NS = "http://www.opengis.net/kml/2.2"
 
     try:
-        root2 = ET2.fromstring(raw_bytes)
+        root2 = ET.fromstring(raw_bytes)
     except Exception:
         return {}
 
     results = {}
+    seen = set()
+    _counter = [0]
+
+    def _unique_key(label):
+        _counter[0] += 1
+        base = (label or "Unnamed").strip()
+        key = base if base not in results else f"{base} ({_counter[0]})"
+        return key
 
     def coords_from_el(el):
+        if el is None:
+            return []
         c = el.find(f"{{{NS}}}coordinates")
         if c is None:
             c = el.find("coordinates")
         return _parse_kml_coords(c.text) if (c is not None and c.text) else []
 
+    def _add_ring(pts, label):
+        pts = _normalize_ring(pts)
+        if len(pts) < 3:
+            return
+        sig = tuple(round(x, 6) for x in pts[0]) + (len(pts),)
+        if sig in seen:
+            return
+        seen.add(sig)
+        results[_unique_key(label)] = pts
+
+    def _rings_from_container(container, name):
+        if container is None:
+            return
+        for poly_el in container.findall(f".//{{{NS}}}Polygon"):
+            outer = poly_el.find(f"{{{NS}}}outerBoundaryIs/{{{NS}}}LinearRing")
+            if outer is None:
+                outer = poly_el.find(f".//{{{NS}}}outerBoundaryIs/{{{NS}}}LinearRing")
+            pts = coords_from_el(outer)
+            _add_ring(pts, name)
+        for ls in container.findall(f".//{{{NS}}}LineString"):
+            pts = coords_from_el(ls)
+            if len(pts) >= 3:
+                d = math.hypot(pts[0][0] - pts[-1][0], pts[0][1] - pts[-1][1])
+                if d < 0.002:
+                    _add_ring(pts, f"{name} (line)")
+
     for pm in root2.iter(f"{{{NS}}}Placemark"):
         name_el = pm.find(f"{{{NS}}}name")
         name = name_el.text.strip() if (name_el is not None and name_el.text) else "Unnamed"
-
-        for poly_el in pm.iter(f"{{{NS}}}Polygon"):
-            outer = poly_el.find(f".//{{{NS}}}outerBoundaryIs/{{{NS}}}LinearRing")
-            if outer is not None:
-                pts = coords_from_el(outer)
-            else:
-                pts = coords_from_el(poly_el)
-            if len(pts) >= 3:
-                key = f"Polygon: {name}" if name not in results else f"Polygon: {name}_{len(results)}"
-                results[key] = pts
-
-        for lr in pm.iter(f"{{{NS}}}LinearRing"):
-            if pm.find(f".//{{{NS}}}Polygon") is not None:
-                continue
-            pts = coords_from_el(lr)
-            if len(pts) >= 3:
-                key = f"Ring: {name}" if name not in results else f"Ring: {name}_{len(results)}"
-                results[key] = pts
-
-        for ls in pm.iter(f"{{{NS}}}LineString"):
-            pts = coords_from_el(ls)
-            if len(pts) >= 3:
-                first, last = pts[0], pts[-1]
-                dist = math.sqrt((first[0]-last[0])**2 + (first[1]-last[1])**2)
-                if dist < 0.001:
-                    key = f"Line: {name}" if name not in results else f"Line: {name}_{len(results)}"
-                    results[key] = pts
+        multi = pm.find(f"{{{NS}}}MultiGeometry")
+        if multi is not None:
+            _rings_from_container(multi, name)
+        else:
+            _rings_from_container(pm, name)
 
     if not results:
         for pm in root2.iter("Placemark"):
@@ -856,13 +1040,26 @@ def parse_kml_all_polygons(raw_bytes):
             name = name_el.text.strip() if (name_el is not None and name_el.text) else "Unnamed"
             for poly_el in pm.iter("Polygon"):
                 outer = poly_el.find(".//outerBoundaryIs/LinearRing")
-                c_el = outer.find("coordinates") if outer is not None else poly_el.find("coordinates")
-                if c_el is not None and c_el.text:
-                    pts = _parse_kml_coords(c_el.text)
-                    if len(pts) >= 3:
-                        results[f"Polygon: {name}"] = pts
+                if outer is not None:
+                    _add_ring(_parse_kml_coords(
+                        outer.find("coordinates").text if outer.find("coordinates") is not None else ""
+                    ), name)
 
     return results
+
+
+def _boundaries_from_file_dict(all_polys: dict, source_key: str):
+    """Build session-state boundary list from parsed file shapes."""
+    out = []
+    for i, (name, coords) in enumerate(all_polys.items()):
+        area = boundary_area_ha(coords)
+        out.append({
+            "id": f"{source_key}_{i}",
+            "name": name,
+            "coords": coords,
+            "enabled": _guess_boundary_enabled(name, area),
+        })
+    return out
 
 
 def parse_dxf_polygons(raw_bytes):
@@ -942,6 +1139,18 @@ _preloaded_polygon = (
     else None
 )
 
+if "topo_boundaries" not in st.session_state:
+    st.session_state["topo_boundaries"] = []
+
+if _preloaded_polygon and not st.session_state.get("topo_from_proj"):
+    st.session_state["topo_boundaries"] = [{
+        "id": "proj_0",
+        "name": "Project boundary",
+        "coords": _preloaded_polygon,
+        "enabled": True,
+    }]
+    st.session_state["topo_from_proj"] = True
+
 topo_project_name = st.session_state.get("topo_project_name", "")
 topo_country      = st.session_state.get("topo_country", "")
 
@@ -961,46 +1170,30 @@ left, right = st.columns([1, 1.4])
 with left:
     st.markdown('<div class="section-hdr"><i class="fa-solid fa-draw-polygon" style="color:#1565c0;"></i> Site Boundary</div>', unsafe_allow_html=True)
 
-    if _preloaded_polygon:
-        # ── Boundary loaded from Full Mode project — no need to redraw ────
-        _lons_p = [c[0] for c in _preloaded_polygon]
-        _lats_p = [c[1] for c in _preloaded_polygon]
-        _lon_c  = (min(_lons_p) + max(_lons_p)) / 2
-        _lat_c  = (min(_lats_p) + max(_lats_p)) / 2
+    if _preloaded_polygon and st.session_state.get("topo_from_proj"):
         _preload_area_ha = boundary_area_ha(_preloaded_polygon)
         st.markdown(
             f'<div style="background:#e8f5ee;border:1.5px solid #b8ddc8;border-radius:10px;'
             f'padding:0.75rem 1rem;margin-bottom:0.6rem;">'
             f'<span style="font-weight:700;color:#145f34;font-size:0.88rem;">'
-            f'<i class="fa-solid fa-circle-check"></i> Site boundary loaded from project</span><br>'
+            f'<i class="fa-solid fa-circle-check"></i> Boundary loaded from project</span><br>'
             f'<span style="font-size:0.8rem;color:#3a5a3a;">'
-            f'{len(_preloaded_polygon)-1} vertices &nbsp;·&nbsp; '
-            f'{_preload_area_ha:,.1f} ha &nbsp;·&nbsp; '
-            f'Centre {_lat_c:.4f}°, {_lon_c:.4f}°</span>'
+            f'Use the checklist below to add/remove parcels, or upload a KMZ with more boundaries.</span>'
             f'</div>',
             unsafe_allow_html=True
         )
-        if _preload_area_ha > MAX_SITE_AREA_HA:
-            st.error(_area_limit_message(_preload_area_ha))
-        _m_prev = folium.Map(location=[_lat_c, _lon_c], zoom_start=14,
-                             tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
-                             attr="Google Satellite")
-        folium.Polygon(
-            locations=[(c[1], c[0]) for c in _preloaded_polygon],
-            color="#22c55e", fill=True, fill_opacity=0.25, weight=3
-        ).add_to(_m_prev)
-        st_folium(_m_prev, width=None, height=350, returned_objects=[])
-        polygon_coords = _preloaded_polygon
 
-    else:
+    if not (_preloaded_polygon and st.session_state.get("topo_from_proj")):
         input_method = st.radio("Input method", [
-            "✏️ Draw Site Boundary on Map",
             "📁 Upload KML / KMZ / DXF / DWG",
-        ], horizontal=True)
+            "✏️ Draw Site Boundary on Map",
+        ], horizontal=True, help="Upload is fastest for utility-scale KMZ exports with multiple parcels.")
+    else:
+        input_method = "📁 Upload KML / KMZ / DXF / DWG"
 
-        polygon_coords = None
+    _new_draw = None
 
-        if input_method == "✏️ Draw Site Boundary on Map":
+    if input_method == "✏️ Draw Site Boundary on Map":
 
             nav_tab1, nav_tab2 = st.tabs(["🔍 Search by Name", "📍 Enter Coordinates"])
 
@@ -1086,6 +1279,14 @@ with left:
                            tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
                            attr="Google Satellite")
 
+            for _bi, _bb in enumerate(st.session_state.get("topo_boundaries", [])):
+                _bc = BOUNDARY_COLORS[_bi % len(BOUNDARY_COLORS)] if _bb.get("enabled") else "#666"
+                folium.Polygon(
+                    locations=[(c[1], c[0]) for c in _bb["coords"]],
+                    color=_bc, fill=True, fill_opacity=0.15, weight=2,
+                    tooltip=_bb["name"],
+                ).add_to(m)
+
             _style = {"color": "#ffeb3b", "weight": 5, "opacity": 1.0,
                       "fillColor": "#ffeb3b", "fillOpacity": 0.10}
             Draw(
@@ -1124,24 +1325,36 @@ with left:
                         break
 
             if polygon_coords:
+                _new_draw = polygon_coords
                 _drawn_area_ha = boundary_area_ha(polygon_coords)
                 if _drawn_area_ha > MAX_SITE_AREA_HA:
                     st.error(_area_limit_message(_drawn_area_ha))
                 else:
                     st.success(
-                        f"✅ Site boundary captured — {len(polygon_coords)-1} vertices · "
-                        f"{_drawn_area_ha:,.1f} ha"
+                        f"✅ Boundary drawn — {len(polygon_coords)-1} vertices · "
+                        f"{_drawn_area_ha:,.1f} ha (added to list below)"
                     )
             else:
-                st.caption("Draw your site boundary on the map above to enable analysis.")
+                st.caption("Draw your site boundary on the map above.")
 
+    else:
+        if st.session_state.get("topo_boundaries"):
+            with st.expander("📁 Upload KMZ/KML (replaces boundary list)", expanded=False):
+                f = st.file_uploader(
+                    "Boundary file",
+                    type=["kml", "kmz", "dxf", "dwg"],
+                    help="All shapes imported — tracker rows auto-excluded where possible.",
+                )
         else:
             f = st.file_uploader(
                 "Upload boundary file",
                 type=["kml", "kmz", "dxf", "dwg"],
-                help="KML / KMZ from Google Earth · DXF or DWG from any CAD software"
+                help="KMZ/KML from Google Earth or GIS — all site parcels, buildable areas, "
+                     "and boundaries are imported. Tracker rows are auto-detected and usually excluded.",
             )
-            if f:
+        if f:
+            file_key = f"{f.name}_{f.size}"
+            if st.session_state.get("topo_upload_key") != file_key:
                 raw, ftype = load_boundary_file(f)
 
                 if ftype == "dwg_unsupported":
@@ -1159,44 +1372,48 @@ with left:
                     all_polys = {}
 
                 if not all_polys:
-                    st.error("No closed polygon found in file. Check the file contains a site boundary polyline or polygon.")
-                elif len(all_polys) == 1:
-                    polygon_coords = list(all_polys.values())[0]
-                    _upload_area_ha = boundary_area_ha(polygon_coords)
-                    if _upload_area_ha > MAX_SITE_AREA_HA:
-                        st.error(_area_limit_message(_upload_area_ha))
-                    else:
-                        st.success(
-                            f"Boundary loaded — {len(polygon_coords)} vertices · "
-                            f"{_upload_area_ha:,.1f} ha"
-                        )
+                    st.error(
+                        "No closed polygons found. Ensure the file contains site boundary "
+                        "polylines or polygons (not just points or tracker centre-lines)."
+                    )
                 else:
-                    st.info(f"Found {len(all_polys)} polygons/boundaries in file. Select the site boundary:")
-                    chosen = st.selectbox("Select boundary", list(all_polys.keys()))
-                    polygon_coords = all_polys[chosen]
-                    _upload_area_ha = boundary_area_ha(polygon_coords)
-                    if _upload_area_ha > MAX_SITE_AREA_HA:
-                        st.error(_area_limit_message(_upload_area_ha))
-                    else:
-                        st.success(
-                            f"Selected: **{chosen}** — {len(polygon_coords)} vertices · "
-                            f"{_upload_area_ha:,.1f} ha"
-                        )
+                    st.session_state["topo_boundaries"] = _boundaries_from_file_dict(
+                        all_polys, file_key
+                    )
+                    st.session_state["topo_upload_key"] = file_key
+                    st.session_state.pop("topo_from_proj", None)
+                    n_en = sum(1 for b in st.session_state["topo_boundaries"] if b["enabled"])
+                    st.success(
+                        f"Loaded **{len(all_polys)}** shapes from **{f.name}** — "
+                        f"**{n_en}** auto-selected as site areas. Adjust the checklist below."
+                    )
+                    st.rerun()
 
-                if polygon_coords:
-                    lons = [c[0] for c in polygon_coords]
-                    lats = [c[1] for c in polygon_coords]
-                    m2 = folium.Map(location=[np.mean(lats), np.mean(lons)],
-                                    zoom_start=13,
-                                    tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
-                                    attr="Google Satellite")
-                    folium.Polygon(
-                        locations=[(c[1], c[0]) for c in polygon_coords],
-                        color="#42a5f5", fill=True, fill_opacity=0.25, weight=2
-                    ).add_to(m2)
-                    st_folium(m2, width=None, height=300, returned_objects=[])
+    if _new_draw:
+        _sig = tuple(round(c[0], 5) for c in _new_draw[: min(8, len(_new_draw))])
+        if st.session_state.get("topo_last_draw_sig") != _sig:
+            st.session_state["topo_last_draw_sig"] = _sig
+            _n = sum(1 for b in st.session_state["topo_boundaries"]
+                     if str(b.get("id", "")).startswith("draw_")) + 1
+            st.session_state["topo_boundaries"].append({
+                "id": f"draw_{_n}",
+                "name": f"Drawn boundary {_n}",
+                "coords": _new_draw,
+                "enabled": True,
+            })
 
-    st.markdown('<div class="section-hdr" style="margin-top:1rem;"><i class="fa-solid fa-sliders" style="color:#1565c0;"></i> Settings</div>', unsafe_allow_html=True)
+    if st.session_state.get("topo_boundaries"):
+        _render_boundary_manager()
+        _render_boundaries_map(st.session_state["topo_boundaries"], height=360)
+
+    _boundaries = st.session_state.get("topo_boundaries", [])
+    _enabled_polys = [b["coords"] for b in _boundaries if b.get("enabled")]
+
+    st.markdown(
+        '<div class="section-hdr" style="margin-top:1rem;">'
+        '<i class="fa-solid fa-sliders" style="color:#1565c0;"></i> Settings</div>',
+        unsafe_allow_html=True,
+    )
     st.markdown('<div class="pvm-topo-settings"></div>', unsafe_allow_html=True)
     sc1, sc2, sc3 = st.columns(3)
     grid_spacing = sc1.slider("Grid spacing (m)", min_value=3, max_value=10, value=5, step=1,
@@ -1204,7 +1421,7 @@ with left:
     contour_minor = sc2.slider("Minor contour (m)", min_value=0.1, max_value=2.0, value=0.5, step=0.1)
     contour_major = sc3.slider("Major contour (m)", min_value=0.5, max_value=10.0, value=1.0, step=0.5)
 
-    _site_area_ha = boundary_area_ha(polygon_coords) if polygon_coords else None
+    _site_area_ha = boundaries_union_area_ha(_enabled_polys) if _enabled_polys else None
     _area_over_limit = (
         _site_area_ha is not None and _site_area_ha > MAX_SITE_AREA_HA
     )
@@ -1213,6 +1430,7 @@ with left:
 
     _topo_user = st.session_state.get("pvm_user_id", "guest")
     _topo_left = remaining(_topo_user, "topoiq")
+    run = False
 
     if is_over_limit(_topo_user, "topoiq"):
         show_paywall("TopoIQ")
@@ -1222,21 +1440,21 @@ with left:
             st.warning(f"⚠️ {_topo_left} free analysis remaining after this run.")
         run = st.button("⛰ Run Terrain Analysis", type="primary",
                         use_container_width=True,
-                        disabled=(polygon_coords is None or _area_over_limit))
-        if polygon_coords is None:
-            st.caption("Draw or upload a site boundary to enable analysis.")
+                        disabled=(not _enabled_polys or _area_over_limit))
+        if not _enabled_polys:
+            st.caption("Upload a KMZ or check at least one boundary above to enable analysis.")
         elif _area_over_limit:
-            st.caption(f"Reduce the boundary below {MAX_SITE_AREA_HA:,} ha to run analysis.")
+            st.caption(f"Reduce selected area below {MAX_SITE_AREA_HA:,} ha to run analysis.")
 
 # ─── Results ──────────────────────────────────────────────────────────────────
 with right:
-    if run and polygon_coords:
-        _run_area_ha = boundary_area_ha(polygon_coords)
+    if run and _enabled_polys:
+        _run_area_ha = boundaries_union_area_ha(_enabled_polys)
         if _run_area_ha > MAX_SITE_AREA_HA:
             st.error(_area_limit_message(_run_area_ha))
             st.stop()
-        lons_p = [c[0] for c in polygon_coords]
-        lats_p = [c[1] for c in polygon_coords]
+        lons_p = [c[0] for poly in _enabled_polys for c in poly]
+        lats_p = [c[1] for poly in _enabled_polys for c in poly]
         south, north = min(lats_p) - 0.001, max(lats_p) + 0.001
         west,  east  = min(lons_p) - 0.001, max(lons_p) + 0.001
         lat_c = (south + north) / 2
@@ -1256,7 +1474,7 @@ with right:
         with st.spinner(f"Processing {grid_spacing}m grid…"):
             X, Y, Z, grid_m_used = resample_to_grid(
                 mosaic, lat_n, lat_s, lon_w, lon_e,
-                polygon_coords, grid_m=float(grid_spacing)
+                polygon_list=_enabled_polys, grid_m=float(grid_spacing)
             )
             slope = compute_slope(Z, grid_m_used)
 
