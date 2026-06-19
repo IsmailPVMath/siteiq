@@ -1,46 +1,32 @@
 """Grouped, collapsible boundary checklist for Project Setup and TopoIQ."""
 import re
 import streamlit as st
-from pvmath_kml import group_boundaries_by_layer, guess_boundary_enabled, apply_site_areas_only_selection
+from pvmath_kml import group_boundaries_by_layer, apply_site_areas_only_selection
 
 
 def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", (text or "layer").lower())[:48]
 
 
-def _pop_parcel_checkbox_keys(key_prefix: str, boundary_ids) -> None:
-    """Streamlit keeps widget state by key — clear after bulk enable/disable."""
-    for bid in boundary_ids:
-        st.session_state.pop(f"{key_prefix}_en_{bid}", None)
+def _layer_all_on(items: list) -> bool:
+    return all(bool(b.get("enabled", True)) for b in items)
 
 
-def _pop_layer_checkbox_key(key_prefix: str, slug: str) -> None:
-    st.session_state.pop(f"{key_prefix}_layer_{slug}", None)
+def _clear_widget_keys(key_prefix: str, all_bounds: list, groups: list) -> None:
+    """Drop cached checkbox state so widgets re-read the boundary data model."""
+    for b in all_bounds:
+        st.session_state.pop(f"{key_prefix}_en_{b['id']}", None)
+    for layer_name, _items in groups:
+        st.session_state.pop(f"{key_prefix}_layer_{_slug(layer_name)}", None)
 
 
-def _layer_group_state(items: list) -> tuple[bool, bool, bool]:
-    """Return (all_on, any_on, mixed)."""
-    flags = [bool(b.get("enabled", True)) for b in items]
-    all_on = all(flags)
-    any_on = any(flags)
-    return all_on, any_on, all_on != any_on
-
-
-def _sync_layer_checkbox_indicator(key_prefix: str, slug: str, *, all_on: bool, mixed: bool) -> None:
-    """Keep the layer box in sync when children change — without toggling children."""
-    layer_key = f"{key_prefix}_layer_{slug}"
-    if mixed:
-        if st.session_state.get(layer_key, True):
-            st.session_state[layer_key] = False
-    elif st.session_state.get(layer_key) != all_on:
-        st.session_state[layer_key] = all_on
-
-
-def _apply_layer_toggle(key_prefix: str, slug: str, items: list, enabled: bool) -> None:
+def _on_layer_toggle(key_prefix: str, slug: str, items: list) -> None:
+    """Layer checkbox changed — apply to every parcel in the group."""
+    val = bool(st.session_state.get(f"{key_prefix}_layer_{slug}", False))
     for b in items:
-        b["enabled"] = enabled
-    _pop_parcel_checkbox_keys(key_prefix, [b["id"] for b in items])
-    st.session_state[f"{key_prefix}_layer_{slug}"] = enabled
+        b["enabled"] = val
+    for b in items:
+        st.session_state.pop(f"{key_prefix}_en_{b['id']}", None)
 
 
 def _layer_expanded_default(layer_name: str, parcel_count: int) -> bool:
@@ -72,21 +58,18 @@ def render_grouped_boundary_manager(
     if qa.button("✓ Enable all", use_container_width=True, key=f"{key_prefix}_en_all"):
         for b in visible_bounds:
             b["enabled"] = True
-        _pop_parcel_checkbox_keys(key_prefix, [b["id"] for b in visible_bounds])
-        for layer_name, items in groups:
-            _pop_layer_checkbox_key(key_prefix, _slug(layer_name))
+        _clear_widget_keys(key_prefix, all_bounds, groups)
         st.rerun()
     if qb.button("Site areas only", use_container_width=True, key=f"{key_prefix}_en_smart"):
         if smart_select_fn:
             smart_select_fn(all_bounds, visible_bounds)
         else:
             apply_site_areas_only_selection(all_bounds)
-        _pop_parcel_checkbox_keys(key_prefix, [b["id"] for b in all_bounds])
-        for layer_name, items in groups:
-            _pop_layer_checkbox_key(key_prefix, _slug(layer_name))
+        _clear_widget_keys(key_prefix, all_bounds, groups)
         st.rerun()
     if qc.button("Clear all", use_container_width=True, key=f"{key_prefix}_clr_all"):
         on_clear_all()
+        _clear_widget_keys(key_prefix, all_bounds, groups)
         st.rerun()
 
     enabled = [b for b in all_bounds if b.get("enabled")]
@@ -109,30 +92,24 @@ def render_grouped_boundary_manager(
     for layer_name, items in groups:
         slug = _slug(layer_name)
         layer_ha = sum(area_fn(b["coords"]) for b in items)
-        all_on, any_on, mixed = _layer_group_state(items)
+        all_on = _layer_all_on(items)
         expanded = _layer_expanded_default(layer_name, len(items))
         layer_key = f"{key_prefix}_layer_{slug}"
 
-        _sync_layer_checkbox_indicator(key_prefix, slug, all_on=all_on, mixed=mixed)
-
-        def _on_layer_change(kp=key_prefix, sl=slug, layer_items=items):
-            val = st.session_state[f"{kp}_layer_{sl}"]
-            _apply_layer_toggle(kp, sl, layer_items, val)
+        # Child parcel toggles changed — update the layer box to match (no child writes).
+        if layer_key in st.session_state and bool(st.session_state[layer_key]) != all_on:
+            st.session_state[layer_key] = all_on
 
         hdr_cb, hdr_tree = st.columns([0.055, 0.945])
         with hdr_cb:
-            layer_on = st.checkbox(
+            st.checkbox(
                 "layer",
                 value=all_on,
                 key=layer_key,
                 label_visibility="collapsed",
-                on_change=_on_layer_change,
+                on_change=_on_layer_toggle,
+                args=(key_prefix, slug, items),
             )
-
-        # Fallback for the same run: layer toggled but on_change has not fired yet.
-        if layer_on != all_on and not (mixed and layer_on):
-            _apply_layer_toggle(key_prefix, slug, items, layer_on)
-            st.rerun()
 
         with hdr_tree:
             with st.expander(
@@ -146,12 +123,17 @@ def render_grouped_boundary_manager(
                     prefix = f"{layer_name} / "
                     if parcel_label.startswith(prefix):
                         parcel_label = parcel_label[len(prefix):]
+                    parcel_key = f"{key_prefix}_en_{b['id']}"
+                    desired = bool(b.get("enabled", True))
+                    # Widget cache can disagree with the data model after bulk/layer actions.
+                    if parcel_key in st.session_state and bool(st.session_state[parcel_key]) != desired:
+                        st.session_state.pop(parcel_key, None)
                     row_cb, row_txt, row_rm = st.columns([0.06, 0.84, 0.10])
                     with row_cb:
                         b["enabled"] = st.checkbox(
                             "on",
-                            value=b.get("enabled", True),
-                            key=f"{key_prefix}_en_{b['id']}",
+                            value=desired,
+                            key=parcel_key,
                             label_visibility="collapsed",
                         )
                     with row_txt:
