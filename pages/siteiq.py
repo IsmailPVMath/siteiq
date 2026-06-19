@@ -17,6 +17,7 @@ from pvmath_auth import (
 from pvmath_styles import inject_styles
 from pvmath_kml import filter_boundary_list
 from pvmath_geocode import reverse_geocode
+from pvmath_terrain_report import site_capacity_screen, GCR_REF, _SCREENING_GCR
 from streamlit_folium import st_folium
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -704,17 +705,40 @@ def assess_eeg(lat, lon, land_use="Standard", project_country=""):
         return name, "Check local renewable energy incentive scheme", "Contact national energy regulatory authority for grid connection"
 
 
-def site_capacity(area_ha, land_use="Standard", mount_type="Fixed Tilt", annual_yield_kwh_kwp=None):
-    """Indicative installable DC capacity (MWp) from area × screening density."""
-    if land_use == "Agri-PV":
-        density = 0.18 if mount_type == "Single-Axis Tracker" else 0.20
-    else:
-        density = 0.35 if mount_type == "Single-Axis Tracker" else 0.40
-    mw = round(area_ha * density, 2)
-    mwh = None
+def screening_capacity(area_ha, land_use="Standard", mount_type="Fixed Tilt", annual_yield_kwh_kwp=None):
+    """Indicative DC MWp band — same GCR-scaled logic as TopoIQ PDF."""
+    mwp_lo, mwp_hi, dens_lo, dens_hi = site_capacity_screen(area_ha, land_use, mount_type)
+    gcr_lo, gcr_hi = _SCREENING_GCR.get(mount_type, (GCR_REF, GCR_REF))
+    mwh_lo = mwh_hi = None
     if annual_yield_kwh_kwp and annual_yield_kwh_kwp > 0:
-        mwh = round(mw * annual_yield_kwh_kwp, 0)
-    return mw, mwh
+        mwh_lo = round(mwp_lo * annual_yield_kwh_kwp, 0)
+        mwh_hi = round(mwp_hi * annual_yield_kwh_kwp, 0)
+    return {
+        "mwp_lo": mwp_lo, "mwp_hi": mwp_hi,
+        "mwh_lo": mwh_lo, "mwh_hi": mwh_hi,
+        "dens_lo": dens_lo, "dens_hi": dens_hi,
+        "gcr_lo": gcr_lo, "gcr_hi": gcr_hi,
+    }
+
+
+def _cap_mwp_text(mwp_lo, mwp_hi):
+    if mwp_lo == mwp_hi:
+        return f"~{mwp_lo:,.0f} MWp DC"
+    return f"~{mwp_lo:,.0f}–{mwp_hi:,.0f} MWp DC"
+
+
+def _cap_density_text(dens_lo, dens_hi, gcr_lo, gcr_hi):
+    if dens_lo == dens_hi:
+        return f"{dens_lo:.2f} MWp DC/ha @ GCR {gcr_lo:.2f}"
+    return f"{dens_lo:.2f}–{dens_hi:.2f} MWp DC/ha · GCR {gcr_lo:.2f}–{gcr_hi:.2f}"
+
+
+def _cap_mwh_text(mwh_lo, mwh_hi):
+    if mwh_lo is None:
+        return None
+    if mwh_lo == mwh_hi:
+        return f"{mwh_lo:,.0f} MWh/yr"
+    return f"{mwh_lo:,.0f}–{mwh_hi:,.0f} MWh/yr"
 
 
 def overall_verdict(slope_lbl, solar_lbl, land_use="Standard", mount_type="Fixed Tilt"):
@@ -853,7 +877,7 @@ def get_next_steps(project_country, land_use="Standard", lat=None, lon=None):
 def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
               country, eeg_status, eeg_note,
               slope_lbl, solar_lbl, verdict, verdict_txt,
-              cap_mw, cap_mwh,
+              cap,
               land_use="Standard", mount_type="Fixed Tilt",
               project_country="", location_label="",
               flood_risk="", flood_detail="", coord_note=""):
@@ -1000,9 +1024,6 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
 
     story.append(section_hdr("KEY METRICS"))
     story.append(Spacer(1, 0.15*cm))
-    _density = (0.18 if land_use=='Agri-PV' and mount_type=='Single-Axis Tracker'
-                else 0.20 if land_use=='Agri-PV'
-                else 0.35 if mount_type=='Single-Axis Tracker' else 0.40)
 
     def _badge(text):
         """Colour-coded rating badge matching website style."""
@@ -1022,7 +1043,9 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
     _flood_badge = _badge(flood_risk.replace("🟢 ", "").replace("🟡 ", "").replace("🟠 ", "").replace("🔴 ", "").replace("⚠️ ", ""))
     _yield_lbl = "Specific Yield" if mount_type == "Single-Axis Tracker" else "Annual Yield"
     _incentive_lbl = _incentive_row_label(project_country, country)
-    _output_val = f"{cap_mwh:,.0f} MWh/yr" if cap_mwh is not None else "— (yield data unavailable)"
+    _cap_mwp = _cap_mwp_text(cap["mwp_lo"], cap["mwp_hi"])
+    _cap_dens = _cap_density_text(cap["dens_lo"], cap["dens_hi"], cap["gcr_lo"], cap["gcr_hi"])
+    _output_val = _cap_mwh_text(cap["mwh_lo"], cap["mwh_hi"]) or "— (yield data unavailable)"
 
     rows = [
         [lp("Metric",          colors.white, bold=True, size=9),
@@ -1039,7 +1062,7 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
         [lp("Max Slope",       MUTED, size=9), lp(f"{terrain.get('max_slope_pct','—')}%", bold=True, size=9),        _slope_badge],
         [lp("Elevation",       MUTED, size=9), lp(f"{terrain.get('center_elev','—')} m asl", bold=True, size=9),     lp("—", MUTED, size=8)],
         [lp("Flood Risk",      MUTED, size=9), lp(flood_detail or "—", bold=True, size=9),                            _flood_badge],
-        [lp("Est. DC Capacity", MUTED, size=9), lp(f"{cap_mw} MWp DC", bold=True, size=9),               lp(f"Density: {_density} MWp DC/ha", MUTED, size=8)],
+        [lp("Est. DC Capacity", MUTED, size=9), lp(_cap_mwp, bold=True, size=9),               lp(_cap_dens, MUTED, size=8)],
         [lp("Est. Output",     MUTED, size=9), lp(_output_val, bold=True, size=9),                                    lp("Indicative only", MUTED, size=8)],
         [lp(_incentive_lbl,   MUTED, size=9), lp(eeg_status, bold=True, size=9),                                    lp(eeg_note, MUTED, size=8)],
     ]
@@ -1517,7 +1540,8 @@ with right:
             g_lbl, g_detail = "⚠️ Data unavailable", "Solar resource data could not be retrieved for this location — try again or check PVGIS coverage."
         country, eeg_status, eeg_note = assess_eeg(lat, lon, _land_use, project_country_input)
         _yield = solar.get("annual_yield") if solar.get("success") else None
-        cap_mw, cap_mwh = site_capacity(area_ha, _land_use, _mount_type, _yield)
+        cap = screening_capacity(area_ha, _land_use, _mount_type, _yield)
+        _cap_mwp_display = _cap_mwp_text(cap["mwp_lo"], cap["mwp_hi"])
         verdict, verdict_txt = overall_verdict(s_lbl, g_lbl, _land_use, _mount_type)
         flood_risk, flood_detail, flood_portal, flood_portal_name = get_flood_risk(
             lat, lon, terrain.get("center_elev") if terrain.get("success") else None
@@ -1548,7 +1572,7 @@ with right:
         _metrics = [
             (c1, "fa-sun",            "#f5a623", "In-plane Irradiation", f"{solar.get('annual_ghi','—')} kWh/m²"),
             (c2, "fa-mountain",       "#5b9bd5", "Max Slope",    f"{terrain.get('max_slope_pct','—')}%"),
-            (c3, "fa-bolt",           "#2ecc71", "Est. DC Capacity", f"{cap_mw} MWp DC"),
+            (c3, "fa-bolt",           "#2ecc71", "Est. DC Capacity", _cap_mwp_display),
             (c4, "fa-ruler-combined", "#a87fd4", _mc4_lbl, _mc4_val),
         ]
         for _mc, _icon, _ic, _lbl, _val in _metrics:
@@ -1562,9 +1586,15 @@ with right:
             )
 
         if _proj.get("mode") == "full" and _enabled_polys_latlon:
+            _gcr_note = (
+                f" · 1P SAT GCR {cap['gcr_lo']:.2f}–{cap['gcr_hi']:.2f}"
+                if cap["gcr_lo"] != cap["gcr_hi"]
+                else f" · GCR {cap['gcr_lo']:.2f}"
+            )
             st.caption(
                 "⚡ Capacity estimated from your drawn site boundary area — "
-                f"**{area_ha} ha**."
+                f"**{area_ha} ha**{_gcr_note}. "
+                "Screening band aligned with TopoIQ — layout-optimised designs can differ."
             )
         else:
             st.caption(
@@ -1573,8 +1603,12 @@ with right:
                 "boundary in Project Setup (Full Mode) for a boundary-derived capacity estimate."
             )
 
-        if cap_mwh is not None:
-            st.caption(f"⚡ Est. annual output: **{cap_mwh:,.0f} MWh/yr** ({cap_mw} MWp DC × {solar.get('annual_yield', '—')} kWh/kWp/yr)")
+        if cap["mwh_lo"] is not None:
+            _mwh_txt = _cap_mwh_text(cap["mwh_lo"], cap["mwh_hi"])
+            st.caption(
+                f"⚡ Est. annual output: **{_mwh_txt}** "
+                f"({_cap_mwp_display} × {solar.get('annual_yield', '—')} kWh/kWp/yr)"
+            )
 
         if terrain.get("success"):
             if terrain.get("boundary_sampled"):
@@ -1670,7 +1704,7 @@ with right:
             country=country, eeg_status=eeg_status, eeg_note=eeg_note,
             slope_lbl=s_lbl, solar_lbl=g_lbl,
             verdict=verdict, verdict_txt=verdict_txt,
-            cap_mw=cap_mw, cap_mwh=cap_mwh,
+            cap=cap,
             land_use=_land_use, mount_type=_mount_type,
             project_country=project_country_input,
             location_label=_location_label,
