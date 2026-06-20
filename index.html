@@ -875,7 +875,7 @@
       <div class="steps">
         <div class="step"><div class="step-num blue">2</div><h3 data-i18n="topoiq.s1.h">Confirm boundary &amp; grid</h3><p data-i18n="topoiq.s1.p">Boundary loads from Project Setup. Set contour spacing and analysis grid.</p></div>
         <div class="step"><div class="step-num blue">3</div><h3 data-i18n="topoiq.s2.h">Run terrain screening</h3><p data-i18n="topoiq.s2.p">Copernicus GLO-30 across your polygon. Slope heatmaps, cross-row grades, engineering verdicts.</p></div>
-        <div class="step"><div class="step-num blue">4</div><h3 data-i18n="topoiq.s3.h">Export PDF, DXF &amp; LandXML</h3><p data-i18n="topoiq.s3.p">Terrain PDF plus a CAD starter kit: UTM LandXML TIN, DXF contours, and parcel linework from your KMZ &mdash; conceptual, not survey-grade.</p></div>
+        <div class="step"><div class="step-num blue">4</div><h3 data-i18n="topoiq.s3.h">Export PDF, DXF &amp; LandXML</h3><p data-i18n="topoiq.s3.p">Terrain PDF plus a CAD starter kit: UTM LandXML TIN and DXF contours with parcel linework from your KMZ &mdash; conceptual, not survey-grade.</p></div>
       </div>
     </div>
 
@@ -913,7 +913,7 @@
     <div class="why-grid">
       <div class="why-card"><div class="why-icon">&#9728;&#65039;</div><h4 data-i18n="why.c1.h">Industry-Standard Solar Data</h4><p data-i18n="why.c1.p">PVGIS (EC JRC) GHI and irradiation &mdash; used in bankable pre-feasibility worldwide.</p></div>
       <div class="why-card"><div class="why-icon">&#127956;&#65039;</div><h4 data-i18n="why.c2.h">Satellite Terrain Data</h4><p data-i18n="why.c2.p">Copernicus GLO-30 DEM. Slope maps and contours in seconds.</p></div>
-      <div class="why-card"><div class="why-icon">&#128208;</div><h4 data-i18n="why.c3.h">CAD Software Ready</h4><p data-i18n="why.c3.p">LandXML surface + parcel linework. UTM-georeferenced or local-origin DXF. No manual redraw from KMZ.</p></div>
+      <div class="why-card"><div class="why-icon">&#128208;</div><h4 data-i18n="why.c3.h">CAD Software Ready</h4><p data-i18n="why.c3.p">LandXML surface and DXF contours with parcel linework &mdash; UTM-georeferenced or local-origin. No manual redraw from KMZ.</p></div>
       <div class="why-card"><div class="why-icon">&#9889;</div><h4 data-i18n="why.c4.h">&le; 4 Minutes</h4><p data-i18n="why.c4.p">Full pre-check before the client call ends.</p></div>
       <div class="why-card"><div class="why-icon">&#128196;</div><h4 data-i18n="why.c5.h">Screening Reports</h4><p data-i18n="why.c5.p">PDFs from all 3 modules &mdash; for go/no-go and early client calls.</p></div>
       <div class="why-card"><div class="why-icon">&#128119;</div><h4 data-i18n="why.c6.h">Built by a Solar Engineer</h4><p data-i18n="why.c6.p">Utility-scale EPC experience &mdash; not a generic GIS startup.</p></div>
@@ -1106,7 +1106,7 @@
       </details>
       <details class="faq-item">
         <summary data-i18n="faq.q5">Can I use TopoIQ exports in CAD for layout?</summary>
-        <p data-i18n="faq.a5">Yes &mdash; for early layout. TopoIQ delivers a UTM LandXML surface, DXF contours, and parcel linework from your KMZ. Screening-grade satellite DEM &mdash; verify critical grades with survey before FEED.</p>
+        <p data-i18n="faq.a5">Yes &mdash; for early layout. TopoIQ delivers a UTM LandXML surface and DXF contours with parcel linework from your KMZ. Screening-grade satellite DEM &mdash; verify critical grades with survey before FEED.</p>
       </details>
       <details class="faq-item">
         <summary data-i18n="faq.q4">Who is PVMath built for?</summary>
@@ -1254,12 +1254,12 @@ var T = {
     'siteiq.s3.h':'Download screening PDF','siteiq.s3.p':'PDF with solar data, terrain summary, score, and country-aware next steps.',
     'topoiq.s1.h':'Confirm boundary & grid','topoiq.s1.p':'Boundary loads from Project Setup. Set contour spacing and analysis grid.',
     'topoiq.s2.h':'Run terrain screening','topoiq.s2.p':'Copernicus GLO-30 across your polygon. Slope heatmaps, cross-row grades, engineering verdicts.',
-    'topoiq.s3.h':'Export PDF, DXF & LandXML','topoiq.s3.p':'Terrain PDF plus a CAD starter kit: UTM LandXML TIN, DXF contours, and parcel linework from your KMZ — conceptual, not survey-grade.',
+    'topoiq.s3.h':'Export PDF, DXF & LandXML','topoiq.s3.p':'Terrain PDF plus a CAD starter kit: UTM LandXML TIN and DXF contours with parcel linework from your KMZ — conceptual, not survey-grade.',
     'why.label':'Why PVMath','why.title':'Engineering-grade screening estimates.<br>Not a bankable study.',
     'why.sub':'Industry-standard datasets. Screening-grade speed. Honest limits built in.',
     'why.c1.h':'Industry-Standard Solar Data','why.c1.p':'PVGIS (EC JRC) GHI and irradiation — used in bankable pre-feasibility worldwide.',
     'why.c2.h':'Satellite Terrain Data','why.c2.p':'Copernicus GLO-30 DEM. Slope maps and contours in seconds.',
-    'why.c3.h':'CAD Software Ready','why.c3.p':'LandXML surface + parcel linework. UTM-georeferenced or local-origin DXF. No manual redraw from KMZ.',
+    'why.c3.h':'CAD Software Ready','why.c3.p':'LandXML surface and DXF contours with parcel linework — UTM-georeferenced or local-origin. No manual redraw from KMZ.',
     'why.c4.h':'≤ 4 Minutes','why.c4.p':'Full pre-check before the client call ends.',
     'why.c5.h':'Screening Reports','why.c5.p':'PDFs from all 3 modules — for go/no-go and early client calls.',
     'why.c6.h':'Built by a Solar Engineer','why.c6.p':'Utility-scale EPC experience — not a generic GIS startup.',
@@ -1301,7 +1301,7 @@ var T = {
     'faq.q3':'What does Early Access mean?',
     'faq.a3':'All three modules live today. Features and pricing may evolve. Free tier includes PDF and CAD export.',
     'faq.q5':'Can I use TopoIQ exports in CAD for layout?',
-    'faq.a5':'Yes — for early layout. TopoIQ delivers a UTM LandXML surface, DXF contours, and parcel linework from your KMZ. Screening-grade satellite DEM — verify critical grades with survey before FEED.',
+    'faq.a5':'Yes — for early layout. TopoIQ delivers a UTM LandXML surface and DXF contours with parcel linework from your KMZ. Screening-grade satellite DEM — verify critical grades with survey before FEED.',
     'faq.q4':'Who is PVMath built for?',
     'faq.a4':'Solar EPCs, developers, and engineering firms screening utility-scale ground mount globally. Fixed tilt and tracker, standard and Agri-PV.',
     'accuracy.summary':'Data sources & accuracy — PVGIS, Copernicus GLO-30, YieldIQ limits',
@@ -1376,12 +1376,12 @@ var T = {
     'siteiq.s3.h':'Screening-PDF herunterladen','siteiq.s3.p':'PDF mit Solardaten, Geländezusammenfassung, Score und länderspezifischen nächsten Schritten.',
     'topoiq.s1.h':'Grenze & Raster bestätigen','topoiq.s1.p':'Grenze aus Projekteinrichtung. Höhenlinienabstand und Analyse-Raster setzen.',
     'topoiq.s2.h':'Gelände-Screening starten','topoiq.s2.p':'Copernicus GLO-30 über Ihr Polygon. Neigungskarten, Querneigung, Engineering-Verdict.',
-    'topoiq.s3.h':'PDF, DXF & LandXML exportieren','topoiq.s3.p':'Gelände-PDF plus CAD-Starterkit: UTM-LandXML, DXF-Höhenlinien und Parcel-Linework aus Ihrem KMZ — konzeptionell, nicht vermessungsgenau.',
+    'topoiq.s3.h':'PDF, DXF & LandXML exportieren','topoiq.s3.p':'Gelände-PDF plus CAD-Starterkit: UTM-LandXML und DXF-Höhenlinien mit Parcel-Linework aus Ihrem KMZ — konzeptionell, nicht vermessungsgenau.',
     'why.label':'Warum PVMath','why.title':'Screening-Schätzungen auf Ingenieursniveau.<br>Kein bankfähiges Gutachten.',
     'why.sub':'Branchenübliche Datensätze. Screening-Geschwindigkeit. Ehrliche Grenzen.',
     'why.c1.h':'Branchenstandard-Solardaten','why.c1.p':'PVGIS (EC JRC) GHI und Einstrahlung — in bankfähigen Vorstudien weltweit.',
     'why.c2.h':'Satellitengelände-Daten','why.c2.p':'Copernicus GLO-30 DEM. Neigungskarten und Höhenlinien in Sekunden.',
-    'why.c3.h':'CAD-Software-kompatibel','why.c3.p':'LandXML-Oberfläche + Parcel-Linework. UTM-georeferenziert oder lokaler DXF-Ursprung. Kein manuelles Nachzeichnen aus KMZ.',
+    'why.c3.h':'CAD-Software-kompatibel','why.c3.p':'LandXML-Oberfläche und DXF-Höhenlinien mit Parcel-Linework — UTM-georeferenziert oder lokaler Ursprung. Kein manuelles Nachzeichnen aus KMZ.',
     'why.c4.h':'≤ 4 Minuten','why.c4.p':'Vollständige Vorprüfung noch im Kundengespräch.',
     'why.c5.h':'Screening-Berichte','why.c5.p':'PDFs aus allen 3 Modulen — für Go/No-Go und frühe Kundengespräche.',
     'why.c6.h':'Von einem Solaringenieur entwickelt','why.c6.p':'Utility-Scale-EPC-Erfahrung — kein generisches GIS-Startup.',
@@ -1423,7 +1423,7 @@ var T = {
     'faq.q3':'Was bedeutet Early Access?',
     'faq.a3':'Alle drei Module live. Funktionen und Preise können sich weiterentwickeln. Gratis-Tarif inkl. PDF und CAD-Export.',
     'faq.q5':'Kann ich TopoIQ-Exporte in CAD für Layout nutzen?',
-    'faq.a5':'Ja — für frühes Layout. TopoIQ liefert UTM-LandXML-Oberfläche, DXF-Höhenlinien und Parcel-Linework aus Ihrem KMZ. Screening-Satelliten-DEM — kritische Neigungen vor FEED vermessungsseitig prüfen.',
+    'faq.a5':'Ja — für frühes Layout. TopoIQ liefert UTM-LandXML-Oberfläche und DXF-Höhenlinien mit Parcel-Linework aus Ihrem KMZ. Screening-Satelliten-DEM — kritische Neigungen vor FEED vermessungsseitig prüfen.',
     'faq.q4':'Für wen ist PVMath gebaut?',
     'faq.a4':'Solar-EPCs, Entwickler und Ingenieurbüros für Utility-Scale-Freifläche weltweit. Festaufständerung und Tracker, Standard und Agri-PV.',
     'accuracy.summary':'Datenquellen & Genauigkeit — PVGIS, Copernicus GLO-30, YieldIQ-Grenzen',

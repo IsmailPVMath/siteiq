@@ -139,8 +139,8 @@ def build_reference_json(
             "utm_northing_m": round(utm_n, 3),
         },
         "exports": {
-            "local_package": "DXF *_local.dxf and XYZ *_local.csv — Easting/Northing meters from centroid",
-            "georef_package": "LandXML *.xml, DXF *_georef.dxf, XYZ *_georef.csv — WGS84 UTM meters",
+            "local_package": "DXF *_contours_local.dxf (SITE_BOUNDARY layer) and XYZ *_local.csv — Easting/Northing meters from centroid",
+            "georef_package": "LandXML *.xml, DXF *_contours_georef.dxf (SITE_BOUNDARY layer), XYZ *_georef.csv — WGS84 UTM meters",
             "geo_csv": "Lon/Lat/Elevation for GIS and PVsyst — not the primary CAD surface path",
         },
         "analysis": {
@@ -150,7 +150,7 @@ def build_reference_json(
         },
         "notes": [
             "Import LandXML or georef DXF for map-aligned workflows in CAD (BricsCAD, QGIS, etc.).",
-            "Site boundaries are on layer SITE_BOUNDARY (DXF) and as parcel linework in Parcels/PlanFeatures (LandXML).",
+            "Site parcel linework is on layer SITE_BOUNDARY in contour DXF files and in Parcels/PlanFeatures (LandXML).",
             "Use local DXF/XYZ to work near drawing origin (0,0) at the centroid.",
             "Multiple disconnected parcels may show TIN seams between separate blocks.",
         ],
@@ -463,45 +463,6 @@ def export_dxf_contours(
     return stream.getvalue().encode("utf-8")
 
 
-def export_dxf_boundaries(
-    X: np.ndarray,
-    Y: np.ndarray,
-    Z: np.ndarray,
-    *,
-    polygon_list: list,
-    lat_c: float,
-    lon_c: float,
-    georef: bool = False,
-) -> bytes | None:
-    """Site boundary polylines only — no contours (layout-friendly)."""
-    if not HAS_EZDXF or not polygon_list:
-        return None
-
-    doc = ezdxf.new("R2010")
-    msp = doc.modelspace()
-    doc.layers.add("SITE_BOUNDARY", color=3 if georef else 5)
-
-    if georef:
-        def _vertex(lon, lat):
-            e, n, _ = latlon_to_utm(lat, lon)
-            z = _sample_z_nearest(X, Y, Z, lon, lat)
-            return (float(e), float(n), z)
-    else:
-        m_per_deg_lat = 111_320.0
-        m_per_deg_lon = 111_320.0 * math.cos(math.radians(lat_c))
-
-        def _vertex(lon, lat):
-            e = (lon - lon_c) * m_per_deg_lon
-            n = (lat - lat_c) * m_per_deg_lat
-            z = _sample_z_nearest(X, Y, Z, lon, lat)
-            return (float(e), float(n), z)
-
-    _add_boundary_polylines(msp, polygon_list, _vertex)
-    stream = io.StringIO()
-    doc.write(stream)
-    return stream.getvalue().encode("utf-8")
-
-
 def build_topo_export_zip(
     basename: str,
     *,
@@ -513,8 +474,6 @@ def build_topo_export_zip(
     xyz_geo: bytes | None = None,
     dxf_local: bytes | None = None,
     dxf_georef: bytes | None = None,
-    dxf_boundary_local: bytes | None = None,
-    dxf_boundary_georef: bytes | None = None,
 ) -> tuple[bytes | None, list[str]]:
     entries: list[tuple[str, bytes]] = []
     if reference_json:
@@ -527,10 +486,6 @@ def build_topo_export_zip(
         entries.append((f"{basename}_contours_local.dxf", dxf_local))
     if dxf_georef:
         entries.append((f"{basename}_contours_georef.dxf", dxf_georef))
-    if dxf_boundary_local:
-        entries.append((f"{basename}_boundary_local.dxf", dxf_boundary_local))
-    if dxf_boundary_georef:
-        entries.append((f"{basename}_boundary_georef.dxf", dxf_boundary_georef))
     if xyz_local:
         entries.append((f"{basename}_local.csv", xyz_local))
     if xyz_georef:

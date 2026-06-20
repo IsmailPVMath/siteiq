@@ -71,7 +71,6 @@ from pvmath_topo_export import (
     build_reference_json,
     build_topo_export_zip,
     epsg_utm_wgs84,
-    export_dxf_boundaries,
     export_dxf_contours,
     export_landxml_utm,
     export_xyz_geo,
@@ -1166,7 +1165,7 @@ with right:
         st.info(
             f"**Reference point:** boundary centroid at {format_coords(lat_c, lon_c)} "
             f"(EPSG:{_ref_epsg} UTM). Local CAD exports use **(0, 0)** at this point. "
-            f"Parcel linework is included in LandXML (Parcels) and DXF (layer **SITE_BOUNDARY**). "
+            f"Parcel linework is on layer **SITE_BOUNDARY** in the DXF files and in LandXML (Parcels). "
             f"See `{_export_base}_reference.json` in the ZIP."
         )
         if _parcel_count > 1:
@@ -1238,14 +1237,6 @@ with right:
             )
             dxf_local = None
             dxf_georef = None
-            dxf_boundary_local = export_dxf_boundaries(
-                X, Y, Z, polygon_list=_enabled_polys,
-                lat_c=lat_c, lon_c=lon_c, georef=False,
-            )
-            dxf_boundary_georef = export_dxf_boundaries(
-                X, Y, Z, polygon_list=_enabled_polys,
-                lat_c=lat_c, lon_c=lon_c, georef=True,
-            )
             if HAS_EZDXF:
                 dxf_local = export_dxf_contours(
                     X, Y, Z,
@@ -1276,8 +1267,6 @@ with right:
             xyz_geo=xyz_geo,
             dxf_local=dxf_local,
             dxf_georef=dxf_georef,
-            dxf_boundary_local=dxf_boundary_local,
-            dxf_boundary_georef=dxf_boundary_georef,
         )
         if _zip_bytes:
             _zip_label = ", ".join(_zip_files)
@@ -1361,7 +1350,7 @@ with right:
             (wc2, "CAD package",
              "UTM LandXML surface, DXF contours & parcel linework from your KMZ"),
             (wc1, "DXF + LandXML",
-             "Contours, parcel linework · local or UTM-georeferenced"),
+             "Contours with parcel linework on SITE_BOUNDARY · local or UTM"),
             (wc2, "XYZ point cloud",
              "Easting / Northing / Elevation CSV for any tool"),
             (wc1, "Slope analysis",
