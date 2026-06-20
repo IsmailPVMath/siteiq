@@ -1153,6 +1153,9 @@ with right:
 
         st.divider()
         st.markdown('<div class="section-hdr"><i class="fa-solid fa-download" style="color:#1565c0;"></i> Download Outputs</div>', unsafe_allow_html=True)
+        st.caption(
+            "**From KMZ to CAD:** UTM surface, contours, and parcel linework — screening-grade, not survey."
+        )
 
         _export_base = sanitize_topo_basename(_proj.get("name", ""))
         _ref_elev = float(z_valid.mean())
@@ -1163,13 +1166,13 @@ with right:
         st.info(
             f"**Reference point:** boundary centroid at {format_coords(lat_c, lon_c)} "
             f"(EPSG:{_ref_epsg} UTM). Local CAD exports use **(0, 0)** at this point. "
-            f"Site boundaries are included in LandXML (Parcels) and DXF (layer **SITE_BOUNDARY**). "
+            f"Parcel linework is included in LandXML (Parcels) and DXF (layer **SITE_BOUNDARY**). "
             f"See `{_export_base}_reference.json` in the ZIP."
         )
         if _parcel_count > 1:
             st.warning(
                 f"**{_parcel_count} enabled parcels** — one merged LandXML surface is exported. "
-                "Gaps between separate parcels may show as TIN breaklines in Civil 3D. "
+                "Gaps between separate parcels may show as TIN breaklines in CAD. "
                 "For a seamless surface, use one continuous boundary (draw custom or merge in KMZ)."
             )
 
@@ -1297,14 +1300,14 @@ with right:
                                 file_name=f"{_export_base}.xml",
                                 mime="application/xml",
                                 use_container_width=True,
-                                help="Merged TIN + site boundary polylines (Parcels/PlanFeatures) in WGS84 UTM")
+                                help="Merged TIN + parcel linework (Parcels/PlanFeatures) in WGS84 UTM")
 
         if dxf_local:
             ex2.download_button("⬇ DXF Local", dxf_local,
                                 file_name=f"{_export_base}_contours_local.dxf",
                                 mime="application/dxf",
                                 use_container_width=True,
-                                help="Contours + SITE_BOUNDARY layer at centroid origin (0,0)")
+                                help="Contours + SITE_BOUNDARY parcel linework at centroid origin (0,0)")
         elif not HAS_EZDXF:
             ex2.info("Install ezdxf for DXF export")
 
@@ -1313,7 +1316,7 @@ with right:
                                 file_name=f"{_export_base}_contours_georef.dxf",
                                 mime="application/dxf",
                                 use_container_width=True,
-                                help="Contours + SITE_BOUNDARY layer in WGS84 UTM meters")
+                                help="Contours + SITE_BOUNDARY parcel linework in WGS84 UTM meters")
 
         ex4.download_button("⬇ XYZ Local", xyz_local,
                             file_name=f"{_export_base}_local.csv",
@@ -1331,7 +1334,7 @@ with right:
                             file_name=f"{_export_base}_geo.csv",
                             mime="text/csv",
                             use_container_width=True,
-                            help="Lon/Lat/Elevation for GIS or PVsyst — not primary Civil 3D path")
+                            help="Lon/Lat/Elevation for GIS or PVsyst — not the primary CAD surface path")
 
         st.markdown(f"""
         <div class="accuracy-card">
@@ -1355,10 +1358,10 @@ with right:
         _wcards = [
             (wc1, "Satellite DEM",
              "Copernicus GLO-30 · ~30 m native · global coverage"),
-            (wc2, "Civil 3D ready",
-             "LandXML TIN surface · import directly, no conversion"),
-            (wc1, "DXF contours",
-             "Major & minor contour lines · configurable intervals"),
+            (wc2, "CAD package",
+             "UTM LandXML surface, DXF contours & parcel linework from your KMZ"),
+            (wc1, "DXF + LandXML",
+             "Contours, parcel linework · local or UTM-georeferenced"),
             (wc2, "XYZ point cloud",
              "Easting / Northing / Elevation CSV for any tool"),
             (wc1, "Slope analysis",

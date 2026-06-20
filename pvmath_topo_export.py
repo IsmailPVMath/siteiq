@@ -141,7 +141,7 @@ def build_reference_json(
         "exports": {
             "local_package": "DXF *_local.dxf and XYZ *_local.csv — Easting/Northing meters from centroid",
             "georef_package": "LandXML *.xml, DXF *_georef.dxf, XYZ *_georef.csv — WGS84 UTM meters",
-            "geo_csv": "Lon/Lat/Elevation for GIS and PVsyst — not the primary Civil 3D surface path",
+            "geo_csv": "Lon/Lat/Elevation for GIS and PVsyst — not the primary CAD surface path",
         },
         "analysis": {
             "grid_spacing_m": grid_m,
@@ -149,8 +149,8 @@ def build_reference_json(
             "enabled_parcels": parcel_count,
         },
         "notes": [
-            "Import LandXML or georef DXF for map-aligned workflows in Civil 3D / BricsCAD.",
-            "Site boundaries are on layer SITE_BOUNDARY (DXF) and in Parcels/PlanFeatures (LandXML).",
+            "Import LandXML or georef DXF for map-aligned workflows in CAD (BricsCAD, QGIS, etc.).",
+            "Site boundaries are on layer SITE_BOUNDARY (DXF) and as parcel linework in Parcels/PlanFeatures (LandXML).",
             "Use local DXF/XYZ to work near drawing origin (0,0) at the centroid.",
             "Multiple disconnected parcels may show TIN seams between separate blocks.",
         ],
@@ -264,7 +264,7 @@ def _append_landxml_site_boundaries(
     Y: np.ndarray,
     Z: np.ndarray,
 ) -> None:
-    """Parcels + PlanFeatures so Civil 3D imports site boundary polylines."""
+    """Parcels + PlanFeatures so CAD tools import parcel linework."""
     valid_polys = [p for p in polygon_list if p and len(p) >= 3]
     if not valid_polys:
         return
@@ -280,7 +280,7 @@ def _append_landxml_site_boundaries(
 
         parcel = ET.SubElement(parcels, "Parcel", {
             "name": label,
-            "desc": "TopoIQ site boundary — closed polyline",
+            "desc": "TopoIQ parcel linework — closed polyline",
         })
         parcel_geom = ET.SubElement(parcel, "CoordGeom")
         parcel_line = ET.SubElement(parcel_geom, "IrregularLine")
@@ -288,7 +288,7 @@ def _append_landxml_site_boundaries(
 
         feature = ET.SubElement(plan_features, "PlanFeature", {
             "name": label,
-            "desc": "TopoIQ site boundary polyline for layout/CAD",
+            "desc": "TopoIQ parcel linework for layout/CAD",
         })
         feature_geom = ET.SubElement(feature, "CoordGeom")
         feature_line = ET.SubElement(feature_geom, "IrregularLine")
