@@ -193,6 +193,7 @@ def build_reference_json(
         "notes": [
             "Import georef LandXML or georef DXF for map-aligned workflows in CAD.",
             "Site parcel linework is on layer SITE_BOUNDARY in contour DXF files and in Parcels/PlanFeatures (LandXML).",
+            "Contour lines in DXF are clipped to the site boundary — no rectangular grid edge artifacts.",
             "Use local DXF/XYZ to work near drawing origin (0,0) at the centroid.",
             "Multiple disconnected parcels may show TIN seams between separate blocks.",
         ],
@@ -477,6 +478,107 @@ def _add_boundary_polylines(
             )
 
 
+def _contour_vertex_fn(
+    *,
+    georef: bool,
+    lat_c: float,
+    lon_c: float,
+    X: np.ndarray,
+    Y: np.ndarray,
+    Z: np.ndarray,
+    scale: float,
+):
+    """Map (lon, lat) boundary vertices to export XY (+ Z)."""
+    if georef:
+        def _vertex(lon, lat):
+            e, n, _ = latlon_to_utm(lat, lon)
+            z = _sample_z_nearest(X, Y, Z, lon, lat)
+            return (float(e * scale), float(n * scale), z * scale)
+    else:
+        m_per_deg_lat = 111_320.0
+        m_per_deg_lon = 111_320.0 * math.cos(math.radians(lat_c))
+
+        def _vertex(lon, lat):
+            e = (lon - lon_c) * m_per_deg_lon
+            n = (lat - lat_c) * m_per_deg_lat
+            z = _sample_z_nearest(X, Y, Z, lon, lat)
+            return (float(e * scale), float(n * scale), z * scale)
+    return _vertex
+
+
+def _union_site_clip_polygon(polygon_list: list, vertex_fn) -> Any | None:
+    """Site boundary union in export XY — used to clip contour edge artifacts."""
+    if not polygon_list:
+        return None
+    try:
+        from shapely.geometry import Polygon
+        from shapely.ops import unary_union
+    except ImportError:
+        return None
+
+    polys = []
+    for coords in polygon_list:
+        if not coords or len(coords) < 3:
+            continue
+        ring = list(coords)
+        if ring[0] != ring[-1]:
+            ring.append(ring[0])
+        pts = [vertex_fn(lon, lat)[:2] for lon, lat in ring]
+        if len(pts) < 3:
+            continue
+        poly = Polygon(pts)
+        if not poly.is_valid:
+            poly = poly.buffer(0)
+        if not poly.is_empty and poly.is_valid:
+            polys.append(poly)
+    if not polys:
+        return None
+    merged = unary_union(polys)
+    return merged if not merged.is_empty else None
+
+
+def _linestrings_from_geom(geom) -> list[list[tuple[float, float]]]:
+    """Extract 2D line paths from a Shapely intersection result."""
+    if geom is None or geom.is_empty:
+        return []
+    try:
+        from shapely.geometry import GeometryCollection, LineString, MultiLineString
+    except ImportError:
+        return []
+
+    if isinstance(geom, LineString):
+        if len(geom.coords) >= 2:
+            return [[(float(x), float(y)) for x, y in geom.coords]]
+        return []
+    if isinstance(geom, MultiLineString):
+        out: list[list[tuple[float, float]]] = []
+        for part in geom.geoms:
+            out.extend(_linestrings_from_geom(part))
+        return out
+    if isinstance(geom, GeometryCollection):
+        out = []
+        for part in geom.geoms:
+            out.extend(_linestrings_from_geom(part))
+        return out
+    return []
+
+
+def _clip_contour_segment(seg, clip_geom) -> list[list[tuple[float, float]]]:
+    """Clip one matplotlib contour segment to the site polygon."""
+    if len(seg) < 2:
+        return []
+    if clip_geom is None:
+        return [[(float(p[0]), float(p[1])) for p in seg]]
+    try:
+        from shapely.geometry import LineString
+    except ImportError:
+        return [[(float(p[0]), float(p[1])) for p in seg]]
+    line = LineString([(float(p[0]), float(p[1])) for p in seg])
+    if line.is_empty:
+        return []
+    return _linestrings_from_geom(clip_geom.intersection(line))
+
+
 def export_dxf_contours(
     X: np.ndarray,
     Y: np.ndarray,
@@ -516,6 +618,14 @@ def export_dxf_contours(
     z_max = math.ceil(z_valid.max() / minor_int) * minor_int
     levels = np.arange(z_min, z_max + minor_int, minor_int)
 
+    vertex_fn = None
+    clip_geom = None
+    if polygon_list:
+        vertex_fn = _contour_vertex_fn(
+            georef=georef, lat_c=lat_c, lon_c=lon_c, X=X, Y=Y, Z=Z, scale=scale,
+        )
+        clip_geom = _union_site_clip_polygon(polygon_list, vertex_fn)
+
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -528,27 +638,12 @@ def export_dxf_contours(
         is_major = abs(level % major_int) < 1e-6
         layer = "CONTOUR_MAJOR" if is_major else "CONTOUR_MINOR"
         for seg in cs.allsegs[i]:
-            if len(seg) >= 2:
-                pts = [(float(p[0]), float(p[1])) for p in seg]
-                msp.add_lwpolyline(pts, dxfattribs={"layer": layer, "elevation": float(level)})
+            for pts in _clip_contour_segment(seg, clip_geom):
+                if len(pts) >= 2:
+                    msp.add_lwpolyline(pts, dxfattribs={"layer": layer, "elevation": float(level)})
 
-    if polygon_list:
-        if georef:
-            def _vertex(lon, lat):
-                e, n, _ = latlon_to_utm(lat, lon)
-                z = _sample_z_nearest(X, Y, Z, lon, lat)
-                return (float(e * scale), float(n * scale), z * scale)
-        else:
-            m_per_deg_lat = 111_320.0
-            m_per_deg_lon = 111_320.0 * math.cos(math.radians(lat_c))
-
-            def _vertex(lon, lat):
-                e = (lon - lon_c) * m_per_deg_lon
-                n = (lat - lat_c) * m_per_deg_lat
-                z = _sample_z_nearest(X, Y, Z, lon, lat)
-                return (float(e * scale), float(n * scale), z * scale)
-
-        _add_boundary_polylines(msp, polygon_list, _vertex)
+    if polygon_list and vertex_fn:
+        _add_boundary_polylines(msp, polygon_list, vertex_fn)
 
     stream = io.StringIO()
     doc.write(stream)
