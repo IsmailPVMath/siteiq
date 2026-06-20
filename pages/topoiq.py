@@ -7,10 +7,6 @@ import requests
 import math
 import io
 import concurrent.futures
-import csv
-import xml.etree.ElementTree as ET
-from xml.dom import minidom
-import zipfile
 import json
 from PIL import Image
 import folium
@@ -71,6 +67,20 @@ from pvmath_yield import (
     yield_cross_ref_topoiq_html,
     yield_cross_ref_topoiq_text,
 )
+from pvmath_topo_export import (
+    build_reference_json,
+    build_topo_export_zip,
+    epsg_utm_wgs84,
+    export_dxf_contours,
+    export_landxml_utm,
+    export_xyz_geo,
+    export_xyz_georef,
+    export_xyz_local,
+    latlon_to_utm,
+    local_en_from_latlon,
+    sanitize_topo_basename,
+    utm_grids_from_latlon,
+)
 from pvmath_capacity import (
     capacity_band,
     format_mwp_range,
@@ -78,6 +88,7 @@ from pvmath_capacity import (
     GCR_SCREEN_LO,
     GCR_SCREEN_HI,
 )
+
 def boundaries_union_area_ha(polygon_list):
     """Total area (ha) — union when shapely available, else sum of parts."""
     polys = [p for p in polygon_list if p and len(p) >= 3]
@@ -650,175 +661,7 @@ def compute_slope(Z, grid_m):
     return slope_pct
 
 
-# ─── Export functions ─────────────────────────────────────────────────────────
-
-def export_xyz(X, Y, Z):
-    buf = io.StringIO()
-    writer = csv.writer(buf)
-    writer.writerow(["Longitude", "Latitude", "Elevation_m"])
-    for r in range(X.shape[0]):
-        for c in range(X.shape[1]):
-            if not np.isnan(Z[r, c]):
-                writer.writerow([f"{X[r,c]:.8f}", f"{Y[r,c]:.8f}", f"{Z[r,c]:.3f}"])
-    return buf.getvalue().encode()
-
-
-def export_xyz_projected(X, Y, Z, lat_c, lon_c):
-    m_per_deg_lat = 111320.0
-    m_per_deg_lon = 111320.0 * math.cos(math.radians(lat_c))
-    buf = io.StringIO()
-    writer = csv.writer(buf)
-    writer.writerow(["Easting_m", "Northing_m", "Elevation_m"])
-    for r in range(X.shape[0]):
-        for c in range(X.shape[1]):
-            if not np.isnan(Z[r, c]):
-                E = (X[r, c] - lon_c) * m_per_deg_lon
-                N = (Y[r, c] - lat_c) * m_per_deg_lat
-                writer.writerow([f"{E:.3f}", f"{N:.3f}", f"{Z[r,c]:.3f}"])
-    return buf.getvalue().encode()
-
-
-def export_landxml(X, Y, Z, site_name="TopoIQ_Surface"):
-    valid_pts = []
-    for r in range(X.shape[0]):
-        for c in range(X.shape[1]):
-            if not np.isnan(Z[r, c]):
-                valid_pts.append((X[r, c], Y[r, c], Z[r, c]))
-
-    if len(valid_pts) < 3:
-        return None
-
-    rows, cols = X.shape
-    faces = []
-    pt_idx = {}
-    idx = 1
-    for r in range(rows):
-        for c in range(cols):
-            if not np.isnan(Z[r, c]):
-                pt_idx[(r, c)] = idx
-                idx += 1
-
-    for r in range(rows - 1):
-        for c in range(cols - 1):
-            if all((r+dr, c+dc) in pt_idx for dr, dc in
-                   [(0,0),(0,1),(1,0),(1,1)]):
-                a = pt_idx[(r, c)]
-                b = pt_idx[(r, c+1)]
-                cc = pt_idx[(r+1, c)]
-                d = pt_idx[(r+1, c+1)]
-                faces.append((a, b, cc))
-                faces.append((b, d, cc))
-
-    root = ET.Element("LandXML", {
-        "xmlns": "http://www.landxml.org/schema/LandXML-1.2",
-        "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-        "xsi:schemaLocation": "http://www.landxml.org/schema/LandXML-1.2 http://www.landxml.org/schema/LandXML1.2/LandXML1.2.xsd",
-        "version": "1.2",
-        "date": datetime.now().strftime("%Y-%m-%d"),
-        "time": datetime.now().strftime("%H:%M:%S"),
-        "language": "English",
-        "readOnly": "false"
-    })
-    ET.SubElement(root, "Units").append(
-        ET.Element("Metric", {"areaUnit": "squareMeter",
-                              "linearUnit": "meter",
-                              "volumeUnit": "cubicMeter"})
-    )
-    proj = ET.SubElement(root, "Project", {"name": site_name})
-    surfaces = ET.SubElement(root, "Surfaces")
-    surface = ET.SubElement(surfaces, "Surface", {"name": site_name,
-                                                   "desc": "TopoIQ satellite DEM"})
-    defn = ET.SubElement(surface, "Definition", {"surfType": "TIN"})
-    pnts = ET.SubElement(defn, "Pnts")
-    faces_el = ET.SubElement(defn, "Faces")
-
-    for (r, c), i in pt_idx.items():
-        ET.SubElement(pnts, "P", {"id": str(i)}).text = \
-            f"{Y[r,c]:.8f} {X[r,c]:.8f} {Z[r,c]:.3f}"
-
-    for a, b, c in faces:
-        ET.SubElement(faces_el, "F").text = f"{a} {b} {c}"
-
-    xml_str = minidom.parseString(ET.tostring(root)).toprettyxml(indent="  ")
-    return xml_str.encode("utf-8")
-
-
-def export_dxf(X, Y, Z, lat_c, lon_c, minor_int=0.5, major_int=1.0):
-    if not HAS_EZDXF:
-        return None
-
-    m_per_deg_lat = 111320.0
-    m_per_deg_lon = 111320.0 * math.cos(math.radians(lat_c))
-
-    Ex = (X - lon_c) * m_per_deg_lon
-    Ny = (Y - lat_c) * m_per_deg_lat
-
-    doc = ezdxf.new("R2010")
-    msp = doc.modelspace()
-
-    doc.layers.add("CONTOUR_MINOR", color=3)
-    doc.layers.add("CONTOUR_MAJOR", color=1)
-    doc.layers.add("BOUNDARY",      color=5)
-
-    z_valid = Z[~np.isnan(Z)]
-    if len(z_valid) == 0:
-        return None
-
-    z_min = math.floor(z_valid.min() / minor_int) * minor_int
-    z_max = math.ceil(z_valid.max()  / minor_int) * minor_int
-    levels = np.arange(z_min, z_max + minor_int, minor_int)
-
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-
-    fig, ax = plt.subplots()
-    cs = ax.contour(Ex, Ny, Z, levels=levels)
-    plt.close(fig)
-
-    for i, level in enumerate(cs.levels):
-        is_major = abs(level % major_int) < 1e-6
-        layer = "CONTOUR_MAJOR" if is_major else "CONTOUR_MINOR"
-        for seg in cs.allsegs[i]:
-            if len(seg) >= 2:
-                pts = [(float(p[0]), float(p[1]), float(level)) for p in seg]
-                msp.add_lwpolyline([(p[0], p[1]) for p in pts],
-                                   dxfattribs={"layer": layer,
-                                               "elevation": float(level)})
-
-    stream = io.StringIO()
-    doc.write(stream)
-    return stream.getvalue().encode("utf-8")
-
-
-def build_topo_export_zip(
-    fname: str,
-    *,
-    pdf_bytes=None,
-    lxml=None,
-    xyz=None,
-    dxf_data=None,
-    xyz_geo=None,
-) -> tuple[bytes | None, list[str]]:
-    """Bundle TopoIQ exports into one ZIP. Returns (zip_bytes, list of included filenames)."""
-    entries: list[tuple[str, bytes]] = []
-    if pdf_bytes:
-        entries.append((f"{fname}_report.pdf", pdf_bytes))
-    if lxml:
-        entries.append((f"{fname}.xml", lxml))
-    if xyz:
-        entries.append((f"{fname}_xyz.csv", xyz))
-    if dxf_data:
-        entries.append((f"{fname}_contours.dxf", dxf_data))
-    if xyz_geo:
-        entries.append((f"{fname}_geo.csv", xyz_geo))
-    if not entries:
-        return None, []
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        for name, data in entries:
-            zf.writestr(name, data)
-    return buf.getvalue(), [name for name, _ in entries]
+# ─── Export functions → pvmath_topo_export.py ────────────────────────────────
 
 
 def _boundaries_from_project(proj):
@@ -1053,6 +896,10 @@ with left:
             run = st.button("⛰ Run Terrain Analysis", type="primary",
                             use_container_width=True,
                             disabled=(not _enabled_polys or _area_over_limit))
+            st.caption(
+                "After running, **download your exports immediately** — files are not stored. "
+                "Leaving this page or changing settings requires a new run."
+            )
             if not _enabled_polys:
                 if st.session_state.get("topo_analysis_mode") == "drawn":
                     st.caption("Draw your analysis boundary on the map above.")
@@ -1305,7 +1152,24 @@ with right:
 
         st.divider()
         st.markdown('<div class="section-hdr"><i class="fa-solid fa-download" style="color:#1565c0;"></i> Download Outputs</div>', unsafe_allow_html=True)
-        fname = f"TopoIQ_{lat_c:.3f}_{lon_c:.3f}_{grid_m_used:.0f}m"
+
+        _export_base = sanitize_topo_basename(_proj.get("name", ""))
+        _ref_elev = float(z_valid.mean())
+        _ref_epsg = epsg_utm_wgs84(lat_c, lon_c)
+        _ref_utm_e, _ref_utm_n, _ = latlon_to_utm(lat_c, lon_c)
+        _parcel_count = len(_enabled_polys)
+
+        st.info(
+            f"**Reference point:** boundary centroid at {format_coords(lat_c, lon_c)} "
+            f"(EPSG:{_ref_epsg} UTM). Local CAD exports use **(0, 0)** at this point. "
+            f"See `{_export_base}_reference.json` in the ZIP."
+        )
+        if _parcel_count > 1:
+            st.warning(
+                f"**{_parcel_count} enabled parcels** — one merged LandXML surface is exported. "
+                "Gaps between separate parcels may show as TIN breaklines in Civil 3D. "
+                "For a seamless surface, use one continuous boundary (draw custom or merge in KMZ)."
+            )
 
         with st.spinner("Generating PDF report…"):
             _slope_pdf = io.BytesIO(pdf_slope_buf.getvalue()) if pdf_slope_buf else None
@@ -1336,7 +1200,7 @@ with right:
             st.download_button(
                 "📄 Download Terrain Report (PDF)",
                 pdf_bytes,
-                file_name=f"{fname}_report.pdf",
+                file_name=f"{_export_base}_report.pdf",
                 mime="application/pdf",
                 use_container_width=True,
                 type="primary",
@@ -1345,31 +1209,66 @@ with right:
             st.divider()
 
         with st.spinner("Preparing export files…"):
-            lxml = export_landxml(X, Y, Z, site_name=fname)
-            xyz = export_xyz_projected(X, Y, Z, lat_c, lon_c)
-            xyz_geo = export_xyz(X, Y, Z)
-            dxf_data = None
+            _e_local, _n_local = local_en_from_latlon(X, Y, lon_c, lat_c)
+            _e_georef, _n_georef, _ = utm_grids_from_latlon(X, Y, lat_c, lon_c)
+
+            lxml = export_landxml_utm(
+                X, Y, Z, site_name=_export_base, lat_c=lat_c, lon_c=lon_c,
+            )
+            xyz_local = export_xyz_local(X, Y, Z, lat_c, lon_c)
+            xyz_georef = export_xyz_georef(X, Y, Z, lat_c, lon_c)
+            xyz_geo = export_xyz_geo(X, Y, Z)
+            reference_json = build_reference_json(
+                project_name=_proj.get("name", ""),
+                lat_c=lat_c,
+                lon_c=lon_c,
+                elev_c=_ref_elev,
+                grid_m=grid_m_used,
+                epsg=_ref_epsg,
+                utm_e=_ref_utm_e,
+                utm_n=_ref_utm_n,
+                parcel_count=_parcel_count,
+                analysis_mode=st.session_state.get("topo_analysis_mode", "parcels"),
+            )
+            dxf_local = None
+            dxf_georef = None
             if HAS_EZDXF:
-                dxf_data = export_dxf(
-                    X, Y, Z, lat_c, lon_c,
+                dxf_local = export_dxf_contours(
+                    X, Y, Z,
+                    easting=_e_local, northing=_n_local,
+                    polygon_list=_enabled_polys,
+                    lat_c=lat_c, lon_c=lon_c,
                     minor_int=contour_minor,
                     major_int=contour_major,
+                    georef=False,
+                )
+                dxf_georef = export_dxf_contours(
+                    X, Y, Z,
+                    easting=_e_georef, northing=_n_georef,
+                    polygon_list=_enabled_polys,
+                    lat_c=lat_c, lon_c=lon_c,
+                    minor_int=contour_minor,
+                    major_int=contour_major,
+                    georef=True,
                 )
 
         _zip_bytes, _zip_files = build_topo_export_zip(
-            fname,
+            _export_base,
             pdf_bytes=pdf_bytes,
+            reference_json=reference_json,
             lxml=lxml,
-            xyz=xyz,
-            dxf_data=dxf_data,
+            xyz_local=xyz_local,
+            xyz_georef=xyz_georef,
             xyz_geo=xyz_geo,
+            dxf_local=dxf_local,
+            dxf_georef=dxf_georef,
         )
         if _zip_bytes:
             _zip_label = ", ".join(_zip_files)
             st.download_button(
                 "📦 Download All (ZIP)",
                 _zip_bytes,
-                file_name=f"{fname}_exports.zip",
+                file_name=f"{_export_base}_exports.zip",
                 mime="application/zip",
                 use_container_width=True,
                 type="primary",
@@ -1377,35 +1276,49 @@ with right:
             )
             st.caption(f"Includes: {_zip_label}")
 
-        ex1, ex2, ex3, ex4 = st.columns(4)
+        ex1, ex2, ex3 = st.columns(3)
+        ex4, ex5, ex6 = st.columns(3)
 
         if lxml:
-            ex1.download_button("⬇ LandXML", lxml,
-                                file_name=f"{fname}.xml",
+            ex1.download_button("⬇ LandXML (UTM)", lxml,
+                                file_name=f"{_export_base}.xml",
                                 mime="application/xml",
                                 use_container_width=True,
-                                help="Import directly into CAD software as TIN surface")
+                                help="Merged TIN in WGS84 UTM — primary Civil 3D surface import")
 
-        ex2.download_button("⬇ XYZ Points", xyz,
-                            file_name=f"{fname}_xyz.csv",
-                            mime="text/csv",
-                            use_container_width=True,
-                            help="Easting / Northing / Elevation CSV")
-
-        if dxf_data:
-            ex3.download_button("⬇ DXF Contours", dxf_data,
-                                file_name=f"{fname}_contours.dxf",
+        if dxf_local:
+            ex2.download_button("⬇ DXF Local", dxf_local,
+                                file_name=f"{_export_base}_contours_local.dxf",
                                 mime="application/dxf",
                                 use_container_width=True,
-                                help="Major + minor contour lines for CAD software / AutoCAD")
+                                help="Contours + boundary at centroid origin (0,0)")
         elif not HAS_EZDXF:
-            ex3.info("Install ezdxf for DXF export")
+            ex2.info("Install ezdxf for DXF export")
 
-        ex4.download_button("⬇ XYZ (Geo)", xyz_geo,
-                            file_name=f"{fname}_geo.csv",
+        if dxf_georef:
+            ex3.download_button("⬇ DXF Georef", dxf_georef,
+                                file_name=f"{_export_base}_contours_georef.dxf",
+                                mime="application/dxf",
+                                use_container_width=True,
+                                help="Contours + boundary in WGS84 UTM meters")
+
+        ex4.download_button("⬇ XYZ Local", xyz_local,
+                            file_name=f"{_export_base}_local.csv",
                             mime="text/csv",
                             use_container_width=True,
-                            help="Lon / Lat / Elevation for GIS / PVsyst")
+                            help="Easting/Northing/Elevation from centroid (m)")
+
+        ex5.download_button("⬇ XYZ Georef", xyz_georef,
+                            file_name=f"{_export_base}_georef.csv",
+                            mime="text/csv",
+                            use_container_width=True,
+                            help="UTM Easting/Northing/Elevation (m)")
+
+        ex6.download_button("⬇ Geo CSV", xyz_geo,
+                            file_name=f"{_export_base}_geo.csv",
+                            mime="text/csv",
+                            use_container_width=True,
+                            help="Lon/Lat/Elevation for GIS or PVsyst — not primary Civil 3D path")
 
         st.markdown(f"""
         <div class="accuracy-card">
