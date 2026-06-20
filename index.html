@@ -274,6 +274,25 @@
     .price-btn.solid   { background: linear-gradient(135deg, var(--green), var(--green-dk)); color: #fff; }
     .price-btn.solid:hover { box-shadow: 0 6px 20px rgba(29,158,82,.35); transform: translateY(-1px); }
 
+    /* ── ENTERPRISE STRIP ── */
+    .enterprise-strip {
+      max-width: 1050px; margin: 1.5rem auto 0;
+      background: linear-gradient(135deg, #243828, #3a5540);
+      border: 1px solid rgba(29,158,82,.25); border-radius: 14px;
+      padding: 1.6rem 2rem; display: flex; align-items: center;
+      justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+    }
+    .enterprise-strip-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #4ade80; margin-bottom: 0.3rem; }
+    .enterprise-strip-title { font-size: 1.05rem; font-weight: 800; color: #fff; margin-bottom: 0.25rem; }
+    .enterprise-strip-sub { font-size: 0.82rem; color: rgba(255,255,255,.72); line-height: 1.5; }
+    .enterprise-strip-btn {
+      background: var(--green); color: #fff; text-decoration: none;
+      padding: 0.75rem 1.6rem; border-radius: 9px; font-weight: 700; font-size: 0.88rem;
+      white-space: nowrap; flex-shrink: 0; transition: background .2s, box-shadow .2s;
+      min-height: 44px; display: inline-flex; align-items: center;
+    }
+    .enterprise-strip-btn:hover { background: var(--green-dk); box-shadow: 0 4px 16px rgba(29,158,82,.35); }
+
     /* ── ABOUT ── */
     #about { background: var(--bg2); }
     .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; }
@@ -1030,13 +1049,13 @@
     </div>
 
     <!-- Enterprise strip -->
-    <div style="max-width:1050px;margin:1.5rem auto 0;background:linear-gradient(135deg,#0d1a0d,#1a2e1a);border-radius:14px;padding:1.6rem 2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+    <div class="enterprise-strip">
       <div>
-        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#1d9e52;margin-bottom:0.3rem;">Enterprise</div>
-        <div style="font-size:1.05rem;font-weight:800;color:#fff;margin-bottom:0.25rem;">Need more? Let&rsquo;s talk.</div>
-        <div style="font-size:0.82rem;color:rgba(255,255,255,.6);">Unlimited analyses &middot; Custom seats &middot; SLA &middot; White-label reports &middot; Dedicated onboarding</div>
+        <div class="enterprise-strip-label">Enterprise</div>
+        <div class="enterprise-strip-title">Need more? Let&rsquo;s talk.</div>
+        <div class="enterprise-strip-sub">Unlimited analyses &middot; Custom seats &middot; SLA &middot; White-label reports &middot; Dedicated onboarding</div>
       </div>
-      <a href="#contact" style="background:var(--green);color:#fff;text-decoration:none;padding:0.75rem 1.6rem;border-radius:9px;font-weight:700;font-size:0.88rem;white-space:nowrap;flex-shrink:0;transition:background .2s;" onmouseover="this.style.background='#145f34'" onmouseout="this.style.background='#1d9e52'">Contact for Custom Pricing &rarr;</a>
+      <a href="#contact" class="enterprise-strip-btn">Contact for Custom Pricing &rarr;</a>
     </div>
 
     <p style="text-align:center;margin-top:1.5rem;font-size:0.82rem;color:var(--muted);">
@@ -1052,12 +1071,12 @@
       <div class="about-text">
         <div class="section-label" data-i18n="about.label">About PVMath</div>
         <h2 data-i18n-html="about.title">From the field.<br>Not a desk.</h2>
-        <p data-i18n="about.p1">PVMath was founded by a Solar Engineering Expert with hands-on experience in utility-scale solar &mdash; tracker systems, terrain analysis, site design, and EPC project delivery worldwide. Built in Germany.</p>
+        <p data-i18n="about.p1">PVMath was founded by a Solar Engineering Expert with hands-on experience in utility-scale solar &mdash; tracker systems, terrain analysis, site design, and EPC project delivery worldwide.</p>
         <p data-i18n="about.p2">Our tools are built to solve problems that cost real project hours &mdash; not features invented in a boardroom. The result is a platform that speaks the same language as the engineers using it.</p>
       </div>
       <div class="about-cards">
         <div class="about-card"><div class="about-card-icon">&#127919;</div><div><h4 data-i18n="about.c1.h">Purpose-Built for Solar</h4><p data-i18n="about.c1.p">Not a generic GIS tool adapted for solar. Every feature is designed specifically for solar site assessment and engineering.</p></div></div>
-        <div class="about-card"><div class="about-card-icon">&#127758;</div><div><h4 data-i18n="about.c2.h">Europe &amp; Global Markets</h4><p data-i18n="about.c2.p">Built with European solar markets in mind &mdash; Germany, Austria, Switzerland, Spain, Italy &mdash; but with global data coverage from day one.</p></div></div>
+        <div class="about-card"><div class="about-card-icon">&#127758;</div><div><h4 data-i18n="about.c2.h">Global Coverage, European Roots</h4><p data-i18n-html="about.c2.p"><strong>Built in Germany.</strong> PVGIS solar data and Copernicus terrain screening worldwide &mdash; with country-aware regulatory flags for Germany, Austria, Spain, the US, India, Australia, and more.</p></div></div>
         <div class="about-card"><div class="about-card-icon" style="font-size:1.2rem;font-weight:700;color:var(--green-dk);font-family:'Inter',sans-serif;">↗</div><div><h4 data-i18n="about.c3.h">Growing Fast</h4><p data-i18n="about.c3.p">SiteIQ, TopoIQ, and YieldIQ are live. The roadmap is driven by what engineers actually ask for.</p></div></div>
       </div>
     </div>
@@ -1281,10 +1300,10 @@ var T = {
     'faq.a4':'Solar EPCs, developers, and engineering firms screening utility-scale ground mount globally. Fixed tilt and tracker, standard and Agri-PV.',
     'accuracy.summary':'Data sources & accuracy — PVGIS, Copernicus GLO-30, YieldIQ limits',
     'about.label':'About PVMath','about.title':'From the field.<br>Not a desk.',
-    'about.p1':'PVMath was founded by a Solar Engineering Expert with hands-on experience in utility-scale solar — tracker systems, terrain analysis, site design, and EPC project delivery worldwide. Built in Germany.',
+    'about.p1':'PVMath was founded by a Solar Engineering Expert with hands-on experience in utility-scale solar — tracker systems, terrain analysis, site design, and EPC project delivery worldwide.',
     'about.p2':'Our tools are built to solve problems that cost real project hours — not features invented in a boardroom. The result is a platform that speaks the same language as the engineers using it.',
     'about.c1.h':'Purpose-Built for Solar','about.c1.p':'Not a generic GIS tool adapted for solar. Every feature is designed specifically for solar site assessment and engineering.',
-    'about.c2.h':'Europe & Global Markets','about.c2.p':'Built with European solar markets in mind — Germany, Austria, Switzerland, Spain, Italy — but with global data coverage from day one.',
+    'about.c2.h':'Global Coverage, European Roots','about.c2.p':'<strong>Built in Germany.</strong> PVGIS solar data and Copernicus terrain screening worldwide — with country-aware regulatory flags for Germany, Austria, Spain, the US, India, Australia, and more.',
     'about.c3.h':'Growing Fast','about.c3.p':'SiteIQ, TopoIQ, and YieldIQ are live. The roadmap is driven by what engineers actually ask for.',
     'contact.label':'Contact','contact.title':'Get in touch.',
     'contact.sub':'Questions about pricing, access, or a custom enterprise plan? We respond within one business day.',
@@ -1401,10 +1420,10 @@ var T = {
     'faq.a4':'Solar-EPCs, Entwickler und Ingenieurbüros für Utility-Scale-Freifläche weltweit. Festaufständerung und Tracker, Standard und Agri-PV.',
     'accuracy.summary':'Datenquellen & Genauigkeit — PVGIS, Copernicus GLO-30, YieldIQ-Grenzen',
     'about.label':'Über PVMath','about.title':'Aus der Praxis.<br>Nicht vom Schreibtisch.',
-    'about.p1':'PVMath wurde von einem Solar Engineering Expert mit praktischer Erfahrung in Utility-Scale-Solar gegründet — Trackersysteme, Geländeanalyse, Standortplanung und EPC-Projektabwicklung weltweit. Entwickelt in Deutschland.',
+    'about.p1':'PVMath wurde von einem Solar Engineering Expert mit praktischer Erfahrung in Utility-Scale-Solar gegründet — Trackersysteme, Geländeanalyse, Standortplanung und EPC-Projektabwicklung weltweit.',
     'about.p2':'Unsere Tools sind gebaut, um Probleme zu lösen, die echte Projektstunden kosten — keine Features, die im Konferenzraum erfunden wurden. Das Ergebnis ist eine Plattform, die dieselbe Sprache spricht wie die Ingenieure, die sie nutzen.',
     'about.c1.h':'Speziell für Solar','about.c1.p':'Kein generisches GIS-Tool für Solar angepasst. Jedes Feature ist speziell für die solare Standortbewertung und -planung entwickelt.',
-    'about.c2.h':'Europa & globale Märkte','about.c2.p':'Mit europäischen Solarmarkten im Fokus — Deutschland, Österreich, Schweiz, Spanien, Italien — aber mit globaler Datenabdeckung von Anfang an.',
+    'about.c2.h':'Globale Abdeckung, europäische Wurzeln','about.c2.p':'<strong>Entwickelt in Deutschland.</strong> PVGIS-Solardaten und Copernicus-Geländescreening weltweit — mit länderspezifischen regulatorischen Hinweisen für Deutschland, Österreich, Spanien, die USA, Indien, Australien und mehr.',
     'about.c3.h':'Schnell wachsend','about.c3.p':'SiteIQ, TopoIQ und YieldIQ sind live. Die Roadmap wird durch echte Ingenieursanfragen gesteuert.',
     'contact.label':'Kontakt','contact.title':'Kontakt aufnehmen.',
     'contact.sub':'Fragen zu Preisen, Zugang oder einem individuellen Enterprise-Plan? Wir antworten innerhalb eines Werktags.',
