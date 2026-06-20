@@ -313,16 +313,9 @@
     .preview-card-hdr.topoiq { background: linear-gradient(135deg,#1565c0,#0d47a1); }
     .preview-card-hdr.yieldiq { background: linear-gradient(135deg,#d4840a,#b36a00); }
     .preview-card-hdr strong { font-size: 0.72rem; font-weight: 800; color: #fff; letter-spacing: 0.05em; }
+    .preview-card-icon { font-size: 0.82rem; line-height: 1; flex-shrink: 0; }
     .preview-card-body { background: #fff; padding: 0.85rem 0.9rem 0.75rem; flex: 1; display: flex; flex-direction: column; min-height: 0; }
     .preview-card-foot { margin-top: auto; }
-    .preview-card-topoiq .preview-card-body { padding: 0.75rem 0.85rem 0.65rem; }
-    .preview-card-topoiq .preview-meta { margin-bottom: 0.4rem; }
-    .preview-card-topoiq .preview-metrics { margin-bottom: 0.35rem; gap: 0.25rem; }
-    .preview-card-topoiq .preview-map { height: 52px; margin-bottom: 0.3rem; }
-    .preview-card-topoiq figure { margin: 0; }
-    .preview-card-topoiq .preview-actions { margin-top: 0; gap: 0.35rem; }
-    .preview-card-topoiq .preview-actions div { padding: 0.28rem 0.2rem; font-size: 0.63rem; }
-    .preview-card-topoiq .preview-source { margin-top: 0.28rem; }
     .preview-meta { font-size: 0.68rem; color: #888; margin-bottom: 0.55rem; font-weight: 500; line-height: 1.4; }
     .preview-metrics { margin: 0 0 0.55rem; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.3rem; }
     .preview-metrics li { display: flex; justify-content: space-between; align-items: center; font-size: 0.73rem; gap: 0.4rem; }
@@ -338,9 +331,20 @@
     .preview-score-verdict { font-size: 0.76rem; font-weight: 700; }
     .preview-source { margin-top: 0.35rem; font-size: 0.6rem; color: #bbb; text-align: right; }
     .preview-footnote { font-size: 0.58rem; color: #aaa; margin-top: -0.2rem; margin-bottom: 0.35rem; text-align: right; }
-    .preview-map { width: 100%; height: 88px; border-radius: 8px; margin-bottom: 0.45rem; display: block; }
+    .preview-map { width: 100%; border-radius: 8px; margin-bottom: 0.45rem; display: block; }
+    .preview-elev-bar { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem; }
+    .preview-elev-bar span { font-size: 0.6rem; color: #888; font-weight: 600; }
+    .preview-elev-bar div { flex: 1; height: 6px; border-radius: 4px; background: linear-gradient(to right,#3b82f6,#22c55e,#eab308,#ef4444); }
+    .preview-metric-sub { font-size: 0.62rem; font-weight: 600; color: #888; }
     .preview-actions { display: flex; gap: 0.45rem; margin-top: 0; }
     .preview-actions div { flex: 1; background: #e8f0fb; border-radius: 7px; padding: 0.38rem; text-align: center; font-size: 0.68rem; font-weight: 700; color: #1565c0; }
+    .preview-yield-bars { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.55rem; }
+    .preview-yield-row-head { display: flex; justify-content: space-between; font-size: 0.7rem; margin-bottom: 2px; }
+    .preview-yield-row-head span:first-child { font-weight: 700; color: var(--text); }
+    .preview-yield-track { height: 14px; background: #f0f4f0; border-radius: 4px; overflow: hidden; }
+    .preview-yield-track div { height: 100%; border-radius: 4px; }
+    .preview-yield-track.tracker div { background: linear-gradient(135deg,#1d9e52,#145f34); }
+    .preview-yield-track.fixed div { background: linear-gradient(135deg,#e85d04,#c24a00); }
     .preview-disclaimer { background: #fff8e6; border: 1.5px solid #f0b429; border-radius: 7px; padding: 0.42rem 0.6rem; margin-top: 0; font-size: 0.64rem; color: #7a4f00; line-height: 1.45; font-weight: 600; }
     .preview-bars { display: flex; align-items: flex-end; gap: 2px; height: 32px; margin-bottom: 0.45rem; }
     .preview-months { display: flex; gap: 2px; margin-bottom: 0.5rem; }
@@ -495,15 +499,16 @@
       </article>
 
       <!-- TopoIQ mockup -->
-      <article class="preview-card preview-card-topoiq" itemscope itemtype="https://schema.org/SoftwareApplication" aria-label="TopoIQ terrain analysis example output">
+      <article class="preview-card" itemscope itemtype="https://schema.org/SoftwareApplication" aria-label="TopoIQ terrain analysis example output">
         <meta itemprop="name" content="TopoIQ">
         <header class="preview-card-hdr topoiq">
+          <span class="preview-card-icon" aria-hidden="true">&#9968;&#65039;</span>
           <strong>TOPOIQ — TERRAIN ANALYSIS</strong>
         </header>
         <div class="preview-card-body">
-          <p class="preview-meta">187 ha &middot; GLO-30 DEM &middot; ~11 m grid</p>
-          <figure aria-label="Slope heatmap over satellite basemap">
-          <svg viewBox="0 0 260 130" xmlns="http://www.w3.org/2000/svg" class="preview-map" preserveAspectRatio="xMidYMid slice">
+          <p class="preview-meta">Site boundary: 187 ha &middot; Copernicus GLO-30 DEM</p>
+          <figure aria-label="Slope heatmap over satellite basemap" style="margin:0;">
+          <svg viewBox="0 0 260 130" xmlns="http://www.w3.org/2000/svg" class="preview-map">
             <defs>
               <filter id="tf"><feGaussianBlur stdDeviation="4"/></filter>
               <radialGradient id="rg1" cx="35%" cy="45%" r="55%"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#3b82f600"/></radialGradient>
@@ -528,17 +533,23 @@
             <text x="100" y="72" font-size="6" fill="rgba(255,255,255,0.8)" font-family="Arial,sans-serif" font-weight="700">68m range</text>
           </svg>
           </figure>
+          <div class="preview-elev-bar">
+            <span>342m</span>
+            <div></div>
+            <span>410m Elev.</span>
+          </div>
           <ul class="preview-metrics" aria-label="Terrain screening metrics">
-            <li><span class="metric-label">Elevation Range</span><span class="metric-value">68 m (342&ndash;410 m)</span></li>
-            <li><span class="metric-label">Max N&ndash;S Slope</span><span class="metric-value">4.8% <span class="preview-badge pos">Acceptable</span></span></li>
-            <li><span class="metric-label">Contour Spacing</span><span class="metric-value">5 m</span></li>
+            <li><span class="metric-label">Elevation range</span><span class="metric-value">68 m</span></li>
+            <li><span class="metric-label">Max N&ndash;S slope</span><span class="metric-value">4.8% <span class="preview-badge pos">Acceptable</span></span></li>
+            <li><span class="metric-label">Analysis grid</span><span class="metric-value">~11 m <span class="preview-metric-sub">(GLO-30 ~30 m native)</span></span></li>
+            <li><span class="metric-label">Contour spacing</span><span class="metric-value">5 m</span></li>
           </ul>
           <div class="preview-card-foot">
             <div class="preview-actions">
-              <div>PDF Report</div>
-              <div>DXF &amp; LandXML</div>
+              <div>&#128196; PDF Report</div>
+              <div>&#128208; DXF &amp; LandXML</div>
             </div>
-            <p class="preview-source">Data source: Copernicus GLO-30 DEM</p>
+            <p class="preview-source">Source: Copernicus GLO-30 DEM</p>
           </div>
         </div>
       </article>
@@ -547,22 +558,37 @@
       <article class="preview-card" itemscope itemtype="https://schema.org/SoftwareApplication" aria-label="YieldIQ yield estimation example output">
         <meta itemprop="name" content="YieldIQ">
         <header class="preview-card-hdr yieldiq">
+          <span class="preview-card-icon" aria-hidden="true">&#9889;</span>
           <strong>YIELDIQ — YIELD ESTIMATION</strong>
         </header>
         <div class="preview-card-body">
-          <p class="preview-meta">100 MWp DC &middot; 4 configurations &middot; PVGIS JRC ERA5</p>
+          <p class="preview-meta">100 MWp DC &middot; 4 configurations &middot; PVGIS JRC</p>
           <p class="preview-chart-label">Specific Yield (kWh/kWp/yr)</p>
-          <ul class="preview-metrics" aria-label="Yield comparison by mounting configuration">
-            <li><span class="metric-label">SAT &mdash; 1P</span><span class="metric-value" style="color:#1d9e52;">2,041</span></li>
-            <li><span class="metric-label">SAT &mdash; 2P</span><span class="metric-value" style="color:#1d9e52;">1,978</span></li>
-            <li><span class="metric-label">Fixed &mdash; 1P</span><span class="metric-value" style="color:#e85d04;">1,732</span></li>
-            <li><span class="metric-label">Fixed &mdash; 2P</span><span class="metric-value" style="color:#e85d04;">1,668</span></li>
-            <li><span class="metric-label">Tracker Gain (1P vs Fixed)</span><span class="metric-value" style="color:#1d9e52;">+17.9%</span></li>
+          <div class="preview-yield-bars" aria-label="Yield comparison by mounting configuration">
+            <div>
+              <div class="preview-yield-row-head"><span>SAT &mdash; single portrait (1P)</span><span style="font-weight:800;color:#1d9e52;">2,041</span></div>
+              <div class="preview-yield-track tracker"><div style="width:95%;"></div></div>
+            </div>
+            <div>
+              <div class="preview-yield-row-head"><span>SAT &mdash; double portrait (2P)</span><span style="font-weight:800;color:#1d9e52;">1,978</span></div>
+              <div class="preview-yield-track tracker"><div style="width:92%;opacity:0.8;"></div></div>
+            </div>
+            <div>
+              <div class="preview-yield-row-head"><span>Fixed &mdash; single portrait (1P)</span><span style="font-weight:800;color:#e85d04;">1,732</span></div>
+              <div class="preview-yield-track fixed"><div style="width:81%;opacity:0.85;"></div></div>
+            </div>
+            <div>
+              <div class="preview-yield-row-head"><span>Fixed &mdash; double portrait (2P)</span><span style="font-weight:800;color:#e85d04;">1,668</span></div>
+              <div class="preview-yield-track fixed"><div style="width:78%;opacity:0.7;"></div></div>
+            </div>
+          </div>
+          <ul class="preview-metrics" aria-label="Yield summary metrics">
+            <li><span class="metric-label">Tracker gain (1P vs FT)</span><span class="metric-value" style="color:#1d9e52;">+17.9%</span></li>
             <li><span class="metric-label">Best PR (1P Tracker)</span><span class="metric-value">82.1%</span></li>
           </ul>
           <div class="preview-card-foot">
-            <div class="preview-disclaimer">Early-stage feasibility only. Not a substitute for bankable energy assessment (PVsyst, DNV SolarFarmer, Aurora).</div>
-            <p class="preview-source">Data source: PVGIS JRC ERA5</p>
+            <div class="preview-disclaimer">&#9888;&#65039; Early-stage feasibility only. Not a substitute for bankable energy assessment (PVsyst, DNV).</div>
+            <p class="preview-source">Source: PVGIS JRC ERA5</p>
           </div>
         </div>
       </article>
