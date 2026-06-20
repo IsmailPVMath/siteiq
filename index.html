@@ -304,15 +304,25 @@
     .footer-social svg { width: 18px; height: 18px; fill: currentColor; }
 
     /* ── PRODUCT PREVIEW ── */
-    .preview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; align-items: start; }
+    /* Equal height: row follows tallest card (SiteIQ); TopoIQ/YieldIQ pin footers — no stretch-to-TopoIQ */
+    .preview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; align-items: stretch; }
     @media (max-width: 900px) { .preview-grid { grid-template-columns: 1fr; } }
-    .preview-card { border-radius: 14px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,.12); border: 1.5px solid var(--border); }
-    .preview-card-hdr { padding: 0.55rem 0.85rem; display: flex; align-items: center; gap: 0.5rem; }
+    .preview-card { border-radius: 14px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,.12); border: 1.5px solid var(--border); display: flex; flex-direction: column; height: 100%; }
+    .preview-card-hdr { padding: 0.55rem 0.85rem; display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
     .preview-card-hdr.siteiq { background: linear-gradient(135deg,#e85d04,#c24a00); }
     .preview-card-hdr.topoiq { background: linear-gradient(135deg,#1565c0,#0d47a1); }
     .preview-card-hdr.yieldiq { background: linear-gradient(135deg,#d4840a,#b36a00); }
     .preview-card-hdr strong { font-size: 0.72rem; font-weight: 800; color: #fff; letter-spacing: 0.05em; }
-    .preview-card-body { background: #fff; padding: 0.85rem 0.9rem 0.75rem; }
+    .preview-card-body { background: #fff; padding: 0.85rem 0.9rem 0.75rem; flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    .preview-card-foot { margin-top: auto; }
+    .preview-card-topoiq .preview-card-body { padding: 0.75rem 0.85rem 0.65rem; }
+    .preview-card-topoiq .preview-meta { margin-bottom: 0.4rem; }
+    .preview-card-topoiq .preview-metrics { margin-bottom: 0.35rem; gap: 0.25rem; }
+    .preview-card-topoiq .preview-map { height: 52px; margin-bottom: 0.3rem; }
+    .preview-card-topoiq figure { margin: 0; }
+    .preview-card-topoiq .preview-actions { margin-top: 0; gap: 0.35rem; }
+    .preview-card-topoiq .preview-actions div { padding: 0.28rem 0.2rem; font-size: 0.63rem; }
+    .preview-card-topoiq .preview-source { margin-top: 0.28rem; }
     .preview-meta { font-size: 0.68rem; color: #888; margin-bottom: 0.55rem; font-weight: 500; line-height: 1.4; }
     .preview-metrics { margin: 0 0 0.55rem; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.3rem; }
     .preview-metrics li { display: flex; justify-content: space-between; align-items: center; font-size: 0.73rem; gap: 0.4rem; }
@@ -322,19 +332,16 @@
     .preview-badge.pos { background: #d1fae5; color: #065f46; }
     .preview-badge.warn { background: #fef3c7; color: #92400e; }
     .preview-chart-label { font-size: 0.62rem; color: #888; margin-bottom: 0.3rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
-    .preview-score { border-radius: 7px; padding: 0.45rem 0.65rem; margin-top: 0.35rem; }
+    .preview-score { border-radius: 7px; padding: 0.45rem 0.65rem; margin-top: 0; }
     .preview-score.siteiq { background: #d1fae5; color: #065f46; }
     .preview-score-value { font-size: 0.76rem; font-weight: 800; line-height: 1.35; }
     .preview-score-verdict { font-size: 0.76rem; font-weight: 700; }
     .preview-source { margin-top: 0.35rem; font-size: 0.6rem; color: #bbb; text-align: right; }
     .preview-footnote { font-size: 0.58rem; color: #aaa; margin-top: -0.2rem; margin-bottom: 0.35rem; text-align: right; }
-    .preview-map { width: 100%; border-radius: 8px; margin-bottom: 0.45rem; display: block; }
-    .preview-elev-bar { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem; }
-    .preview-elev-bar span { font-size: 0.6rem; color: #888; font-weight: 600; }
-    .preview-elev-bar div { flex: 1; height: 6px; border-radius: 4px; background: linear-gradient(to right,#3b82f6,#22c55e,#eab308,#ef4444); }
-    .preview-actions { display: flex; gap: 0.45rem; margin-top: 0.45rem; }
+    .preview-map { width: 100%; height: 88px; border-radius: 8px; margin-bottom: 0.45rem; display: block; }
+    .preview-actions { display: flex; gap: 0.45rem; margin-top: 0; }
     .preview-actions div { flex: 1; background: #e8f0fb; border-radius: 7px; padding: 0.38rem; text-align: center; font-size: 0.68rem; font-weight: 700; color: #1565c0; }
-    .preview-disclaimer { background: #fff8e6; border: 1.5px solid #f0b429; border-radius: 7px; padding: 0.42rem 0.6rem; margin-top: 0.45rem; font-size: 0.64rem; color: #7a4f00; line-height: 1.45; font-weight: 600; }
+    .preview-disclaimer { background: #fff8e6; border: 1.5px solid #f0b429; border-radius: 7px; padding: 0.42rem 0.6rem; margin-top: 0; font-size: 0.64rem; color: #7a4f00; line-height: 1.45; font-weight: 600; }
     .preview-bars { display: flex; align-items: flex-end; gap: 2px; height: 32px; margin-bottom: 0.45rem; }
     .preview-months { display: flex; gap: 2px; margin-bottom: 0.5rem; }
     .preview-months div { flex: 1; text-align: center; font-size: 0.5rem; color: #aaa; }
@@ -478,23 +485,25 @@
           <div class="preview-months">
             <div>J</div><div>F</div><div>M</div><div>A</div><div>M</div><div>J</div><div>J</div><div>A</div><div>S</div><div>O</div><div>N</div><div>D</div>
           </div>
-          <div class="preview-score siteiq" aria-label="Site suitability score">
-            <div class="preview-score-value">Site Suitability Score: 88/100 <span class="preview-score-verdict">(Very Good)</span></div>
+          <div class="preview-card-foot">
+            <div class="preview-score siteiq" aria-label="Site suitability score">
+              <div class="preview-score-value">Site Suitability Score: 88/100 <span class="preview-score-verdict">(Very Good)</span></div>
+            </div>
+            <p class="preview-source">Data sources: PVGIS JRC &middot; EU-DEM25m &middot; OpenStreetMap</p>
           </div>
-          <p class="preview-source">Data sources: PVGIS JRC &middot; EU-DEM25m &middot; OpenStreetMap</p>
         </div>
       </article>
 
       <!-- TopoIQ mockup -->
-      <article class="preview-card" itemscope itemtype="https://schema.org/SoftwareApplication" aria-label="TopoIQ terrain analysis example output">
+      <article class="preview-card preview-card-topoiq" itemscope itemtype="https://schema.org/SoftwareApplication" aria-label="TopoIQ terrain analysis example output">
         <meta itemprop="name" content="TopoIQ">
         <header class="preview-card-hdr topoiq">
           <strong>TOPOIQ — TERRAIN ANALYSIS</strong>
         </header>
         <div class="preview-card-body">
-          <p class="preview-meta">Site boundary: 187 ha &middot; Copernicus GLO-30 DEM &middot; ~11 m grid</p>
+          <p class="preview-meta">187 ha &middot; GLO-30 DEM &middot; ~11 m grid</p>
           <figure aria-label="Slope heatmap over satellite basemap">
-          <svg viewBox="0 0 260 130" xmlns="http://www.w3.org/2000/svg" class="preview-map">
+          <svg viewBox="0 0 260 130" xmlns="http://www.w3.org/2000/svg" class="preview-map" preserveAspectRatio="xMidYMid slice">
             <defs>
               <filter id="tf"><feGaussianBlur stdDeviation="4"/></filter>
               <radialGradient id="rg1" cx="35%" cy="45%" r="55%"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#3b82f600"/></radialGradient>
@@ -519,22 +528,18 @@
             <text x="100" y="72" font-size="6" fill="rgba(255,255,255,0.8)" font-family="Arial,sans-serif" font-weight="700">68m range</text>
           </svg>
           </figure>
-          <div class="preview-elev-bar">
-            <span>342m</span>
-            <div></div>
-            <span>410m Elev.</span>
-          </div>
           <ul class="preview-metrics" aria-label="Terrain screening metrics">
-            <li><span class="metric-label">Elevation Range</span><span class="metric-value">68 m</span></li>
+            <li><span class="metric-label">Elevation Range</span><span class="metric-value">68 m (342&ndash;410 m)</span></li>
             <li><span class="metric-label">Max N&ndash;S Slope</span><span class="metric-value">4.8% <span class="preview-badge pos">Acceptable</span></span></li>
-            <li><span class="metric-label">Analysis Grid</span><span class="metric-value">~11 m</span></li>
             <li><span class="metric-label">Contour Spacing</span><span class="metric-value">5 m</span></li>
           </ul>
-          <div class="preview-actions">
-            <div>PDF Report</div>
-            <div>DXF &amp; LandXML</div>
+          <div class="preview-card-foot">
+            <div class="preview-actions">
+              <div>PDF Report</div>
+              <div>DXF &amp; LandXML</div>
+            </div>
+            <p class="preview-source">Data source: Copernicus GLO-30 DEM</p>
           </div>
-          <p class="preview-source">Data source: Copernicus GLO-30 DEM</p>
         </div>
       </article>
 
@@ -555,8 +560,10 @@
             <li><span class="metric-label">Tracker Gain (1P vs Fixed)</span><span class="metric-value" style="color:#1d9e52;">+17.9%</span></li>
             <li><span class="metric-label">Best PR (1P Tracker)</span><span class="metric-value">82.1%</span></li>
           </ul>
-          <div class="preview-disclaimer">Early-stage feasibility only. Not a substitute for bankable energy assessment (PVsyst, DNV SolarFarmer, Aurora).</div>
-          <p class="preview-source">Data source: PVGIS JRC ERA5</p>
+          <div class="preview-card-foot">
+            <div class="preview-disclaimer">Early-stage feasibility only. Not a substitute for bankable energy assessment (PVsyst, DNV SolarFarmer, Aurora).</div>
+            <p class="preview-source">Data source: PVGIS JRC ERA5</p>
+          </div>
         </div>
       </article>
 
