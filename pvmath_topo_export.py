@@ -150,6 +150,7 @@ def build_reference_json(
         },
         "notes": [
             "Import LandXML or georef DXF for map-aligned workflows in Civil 3D / BricsCAD.",
+            "Site boundaries are on layer SITE_BOUNDARY (DXF) and in Parcels/PlanFeatures (LandXML).",
             "Use local DXF/XYZ to work near drawing origin (0,0) at the centroid.",
             "Multiple disconnected parcels may show TIN seams between separate blocks.",
         ],
@@ -214,6 +215,86 @@ def _tin_faces_from_grid(Z: np.ndarray) -> tuple[dict[tuple[int, int], int], lis
     return pt_idx, faces
 
 
+def _sample_z_nearest(X: np.ndarray, Y: np.ndarray, Z: np.ndarray, lon: float, lat: float) -> float:
+    """Nearest valid DEM elevation at a lon/lat vertex."""
+    valid = ~np.isnan(Z)
+    if not valid.any():
+        return 0.0
+    d2 = (X - lon) ** 2 + (Y - lat) ** 2
+    d2[~valid] = np.inf
+    r, c = np.unravel_index(int(np.argmin(d2)), Z.shape)
+    return float(Z[r, c])
+
+
+def _boundary_vertices_utm(
+    coords: list,
+    *,
+    lat_c: float,
+    lon_c: float,
+    X: np.ndarray,
+    Y: np.ndarray,
+    Z: np.ndarray,
+    closed: bool = True,
+) -> list[tuple[float, float, float]]:
+    """Convert a lon/lat ring to UTM (northing, easting, elev) vertices."""
+    if not coords or len(coords) < 3:
+        return []
+    ring = list(coords)
+    if closed and ring[0] != ring[-1]:
+        ring.append(ring[0])
+    pts: list[tuple[float, float, float]] = []
+    for lon, lat in ring:
+        e, n, _ = latlon_to_utm(lat, lon)
+        z = _sample_z_nearest(X, Y, Z, lon, lat)
+        pts.append((n, e, z))
+    return pts
+
+
+def _pntlist3d_text(pts: list[tuple[float, float, float]]) -> str:
+    return " ".join(f"{p[0]:.3f} {p[1]:.3f} {p[2]:.3f}" for p in pts)
+
+
+def _append_landxml_site_boundaries(
+    root: ET.Element,
+    polygon_list: list,
+    *,
+    lat_c: float,
+    lon_c: float,
+    X: np.ndarray,
+    Y: np.ndarray,
+    Z: np.ndarray,
+) -> None:
+    """Parcels + PlanFeatures so Civil 3D imports site boundary polylines."""
+    valid_polys = [p for p in polygon_list if p and len(p) >= 3]
+    if not valid_polys:
+        return
+
+    parcels = ET.SubElement(root, "Parcels")
+    plan_features = ET.SubElement(root, "PlanFeatures")
+
+    for i, coords in enumerate(valid_polys, start=1):
+        pts = _boundary_vertices_utm(coords, lat_c=lat_c, lon_c=lon_c, X=X, Y=Y, Z=Z)
+        if len(pts) < 2:
+            continue
+        label = f"Site_Boundary_{i}" if len(valid_polys) > 1 else "Site_Boundary"
+
+        parcel = ET.SubElement(parcels, "Parcel", {
+            "name": label,
+            "desc": "TopoIQ site boundary — closed polyline",
+        })
+        parcel_geom = ET.SubElement(parcel, "CoordGeom")
+        parcel_line = ET.SubElement(parcel_geom, "IrregularLine")
+        ET.SubElement(parcel_line, "PntList3D").text = _pntlist3d_text(pts)
+
+        feature = ET.SubElement(plan_features, "PlanFeature", {
+            "name": label,
+            "desc": "TopoIQ site boundary polyline for layout/CAD",
+        })
+        feature_geom = ET.SubElement(feature, "CoordGeom")
+        feature_line = ET.SubElement(feature_geom, "IrregularLine")
+        ET.SubElement(feature_line, "PntList3D").text = _pntlist3d_text(pts)
+
+
 def export_landxml_utm(
     X: np.ndarray,
     Y: np.ndarray,
@@ -222,6 +303,7 @@ def export_landxml_utm(
     site_name: str,
     lat_c: float,
     lon_c: float,
+    polygon_list: list | None = None,
 ) -> bytes | None:
     pt_idx, faces = _tin_faces_from_grid(Z)
     if len(pt_idx) < 3 or not faces:
@@ -280,23 +362,35 @@ def export_landxml_utm(
     for a, b, c in faces:
         ET.SubElement(faces_el, "F").text = f"{a} {b} {c}"
 
+    if polygon_list:
+        _append_landxml_site_boundaries(
+            root, polygon_list, lat_c=lat_c, lon_c=lon_c, X=X, Y=Y, Z=Z,
+        )
+
     xml_str = minidom.parseString(ET.tostring(root)).toprettyxml(indent="  ")
     return xml_str.encode("utf-8")
 
 
-def _add_boundary_polylines(msp, polygon_list, easting_fn, northing_fn, *, closed: bool = True) -> None:
-    for coords in polygon_list:
+def _add_boundary_polylines(
+    msp,
+    polygon_list,
+    vertex_fn,
+    *,
+    layer: str = "SITE_BOUNDARY",
+) -> None:
+    """Add closed 3D site-boundary polylines to modelspace."""
+    for i, coords in enumerate(polygon_list, start=1):
         if not coords or len(coords) < 3:
             continue
-        pts = []
-        for lon, lat in coords:
-            e = easting_fn(lon, lat)
-            n = northing_fn(lon, lat)
-            pts.append((float(e), float(n)))
-        if closed and pts[0] != pts[-1]:
-            pts.append(pts[0])
+        ring = list(coords)
+        if ring[0] != ring[-1]:
+            ring.append(ring[0])
+        pts = [vertex_fn(lon, lat) for lon, lat in ring]
         if len(pts) >= 2:
-            msp.add_lwpolyline(pts, dxfattribs={"layer": "BOUNDARY"})
+            msp.add_lwpolyline(
+                [(p[0], p[1]) for p in pts],
+                dxfattribs={"layer": layer, "elevation": pts[0][2]},
+            )
 
 
 def export_dxf_contours(
@@ -324,7 +418,7 @@ def export_dxf_contours(
     msp = doc.modelspace()
     doc.layers.add("CONTOUR_MINOR", color=3)
     doc.layers.add("CONTOUR_MAJOR", color=1)
-    doc.layers.add("BOUNDARY", color=3 if georef else 5)
+    doc.layers.add("SITE_BOUNDARY", color=3 if georef else 5)
 
     z_min = math.floor(z_valid.min() / minor_int) * minor_int
     z_max = math.ceil(z_valid.max() / minor_int) * minor_int
@@ -348,23 +442,61 @@ def export_dxf_contours(
 
     if polygon_list:
         if georef:
-            def _e(lon, lat):
-                return latlon_to_utm(lat, lon)[0]
-
-            def _n(lon, lat):
-                return latlon_to_utm(lat, lon)[1]
+            def _vertex(lon, lat):
+                e, n, _ = latlon_to_utm(lat, lon)
+                z = _sample_z_nearest(X, Y, Z, lon, lat)
+                return (float(e), float(n), z)
         else:
             m_per_deg_lat = 111_320.0
             m_per_deg_lon = 111_320.0 * math.cos(math.radians(lat_c))
 
-            def _e(lon, lat):
-                return (lon - lon_c) * m_per_deg_lon
+            def _vertex(lon, lat):
+                e = (lon - lon_c) * m_per_deg_lon
+                n = (lat - lat_c) * m_per_deg_lat
+                z = _sample_z_nearest(X, Y, Z, lon, lat)
+                return (float(e), float(n), z)
 
-            def _n(lon, lat):
-                return (lat - lat_c) * m_per_deg_lat
+        _add_boundary_polylines(msp, polygon_list, _vertex)
 
-        _add_boundary_polylines(msp, polygon_list, _e, _n)
+    stream = io.StringIO()
+    doc.write(stream)
+    return stream.getvalue().encode("utf-8")
 
+
+def export_dxf_boundaries(
+    X: np.ndarray,
+    Y: np.ndarray,
+    Z: np.ndarray,
+    *,
+    polygon_list: list,
+    lat_c: float,
+    lon_c: float,
+    georef: bool = False,
+) -> bytes | None:
+    """Site boundary polylines only — no contours (layout-friendly)."""
+    if not HAS_EZDXF or not polygon_list:
+        return None
+
+    doc = ezdxf.new("R2010")
+    msp = doc.modelspace()
+    doc.layers.add("SITE_BOUNDARY", color=3 if georef else 5)
+
+    if georef:
+        def _vertex(lon, lat):
+            e, n, _ = latlon_to_utm(lat, lon)
+            z = _sample_z_nearest(X, Y, Z, lon, lat)
+            return (float(e), float(n), z)
+    else:
+        m_per_deg_lat = 111_320.0
+        m_per_deg_lon = 111_320.0 * math.cos(math.radians(lat_c))
+
+        def _vertex(lon, lat):
+            e = (lon - lon_c) * m_per_deg_lon
+            n = (lat - lat_c) * m_per_deg_lat
+            z = _sample_z_nearest(X, Y, Z, lon, lat)
+            return (float(e), float(n), z)
+
+    _add_boundary_polylines(msp, polygon_list, _vertex)
     stream = io.StringIO()
     doc.write(stream)
     return stream.getvalue().encode("utf-8")
@@ -381,6 +513,8 @@ def build_topo_export_zip(
     xyz_geo: bytes | None = None,
     dxf_local: bytes | None = None,
     dxf_georef: bytes | None = None,
+    dxf_boundary_local: bytes | None = None,
+    dxf_boundary_georef: bytes | None = None,
 ) -> tuple[bytes | None, list[str]]:
     entries: list[tuple[str, bytes]] = []
     if reference_json:
@@ -393,6 +527,10 @@ def build_topo_export_zip(
         entries.append((f"{basename}_contours_local.dxf", dxf_local))
     if dxf_georef:
         entries.append((f"{basename}_contours_georef.dxf", dxf_georef))
+    if dxf_boundary_local:
+        entries.append((f"{basename}_boundary_local.dxf", dxf_boundary_local))
+    if dxf_boundary_georef:
+        entries.append((f"{basename}_boundary_georef.dxf", dxf_boundary_georef))
     if xyz_local:
         entries.append((f"{basename}_local.csv", xyz_local))
     if xyz_georef:
