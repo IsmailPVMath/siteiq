@@ -683,7 +683,7 @@
           <ul class="preview-metrics" aria-label="Terrain screening metrics">
             <li><span class="metric-label">Elevation range</span><span class="metric-value">68 m</span></li>
             <li><span class="metric-label">Max N&ndash;S slope</span><span class="metric-value">4.8% <span class="preview-badge pos">Acceptable</span></span></li>
-            <li><span class="metric-label">Analysis grid</span><span class="metric-value">~11 m <span class="preview-metric-sub">(GLO-30 ~30 m native)</span></span></li>
+            <li><span class="metric-label">Analysis grid</span><span class="metric-value">5 m <span class="preview-metric-sub">(default layout · GLO-30 ~30 m native)</span></span></li>
             <li><span class="metric-label">Contour spacing</span><span class="metric-value">5 m</span></li>
           </ul>
           <div class="preview-card-foot">
@@ -773,7 +773,7 @@
         <p class="module-tagline blue" data-i18n="topoiq.tagline">Screen terrain before you order the topo survey.</p>
         <ul class="module-features">
           <li data-i18n="topoiq.f1">Slope maps &amp; cross-row tracker grades</li>
-          <li data-i18n="topoiq.f2">Copernicus GLO-30 DEM screening</li>
+          <li data-i18n="topoiq.f2">GLO-30 DEM &mdash; 5 m layout grid default</li>
           <li data-i18n="topoiq.f3">CAD export: UTM surface, contours &amp; parcel linework</li>
           <li data-i18n="topoiq.f4">Executive terrain PDF</li>
         </ul>
@@ -873,8 +873,8 @@
         <a href="https://siteiq.pvmath.com" target="_blank" style="margin-left:auto;background:#e8f0fb;color:#1565c0;font-size:var(--text-sm);font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;" data-i18n="how.launch">Open in App &rarr;</a>
       </div>
       <div class="steps">
-        <div class="step"><div class="step-num blue">2</div><h3 data-i18n="topoiq.s1.h">Confirm boundary &amp; grid</h3><p data-i18n="topoiq.s1.p">Boundary loads from Project Setup. Set contour spacing and analysis grid.</p></div>
-        <div class="step"><div class="step-num blue">3</div><h3 data-i18n="topoiq.s2.h">Run terrain screening</h3><p data-i18n="topoiq.s2.p">Copernicus GLO-30 across your polygon. Slope heatmaps, cross-row grades, engineering verdicts.</p></div>
+        <div class="step"><div class="step-num blue">2</div><h3 data-i18n="topoiq.s1.h">Confirm boundary &amp; grid</h3><p data-i18n="topoiq.s1.p">Boundary loads from Project Setup. Default 5 m analysis grid for layout (GLO-30 native ~30 m).</p></div>
+        <div class="step"><div class="step-num blue">3</div><h3 data-i18n="topoiq.s2.h">Run terrain screening</h3><p data-i18n="topoiq.s2.p">Copernicus GLO-30 resampled to your grid inside the boundary. Slope heatmaps, cross-row grades, engineering verdicts.</p></div>
         <div class="step"><div class="step-num blue">4</div><h3 data-i18n="topoiq.s3.h">Export PDF, DXF &amp; LandXML</h3><p data-i18n="topoiq.s3.p">Terrain PDF plus a CAD starter kit: UTM LandXML TIN and DXF contours with parcel linework from your KMZ &mdash; conceptual, not survey-grade.</p></div>
       </div>
     </div>
@@ -912,7 +912,7 @@
     </div>
     <div class="why-grid">
       <div class="why-card"><div class="why-icon">&#9728;&#65039;</div><h4 data-i18n="why.c1.h">Industry-Standard Solar Data</h4><p data-i18n="why.c1.p">PVGIS (EC JRC) GHI and irradiation &mdash; used in bankable pre-feasibility worldwide.</p></div>
-      <div class="why-card"><div class="why-icon">&#127956;&#65039;</div><h4 data-i18n="why.c2.h">Satellite Terrain Data</h4><p data-i18n="why.c2.p">Copernicus GLO-30 DEM. Slope maps and contours in seconds.</p></div>
+      <div class="why-card"><div class="why-icon">&#127956;&#65039;</div><h4 data-i18n="why.c2.h">Satellite Terrain Data</h4><p data-i18n="why.c2.p">Copernicus GLO-30 DEM (~30 m native), resampled to 5 m for layout-ready slopes and contours.</p></div>
       <div class="why-card"><div class="why-icon">&#128208;</div><h4 data-i18n="why.c3.h">CAD Software Ready</h4><p data-i18n="why.c3.p">LandXML surface and DXF contours with parcel linework &mdash; UTM-georeferenced or local-origin. No manual redraw from KMZ.</p></div>
       <div class="why-card"><div class="why-icon">&#9889;</div><h4 data-i18n="why.c4.h">&le; 4 Minutes</h4><p data-i18n="why.c4.p">Full pre-check before the client call ends.</p></div>
       <div class="why-card"><div class="why-icon">&#128196;</div><h4 data-i18n="why.c5.h">Screening Reports</h4><p data-i18n="why.c5.p">PDFs from all 3 modules &mdash; for go/no-go and early client calls.</p></div>
@@ -934,7 +934,7 @@
           </div>
           <div class="accuracy-card">
             <div class="accuracy-card-title" style="color:#1565c0;">Copernicus GLO-30 DEM &mdash; ESA / Airbus</div>
-            <p>30 m global DEM from TanDEM-X. ~1&ndash;4 m RMSE in open terrain. Site selection and conceptual layout &mdash; not RTK survey.</p>
+            <p>30 m global DEM from TanDEM-X. ~1&ndash;4 m RMSE vertically in open terrain. TopoIQ resamples to a <strong>5 m</strong> default layout grid for CAD &mdash; horizontal detail remains ~30 m; not RTK survey.</p>
           </div>
           <div class="accuracy-card warn">
             <div class="accuracy-card-title">&#9888; YieldIQ &mdash; Know the Limits</div>
@@ -1232,7 +1232,7 @@ var T = {
     'siteiq.f1':'Solar resource & irradiation','siteiq.f2':'Terrain, slope & flood risk',
     'siteiq.f3':'Regulatory flags & capacity range','siteiq.f4':'Screening PDF for go/no-go','siteiq.btn':'Open in App →',
     'topoiq.tagline':'Screen terrain before you order the topo survey.',
-    'topoiq.f1':'Slope maps & cross-row tracker grades','topoiq.f2':'Copernicus GLO-30 DEM screening',
+    'topoiq.f1':'Slope maps & cross-row tracker grades','topoiq.f2':'GLO-30 DEM — 5 m layout grid default',
     'topoiq.f3':'CAD export: UTM surface, contours & parcel linework','topoiq.f4':'Executive terrain PDF','topoiq.btn':'Open in App →',
     'yieldiq.tagline':'Compare tracker vs fixed yield before you open PVsyst.',
     'yieldiq.f1':'4 configs: SAT/Fixed × 1P/2P','yieldiq.f2':'Specific yield, PR & capacity factor',
@@ -1257,13 +1257,13 @@ var T = {
     'siteiq.s1.h':'Set land use, mounting & area','siteiq.s1.p':'Standard or Agri-PV. Fixed tilt or tracker. Area in ha — solar, terrain, flood, and regulatory flags load automatically.',
     'siteiq.s2.h':'Review suitability score','siteiq.s2.p':'GHI, irradiation, slope, flood risk, capacity range, and Site Suitability Score.',
     'siteiq.s3.h':'Download screening PDF','siteiq.s3.p':'PDF with solar data, terrain summary, score, and country-aware next steps.',
-    'topoiq.s1.h':'Confirm boundary & grid','topoiq.s1.p':'Boundary loads from Project Setup. Set contour spacing and analysis grid.',
-    'topoiq.s2.h':'Run terrain screening','topoiq.s2.p':'Copernicus GLO-30 across your polygon. Slope heatmaps, cross-row grades, engineering verdicts.',
+    'topoiq.s1.h':'Confirm boundary & grid','topoiq.s1.p':'Boundary loads from Project Setup. Default 5 m analysis grid for layout (GLO-30 native ~30 m).',
+    'topoiq.s2.h':'Run terrain screening','topoiq.s2.p':'Copernicus GLO-30 resampled to your grid inside the boundary. Slope heatmaps, cross-row grades, engineering verdicts.',
     'topoiq.s3.h':'Export PDF, DXF & LandXML','topoiq.s3.p':'Terrain PDF plus a CAD starter kit: UTM LandXML TIN and DXF contours with parcel linework from your KMZ — conceptual, not survey-grade.',
     'why.label':'Why PVMath','why.title':'Engineering-grade screening estimates.<br>Not a bankable study.',
     'why.sub':'Industry-standard datasets. Screening-grade speed. Honest limits built in.',
     'why.c1.h':'Industry-Standard Solar Data','why.c1.p':'PVGIS (EC JRC) GHI and irradiation — used in bankable pre-feasibility worldwide.',
-    'why.c2.h':'Satellite Terrain Data','why.c2.p':'Copernicus GLO-30 DEM. Slope maps and contours in seconds.',
+    'why.c2.h':'Satellite Terrain Data','why.c2.p':'Copernicus GLO-30 DEM (~30 m native), resampled to 5 m for layout-ready slopes and contours.',
     'why.c3.h':'CAD Software Ready','why.c3.p':'LandXML surface and DXF contours with parcel linework — UTM-georeferenced or local-origin. No manual redraw from KMZ.',
     'why.c4.h':'≤ 4 Minutes','why.c4.p':'Full pre-check before the client call ends.',
     'why.c5.h':'Screening Reports','why.c5.p':'PDFs from all 3 modules — for go/no-go and early client calls.',
@@ -1355,7 +1355,7 @@ var T = {
     'siteiq.f1':'Solarressource & Einstrahlung','siteiq.f2':'Gelände, Neigung & Hochwasserrisiko',
     'siteiq.f3':'Regulierungshinweise & Kapazitätsbereich','siteiq.f4':'Screening-PDF für Go/No-Go','siteiq.btn':'In der App öffnen →',
     'topoiq.tagline':'Gelände screenen — vor der Vermessung.',
-    'topoiq.f1':'Neigungskarten & Querneigung für Tracker','topoiq.f2':'Copernicus GLO-30 DEM-Screening',
+    'topoiq.f1':'Neigungskarten & Querneigung für Tracker','topoiq.f2':'GLO-30 DEM — 5 m Layout-Raster Standard',
     'topoiq.f3':'CAD-Export: UTM-Oberfläche, Höhenlinien & Parcel-Linework','topoiq.f4':'Executive-Gelände-PDF','topoiq.btn':'In der App öffnen →',
     'yieldiq.tagline':'Tracker vs. Festaufständerung — vor PVsyst.',
     'yieldiq.f1':'4 Konfigurationen: SAT/Fest × 1P/2P','yieldiq.f2':'Spez. Ertrag, PR & Kapazitätsfaktor',
@@ -1380,13 +1380,13 @@ var T = {
     'siteiq.s1.h':'Landnutzung, Montage & Fläche','siteiq.s1.p':'Standard oder Agri-PV. Fest oder Tracker. Fläche in ha — Solar, Gelände, Hochwasser und Regulierung automatisch.',
     'siteiq.s2.h':'Eignungs-Score prüfen','siteiq.s2.p':'GHI, Einstrahlung, Neigung, Hochwasserrisiko, Kapazitätsbereich und Site Suitability Score.',
     'siteiq.s3.h':'Screening-PDF herunterladen','siteiq.s3.p':'PDF mit Solardaten, Geländezusammenfassung, Score und länderspezifischen nächsten Schritten.',
-    'topoiq.s1.h':'Grenze & Raster bestätigen','topoiq.s1.p':'Grenze aus Projekteinrichtung. Höhenlinienabstand und Analyse-Raster setzen.',
-    'topoiq.s2.h':'Gelände-Screening starten','topoiq.s2.p':'Copernicus GLO-30 über Ihr Polygon. Neigungskarten, Querneigung, Engineering-Verdict.',
+    'topoiq.s1.h':'Grenze & Raster bestätigen','topoiq.s1.p':'Grenze aus Projekteinrichtung. Standard-5-m-Analyse-Raster für Layout (GLO-30 nativ ~30 m).',
+    'topoiq.s2.h':'Gelände-Screening starten','topoiq.s2.p':'Copernicus GLO-30 auf Ihr Raster innerhalb der Grenze. Neigungskarten, Querneigung, Engineering-Verdict.',
     'topoiq.s3.h':'PDF, DXF & LandXML exportieren','topoiq.s3.p':'Gelände-PDF plus CAD-Starterkit: UTM-LandXML und DXF-Höhenlinien mit Parcel-Linework aus Ihrem KMZ — konzeptionell, nicht vermessungsgenau.',
     'why.label':'Warum PVMath','why.title':'Screening-Schätzungen auf Ingenieursniveau.<br>Kein bankfähiges Gutachten.',
     'why.sub':'Branchenübliche Datensätze. Screening-Geschwindigkeit. Ehrliche Grenzen.',
     'why.c1.h':'Branchenstandard-Solardaten','why.c1.p':'PVGIS (EC JRC) GHI und Einstrahlung — in bankfähigen Vorstudien weltweit.',
-    'why.c2.h':'Satellitengelände-Daten','why.c2.p':'Copernicus GLO-30 DEM. Neigungskarten und Höhenlinien in Sekunden.',
+    'why.c2.h':'Satellitengelände-Daten','why.c2.p':'Copernicus GLO-30 DEM (~30 m nativ), auf 5 m für layout-fertige Neigungen und Höhenlinien.',
     'why.c3.h':'CAD-Software-kompatibel','why.c3.p':'LandXML-Oberfläche und DXF-Höhenlinien mit Parcel-Linework — UTM-georeferenziert oder lokaler Ursprung. Kein manuelles Nachzeichnen aus KMZ.',
     'why.c4.h':'≤ 4 Minuten','why.c4.p':'Vollständige Vorprüfung noch im Kundengespräch.',
     'why.c5.h':'Screening-Berichte','why.c5.p':'PDFs aus allen 3 Modulen — für Go/No-Go und frühe Kundengespräche.',

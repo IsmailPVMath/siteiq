@@ -319,6 +319,46 @@ def _aspect_compass(deg: float) -> str:
     return dirs[ix]
 
 
+def _grid_resolution_label(grid_spacing: float, grid_spacing_requested: float | None = None) -> str:
+    """Human-readable grid line for PDF/UI — avoids implying coarse spacing is default."""
+    if grid_spacing_requested and grid_spacing > grid_spacing_requested + 0.5:
+        return (
+            f"{grid_spacing:.0f} m (coarsened from {grid_spacing_requested:.0f} m requested)"
+        )
+    return f"{grid_spacing:.0f} m"
+
+
+def _grid_resolution_note(grid_spacing: float, grid_spacing_requested: float | None = None) -> str:
+    """Footnote clarifying GLO-30 native limit vs output grid."""
+    base = (
+        "GLO-30 native ~30 m horizontal detail; output grid is resampled for smoother "
+        "slopes and CAD — not LiDAR-grade feature resolution."
+    )
+    if grid_spacing_requested and grid_spacing > grid_spacing_requested + 0.5:
+        return (
+            f"Auto-coarsened from {grid_spacing_requested:.0f} m for this boundary size. {base}"
+        )
+    if grid_spacing <= 5.5:
+        return f"Default 5 m layout grid. {base}"
+    return base
+
+
+def _grid_limitations_text(grid_spacing: float, grid_spacing_requested: float | None = None) -> str:
+    coarsened = grid_spacing_requested and grid_spacing > grid_spacing_requested + 0.5
+    spacing_phrase = (
+        f"resampled to {grid_spacing:.0f} m grid (coarsened from "
+        f"{grid_spacing_requested:.0f} m — use 5 m for layout when possible)"
+        if coarsened
+        else f"resampled to {grid_spacing:.0f} m grid for layout and CAD export"
+    )
+    return (
+        "<b>Screening limitations</b><br/>"
+        f"Copernicus DEM GLO-30 (~30 m native horizontal detail), {spacing_phrase}. "
+        "Typical vertical accuracy ±1–3 m RMSE. Vegetation and structures may bias slopes. "
+        "Field survey (LiDAR/GNSS) required before detailed design and pile layout."
+    )
+
+
 def compute_terrain_extras(X, Y, Z, grid_m: float) -> dict:
     """
     Cross-row / along-row slope (N–S tracker rows) and dominant aspect.
@@ -476,7 +516,7 @@ def render_slope_map_png(
     cbar = fig.colorbar(im, ax=ax, fraction=0.035, pad=0.02)
     cbar.set_label("Slope (%)", fontsize=9)
     ax.set_title(
-        f"Slope map · {grid_m:.0f} m grid  (green <3%, red >10%)",
+        f"Slope map · {grid_m:.0f} m output grid (GLO-30 ~30 m native)  (green <3%, red >10%)",
         fontsize=11, fontweight="bold", color="#1a2e1a", pad=8,
     )
     ax.set_xlabel("Longitude", fontsize=8, color="#555")
@@ -778,11 +818,7 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
     # ── Screening limitations (prominent) ─────────────────────────────────
     lim = Table([[
         Paragraph(
-            "<b>Screening limitations</b><br/>"
-            "Copernicus DEM GLO-30 (~30 m native), resampled to "
-            f"{ctx['grid_spacing']:.0f} m grid. Typical vertical accuracy ±1–3 m RMSE. "
-            "Vegetation and structures may bias slopes. Field survey (LiDAR/GNSS) "
-            "required before detailed design and pile layout.",
+            _grid_limitations_text(ctx["grid_spacing"], ctx.get("grid_spacing_requested")),
             ParagraphStyle("lim", fontSize=8, leading=11, textColor=DARK_BLUE),
         )
     ]], colWidths=[usable])
@@ -822,7 +858,11 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
     ])
     info_rows.append([
         _lp("Grid resolution", bold=True, color=DARK_BLUE),
-        _lp(f"{ctx['grid_spacing']:.0f} m"),
+        _lp(_grid_resolution_label(ctx["grid_spacing"], ctx.get("grid_spacing_requested"))),
+    ])
+    info_rows.append([
+        _lp("Grid note", bold=True, color=DARK_BLUE),
+        _lp(_grid_resolution_note(ctx["grid_spacing"], ctx.get("grid_spacing_requested"))),
     ])
     if ctx.get("boundary_provenance"):
         info_rows.append([
@@ -1109,7 +1149,7 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
         story,
         "TopoIQ",
         data_sources="Copernicus DEM GLO-30 (ESA/EC 2021) via AWS Terrain Tiles.",
-        note="Pre-survey terrain screening only — not a substitute for topographic survey or geotechnical investigation. ",
+        note="Pre-survey terrain screening only — GLO-30 ~30 m native; output grid resampled for layout. Not a substitute for topographic survey or geotechnical investigation. ",
         muted_color=MUTED,
         border_color=colors.HexColor("#cccccc"),
     )
@@ -1123,6 +1163,7 @@ def build_report_context(
     *,
     project_name, country, location_label,
     lat_c, lon_c, area_ha, grid_spacing,
+    grid_spacing_requested=None,
     z_min, z_max, mean_slope, max_slope,
     pct_over5, pct_over10,
     slope_bins, slope_img_buf,
@@ -1163,6 +1204,7 @@ def build_report_context(
         "lon_c": lon_c,
         "area_ha": area_ha,
         "grid_spacing": grid_spacing,
+        "grid_spacing_requested": grid_spacing_requested,
         "z_min": z_min,
         "z_max": z_max,
         "z_range": z_range,

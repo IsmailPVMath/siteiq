@@ -1149,7 +1149,8 @@ with right:
             f'<div style="font-size:1rem;font-weight:600;color:#1a1a1a;'
             f'background:#f0f4f8;border-radius:8px;padding:0.55rem 1rem;margin-top:0.3rem;">'
             f'📐 <b>{area_ha:.1f} ha</b> &nbsp;·&nbsp; '
-            f'🔢 <b>{len(z_valid):,}</b> grid points at <b>{grid_m_used:.0f} m</b> &nbsp;·&nbsp; '
+            f'🔢 <b>{len(z_valid):,}</b> points at <b>{grid_m_used:.0f} m</b> output grid &nbsp;·&nbsp; '
+            f'<span style="font-size:0.85em;color:#555;">GLO-30 native ~30 m</span> &nbsp;·&nbsp; '
             f'⚠️ <b>{pct_over5:.1f}%</b> (&gt;5% slope) &nbsp;·&nbsp; '
             f'🔴 <b>{pct_over10:.1f}%</b> (&gt;10%, ≈{ha_over10:.1f} ha) · max point <b>{s_valid.max():.1f}%</b>'
             f'</div>',
@@ -1217,6 +1218,7 @@ with right:
                 location_label=_proj.get("location_label", ""),
                 lat_c=lat_c, lon_c=lon_c,
                 area_ha=area_ha, grid_spacing=grid_m_used,
+                grid_spacing_requested=float(grid_spacing),
                 z_min=float(z_valid.min()), z_max=float(z_valid.max()),
                 mean_slope=mean_slope, max_slope=float(s_valid.max()),
                 pct_over5=pct_over5, pct_over10=pct_over10,
@@ -1367,8 +1369,8 @@ with right:
         <div class="accuracy-card">
           <h4><i class="fa-solid fa-circle-info" style="margin-right:0.3rem;"></i> Data Source & Accuracy</h4>
           <p><strong>Source:</strong> Copernicus DEM GLO-30 (ESA/EC, 2021) via AWS Terrain Tiles</p>
-          <p><strong>Native resolution:</strong> ~30 m (GLO-30); tiles fetched at zoom {dem_zoom} (adaptive)</p>
-          <p><strong>Output grid:</strong> {grid_m_used:.0f} m resampled</p>
+          <p><strong>Native resolution:</strong> ~30 m horizontal (GLO-30); tiles at zoom {dem_zoom}</p>
+          <p><strong>Output grid:</strong> {grid_m_used:.0f} m — resampled for layout/CAD (default 5 m; not survey-grade feature detail)</p>
           <p><strong>Vertical accuracy:</strong> ±1–3 m RMSE typical (better on open ground; worse in dense vegetation)</p>
           <p><strong>Recommendation:</strong> Screening-grade terrain assessment only. Verify critical slopes and grades with LiDAR or RTK survey before FEED and pile layout.</p>
           <p style="color:#e53935;margin-top:0.4rem;">
@@ -1384,7 +1386,7 @@ with right:
         wc1, wc2 = st.columns(2)
         _wcards = [
             (wc1, "Satellite DEM",
-             "Copernicus GLO-30 · ~30 m native · global coverage"),
+             "Copernicus GLO-30 · ~30 m native · resampled to 5 m for layout"),
             (wc2, "CAD package",
              "UTM LandXML surface, DXF contours & parcel linework from your KMZ"),
             (wc1, "DXF + LandXML",
