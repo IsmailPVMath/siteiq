@@ -45,7 +45,12 @@
     }
 
     html { scroll-behavior: smooth; }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .hero-badge span.dot { animation: none; }
+    }
     body { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: var(--text-body); line-height: var(--leading); }
+    body.nav-menu-open { overflow: hidden; }
 
     /* ── NAV ── */
     nav {
@@ -55,6 +60,11 @@
       background: rgba(245,247,245,0.96);
       backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--border);
+      transition: box-shadow .25s, border-color .25s;
+    }
+    nav.nav-scrolled {
+      box-shadow: 0 4px 24px rgba(0,0,0,.08);
+      border-bottom-color: rgba(212,224,212,.85);
     }
     .nav-logo { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
     .nav-logo-mark { display:flex; align-items:center; }
@@ -70,15 +80,26 @@
       transition: background .2s, box-shadow .2s;
     }
     .nav-cta:hover { background: var(--green-dk) !important; box-shadow: 0 4px 14px rgba(29,158,82,.3); }
+    .nav-menu-btn {
+      display: none; align-items: center; justify-content: center;
+      width: 44px; height: 44px; padding: 0; border: 1.5px solid var(--border);
+      border-radius: 9px; background: var(--card); color: var(--text);
+      cursor: pointer; flex-shrink: 0;
+    }
+    .nav-menu-btn svg { width: 22px; height: 22px; }
+    .nav-menu-btn .icon-close { display: none; }
+    nav.nav-open .nav-menu-btn .icon-open { display: none; }
+    nav.nav-open .nav-menu-btn .icon-close { display: block; }
 
     /* ── LANG SWITCHER ── */
-    .lang-switcher { display: flex; gap: 0.2rem; align-items: center; }
+    .lang-switcher { display: flex; gap: 0.35rem; align-items: center; }
     .lang-btn {
       background: none; border: 1.5px solid transparent;
-      padding: 0.22rem 0.55rem; border-radius: 6px;
-      font-size: 0.75rem; font-weight: 700; color: var(--muted);
+      min-width: 44px; min-height: 44px; padding: 0 0.65rem; border-radius: 8px;
+      font-size: 0.82rem; font-weight: 700; color: var(--muted);
       cursor: pointer; font-family: inherit; transition: all .18s;
       letter-spacing: 0.03em;
+      display: inline-flex; align-items: center; justify-content: center;
     }
     .lang-btn:hover { color: var(--green); border-color: var(--green); }
     .lang-btn.active { color: var(--green-dk); border-color: var(--green); background: var(--green-lt); }
@@ -128,16 +149,22 @@
       background: linear-gradient(135deg, var(--green), var(--green-dk));
       color: #fff; text-decoration: none; padding: 0.85rem 2rem;
       border-radius: 9px; font-weight: 700; font-size: 0.95rem;
+      min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
       box-shadow: 0 4px 20px rgba(29,158,82,.3); transition: transform .2s, box-shadow .2s;
     }
     .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(29,158,82,.4); }
     .btn-outline {
       background: var(--card); color: var(--text); text-decoration: none;
       padding: 0.85rem 2rem; border-radius: 9px; font-weight: 600; font-size: 0.95rem;
+      min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
       border: 1.5px solid var(--border); transition: border-color .2s, color .2s;
     }
+    .hero-stats {
+      display: flex; justify-content: center; gap: 3rem; margin-top: 4rem; padding-top: 3rem;
+      border-top: 1px solid var(--border); flex-wrap: wrap;
+    }
     .btn-outline:hover { border-color: var(--green); color: var(--green); }
-    .hero-stats { display: flex; justify-content: center; gap: 3rem; margin-top: 4rem; padding-top: 3rem; border-top: 1px solid var(--border); flex-wrap: wrap; }
+    .stat { text-align: center; min-width: 5.5rem; }
     .stat-num { font-size: 2rem; font-weight: 800; color: var(--text); letter-spacing: -0.03em; }
     .stat-lbl { font-size: var(--text-sm); color: var(--muted); font-weight: 500; margin-top: 0.2rem; }
 
@@ -281,7 +308,7 @@
     .footer-col h5 { color: #fff; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.9rem; }
     .footer-col a { display: block; color: rgba(255,255,255,.6); text-decoration: none; margin-bottom: 0.45rem; transition: color .2s; }
     .footer-col a:hover { color: var(--green); }
-    .footer-bottom { max-width: 1100px; margin: 2rem auto 0; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,.1); display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; }
+    .footer-bottom { max-width: 1100px; margin: 2rem auto 0; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,.1); display: flex; justify-content: space-between; align-items: center; font-size: 0.875rem; flex-wrap: wrap; gap: 0.75rem; }
     .footer-bottom a { color: rgba(255,255,255,.5); text-decoration: none; }
     .footer-bottom a:hover { color: var(--green); }
     .footer-social { display: flex; gap: 0.65rem; margin-bottom: 1.1rem; }
@@ -407,26 +434,76 @@
     .workflow-mode-chip span { font-size:0.9375rem;color:#5a7a5a;line-height:1.45; }
     .workflow-module-sub { font-size:var(--text-sm);color:var(--muted); }
 
+    /* ── STATS BAR (Early Access) ── */
+    .stats-bar {
+      background: var(--card); border: 1.5px solid var(--border); border-radius: 14px;
+      padding: 1.8rem 2.5rem; display: flex; justify-content: space-around;
+      align-items: center; flex-wrap: wrap; gap: 1.5rem; text-align: center;
+    }
+    .stats-bar-item { padding: 0.25rem 0; flex: 1 1 7rem; min-width: 5.5rem; }
+    .stats-bar-num { font-size: 2rem; font-weight: 900; color: var(--text); letter-spacing: -0.03em; }
+    .stats-bar-lbl { font-size: var(--text-sm); color: var(--muted); font-weight: 500; margin-top: 0.2rem; }
+    .stats-bar-divider { width: 1px; height: 2.5rem; background: var(--border); flex-shrink: 0; }
+
     /* ── RESPONSIVE ── */
     @media (max-width: 900px) {
+      :root { --section-x: clamp(1.5rem, 4.5vw, 2.25rem); }
       #modules .section-sub { white-space: normal; max-width: 640px; }
       .modules-grid, .pricing-grid, .steps, .why-grid, .reviews-grid { grid-template-columns: 1fr; }
       .about-grid, .contact-grid { grid-template-columns: 1fr; }
       .footer-inner { grid-template-columns: 1fr 1fr; }
-      .nav-links { display: none; }
       .form-row { grid-template-columns: 1fr; }
+      .nav-menu-btn { display: inline-flex; }
+      .nav-links {
+        display: none; position: fixed; left: 0; right: 0; top: 64px; z-index: 99;
+        flex-direction: column; align-items: stretch; gap: 0;
+        background: rgba(245,247,245,.98); backdrop-filter: blur(14px);
+        border-bottom: 1px solid var(--border); padding: 0.75rem var(--section-x) 1.25rem;
+        box-shadow: 0 12px 32px rgba(0,0,0,.1); max-height: calc(100vh - 64px); overflow-y: auto;
+      }
+      nav.nav-open .nav-links { display: flex; }
+      .nav-links a {
+        font-size: var(--text-body); font-weight: 600; color: var(--text);
+        padding: 0.85rem 0.5rem; min-height: 44px;
+        display: flex; align-items: center; border-bottom: 1px solid var(--border);
+      }
+      .nav-links a:last-child { border-bottom: none; margin-top: 0.5rem; }
+      .nav-links .nav-cta {
+        justify-content: center; text-align: center;
+        padding: 0.85rem 1.25rem !important; font-size: var(--text-body) !important;
+        border-radius: 9px; border-bottom: none !important;
+      }
+      .hero-stats {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 1.75rem 2rem;
+        justify-items: center; max-width: 420px; margin-left: auto; margin-right: auto;
+      }
+      .stats-bar {
+        display: grid; grid-template-columns: 1fr 1fr; padding: 1.5rem 1.25rem; gap: 1.25rem 1rem;
+      }
+      .stats-bar-item { flex: none; min-width: 0; }
+      .stats-bar-divider { display: none; }
+      .stats-bar-item:last-child { grid-column: 1 / -1; }
     }
     @media (max-width: 600px) {
-      :root { --section-y: 3.5rem; --section-y-compact: 2.5rem; }
+      :root { --section-y: 3.5rem; --section-y-compact: 2.5rem; --section-x: clamp(1.25rem, 5vw, 1.75rem); }
       .hero { padding: 6rem var(--section-x) 3.5rem; }
       .section-header { margin-bottom: 2.5rem; }
+      body { font-size: 1.0625rem; }
+      .stat-lbl, .stats-bar-lbl { font-size: 1rem; }
+      .footer-bottom { font-size: var(--text-sm); }
+      .footer-col a { padding: 0.35rem 0; min-height: 44px; display: flex; align-items: center; }
+      .accuracy-details summary::after,
+      .workflow-details summary::after {
+        min-height: 44px; display: inline-flex; align-items: center;
+        padding: 0.65rem 1.15rem;
+      }
     }
   </style>
 </head>
 <body>
 
 <!-- ── NAV ── -->
-<nav>
+<nav id="site-nav">
   <a href="https://pvmath.com" class="nav-logo">
     <div class="nav-logo-mark">
       <svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
@@ -438,19 +515,23 @@
     <span class="nav-brand">PVMath</span>
   </a>
   <div class="nav-right">
-    <div class="nav-links">
+    <div class="nav-links" id="primary-nav">
       <a href="#about" data-i18n="nav.about">About</a>
       <a href="#modules" data-i18n="nav.modules">Modules</a>
       <a href="#how" data-i18n="nav.how">How It Works</a>
       <a href="#pricing" data-i18n="nav.pricing">Pricing</a>
       <a href="#faq" data-i18n="nav.faq">FAQ</a>
       <a href="#contact" data-i18n="nav.contact">Contact</a>
-      <a href="https://siteiq.pvmath.com" target="_blank" class="nav-cta" data-i18n="nav.cta">Try Free &rarr;</a>
+      <a href="https://siteiq.pvmath.com" target="_blank" rel="noopener" class="nav-cta" data-i18n="nav.cta">Try Free &rarr;</a>
     </div>
     <div class="lang-switcher">
-      <button class="lang-btn active" data-lang="en" onclick="setLanguage('en')">EN</button>
-      <button class="lang-btn" data-lang="de" onclick="setLanguage('de')">DE</button>
+      <button type="button" class="lang-btn active" data-lang="en" onclick="setLanguage('en')" aria-label="English">EN</button>
+      <button type="button" class="lang-btn" data-lang="de" onclick="setLanguage('de')" aria-label="Deutsch">DE</button>
     </div>
+    <button type="button" class="nav-menu-btn" id="nav-menu-btn" aria-expanded="false" aria-controls="primary-nav" aria-label="Open menu">
+      <svg class="icon-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
   </div>
 </nav>
 
@@ -862,16 +943,16 @@
       <a href="mailto:contact@pvmath.com?subject=PVMath — Feature Request / Requirements" style="background:var(--green-lt);color:var(--green-dk);font-size:0.88rem;font-weight:700;padding:0.65rem 1.4rem;border-radius:8px;text-decoration:none;" data-i18n="reviews.fb.btn">Share Requirements &rarr;</a>
     </div>
 
-    <div style="background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:1.8rem 2.5rem;display:flex;justify-content:space-around;flex-wrap:wrap;gap:1.5rem;text-align:center;">
-      <div><div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;">Beta</div><div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;" data-i18n="stats.sites">Early Access</div></div>
-      <div style="width:1px;background:var(--border);"></div>
-      <div><div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;">3</div><div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;" data-i18n="stats.modules">Live Modules</div></div>
-      <div style="width:1px;background:var(--border);"></div>
-      <div><div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;" data-i18n="stats.global-val">Global</div><div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;" data-i18n="stats.coverage">Data Coverage</div></div>
-      <div style="width:1px;background:var(--border);"></div>
-      <div><div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;" data-i18n="stat.time-val">&le; 4 min</div><div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;" data-i18n="stats.speed">Per Site Screening</div></div>
-      <div style="width:1px;background:var(--border);"></div>
-      <div><div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;" data-i18n="stat.free-val">Free</div><div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;" data-i18n="stats.start">To Get Started</div></div>
+    <div class="stats-bar">
+      <div class="stats-bar-item"><div class="stats-bar-num">Beta</div><div class="stats-bar-lbl" data-i18n="stats.sites">Early Access</div></div>
+      <div class="stats-bar-divider" aria-hidden="true"></div>
+      <div class="stats-bar-item"><div class="stats-bar-num">3</div><div class="stats-bar-lbl" data-i18n="stats.modules">Live Modules</div></div>
+      <div class="stats-bar-divider" aria-hidden="true"></div>
+      <div class="stats-bar-item"><div class="stats-bar-num" data-i18n="stats.global-val">Global</div><div class="stats-bar-lbl" data-i18n="stats.coverage">Data Coverage</div></div>
+      <div class="stats-bar-divider" aria-hidden="true"></div>
+      <div class="stats-bar-item"><div class="stats-bar-num" data-i18n="stat.time-val">&le; 4 min</div><div class="stats-bar-lbl" data-i18n="stats.speed">Per Site Screening</div></div>
+      <div class="stats-bar-divider" aria-hidden="true"></div>
+      <div class="stats-bar-item"><div class="stats-bar-num" data-i18n="stat.free-val">Free</div><div class="stats-bar-lbl" data-i18n="stats.start">To Get Started</div></div>
     </div>
   </div>
 </section>
@@ -1105,6 +1186,7 @@ var T = {
   en: {
     'nav.modules':'Modules','nav.how':'How It Works','nav.pricing':'Pricing',
     'nav.about':'About','nav.faq':'FAQ','nav.contact':'Contact','nav.cta':'Try Free →',
+    'nav.menuOpen':'Open menu','nav.menuClose':'Close menu',
     'hero.badge':'Early Access — SiteIQ · TopoIQ · YieldIQ',
     'hero.h1':'Solar intelligence tools<br>built by <em>industry experts,</em><br>for solar engineers and developers.',
     'hero.p':'Drop coordinates. Get site, terrain, and yield screening — with PDFs you can share in the next meeting.',
@@ -1224,6 +1306,7 @@ var T = {
   de: {
     'nav.modules':'Module','nav.how':'Funktionsweise','nav.pricing':'Preise',
     'nav.about':'Über uns','nav.faq':'FAQ','nav.contact':'Kontakt','nav.cta':'Kostenlos testen →',
+    'nav.menuOpen':'Menü öffnen','nav.menuClose':'Menü schließen',
     'hero.badge':'Early Access — SiteIQ · TopoIQ · YieldIQ',
     'hero.h1':'Solar-Intelligenztools –<br>entwickelt von <em>Ingenieuren,</em><br>für Solaringenieure und Entwickler.',
     'hero.p':'Koordinaten eingeben. Standort-, Gelände- und Ertrags-Screening — mit PDFs für das nächste Meeting.',
@@ -1368,6 +1451,11 @@ function setLanguage(lang) {
   });
   document.documentElement.lang = lang;
   renderPricingNotes();
+  var menuBtn = document.getElementById('nav-menu-btn');
+  if (menuBtn && T[lang]) {
+    var open = menuBtn.getAttribute('aria-expanded') === 'true';
+    menuBtn.setAttribute('aria-label', T[lang][open ? 'nav.menuClose' : 'nav.menuOpen']);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1419,8 +1507,51 @@ document.addEventListener('DOMContentLoaded', function() {
   var browser = (navigator.language || '').split('-')[0].toLowerCase();
   var lang    = saved || (['de'].includes(browser) ? 'de' : 'en');
   setLanguage(lang);
-  document.getElementById('lbl-annual').style.opacity = '.5';
+  var lblA = document.getElementById('lbl-annual');
+  if (lblA) lblA.style.opacity = '.5';
+  initMobileNav();
+  initNavScrollShadow();
 });
+
+function initMobileNav() {
+  var nav = document.getElementById('site-nav');
+  var btn = document.getElementById('nav-menu-btn');
+  var links = document.querySelectorAll('#primary-nav a');
+  if (!nav || !btn) return;
+
+  function setOpen(open) {
+    nav.classList.toggle('nav-open', open);
+    document.body.classList.toggle('nav-menu-open', open);
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    btn.setAttribute('aria-label', T[currentLang][open ? 'nav.menuClose' : 'nav.menuOpen']);
+  }
+
+  btn.addEventListener('click', function() {
+    setOpen(!nav.classList.contains('nav-open'));
+  });
+
+  links.forEach(function(link) {
+    link.addEventListener('click', function() { setOpen(false); });
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') setOpen(false);
+  });
+
+  window.addEventListener('resize', function() {
+    if (window.innerWidth > 900) setOpen(false);
+  });
+}
+
+function initNavScrollShadow() {
+  var nav = document.getElementById('site-nav');
+  if (!nav) return;
+  function onScroll() {
+    nav.classList.toggle('nav-scrolled', window.scrollY > 8);
+  }
+  onScroll();
+  window.addEventListener('scroll', onScroll, { passive: true });
+}
 </script>
 
 </body>
