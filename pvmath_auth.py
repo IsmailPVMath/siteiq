@@ -56,6 +56,8 @@ PLAN_LABELS = {
     "enterprise":   "Enterprise",
 }
 
+PAID_PLANS = frozenset({"professional", "developer", "enterprise"})
+
 STRIPE_LINK  = "https://buy.stripe.com/YOUR_LINK_HERE"
 UPGRADE_CONTACT = "mailto:contact@pvmath.com?subject=PVMath%20%E2%80%94%20Professional%20upgrade"
 PRICE_LABEL  = "€149 / month"
@@ -573,6 +575,20 @@ def seat_limit(plan: str):
 
 def plan_label(plan: str) -> str:
     return PLAN_LABELS.get(plan, PLAN_LABELS[DEFAULT_PLAN])
+
+
+def has_paid_plan(plan: str) -> bool:
+    """True for Professional, Developer, Enterprise."""
+    return plan in PAID_PLANS
+
+
+def can_download_engineering_manual(user_id: str) -> bool:
+    """Public Word manual — paid plans and admins only."""
+    if not user_id:
+        return False
+    if is_admin(user_id):
+        return True
+    return has_paid_plan(get_plan(user_id))
 
 
 def team_member_count(team_id: str) -> int:

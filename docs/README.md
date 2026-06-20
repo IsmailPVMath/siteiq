@@ -20,6 +20,7 @@ python3 scripts/generate_engineering_manual.py
 
 - **Website Knowledge Centre** (`/guides/`) — Level 1 SEO-safe engineering concepts
 - **In-app help** (`pvmath_help.py`) — Level 2 signed-in user guidance; no proprietary logic
+- **Pro manual download** — Overview page; `can_download_engineering_manual()` in `pvmath_auth.py` (Professional+)
 - **Internal manual** — Level 3 full implementation reference; never commit excerpts to public HTML
 
 ## What stays internal
