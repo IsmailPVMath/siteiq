@@ -149,6 +149,7 @@
     .section-label { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--green); margin-bottom: 0.8rem; }
     .section-title { font-size: clamp(1.8rem, 3vw, 2.6rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 1rem; }
     .section-sub { font-size: var(--text-body); color: var(--muted); max-width: 640px; line-height: var(--leading); }
+    #modules .section-sub { max-width: none; white-space: nowrap; }
     .section-header { margin-bottom: 3rem; }
     .section-teaser { font-size: var(--text-body); color: var(--text); font-weight: 600; line-height: var(--leading); max-width: 640px; margin: 0 auto 1.25rem; text-align: center; }
     .container { max-width: 1100px; margin: 0 auto; }
@@ -358,9 +359,16 @@
     .accuracy-details summary {
       font-size: var(--text-body); font-weight: 700; padding: 1.15rem 1.4rem; cursor: pointer;
       list-style: none; color: var(--text);
+      display: flex; align-items: center; justify-content: space-between; gap: 1.25rem; flex-wrap: wrap;
     }
     .accuracy-details summary::-webkit-details-marker { display: none; }
-    .accuracy-details summary::after { content: 'Show methodology ↓'; float: right; font-size: var(--text-sm); font-weight: 600; color: var(--green); }
+    .accuracy-details summary::after {
+      content: 'Show methodology ↓'; float: none; flex-shrink: 0;
+      font-size: var(--text-body); font-weight: 700;
+      background: var(--green-lt); color: var(--green-dk);
+      padding: 0.55rem 1.15rem; border-radius: 8px;
+      border: 1.5px solid rgba(29,158,82,.28); white-space: nowrap;
+    }
     .accuracy-details[open] summary::after { content: 'Hide ↑'; }
     .accuracy-details[open] summary { border-bottom: 1px solid var(--border); }
     .accuracy-details-body { padding: 1.25rem 1.4rem 1.4rem; }
@@ -378,11 +386,19 @@
     .workflow-details summary {
       font-size: var(--text-body); font-weight: 700; padding: 1.25rem 1.5rem; cursor: pointer;
       list-style: none; color: var(--text);
+      display: flex; align-items: center; justify-content: space-between; gap: 1.25rem; flex-wrap: wrap;
     }
     .workflow-details summary::-webkit-details-marker { display: none; }
-    .workflow-details summary::after { content: 'Show step-by-step ↓'; float: right; font-size: var(--text-sm); font-weight: 600; color: var(--green); }
+    .workflow-details summary::after {
+      content: 'Show steps ↓'; float: none; flex-shrink: 0;
+      font-size: var(--text-body); font-weight: 700;
+      background: var(--green-lt); color: var(--green-dk);
+      padding: 0.55rem 1.15rem; border-radius: 8px;
+      border: 1.5px solid rgba(29,158,82,.28); white-space: nowrap;
+    }
     .workflow-details[open] summary::after { content: 'Hide ↑'; }
     .workflow-details[open] summary { border-bottom: 1px solid var(--border); }
+    .workflow-details-body { padding: 1.5rem 1.5rem 2rem; }
     .workflow-setup { background:linear-gradient(135deg,#e8f5ee,#f4faf6);border:1.5px solid #b8ddc8;border-radius:14px;padding:1.8rem 2rem;margin-bottom:3rem; }
     .workflow-setup h3 { margin:0 0 0.45rem 0;font-size:var(--text-body);font-weight:800;color:#1a2e1a; }
     .workflow-setup > div > div > p { margin:0 0 1rem 0;font-size:var(--text-sm);color:#3a5a3a;line-height:var(--leading); }
@@ -393,6 +409,7 @@
 
     /* ── RESPONSIVE ── */
     @media (max-width: 900px) {
+      #modules .section-sub { white-space: normal; max-width: 640px; }
       .modules-grid, .pricing-grid, .steps, .why-grid, .reviews-grid { grid-template-columns: 1fr; }
       .about-grid, .contact-grid { grid-template-columns: 1fr; }
       .footer-inner { grid-template-columns: 1fr 1fr; }
@@ -449,18 +466,18 @@
     </div>
     <div class="hero-stats">
       <div class="stat"><div class="stat-num">3</div><div class="stat-lbl" data-i18n="stat.modules">Live Modules</div></div>
-      <div class="stat"><div class="stat-num">2min</div><div class="stat-lbl" data-i18n="stat.speed">Site Screening Time</div></div>
+      <div class="stat"><div class="stat-num" data-i18n="stat.time-val">&le; 4 min</div><div class="stat-lbl" data-i18n="stat.speed">Site Screening Time</div></div>
       <div class="stat"><div class="stat-num">Global</div><div class="stat-lbl" data-i18n="stat.coverage">Solar Data Coverage</div></div>
       <div class="stat"><div class="stat-num" data-i18n="stat.free-val">Free</div><div class="stat-lbl" data-i18n="stat.start">To Get Started</div></div>
     </div>
     <div class="hero-scan" aria-label="What PVMath does">
       <div class="hero-scan-item">
         <strong class="siteiq">SiteIQ</strong>
-        <span data-i18n="hero.scan.siteiq">Know if a site is buildable in 60 seconds.</span>
+        <span data-i18n="hero.scan.siteiq">Know if a site is buildable within minutes.</span>
       </div>
       <div class="hero-scan-item">
         <strong class="topoiq">TopoIQ</strong>
-        <span data-i18n="hero.scan.topoiq">Screen terrain and export CAD before the topo survey.</span>
+        <span data-i18n="hero.scan.topoiq">Screen terrain and export LandXML &amp; DXF before the topo survey.</span>
       </div>
       <div class="hero-scan-item">
         <strong class="yieldiq">YieldIQ</strong>
@@ -475,7 +492,7 @@
   <div class="container">
     <div style="text-align:center;margin-bottom:2.5rem;">
       <div class="section-label" style="justify-content:center;display:flex;">See it in action</div>
-      <h2 class="section-title">Real outputs. In under 2 minutes.</h2>
+      <h2 class="section-title">Real outputs. &le; 4 minutes per module.</h2>
       <p class="section-sub" style="margin:0 auto;">Representative examples from a 187 ha site in southern Spain.</p>
     </div>
     <div class="preview-grid">
@@ -638,7 +655,7 @@
         <div class="module-pill pill-live" data-i18n="pill.live">Live Now</div>
         <div class="module-num">Module 01</div>
         <div class="module-name green">SiteIQ</div>
-        <p class="module-tagline coral" data-i18n="siteiq.tagline">Know if a site is buildable in 60 seconds.</p>
+        <p class="module-tagline coral" data-i18n="siteiq.tagline">Know if a site is buildable within minutes.</p>
         <ul class="module-features">
           <li data-i18n="siteiq.f1">Solar resource &amp; irradiation</li>
           <li data-i18n="siteiq.f2">Terrain, slope &amp; flood risk</li>
@@ -692,12 +709,12 @@
     <div class="section-header">
       <div class="section-label" data-i18n="how.label">Workflow</div>
       <h2 class="section-title" data-i18n="how.title">How it works.</h2>
-      <p class="section-sub" data-i18n="how.sub">Set up once. Run any module in under 2 minutes.</p>
+      <p class="section-sub" data-i18n="how.sub">Set up once. Run any module in &le; 4 minutes.</p>
     </div>
     <p class="section-teaser" data-i18n="how.teaser">Drop a pin or draw a boundary &mdash; SiteIQ, TopoIQ, and YieldIQ share the same project setup.</p>
 
     <details class="workflow-details">
-      <summary data-i18n="how.expand">Show step-by-step workflow for each module</summary>
+      <summary data-i18n="how.expand">Step-by-step workflow for each module</summary>
       <div class="workflow-details-body">
     <!-- Shared Project Setup block -->
     <div class="workflow-setup">
@@ -797,7 +814,7 @@
       <div class="why-card"><div class="why-icon">&#9728;&#65039;</div><h4 data-i18n="why.c1.h">Industry-Standard Solar Data</h4><p data-i18n="why.c1.p">GHI and irradiation from PVGIS (EC JRC) &mdash; the same data source used by engineers in bankable pre-feasibility studies worldwide.</p></div>
       <div class="why-card"><div class="why-icon">&#127956;&#65039;</div><h4 data-i18n="why.c2.h">Satellite Terrain Data</h4><p data-i18n="why.c2.p">Copernicus GLO-30 DEM (~30m horizontal resolution). Slope maps, elevation profiles, and contour lines &mdash; extracted in seconds, not days.</p></div>
       <div class="why-card"><div class="why-icon">&#128208;</div><h4 data-i18n="why.c3.h">CAD Software Ready</h4><p data-i18n="why.c3.p">DXF and Civil 3D-ready LandXML terrain files work in any CAD software &mdash; Civil 3D, BricsCAD, QGIS, and more. No conversion needed.</p></div>
-      <div class="why-card"><div class="why-icon">&#9889;</div><h4 data-i18n="why.c4.h">Under 2 Minutes</h4><p data-i18n="why.c4.p">SiteIQ, TopoIQ, and YieldIQ each complete in under 2 minutes. Full pre-check before the client call ends.</p></div>
+      <div class="why-card"><div class="why-icon">&#9889;</div><h4 data-i18n="why.c4.h">&le; 4 Minutes</h4><p data-i18n="why.c4.p">Each module typically finishes in &le; 4 minutes. Full pre-check before the client call ends.</p></div>
       <div class="why-card"><div class="why-icon">&#128196;</div><h4 data-i18n="why.c5.h">Screening Reports</h4><p data-i18n="why.c5.p">Branded PDF outputs from all 3 modules — site screening, terrain analysis, and energy yield. For internal go/no-go and early client conversations, not bankable deliverables.</p></div>
       <div class="why-card"><div class="why-icon">&#128119;</div><h4 data-i18n="why.c6.h">Built by a Solar Engineer</h4><p data-i18n="why.c6.p">Not a software startup guessing what engineers need. Built by a Solar Engineering Expert with hands-on experience in utility-scale solar, tracker systems, and EPC delivery worldwide.</p></div>
     </div>
@@ -852,7 +869,7 @@
       <div style="width:1px;background:var(--border);"></div>
       <div><div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;" data-i18n="stats.global-val">Global</div><div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;" data-i18n="stats.coverage">Data Coverage</div></div>
       <div style="width:1px;background:var(--border);"></div>
-      <div><div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;">&lt;2min</div><div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;" data-i18n="stats.speed">Per Site Screening</div></div>
+      <div><div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;" data-i18n="stat.time-val">&le; 4 min</div><div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;" data-i18n="stats.speed">Per Site Screening</div></div>
       <div style="width:1px;background:var(--border);"></div>
       <div><div style="font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-0.03em;" data-i18n="stat.free-val">Free</div><div style="font-size:0.78rem;color:var(--muted);font-weight:500;margin-top:0.2rem;" data-i18n="stats.start">To Get Started</div></div>
     </div>
@@ -977,7 +994,7 @@
     <div class="faq-grid">
       <details class="faq-item">
         <summary data-i18n="faq.q1">How is PVMath different from running PVGIS and QGIS yourself?</summary>
-        <p data-i18n="faq.a1">Same datasets &mdash; one workflow. Structured screening, terrain PDFs, CAD export, and four-configuration yield comparison in under 2 minutes per module.</p>
+        <p data-i18n="faq.a1">Same datasets &mdash; one workflow. Structured screening, terrain PDFs, CAD export, and four-configuration yield comparison in &le; 4 minutes per module.</p>
       </details>
       <details class="faq-item">
         <summary data-i18n="faq.q2">Is this a bankable study or a substitute for PVsyst / DNV / Aurora?</summary>
@@ -1092,16 +1109,16 @@ var T = {
     'hero.h1':'Solar intelligence tools<br>built by <em>industry experts,</em><br>for solar engineers and developers.',
     'hero.p':'Drop coordinates. Get site, terrain, and yield screening — with PDFs you can share in the next meeting.',
     'hero.btn1':'Try it Free →','hero.btn2':'See Real Outputs',
-    'hero.scan.siteiq':'Know if a site is buildable in 60 seconds.',
-    'hero.scan.topoiq':'Screen terrain and export CAD before the topo survey.',
+    'hero.scan.siteiq':'Know if a site is buildable within minutes.',
+    'hero.scan.topoiq':'Screen terrain and export LandXML & DXF before the topo survey.',
     'hero.scan.yieldiq':'Compare tracker vs fixed yield before you open PVsyst.',
-    'stat.modules':'Live Modules','stat.speed':'Site Screening Time',
+    'stat.modules':'Live Modules','stat.speed':'Site Screening Time','stat.time-val':'≤ 4 min',
     'stat.coverage':'Solar Data Coverage','stat.start':'To Get Started','stat.free-val':'Free',
     'modules.label':'Platform Modules',
     'modules.title':'Three tools.<br>One workflow.',
     'modules.sub':'Site screening → terrain → yield. Same datasets engineers trust — packaged, not manual.',
     'pill.live':'Live Now','pill.soon':'Coming Soon',
-    'siteiq.tagline':'Know if a site is buildable in 60 seconds.',
+    'siteiq.tagline':'Know if a site is buildable within minutes.',
     'siteiq.f1':'Solar resource & irradiation','siteiq.f2':'Terrain, slope & flood risk',
     'siteiq.f3':'Regulatory flags & capacity range','siteiq.f4':'Screening PDF for internal review','siteiq.btn':'Open in App →',
     'topoiq.tagline':'Screen terrain before you order the topo survey.',
@@ -1113,9 +1130,9 @@ var T = {
     'yieldiq.disclaimer':'Early-stage feasibility only. Not a substitute for bankable energy assessment (PVsyst, DNV).',
     'yieldiq.btn':'Open in App →',
     'how.label':'Workflow','how.title':'How it works.',
-    'how.sub':'Set up once. Run any module in under 2 minutes.',
+    'how.sub':'Set up once. Run any module in ≤ 4 minutes.',
     'how.teaser':'Drop a pin or draw a boundary — SiteIQ, TopoIQ, and YieldIQ share the same project setup.',
-    'how.expand':'Show step-by-step workflow for each module',
+    'how.expand':'Step-by-step workflow for each module',
     'how.setup.title':'Step 1 — Project Setup',
     'how.setup.p':'Project name, country, and location once. Pin or coordinates in Quick Mode; draw a boundary or upload KMZ in Full Mode. Every module inherits the same project.',
     'how.setup.quick.title':'Quick Mode','how.setup.quick.p':'SiteIQ + YieldIQ · pin, address, or coordinates',
@@ -1138,7 +1155,7 @@ var T = {
     'why.c1.h':'Industry-Standard Solar Data','why.c1.p':'GHI and irradiation from PVGIS (EC JRC) — used in bankable pre-feasibility studies worldwide.',
     'why.c2.h':'Satellite Terrain Data','why.c2.p':'Copernicus GLO-30 DEM. Slope maps and contours in seconds, not days.',
     'why.c3.h':'CAD Software Ready','why.c3.p':'DXF and LandXML terrain — Civil 3D, BricsCAD, QGIS. No conversion needed.',
-    'why.c4.h':'Under 2 Minutes','why.c4.p':'Each module completes in under 2 minutes. Full pre-check before the client call ends.',
+    'why.c4.h':'≤ 4 Minutes','why.c4.p':'Each module typically finishes in ≤ 4 minutes. Full pre-check before the client call ends.',
     'why.c5.h':'Screening Reports','why.c5.p':'Branded PDFs from all 3 modules — for go/no-go and early client conversations.',
     'why.c6.h':'Built by a Solar Engineer','why.c6.p':'Built by a solar engineer with utility-scale EPC experience — not a generic GIS startup.',
     'reviews.label':'Early Access','reviews.title':'Help shape what we build next.',
@@ -1173,7 +1190,7 @@ var T = {
     'faq.label':'FAQ','faq.title':'Common questions from engineers.',
     'faq.sub':'How PVMath fits into a real ground-mount development workflow — and what it is not.',
     'faq.q1':'How is PVMath different from running PVGIS and QGIS yourself?',
-    'faq.a1':'Same datasets — one workflow. Structured screening, terrain PDFs, CAD export, and four-configuration yield comparison in under 2 minutes per module.',
+    'faq.a1':'Same datasets — one workflow. Structured screening, terrain PDFs, CAD export, and four-configuration yield comparison in ≤ 4 minutes per module.',
     'faq.q2':'Is this a bankable study or a substitute for PVsyst / DNV / Aurora?',
     'faq.a2':'No. Pre-feasibility screening for internal go/no-go. YieldIQ: ±8–15% vs. bankable assessment. TopoIQ: satellite DEM, not LiDAR. SiteIQ: indicative flood and regulatory flags.',
     'faq.q3':'What does Early Access mean?',
@@ -1211,16 +1228,16 @@ var T = {
     'hero.h1':'Solar-Intelligenztools –<br>entwickelt von <em>Ingenieuren,</em><br>für Solaringenieure und Entwickler.',
     'hero.p':'Koordinaten eingeben. Standort-, Gelände- und Ertrags-Screening — mit PDFs für das nächste Meeting.',
     'hero.btn1':'Kostenlos testen →','hero.btn2':'Echte Ergebnisse ansehen',
-    'hero.scan.siteiq':'In 60 Sekunden prüfen, ob ein Standort baubar ist.',
-    'hero.scan.topoiq':'Gelände screenen und CAD exportieren — vor der Vermessung.',
+    'hero.scan.siteiq':'In wenigen Minuten prüfen, ob ein Standort baubar ist.',
+    'hero.scan.topoiq':'Gelände screenen und LandXML & DXF exportieren — vor der Vermessung.',
     'hero.scan.yieldiq':'Tracker vs. Festaufständerung vergleichen — bevor Sie PVsyst öffnen.',
-    'stat.modules':'Aktive Module','stat.speed':'Standortprüfungszeit',
+    'stat.modules':'Aktive Module','stat.speed':'Standortprüfungszeit','stat.time-val':'≤ 4 Min',
     'stat.coverage':'Solare Datenabdeckung','stat.start':'Zum Starten','stat.free-val':'Gratis',
     'modules.label':'Plattform-Module',
     'modules.title':'Drei Tools.<br>Ein Workflow.',
     'modules.sub':'Standort-Screening → Gelände → Ertrag. Dieselben Datensätze — gebündelt, nicht manuell.',
     'pill.live':'Jetzt Live','pill.soon':'Demnächst',
-    'siteiq.tagline':'In 60 Sekunden prüfen, ob ein Standort baubar ist.',
+    'siteiq.tagline':'In wenigen Minuten prüfen, ob ein Standort baubar ist.',
     'siteiq.f1':'Solarressource & Einstrahlung','siteiq.f2':'Gelände, Neigung & Hochwasserrisiko',
     'siteiq.f3':'Regulierungshinweise & Kapazitätsbereich','siteiq.f4':'Screening-PDF für interne Prüfung','siteiq.btn':'In der App öffnen →',
     'topoiq.tagline':'Gelände screenen — bevor Sie die Vermessung beauftragen.',
@@ -1232,9 +1249,9 @@ var T = {
     'yieldiq.disclaimer':'Nur Vorab-Machbarkeit. Kein Ersatz für bankfähiges Ertragsgutachten (PVsyst, DNV).',
     'yieldiq.btn':'In der App öffnen →',
     'how.label':'Arbeitsablauf','how.title':'So funktioniert es.',
-    'how.sub':'Einmal einrichten. Jedes Modul in unter 2 Minuten.',
+    'how.sub':'Einmal einrichten. Jedes Modul in ≤ 4 Minuten.',
     'how.teaser':'Pin setzen oder Grenze zeichnen — SiteIQ, TopoIQ und YieldIQ teilen dieselbe Projekteinrichtung.',
-    'how.expand':'Schritt-für-Schritt-Workflow für jedes Modul anzeigen',
+    'how.expand':'Schritt-für-Schritt-Workflow pro Modul',
     'how.setup.title':'Schritt 1 — Projekteinrichtung',
     'how.setup.p':'Projektname, Land und Standort einmalig. Pin oder Koordinaten im Quick-Modus; Grenze zeichnen oder KMZ im Vollmodus. Jedes Modul übernimmt dasselbe Projekt.',
     'how.setup.quick.title':'Quick-Modus','how.setup.quick.p':'SiteIQ + YieldIQ · Pin, Adresse oder Koordinaten',
@@ -1257,7 +1274,7 @@ var T = {
     'why.c1.h':'Branchenstandard-Solardaten','why.c1.p':'GHI und Einstrahlung von PVGIS (EC JRC) — weltweit in bankfähigen Vorstudien verwendet.',
     'why.c2.h':'Satellitengelände-Daten','why.c2.p':'Copernicus GLO-30 DEM. Neigungskarten und Höhenlinien in Sekunden.',
     'why.c3.h':'CAD-Software-kompatibel','why.c3.p':'DXF- und LandXML-Gelände — Civil 3D, BricsCAD, QGIS. Keine Konvertierung.',
-    'why.c4.h':'Unter 2 Minuten','why.c4.p':'Jedes Modul in unter 2 Minuten. Vollständige Vorprüfung noch im Kundengespräch.',
+    'why.c4.h':'≤ 4 Minuten','why.c4.p':'Jedes Modul typischerweise in ≤ 4 Minuten. Vollständige Vorprüfung noch im Kundengespräch.',
     'why.c5.h':'Screening-Berichte','why.c5.p':'Gebrandete PDFs aus allen 3 Modulen — für Go/No-Go und frühe Kundengespräche.',
     'why.c6.h':'Von einem Solaringenieur entwickelt','why.c6.p':'Von einem Solaringenieur mit Utility-Scale-EPC-Erfahrung — kein generisches GIS-Startup.',
     'reviews.label':'Early Access','reviews.title':'Gestalten Sie mit, was als Nächstes kommt.',
@@ -1292,7 +1309,7 @@ var T = {
     'faq.label':'FAQ','faq.title':'Häufige Fragen von Ingenieuren.',
     'faq.sub':'Wie PVMath in einen echten Freiflächen-Entwicklungsworkflow passt — und was es nicht ist.',
     'faq.q1':'Worin unterscheidet sich PVMath von PVGIS und QGIS?',
-    'faq.a1':'Dieselben Datensätze — ein Workflow. Strukturiertes Screening, Gelände-PDFs, CAD-Export und Vier-Konfigurations-Ertragsvergleich in unter 2 Minuten pro Modul.',
+    'faq.a1':'Dieselben Datensätze — ein Workflow. Strukturiertes Screening, Gelände-PDFs, CAD-Export und Vier-Konfigurations-Ertragsvergleich in ≤ 4 Minuten pro Modul.',
     'faq.q2':'Ist das ein bankfähiges Gutachten oder Ersatz für PVsyst / DNV / Aurora?',
     'faq.a2':'Nein. Vor-Machbarkeits-Screening für internes Go/No-Go. YieldIQ: ±8–15% vs. bankfähiges Gutachten. TopoIQ: Satelliten-DEM, kein LiDAR. SiteIQ: indikative Hochwasser- und Regulierungshinweise.',
     'faq.q3':'Was bedeutet Early Access?',
