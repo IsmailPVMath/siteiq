@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Import TopoIQ LandXML surfaces, DXF contours, and SITE_BOUNDARY parcel linework into civil CAD — UTM georef and US Survey Feet for USA projects." />
+  <title>LandXML &amp; DXF exports — PVMath Guides</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="guides.css">
+</head>
+<body>
+  <nav>
+    <a class="nav-logo" href="/">PVMath</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="index.html">Guides</a>
+      <a href="https://siteiq.pvmath.com" class="nav-cta">Try TopoIQ →</a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <p class="breadcrumb"><a href="index.html">Guides</a> / TopoIQ</p>
+    <h1>LandXML, DXF &amp; CAD exports for solar sites</h1>
+    <p class="lead">From KMZ boundary to a civil-ready starter package — screening-grade, download immediately after each run.</p>
+
+    <article>
+      <h2>What’s in the ZIP</h2>
+      <ul>
+        <li><strong>Georeferenced LandXML</strong> — TIN surface in UTM (WGS84) with coordinate system metadata</li>
+        <li><strong>DXF contours</strong> — major/minor contour layers; parcel linework on <code>SITE_BOUNDARY</code></li>
+        <li><strong>Local-centroid package</strong> — same surface and linework with origin at site centroid for quick layout</li>
+        <li><strong>Reference JSON</strong> — EPSG, units, import notes, and project metadata</li>
+        <li><strong>CSV / XYZ</strong> — optional point clouds for GIS workflows</li>
+      </ul>
+
+      <h2>Parcel linework</h2>
+      <p>
+        Site boundaries from your KMZ or drawn polygons export as linework — not as a separate
+        “boundary-only” DXF. In CAD, look for layer <strong>SITE_BOUNDARY</strong> on the
+        contour DXF files and in LandXML Parcels / PlanFeatures.
+      </p>
+
+      <h2>USA projects — US Survey Feet</h2>
+      <p>
+        When the project country is United States, georeferenced LandXML and DXF use
+        <strong>US Survey Feet</strong>. Import into an <strong>imperial CAD drawing</strong>
+        without applying extra feet↔meter scaling.
+      </p>
+
+      <h2>Recommended workflow</h2>
+      <ol>
+        <li>Import georef LandXML as the primary surface (or local package for quick sketch layout)</li>
+        <li>Overlay <code>SITE_BOUNDARY</code> linework for parcel context</li>
+        <li>Use contours for grading dialogue — not as final design contours</li>
+        <li>Replace or supplement with LiDAR / RTK before detailed civil design</li>
+      </ol>
+
+      <div class="callout">
+        TopoIQ does not store exports server-side. Download your ZIP immediately after each analysis run.
+      </div>
+
+      <h2>Related</h2>
+      <ul>
+        <li><a href="glo30-and-5m-grid.html">Understanding DEM resolution vs grid spacing</a></li>
+        <li><a href="screening-vs-survey.html">Screening vs survey-grade</a></li>
+      </ul>
+    </article>
+  </div>
+
+  <footer>
+    <p>© PVMath · <a href="index.html">All guides</a></p>
+  </footer>
+</body>
+</html>

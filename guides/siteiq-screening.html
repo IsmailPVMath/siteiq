@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="SiteIQ combines PVGIS solar, terrain, flood heuristics, and regulatory pointers into a PVMath Score for early ground-mount screening." />
+  <title>Understanding SiteIQ screening — PVMath Guides</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="guides.css">
+</head>
+<body>
+  <nav>
+    <a class="nav-logo" href="/">PVMath</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="index.html">Guides</a>
+      <a href="https://siteiq.pvmath.com" class="nav-cta">Try SiteIQ →</a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <p class="breadcrumb"><a href="index.html">Guides</a> / SiteIQ</p>
+    <h1>Understanding SiteIQ screening</h1>
+    <p class="lead">One report for early go/no-go — solar, terrain, flood flag, land use, and country-aware regulatory context.</p>
+
+    <article>
+      <h2>What SiteIQ evaluates</h2>
+      <ul>
+        <li><strong>Solar resource</strong> — GHI and configuration-aware yield proxies from PVGIS (JRC)</li>
+        <li><strong>Terrain</strong> — sparse pin sampling or TopoIQ-confirmed GLO-30 when available</li>
+        <li><strong>Flood indicator</strong> — elevation-based heuristic, not official flood mapping</li>
+        <li><strong>Land use</strong> — Standard ground mount vs Agri-PV (dual use) density assumptions</li>
+        <li><strong>Regulatory flags</strong> — country-aware checklist pointers (not legal advice)</li>
+      </ul>
+
+      <h2>PVMath Score</h2>
+      <p>
+        The <strong>PVMath Score</strong> (0–100) combines multiple screening categories so
+        you can compare sites in a portfolio. It is a <strong>deterministic screening model</strong>
+        for pre-feasibility — not a bankability or investment grade rating.
+      </p>
+      <p>Category breakdowns appear in your PDF report and in the app detail panels.</p>
+
+      <h2>Overall site verdict</h2>
+      <p>
+        The overall verdict summarizes combined findings into a plain-language recommendation
+        tier. Use it with module-specific depth: run <strong>TopoIQ</strong> for terrain detail
+        and <strong>YieldIQ</strong> for configuration-level energy comparison.
+      </p>
+
+      <h2>Capacity &amp; land use</h2>
+      <p>
+        Indicative DC capacity uses industry-typical MWp/ha bands adjusted for land use
+        (Standard vs Agri-PV) and mounting type (fixed tilt vs tracker), with a standard GCR
+        band for screening. Layout-optimised designs may differ.
+      </p>
+
+      <div class="callout callout-warn">
+        Flood and regulatory sections are <strong>indicators for your checklist</strong>.
+        Confirm with local authorities, hydrology studies, and official datasets before investment.
+      </div>
+
+      <h2>Related guides</h2>
+      <ul>
+        <li><a href="yieldiq-yield.html">YieldIQ configuration comparison</a></li>
+        <li><a href="screening-vs-survey.html">Screening vs survey-grade</a></li>
+      </ul>
+    </article>
+  </div>
+
+  <footer>
+    <p>© PVMath · <a href="index.html">All guides</a></p>
+  </footer>
+</body>
+</html>

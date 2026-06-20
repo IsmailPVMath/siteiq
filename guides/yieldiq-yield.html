@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="YieldIQ compares fixed tilt and tracker yields using PVGIS — specific yield, PR, capacity factor, and GCR-based row shading for early configuration choice." />
+  <title>YieldIQ — yield, PR &amp; GCR — PVMath Guides</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="guides.css">
+</head>
+<body>
+  <nav>
+    <a class="nav-logo" href="/">PVMath</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="index.html">Guides</a>
+      <a href="https://siteiq.pvmath.com" class="nav-cta">Try YieldIQ →</a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <p class="breadcrumb"><a href="index.html">Guides</a> / YieldIQ</p>
+    <h1>YieldIQ — yield, PR &amp; GCR</h1>
+    <p class="lead">Compare four ground-mount configurations early — before PVsyst or lender-grade modelling.</p>
+
+    <article>
+      <h2>Four configurations</h2>
+      <p>
+        YieldIQ runs PVGIS for <strong>1P Fixed</strong>, <strong>2P Fixed</strong>,
+        <strong>1P Tracker</strong>, and <strong>2P Tracker</strong> at your chosen GCR and
+        loss assumptions. Results support configuration choice in pre-feasibility — typically
+        ±8–15% versus bankable studies depending on site and assumptions.
+      </p>
+
+      <h2>Key outputs</h2>
+      <ul>
+        <li><strong>Specific yield</strong> — kWh/kWp/year; normalizes sites for fair comparison</li>
+        <li><strong>POA irradiance</strong> — plane-of-array resource for each mount type</li>
+        <li><strong>Performance ratio (PR)</strong> — system efficiency including cumulative losses</li>
+        <li><strong>Capacity factor (CF)</strong> — annual utilization of nameplate DC capacity</li>
+        <li><strong>Shading &amp; total loss</strong> — row shading from GCR plus PVGIS physics derates</li>
+      </ul>
+
+      <h2>Ground coverage ratio (GCR)</h2>
+      <p>
+        <strong>GCR</strong> is module collection area divided by ground footprint. Higher GCR
+        increases DC density but raises inter-row shading. YieldIQ models shading from your
+        GCR sliders; trackers include backtracking benefit versus fixed tilt at the same GCR.
+      </p>
+      <p>
+        <strong>SiteIQ / TopoIQ capacity screening</strong> uses a standard GCR band for MWp/ha
+        estimates — separate from the GCR you set in YieldIQ for energy comparison.
+      </p>
+
+      <h2>Screening vs analysis profile</h2>
+      <p>
+        SiteIQ uses a lighter PVGIS <strong>screening profile</strong> for speed in combined
+        reports. YieldIQ uses disclosed soiling, other losses, and GCR shading for a richer
+        <strong>analysis profile</strong>. Both are preliminary — not substitutes for PVsyst,
+        independent engineer review, or lender models.
+      </p>
+
+      <div class="callout">
+        Temperature loss in YieldIQ comes from PVGIS physics — not a flat percentage guess.
+        Total loss reflects PVGIS combined derates where available.
+      </div>
+
+      <h2>Related guides</h2>
+      <ul>
+        <li><a href="siteiq-screening.html">SiteIQ combined screening</a></li>
+        <li><a href="screening-vs-survey.html">When to upgrade to bankable yield</a></li>
+      </ul>
+    </article>
+  </div>
+
+  <footer>
+    <p>© PVMath · <a href="index.html">All guides</a></p>
+  </footer>
+</body>
+</html>

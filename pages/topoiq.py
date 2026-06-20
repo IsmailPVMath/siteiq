@@ -83,6 +83,7 @@ from pvmath_topo_export import (
     sanitize_topo_basename,
     utm_grids_from_latlon,
 )
+from pvmath_help import help_caption
 from pvmath_capacity import (
     capacity_band,
     format_mwp_range,
@@ -892,6 +893,7 @@ with left:
             help="Off (default): keep requested spacing (e.g. 5 m) up to ~1.5M grid points — "
                  "best for layout. On: may increase spacing on huge boundaries to speed up the run.",
         )
+        help_caption("glo30", "grid_spacing")
 
         _site_area_ha = boundaries_union_area_ha(_enabled_polys) if _enabled_polys else None
         _area_over_limit = (
@@ -1121,6 +1123,7 @@ with right:
             f'</div>',
             unsafe_allow_html=True,
         )
+        help_caption("terrain_score", "terrain_verdict")
 
         _ft_band = capacity_band(area_ha, _land_use, "Fixed Tilt")
         _tr_band = capacity_band(area_ha, _land_use, "Single-Axis Tracker")
@@ -1144,6 +1147,7 @@ with right:
                 f"Cross-row slope (tracker screening): mean **{_extras['cross_row_mean']:.1f}%** · "
                 f"95th %ile **{_extras['cross_row_p95']:.1f}%**"
             )
+            help_caption("cross_row_slope")
 
         st.markdown(
             f'<div style="font-size:1rem;font-weight:600;color:#1a1a1a;'
@@ -1156,6 +1160,7 @@ with right:
             f'</div>',
             unsafe_allow_html=True
         )
+        help_caption("mean_slope", "max_slope", "screening_grade")
 
         st.divider()
         st.markdown('<div class="section-hdr"><i class="fa-solid fa-layer-group" style="color:#1565c0;"></i> Slope Map</div>', unsafe_allow_html=True)
@@ -1182,6 +1187,7 @@ with right:
         st.caption(
             "**From KMZ to CAD:** UTM surface, contours, and parcel linework — screening-grade, not survey."
         )
+        help_caption("cad_export", "screening_grade")
 
         _export_base = sanitize_topo_basename(_proj.get("name", ""))
         _cad_units = export_linear_units(_proj.get("country", ""))

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="How to use TopoIQ terrain scores and engineering verdicts for early go/no-go — without treating them as civil design sign-off." />
+  <title>TopoIQ metrics &amp; verdicts — PVMath Guides</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="guides.css">
+</head>
+<body>
+  <nav>
+    <a class="nav-logo" href="/">PVMath</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="index.html">Guides</a>
+      <a href="https://siteiq.pvmath.com" class="nav-cta">Try TopoIQ →</a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <p class="breadcrumb"><a href="index.html">Guides</a> / TopoIQ</p>
+    <h1>Reading terrain scores &amp; engineering verdicts</h1>
+    <p class="lead">Summary indices help teams communicate quickly. They do not replace civil engineering judgement.</p>
+
+    <article>
+      <h2>Engineering verdict tiers</h2>
+      <p>
+        TopoIQ translates slope statistics into qualitative labels — such as Excellent, Good,
+        Challenging, or Critical — separately for <strong>fixed tilt</strong> and
+        <strong>single-axis tracker</strong> mounting.
+      </p>
+      <p>
+        Tracker verdicts may include <strong>Review Zones</strong> when cross-row grade
+        patterns suggest clearance or grading review, independent of how flat the site
+        looks on average.
+      </p>
+
+      <h2>Terrain score (0–100)</h2>
+      <p>
+        The <strong>Terrain Score</strong> compresses multiple slope-related signals into one
+        number for portfolio comparisons and executive summaries. Use it to rank sites in
+        early pipelines — not for pile schedules or cut/fill quantities.
+      </p>
+      <p>
+        Always read the score alongside the engineering verdict, driver table, and
+        cross-row details in your TopoIQ report.
+      </p>
+
+      <h2>Terrain drivers &amp; “why this verdict?”</h2>
+      <p>
+        After analysis, TopoIQ lists the main drivers affecting suitability — mean slope,
+        max slope, cross-row statistics, and steep-area percentages. The bullet list explains
+        why a verdict was assigned in plain language.
+      </p>
+
+      <div class="callout callout-warn">
+        <strong>Not for stamped design:</strong> Verdicts and scores are screening outputs
+        based on satellite DEM. Confirm critical grades with survey before FEED.
+      </div>
+
+      <h2>Related guides</h2>
+      <ul>
+        <li><a href="mean-slope-vs-cross-row.html">Mean vs cross-row slope</a></li>
+        <li><a href="landxml-dxf-solar.html">CAD export workflow</a></li>
+      </ul>
+    </article>
+  </div>
+
+  <footer>
+    <p>© PVMath · <a href="index.html">All guides</a></p>
+  </footer>
+</body>
+</html>

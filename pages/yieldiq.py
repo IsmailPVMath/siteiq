@@ -34,6 +34,7 @@ from pvmath_auth import (
     prepared_by_line, module_confidence_label,
 )
 from pvmath_styles import inject_styles
+from pvmath_help import help_caption
 from pvmath_capacity import (
     capacity_band_for_config,
     capacity_with_yield,
@@ -787,6 +788,7 @@ Row shading losses are estimated from GCR using standard solar engineering appro
 Tracker (SAT) shading modelled with backtracking — approx. 40 % of fixed-tilt shading at same GCR.
 </div>
 """, unsafe_allow_html=True)
+help_caption("gcr", "shading_loss", "yield_screening")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # RUN ANALYSIS
@@ -954,6 +956,7 @@ if submitted:
         "plus PVGIS temperature, angle-of-incidence, and spectral derates — same value as the "
         "Losses Breakdown box above, not the user-input subtotal alone."
     )
+    help_caption("specific_yield", "performance_ratio", "capacity_factor", "screening_grade")
 
     st.markdown(
         yield_cross_ref_yieldiq_html(

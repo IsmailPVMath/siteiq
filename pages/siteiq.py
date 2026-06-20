@@ -16,6 +16,7 @@ from pvmath_auth import (
     prepared_by_line, module_confidence_label,
 )
 from pvmath_styles import inject_styles
+from pvmath_help import help_caption
 from pvmath_kml import filter_boundary_list
 from pvmath_geocode import reverse_geocode, format_coords
 from pvmath_topo_cache import resolve_terrain_for_siteiq, get_topo_cache, topo_cache_valid_for_siteiq
@@ -2191,6 +2192,7 @@ with right:
             f'</div>',
             unsafe_allow_html=True,
         )
+        help_caption("pvmath_score", "site_verdict")
 
         _cap_display = format_mwp_range(cap["mwp_lo"], cap["mwp_hi"]).replace(" MWp DC", "")
         _cap_unit = (
@@ -2228,6 +2230,7 @@ with right:
             _metric_card_html("fa-ruler-combined", "#a87fd4", _mc4_lbl, _mc4_num, _mc4_unit),
         ]
         st.markdown(f'<div class="metric-grid">{"".join(_cards)}</div>', unsafe_allow_html=True)
+        help_caption("ghi")
 
         _notes = []
         if _proj.get("mode") == "full" and _enabled_polys_latlon:
@@ -2292,6 +2295,7 @@ with right:
 
             st.markdown('<div class="section-hdr" style="margin-top:0.8rem;"><i class="fa-solid fa-scale-balanced" style="color:#a87fd4;"></i> Regulatory</div>', unsafe_allow_html=True)
             st.info(f"{country}  \n{eeg_status}  \n_{eeg_note}_")
+            help_caption("regulatory_flags")
 
         with d2:
             st.markdown('<div class="section-hdr"><i class="fa-solid fa-mountain" style="color:#5b9bd5;"></i> Terrain & Slope</div>', unsafe_allow_html=True)
@@ -2311,6 +2315,7 @@ with right:
                 st.warning(_flood_body)
             else:
                 st.success(_flood_body)
+            help_caption("flood_risk")
 
         st.divider()
         with st.expander("Rating Scale — what do the colours mean?"):

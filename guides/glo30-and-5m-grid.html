@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Copernicus GLO-30 is ~30 m native resolution. TopoIQ's 5 m grid is a layout-friendly resample — not new sensor detail." />
+  <title>GLO-30 vs 5 m grid — PVMath Guides</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="guides.css">
+</head>
+<body>
+  <nav>
+    <a class="nav-logo" href="/">PVMath</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="index.html">Guides</a>
+      <a href="https://siteiq.pvmath.com" class="nav-cta">Try TopoIQ →</a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <p class="breadcrumb"><a href="index.html">Guides</a> / TopoIQ</p>
+    <h1>Copernicus GLO-30 vs the 5 m output grid</h1>
+    <p class="lead">Two different numbers — native DEM posting and analysis grid spacing — are often confused. Both matter for honest screening.</p>
+
+    <article>
+      <h2>What GLO-30 actually provides</h2>
+      <p>
+        <strong>Copernicus DEM GLO-30</strong> is a global elevation model with roughly
+        <strong>30 m horizontal posting</strong> at the equator. It is the standard free
+        global dataset for early terrain review before LiDAR or RTK survey.
+      </p>
+      <p>
+        Vertical accuracy in open terrain is typically on the order of ±1–3 m RMSE versus
+        higher-quality reference data. Vegetation, buildings, and voids can bias local slopes.
+      </p>
+
+      <h2>What the 5 m grid means in TopoIQ</h2>
+      <p>
+        TopoIQ's default <strong>5 m output grid</strong> is the spacing between analysis
+        points <em>inside your site boundary</em>. Slopes, terrain statistics, contour maps,
+        and CAD exports are computed on this grid.
+      </p>
+      <p>
+        Resampling to 5 m makes contours and DXF linework smoother for layout review. It does
+        <strong>not</strong> mean the satellite measured elevation every 5 m. Think of finer
+        graph paper drawn over the same ~30 m photograph.
+      </p>
+
+      <div class="callout callout-warn">
+        <strong>Common mistake:</strong> Assuming a 5 m export resolves ditches, berms, or
+        field rows that are smaller than ~30 m. Those features may not appear until survey-grade data.
+      </div>
+
+      <h2>When to coarsen the grid</h2>
+      <p>
+        Very large boundaries can produce millions of grid points. TopoIQ offers optional
+        auto-coarsening for speed on huge sites. For layout work on typical utility-scale
+        parcels, keep the default 5 m unless runtime is prohibitive.
+      </p>
+
+      <h2>Next steps</h2>
+      <ul>
+        <li><a href="mean-slope-vs-cross-row.html">Mean slope vs cross-row slope</a></li>
+        <li><a href="screening-vs-survey.html">When to commission LiDAR or RTK</a></li>
+      </ul>
+    </article>
+  </div>
+
+  <footer>
+    <p>© PVMath · <a href="index.html">All guides</a></p>
+  </footer>
+</body>
+</html>

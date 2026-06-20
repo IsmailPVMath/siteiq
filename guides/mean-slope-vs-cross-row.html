@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Mean slope summarizes a site; cross-row slope drives single-axis tracker clearance and grading. Learn when to use each." />
+  <title>Mean slope vs cross-row slope — PVMath Guides</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="guides.css">
+</head>
+<body>
+  <nav>
+    <a class="nav-logo" href="/">PVMath</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="index.html">Guides</a>
+      <a href="https://siteiq.pvmath.com" class="nav-cta">Try TopoIQ →</a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <p class="breadcrumb"><a href="index.html">Guides</a> / TopoIQ</p>
+    <h1>Mean slope vs cross-row slope</h1>
+    <p class="lead">Fixed-tilt sites live on average grade. Tracker sites live on row-to-row grade change.</p>
+
+    <article>
+      <h2>Mean slope</h2>
+      <p>
+        <strong>Mean slope</strong> is the average terrain gradient (%) across all valid
+        analysis points in your boundary. It is the primary metric for overall
+        constructability and a strong first filter for <strong>fixed-tilt</strong> ground mount.
+      </p>
+
+      <h2>Maximum slope</h2>
+      <p>
+        <strong>Max slope</strong> is the steepest single grid cell. A site with low mean
+        slope but high max slope often has localized steep strips — ridges, cuts, or drainage
+        features — that need layout or grading attention even when averages look excellent.
+      </p>
+
+      <h2>Cross-row slope (trackers)</h2>
+      <p>
+        For <strong>single-axis trackers</strong>, grade measured <em>perpendicular to row
+        direction</em> (cross-row) drives structural clearance, drainage, and grading cost.
+        A rolling site can show modest mean slope while cross-row statistics flag areas where
+        torque tube clearance or pile reveal becomes challenging.
+      </p>
+      <p>
+        TopoIQ reports cross-row mean and high-percentile statistics for tracker screening.
+        PVMath may label tracker verdicts with <strong>Review Zones</strong> when cross-row
+        metrics suggest clearance review — even if mean slope looks favorable.
+      </p>
+
+      <div class="callout">
+        <strong>Rule of thumb:</strong> Fixed tilt → start with mean and max slope. Tracker →
+        read mean slope <em>and</em> cross-row statistics together.
+      </div>
+
+      <h2>Related guides</h2>
+      <ul>
+        <li><a href="topoiq-metrics.html">Terrain scores &amp; engineering verdicts</a></li>
+        <li><a href="glo30-and-5m-grid.html">GLO-30 vs 5 m grid</a></li>
+      </ul>
+    </article>
+  </div>
+
+  <footer>
+    <p>© PVMath · <a href="index.html">All guides</a></p>
+  </footer>
+</body>
+</html>

@@ -10,3 +10,9 @@ __pycache__/
 .venv/
 .venv-lock/
 .venv-test/
+.DS_Store
+
+# Internal-only engineering IP (keep local; repo is public GitHub Pages)
+docs/PVMath_Engineering_Reference_Manual.docx
+docs/PVMath_Engineering_Reference_Manual_INTERNAL.docx
+scripts/manual_terms_data.py
