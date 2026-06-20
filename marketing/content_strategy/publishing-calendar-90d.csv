@@ -1,0 +1,39 @@
+publish_date,category,headline,target_audience,idea_id,status,draft_filename,notes
+2026-06-23,Educational,GLO-30 vs 5 m grid,Solar EPC companies,1,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-06-25,Educational,Mean vs cross-row slope,Solar EPC companies,2,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-06-27,Educational,Screening vs survey,Solar EPC companies,3,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-06-30,Educational,GCR and shading,Solar EPC companies,4,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-07-02,Educational,Agri-PV density,Solar EPC companies,5,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-07-04,Educational,PVMath Score limits,Solar EPC companies,6,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-07-07,Educational,US Survey Feet CAD,Solar EPC companies,7,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-07-09,Educational,Flood heuristics,Solar EPC companies,8,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-07-11,Educational,PVGIS screening profile,Solar EPC companies,9,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-07-14,Educational,KMZ to CAD path,Solar EPC companies,10,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-07-16,Educational,Tracker backtracking,Solar EPC companies,11,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-07-18,Industry insights,LiDAR timing,Solar EPC companies,12,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-07-21,Industry insights,EPC handoff friction,Solar EPC companies,13,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-07-23,Industry insights,Germany screening culture,Solar EPC companies,14,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-07-25,Industry insights,Spain resource sites,Solar EPC companies,15,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-07-28,Industry insights,India utility-scale pace,Solar EPC companies,16,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-07-30,Industry insights,GCC tracker adoption,Solar EPC companies,17,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-08-01,Industry insights,Agri-PV permitting,Solar EPC companies,18,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-08-04,Industry insights,Interconnection queue reality,Solar EPC companies,19,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-08-06,Industry insights,Module procurement cycles,Solar EPC companies,20,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-08-08,Industry insights,Data centre load boom,Solar EPC companies,21,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-08-11,Industry insights,ESG reporting pressure,Solar EPC companies,22,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-08-13,Founder journey,Why I started PVMath,Solar EPC companies,23,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-08-15,Founder journey,Build in public,Solar EPC companies,24,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-08-18,Founder journey,No dark scores,Solar EPC companies,25,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-08-20,Founder journey,Ground-mount only,Solar EPC companies,26,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-08-22,Founder journey,Frugal stack,Solar EPC companies,27,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-08-25,Founder journey,Customer feedback loop,Solar EPC companies,28,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-08-27,Founder journey,Pro manual gate,Solar EPC companies,29,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-08-29,Founder journey,Roadmap discipline,Solar EPC companies,30,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-09-01,Founder journey,Weeknight engineering,Solar EPC companies,31,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-09-03,Founder journey,Global from day one,Solar EPC companies,32,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-09-05,Product updates,SiteIQ PDF,Solar EPC companies,33,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-09-08,Product updates,TopoIQ ZIP,Solar EPC companies,34,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-09-10,Product updates,YieldIQ four configs,Solar EPC companies,35,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-09-12,Product updates,Project Setup once,Solar EPC companies,36,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-09-15,Product updates,Knowledge Centre,Solar EPC companies,37,planned,,Generate fresh draft with pvmath_marketing_bot.py run
+2026-09-17,Product updates,In-app help links,Solar EPC companies,38,planned,,Generate fresh draft with pvmath_marketing_bot.py run

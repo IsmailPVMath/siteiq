@@ -12,6 +12,12 @@ __pycache__/
 .venv-test/
 .DS_Store
 
+# Marketing drafts (local working copies — regenerate with scripts/pvmath_content_bot.py)
+marketing/drafts/*.md
+!marketing/drafts/.gitkeep
+marketing/linkedin_drafts/*.md
+!marketing/linkedin_drafts/.gitkeep
+
 # Internal-only engineering IP (keep local; repo is public GitHub Pages)
 docs/PVMath_Engineering_Reference_Manual.docx
 docs/PVMath_Engineering_Reference_Manual_INTERNAL.docx
