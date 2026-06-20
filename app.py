@@ -378,6 +378,10 @@ with st.sidebar:
               <div style="font-size:0.63rem;color:#7fd99a;font-weight:700;letter-spacing:0.06em;">SOLAR SITE INTELLIGENCE</div>
             </div>
           </a>
+          <div style="margin-top:0.55rem;display:inline-flex;align-items:center;gap:0.35rem;background:rgba(29,158,82,0.18);border:1px solid rgba(125,217,154,0.45);color:#b8f5c8;font-size:0.62rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;padding:0.28rem 0.55rem;border-radius:100px;">
+            <span style="width:6px;height:6px;border-radius:50%;background:#4ade80;display:inline-block;"></span>
+            Early Access
+          </div>
         </div>
         """, unsafe_allow_html=True)
 

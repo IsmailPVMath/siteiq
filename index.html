@@ -339,6 +339,12 @@
     .preview-months { display: flex; gap: 2px; margin-bottom: 0.5rem; }
     .preview-months div { flex: 1; text-align: center; font-size: 0.5rem; color: #aaa; }
 
+    /* ── FAQ ── */
+    .faq-grid { display: flex; flex-direction: column; gap: 1rem; max-width: 820px; margin: 0 auto; }
+    .faq-item { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem 1.4rem; }
+    .faq-item h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.45rem; }
+    .faq-item p { font-size: 0.86rem; color: var(--muted); line-height: 1.65; margin: 0; }
+
     /* ── DATA ACCURACY STRIP ── */
     .accuracy-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
     @media (max-width: 900px) { .accuracy-grid { grid-template-columns: 1fr; } }
@@ -378,6 +384,7 @@
       <a href="#modules" data-i18n="nav.modules">Modules</a>
       <a href="#how" data-i18n="nav.how">How It Works</a>
       <a href="#pricing" data-i18n="nav.pricing">Pricing</a>
+      <a href="#faq" data-i18n="nav.faq">FAQ</a>
       <a href="#contact" data-i18n="nav.contact">Contact</a>
       <a href="https://siteiq.pvmath.com" target="_blank" class="nav-cta" data-i18n="nav.cta">Try Free &rarr;</a>
     </div>
@@ -391,7 +398,8 @@
 <!-- ── HERO ── -->
 <section class="hero">
   <div class="hero-inner">
-    <h1 data-i18n-html="hero.h1">Solar intelligence tools<br>built by <em>industry experts,</em><br>for every solar stakeholder.</h1>
+    <div class="hero-badge" data-i18n="hero.badge"><span class="dot"></span> Early Access — SiteIQ · TopoIQ · YieldIQ</div>
+    <h1 data-i18n-html="hero.h1">Solar intelligence tools<br>built by <em>industry experts,</em><br>for solar engineers and developers.</h1>
     <p data-i18n="hero.p">PVMath automates the slow, manual parts of solar project development &mdash; from first site coordinates to actionable engineering data. Preliminary screening outputs in minutes, not days.</p>
     <div class="hero-btns">
       <a href="https://siteiq.pvmath.com" target="_blank" class="btn-primary" data-i18n="hero.btn1">Try it Free &rarr;</a>
@@ -415,7 +423,7 @@
         </span>
         <span class="hero-topoiq-chip">
           <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-          <span data-i18n="hero.topoiq.c2">DXF &amp; LandXML &mdash; Civil-ready export</span>
+          <span data-i18n="hero.topoiq.c2">DXF &amp; LandXML &mdash; CAD terrain for conceptual layout</span>
         </span>
         <span class="hero-topoiq-chip">
           <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
@@ -572,7 +580,7 @@
         <div class="module-pill pill-live" data-i18n="pill.live">Live Now</div>
         <div class="module-num">Module 01</div>
         <div class="module-name green">SiteIQ</div>
-        <p class="module-tagline coral" data-i18n="siteiq.tagline">From coordinates to defendable site verdict in minutes — solar, terrain, flood, and regulatory screening in one client-ready PDF.</p>
+        <p class="module-tagline coral" data-i18n="siteiq.tagline">From coordinates to structured site screening in minutes — solar, terrain, flood, and regulatory checks in one professional PDF.</p>
         <p class="module-desc" data-i18n="siteiq.desc">Fast solar site pre-screening for any location globally. Get GHI, irradiation, terrain overview, regulatory flags, and capacity estimates in under 2 minutes.</p>
         <ul class="module-features">
           <li data-i18n="siteiq.f1">Satellite map with coordinate input</li>
@@ -580,7 +588,7 @@
           <li data-i18n="siteiq.f3">Terrain &amp; slope overview</li>
           <li data-i18n="siteiq.f4">Regulatory flags (protected areas)</li>
           <li data-i18n="siteiq.f5">Flood risk indicator</li>
-          <li data-i18n="siteiq.f6">PDF report &mdash; client-ready</li>
+          <li data-i18n="siteiq.f6">PDF report &mdash; screening-grade</li>
         </ul>
         <a href="https://siteiq.pvmath.com" target="_blank" class="module-link link-green" data-i18n="siteiq.btn">Open in App &rarr;</a>
       </div>
@@ -590,8 +598,8 @@
         <div class="module-pill pill-live" data-i18n="pill.live">Live Now</div>
         <div class="module-num">Module 02</div>
         <div class="module-name blue">TopoIQ</div>
-        <p class="module-tagline blue" data-i18n="topoiq.tagline">From satellite to civil screen in minutes — tracker-aware terrain PDFs your EPC team can actually defend.</p>
-        <p class="module-desc" data-i18n="topoiq.desc">Copernicus DEM terrain screening for ground-mount solar. Slope direction, cross-row tracker grades, dual fixed-tilt/tracker capacity and engineering verdicts, and client-ready PDF reports — with honest accuracy disclaimers built in.</p>
+        <p class="module-tagline blue" data-i18n="topoiq.tagline">From satellite to pre-survey civil screening in minutes — tracker-aware terrain PDFs for conceptual layout review.</p>
+        <p class="module-desc" data-i18n="topoiq.desc">Copernicus DEM terrain screening for ground-mount solar. Slope direction, cross-row tracker grades, dual fixed-tilt/tracker capacity and engineering verdicts, and screening-grade PDF reports — with honest accuracy disclaimers built in.</p>
         <ul class="module-features">
           <li data-i18n="topoiq.f1">Site boundary from Project Setup (KMZ / draw once)</li>
           <li data-i18n="topoiq.f2">Copernicus GLO-30 (~30 m native, resampled to ~5&ndash;11 m analysis grid)</li>
@@ -678,7 +686,7 @@
       <div class="steps">
         <div class="step"><div class="step-num coral">2</div><h3 data-i18n="siteiq.s1.h">Choose Project Type &amp; Area</h3><p data-i18n="siteiq.s1.p">Select land use (Standard or Agri-PV) and mounting system (Fixed Tilt or Single-Axis Tracker). Enter site area in hectares. SiteIQ fetches GHI, irradiation, terrain overview, flood risk, and regulatory flags automatically.</p></div>
         <div class="step"><div class="step-num coral">3</div><h3 data-i18n="siteiq.s2.h">Review Site Assessment</h3><p data-i18n="siteiq.s2.p">Instant results: annual GHI and irradiation, monthly irradiation chart, slope assessment, flood risk indicator, regulatory flags, and estimated capacity range. A go/no-go verdict with colour-coded ratings.</p></div>
-        <div class="step"><div class="step-num coral">4</div><h3 data-i18n="siteiq.s3.h">Download PDF Report</h3><p data-i18n="siteiq.s3.p">Get a client-ready PDF with solar resource data, monthly irradiation chart, terrain summary, and a go/no-go verdict. Ready for your next client meeting.</p></div>
+        <div class="step"><div class="step-num coral">4</div><h3 data-i18n="siteiq.s3.h">Download PDF Report</h3><p data-i18n="siteiq.s3.p">Get a screening-grade PDF with solar resource data, monthly irradiation chart, terrain summary, and a go/no-go verdict. Suitable for internal review and early client discussions.</p></div>
       </div>
     </div>
 
@@ -697,7 +705,7 @@
       <div class="steps">
         <div class="step"><div class="step-num blue">2</div><h3 data-i18n="topoiq.s1.h">Site Boundary from Project Setup</h3><p data-i18n="topoiq.s1.p">Your site boundary drawn in Full Mode is loaded automatically. Adjust contour line spacing and profile line positions. No re-drawing needed if you already set up your project.</p></div>
         <div class="step"><div class="step-num blue">3</div><h3 data-i18n="topoiq.s2.h">Extract Terrain Data</h3><p data-i18n="topoiq.s2.p">TopoIQ fetches Copernicus GLO-30 satellite DEM for your site boundary, computes elevation profiles, slope heatmaps, and contour lines at your chosen interval automatically.</p></div>
-        <div class="step"><div class="step-num blue">4</div><h3 data-i18n="topoiq.s3.h">Export DXF, LandXML &amp; PDF</h3><p data-i18n="topoiq.s3.p">Download a DXF or Civil 3D-ready LandXML terrain file with contour lines at your chosen spacing &mdash; ready for detailed 3D study in any CAD software &mdash; plus a PDF terrain report with elevation and slope maps.</p></div>
+        <div class="step"><div class="step-num blue">4</div><h3 data-i18n="topoiq.s3.h">Export DXF, LandXML &amp; PDF</h3><p data-i18n="topoiq.s3.p">Download DXF or Civil 3D-ready LandXML terrain with contour lines at your chosen spacing — for conceptual CAD layout — plus a PDF terrain report with elevation and slope maps.</p></div>
       </div>
     </div>
 
@@ -735,7 +743,7 @@
       <div class="why-card"><div class="why-icon">&#127956;&#65039;</div><h4 data-i18n="why.c2.h">Satellite Terrain Data</h4><p data-i18n="why.c2.p">Copernicus GLO-30 DEM (~30m horizontal resolution). Slope maps, elevation profiles, and contour lines &mdash; extracted in seconds, not days.</p></div>
       <div class="why-card"><div class="why-icon">&#128208;</div><h4 data-i18n="why.c3.h">CAD Software Ready</h4><p data-i18n="why.c3.p">DXF and Civil 3D-ready LandXML terrain files work in any CAD software &mdash; Civil 3D, BricsCAD, QGIS, and more. No conversion needed.</p></div>
       <div class="why-card"><div class="why-icon">&#9889;</div><h4 data-i18n="why.c4.h">Under 2 Minutes</h4><p data-i18n="why.c4.p">SiteIQ, TopoIQ, and YieldIQ each complete in under 2 minutes. Full pre-check before the client call ends.</p></div>
-      <div class="why-card"><div class="why-icon">&#128196;</div><h4 data-i18n="why.c5.h">Client-Ready Reports</h4><p data-i18n="why.c5.p">Branded PDF outputs from all 3 modules &mdash; site screening, terrain analysis, and energy yield. Print, email, present.</p></div>
+      <div class="why-card"><div class="why-icon">&#128196;</div><h4 data-i18n="why.c5.h">Screening Reports</h4><p data-i18n="why.c5.p">Branded PDF outputs from all 3 modules — site screening, terrain analysis, and energy yield. For internal go/no-go and early client conversations, not bankable deliverables.</p></div>
       <div class="why-card"><div class="why-icon">&#128119;</div><h4 data-i18n="why.c6.h">Built by a Solar Engineer</h4><p data-i18n="why.c6.p">Not a software startup guessing what engineers need. Built by a Solar Engineering Expert with hands-on experience in utility-scale solar, tracker systems, and EPC delivery worldwide.</p></div>
     </div>
   </div>
@@ -902,6 +910,35 @@
   </div>
 </section>
 
+<!-- ── FAQ ── -->
+<section id="faq" style="background:var(--bg);">
+  <div class="container">
+    <div class="section-header" style="text-align:center;">
+      <div class="section-label" style="justify-content:center;display:flex;" data-i18n="faq.label">FAQ</div>
+      <h2 class="section-title" data-i18n="faq.title">Common questions from engineers.</h2>
+      <p class="section-sub" style="margin:0 auto;" data-i18n="faq.sub">How PVMath fits into a real ground-mount development workflow — and what it is not.</p>
+    </div>
+    <div class="faq-grid">
+      <div class="faq-item">
+        <h4 data-i18n="faq.q1">How is PVMath different from running PVGIS and QGIS yourself?</h4>
+        <p data-i18n="faq.a1">You can pull PVGIS and Copernicus DEM manually — PVMath packages the same industry-standard datasets into a single workflow: structured site screening, tracker-aware terrain PDFs, CAD terrain export, and four-configuration yield comparison in under 2 minutes per module, with cross-referenced reports and shared project setup.</p>
+      </div>
+      <div class="faq-item">
+        <h4 data-i18n="faq.q2">Is this a bankable study or a substitute for PVsyst / DNV / Aurora?</h4>
+        <p data-i18n="faq.a2">No. PVMath is a pre-feasibility screening layer for internal go/no-go and early client conversations. YieldIQ explicitly states ±8–15% uncertainty vs. a full bankable energy assessment. TopoIQ uses satellite DEM, not survey-grade LiDAR. SiteIQ flood and regulatory outputs are indicative, not permitting diligence.</p>
+      </div>
+      <div class="faq-item">
+        <h4 data-i18n="faq.q3">What does Early Access mean?</h4>
+        <p data-i18n="faq.a3">SiteIQ, TopoIQ, and YieldIQ are live and usable today, but the platform is still in Early Access. Features, pricing, and report formats may evolve based on engineer feedback. The free tier includes PDF download and CAD export — no credit card required.</p>
+      </div>
+      <div class="faq-item">
+        <h4 data-i18n="faq.q4">Who is PVMath built for?</h4>
+        <p data-i18n="faq.a4">Solar EPCs, project developers, and engineering firms screening ground-mount utility-scale sites globally. Fixed tilt and single-axis tracker, standard and Agri-PV. Not designed for rooftop, carport, floating, or BIPV.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ── CONTACT ── -->
 <section id="contact">
   <div class="container">
@@ -969,6 +1006,7 @@
       <h5 data-i18n="footer.company">Company</h5>
       <a href="#about" data-i18n="footer.about">About</a>
       <a href="#pricing" data-i18n="footer.pricing">Pricing</a>
+      <a href="#faq" data-i18n="nav.faq">FAQ</a>
       <a href="#contact" data-i18n="footer.contact">Contact</a>
       <a href="/assets/pvmath-press-kit.zip" download data-i18n="footer.presskit">Download Logo</a>
     </div>
@@ -993,15 +1031,15 @@
 var T = {
   en: {
     'nav.modules':'Modules','nav.how':'How It Works','nav.pricing':'Pricing',
-    'nav.about':'About','nav.contact':'Contact','nav.cta':'Try Free →',
-    'hero.badge':'Modules 1–3 Live — SiteIQ · TopoIQ · YieldIQ',
-    'hero.h1':'Solar intelligence tools<br>built by <em>industry experts,</em><br>for every solar stakeholder.',
+    'nav.about':'About','nav.faq':'FAQ','nav.contact':'Contact','nav.cta':'Try Free →',
+    'hero.badge':'Early Access — SiteIQ · TopoIQ · YieldIQ',
+    'hero.h1':'Solar intelligence tools<br>built by <em>industry experts,</em><br>for solar engineers and developers.',
     'hero.p':'PVMath automates the slow, manual parts of solar project development — from first site coordinates to actionable engineering data. Preliminary screening outputs in minutes, not days.',
     'hero.btn1':'Try it Free →','hero.btn2':'View All Tools',
     'hero.topoiq.label':'TopoIQ — Terrain Screening',
     'hero.topoiq.head':'Don\'t wait for the topo survey — screen civil risk, export CAD terrain, and deliver an executive PDF in minutes, not weeks.',
     'hero.topoiq.c1':'Slope maps & cross-row screening',
-    'hero.topoiq.c2':'DXF & LandXML — Civil-ready export',
+    'hero.topoiq.c2':'DXF & LandXML — CAD terrain for conceptual layout',
     'hero.topoiq.c3':'Executive terrain PDF — report ID & metadata',
     'stat.modules':'Live Modules','stat.speed':'Site Screening Time',
     'stat.coverage':'Solar Data Coverage','stat.start':'To Get Started','stat.free-val':'Free',
@@ -1010,12 +1048,12 @@ var T = {
     'modules.sub':'From site screening to energy yield — each tool covers a real stage of ground-mount solar development, powered by PVGIS JRC, Copernicus DEM, and OpenStreetMap.',
     'pill.live':'Live Now','pill.soon':'Coming Soon',
     'siteiq.desc':'Fast solar site pre-screening for any location globally. Get GHI, irradiation, terrain overview, regulatory flags, and capacity estimates in under 2 minutes.',
-    'siteiq.tagline':'From coordinates to defendable site verdict in minutes — solar, terrain, flood, and regulatory screening in one client-ready PDF.',
+    'siteiq.tagline':'From coordinates to structured site screening in minutes — solar, terrain, flood, and regulatory checks in one professional PDF.',
     'siteiq.f1':'Satellite map with coordinate input','siteiq.f2':'Annual & monthly GHI / irradiation',
     'siteiq.f3':'Terrain & slope overview','siteiq.f4':'Regulatory flags (protected areas)',
-    'siteiq.f5':'Flood risk indicator','siteiq.f6':'PDF report — client-ready','siteiq.btn':'Open in App →',
-    'topoiq.tagline':'From satellite to civil screen in minutes — tracker-aware terrain PDFs your EPC team can actually defend.',
-    'topoiq.desc':'Copernicus DEM terrain screening for ground-mount solar. Slope direction, cross-row tracker grades, dual fixed-tilt/tracker capacity and engineering verdicts, and client-ready PDF reports — with honest accuracy disclaimers built in.',
+    'siteiq.f5':'Flood risk indicator','siteiq.f6':'PDF report — screening-grade','siteiq.btn':'Open in App →',
+    'topoiq.tagline':'From satellite to pre-survey civil screening in minutes — tracker-aware terrain PDFs for conceptual layout review.',
+    'topoiq.desc':'Copernicus DEM terrain screening for ground-mount solar. Slope direction, cross-row tracker grades, dual fixed-tilt/tracker capacity and engineering verdicts, and screening-grade PDF reports — with honest accuracy disclaimers built in.',
     'topoiq.f1':'Site boundary from Project Setup (KMZ / draw once)','topoiq.f2':'Copernicus GLO-30 (~30 m native, resampled to ~5–11 m analysis grid)',
     'topoiq.f3':'Tracker-aware slope & cross-row screening','topoiq.f4':'Slope maps with north arrow & scale bar',
     'topoiq.f5':'DXF & LandXML terrain file export','topoiq.f6':'Executive terrain PDF with report ID & metadata','topoiq.btn':'Open in App →',
@@ -1040,17 +1078,17 @@ var T = {
     'how.launch':'Open in App →',
     'siteiq.s1.h':'Choose Project Type & Area','siteiq.s1.p':'Select land use (Standard or Agri-PV) and mounting system (Fixed Tilt or Single-Axis Tracker). Enter site area in hectares. SiteIQ fetches GHI, irradiation, terrain overview, flood risk, and regulatory flags automatically.',
     'siteiq.s2.h':'Review Site Assessment','siteiq.s2.p':'Instant results: annual GHI and irradiation, monthly irradiation chart, slope assessment, flood risk indicator, regulatory flags, and estimated capacity range. A go/no-go verdict with colour-coded ratings.',
-    'siteiq.s3.h':'Download PDF Report','siteiq.s3.p':'Get a client-ready PDF with solar resource data, monthly irradiation chart, terrain summary, and a go/no-go verdict. Ready for your next client meeting.',
+    'siteiq.s3.h':'Download PDF Report','siteiq.s3.p':'Get a screening-grade PDF with solar resource data, monthly irradiation chart, terrain summary, and a go/no-go verdict. Suitable for internal review and early client discussions.',
     'topoiq.s1.h':'Site Boundary from Project Setup','topoiq.s1.p':'Your site boundary drawn in Full Mode is loaded automatically. Adjust contour line spacing and profile line positions. No re-drawing needed if you already set up your project.',
     'topoiq.s2.h':'Extract Terrain Data','topoiq.s2.p':'TopoIQ fetches Copernicus GLO-30 satellite DEM for your site boundary, computes elevation profiles, slope heatmaps, and contour lines at your chosen interval automatically.',
-    'topoiq.s3.h':'Export DXF, LandXML & PDF','topoiq.s3.p':'Download a DXF or Civil 3D-ready LandXML terrain file with contour lines at your chosen spacing — ready for detailed 3D study in any CAD software — plus a PDF terrain report with elevation and slope maps.',
+    'topoiq.s3.h':'Export DXF, LandXML & PDF','topoiq.s3.p':'Download DXF or Civil 3D-ready LandXML terrain with contour lines at your chosen spacing — for conceptual CAD layout — plus a PDF terrain report with elevation and slope maps.',
     'why.label':'Why PVMath','why.title':'Engineering-grade screening estimates.<br>Not a bankable study.',
     'why.sub':'Built on the same satellite, solar, and terrain datasets used in bankable energy assessments. Outputs are preliminary screening-stage results — fast enough for a go/no-go call, not a substitute for a full engineering study.',
     'why.c1.h':'Industry-Standard Solar Data','why.c1.p':'GHI and irradiation from PVGIS (EC JRC) — the same data source used by engineers in bankable pre-feasibility studies worldwide.',
     'why.c2.h':'Satellite Terrain Data','why.c2.p':'Copernicus GLO-30 DEM (~30m horizontal resolution). Slope maps, elevation profiles, and contour lines — extracted in seconds, not days.',
     'why.c3.h':'CAD Software Ready','why.c3.p':'DXF and Civil 3D-ready LandXML terrain files work in any CAD software — Civil 3D, BricsCAD, QGIS, and more. No conversion needed.',
     'why.c4.h':'Under 2 Minutes','why.c4.p':'SiteIQ, TopoIQ, and YieldIQ each complete in under 2 minutes. Full pre-check before the client call ends.',
-    'why.c5.h':'Client-Ready Reports','why.c5.p':'Branded PDF outputs from all 3 modules — site screening, terrain analysis, and energy yield. Print, email, present.',
+    'why.c5.h':'Screening Reports','why.c5.p':'Branded PDF outputs from all 3 modules — site screening, terrain analysis, and energy yield. For internal go/no-go and early client conversations, not bankable deliverables.',
     'why.c6.h':'Built by a Solar Engineer','why.c6.p':'Not a software startup guessing what engineers need. Built by a Solar Engineering Expert with hands-on experience in utility-scale solar, tracker systems, and EPC delivery worldwide.',
     'reviews.label':'Early Access','reviews.title':'Help shape what we build next.',
     'reviews.sub':'PVMath is in early access. Real customer stories will appear here as the platform grows.',
@@ -1081,6 +1119,16 @@ var T = {
     'pricing.per.monthly':'/ month','pricing.per.annual':'/ year','pricing.year':'year',
     'pricing.save.pro':'Save €298 vs monthly — 2 months free',
     'pricing.save.dev':'Save €499 vs monthly — 1 month free',
+    'faq.label':'FAQ','faq.title':'Common questions from engineers.',
+    'faq.sub':'How PVMath fits into a real ground-mount development workflow — and what it is not.',
+    'faq.q1':'How is PVMath different from running PVGIS and QGIS yourself?',
+    'faq.a1':'You can pull PVGIS and Copernicus DEM manually — PVMath packages the same industry-standard datasets into a single workflow: structured site screening, tracker-aware terrain PDFs, CAD terrain export, and four-configuration yield comparison in under 2 minutes per module, with cross-referenced reports and shared project setup.',
+    'faq.q2':'Is this a bankable study or a substitute for PVsyst / DNV / Aurora?',
+    'faq.a2':'No. PVMath is a pre-feasibility screening layer for internal go/no-go and early client conversations. YieldIQ explicitly states ±8–15% uncertainty vs. a full bankable energy assessment. TopoIQ uses satellite DEM, not survey-grade LiDAR. SiteIQ flood and regulatory outputs are indicative, not permitting diligence.',
+    'faq.q3':'What does Early Access mean?',
+    'faq.a3':'SiteIQ, TopoIQ, and YieldIQ are live and usable today, but the platform is still in Early Access. Features, pricing, and report formats may evolve based on engineer feedback. The free tier includes PDF download and CAD export — no credit card required.',
+    'faq.q4':'Who is PVMath built for?',
+    'faq.a4':'Solar EPCs, project developers, and engineering firms screening ground-mount utility-scale sites globally. Fixed tilt and single-axis tracker, standard and Agri-PV. Not designed for rooftop, carport, floating, or BIPV.',
     'about.label':'About PVMath','about.title':'From the field.<br>Not a desk.',
     'about.p1':'PVMath was founded by a Solar Engineering Expert with hands-on experience in utility-scale solar — tracker systems, terrain analysis, site design, and EPC project delivery worldwide. Built in Germany.',
     'about.p2':'Our tools are built to solve problems that cost real project hours — not features invented in a boardroom. The result is a platform that speaks the same language as the engineers using it.',
@@ -1106,15 +1154,15 @@ var T = {
 
   de: {
     'nav.modules':'Module','nav.how':'Funktionsweise','nav.pricing':'Preise',
-    'nav.about':'Über uns','nav.contact':'Kontakt','nav.cta':'Kostenlos testen →',
-    'hero.badge':'Module 1–3 Live — SiteIQ · TopoIQ · YieldIQ',
-    'hero.h1':'Solar-Intelligenztools –<br>entwickelt von <em>Ingenieuren,</em><br>für Ingenieure.',
+    'nav.about':'Über uns','nav.faq':'FAQ','nav.contact':'Kontakt','nav.cta':'Kostenlos testen →',
+    'hero.badge':'Early Access — SiteIQ · TopoIQ · YieldIQ',
+    'hero.h1':'Solar-Intelligenztools –<br>entwickelt von <em>Ingenieuren,</em><br>für Solaringenieure und Entwickler.',
     'hero.p':'PVMath automatisiert die langsamen, manuellen Schritte der Solarplanung – von den ersten Koordinaten bis zu verwertbaren Ingenieursdaten. Vorprüfungs-Ergebnisse in Minuten statt Tagen.',
     'hero.btn1':'Kostenlos testen →','hero.btn2':'Module entdecken',
     'hero.topoiq.label':'TopoIQ — Gelände-Screening',
     'hero.topoiq.head':'Nicht auf die Vermessung warten — Civil-Risiken screenen, CAD-Gelände exportieren und Executive-PDF in Minuten statt Wochen.',
     'hero.topoiq.c1':'Neigungskarten & Querneigungs-Screening',
-    'hero.topoiq.c2':'DXF & LandXML — Civil-ready Export',
+    'hero.topoiq.c2':'DXF & LandXML — CAD-Gelände für konzeptionelles Layout',
     'hero.topoiq.c3':'Executive-Gelände-PDF — Report-ID & Metadaten',
     'stat.modules':'Aktive Module','stat.speed':'Standortprüfungszeit',
     'stat.coverage':'Solare Datenabdeckung','stat.start':'Zum Starten','stat.free-val':'Gratis',
@@ -1123,12 +1171,12 @@ var T = {
     'modules.sub':'Von der Standortprüfung bis zur Ertragsprognose — jedes Tool deckt eine reale Phase der Freiflächen-Solarentwicklung ab, basierend auf PVGIS JRC, Copernicus DEM und OpenStreetMap.',
     'pill.live':'Jetzt Live','pill.soon':'Demnächst',
     'siteiq.desc':'Schnelle Solarstandort-Vorprüfung für jeden Standort weltweit. GHI, Einstrahlung, Geländeübersicht, Regulierungshinweise und Kapazitätsschätzung in unter 2 Minuten.',
-    'siteiq.tagline':'Vom Standort zum vertretbaren Site-Verdict in Minuten — Solar, Gelände, Hochwasser und Regulierung in einem kundenfähigen PDF.',
+    'siteiq.tagline':'Vom Standort zum strukturierten Site-Screening in Minuten — Solar, Gelände, Hochwasser und Regulierung in einem professionellen PDF.',
     'siteiq.f1':'Satellitenkarte mit Koordinateneingabe','siteiq.f2':'Jährliche & monatliche GHI / Einstrahlung',
     'siteiq.f3':'Gelände- & Neigungsübersicht','siteiq.f4':'Regulierungshinweise (Schutzgebiete)',
-    'siteiq.f5':'Hochwasserrisiko-Indikator','siteiq.f6':'PDF-Bericht — kundenfähig','siteiq.btn':'In der App öffnen →',
-    'topoiq.tagline':'Vom Satellit zum Civil-Screening in Minuten — tracker-bewusste Gelände-PDFs, die Ihr EPC-Team vertreten kann.',
-    'topoiq.desc':'Copernicus-DEM-Geländescreening für Freiflächen-Solar. Neigungsrichtung, Querneigung für Tracker, Kapazität und Engineering-Verdict für Festaufständerung und Tracker sowie kundenfertige PDF-Berichte — mit ehrlichen Genauigkeitshinweisen.',
+    'siteiq.f5':'Hochwasserrisiko-Indikator','siteiq.f6':'PDF-Bericht — Screening-Niveau','siteiq.btn':'In der App öffnen →',
+    'topoiq.tagline':'Vom Satellit zum Civil-Screening vor der Vermessung in Minuten — tracker-bewusste Gelände-PDFs für konzeptionelles Layout.',
+    'topoiq.desc':'Copernicus-DEM-Geländescreening für Freiflächen-Solar. Neigungsrichtung, Querneigung für Tracker, Kapazität und Engineering-Verdict für Festaufständerung und Tracker sowie Screening-PDF-Berichte — mit ehrlichen Genauigkeitshinweisen.',
     'topoiq.f1':'Standortgrenze aus Projekteinrichtung (KMZ / einmal zeichnen)','topoiq.f2':'Copernicus GLO-30 DEM (~30m nativ, resampled Raster)',
     'topoiq.f3':'Tracker-bewusste Neigung & Querneigung','topoiq.f4':'Neigungskarten mit Nordpfeil & Maßstab',
     'topoiq.f5':'DXF- & LandXML-Geländedatei-Export','topoiq.f6':'Executive-Gelände-PDF mit Report-ID & Metadaten','topoiq.btn':'In der App öffnen →',
@@ -1153,17 +1201,17 @@ var T = {
     'how.launch':'In der App öffnen →',
     'siteiq.s1.h':'Projekttyp & Fläche wählen','siteiq.s1.p':'Landnutzung (Standard oder Agri-PV) und Montagesystem (Festwinkel oder Einachsiger Tracker) auswählen. Standortfläche in Hektar eingeben. SiteIQ ruft automatisch GHI, Einstrahlung, Geländeübersicht, Hochwasserrisiko und Regulierungshinweise ab.',
     'siteiq.s2.h':'Standortbewertung einsehen','siteiq.s2.p':'Sofortige Ergebnisse: Jahres-GHI und Einstrahlung, monatliches Einstrahlungsdiagramm, Neigungsbewertung, Hochwasserrisiko-Indikator, Regulierungshinweise und geschätzter Kapazitätsbereich. Go/No-Go-Empfehlung mit farbcodierten Bewertungen.',
-    'siteiq.s3.h':'PDF-Bericht herunterladen','siteiq.s3.p':'Kundenfähigen PDF mit Solarressourcendaten, monatlichem Einstrahlungsdiagramm, Geländezusammenfassung und Go/No-Go-Empfehlung erhalten. Bereit für das nächste Kundengespräch.',
+    'siteiq.s3.h':'PDF-Bericht herunterladen','siteiq.s3.p':'Screening-PDF mit Solarressourcendaten, monatlichem Einstrahlungsdiagramm, Geländezusammenfassung und Go/No-Go-Empfehlung. Für interne Prüfung und frühe Kundengespräche.',
     'topoiq.s1.h':'Standortgrenze aus Projekteinrichtung','topoiq.s1.p':'Die im Vollmodus eingezeichnete Standortgrenze wird automatisch geladen. Höhenlinienschrittweite und Profillinienpositionen anpassen. Kein erneutes Einzeichnen erforderlich, wenn das Projekt bereits eingerichtet wurde.',
     'topoiq.s2.h':'Geländedaten extrahieren','topoiq.s2.p':'TopoIQ ruft Copernicus GLO-30 Satelliten-DEM für Ihre Standortgrenze ab und berechnet Höhenprofile, Neigungskarten und Höhenlinien im gewählten Abstand automatisch.',
-    'topoiq.s3.h':'DXF, LandXML & PDF exportieren','topoiq.s3.p':'DXF- oder Civil 3D-fertige LandXML-Geländedatei mit Höhenlinien im gewählten Abstand herunterladen — bereit für 3D-Studium in jeder CAD-Software — plus PDF-Geländebericht mit Höhen- und Neigungskarten.',
-    'why.label':'Warum PVMath','why.title':'Ingenieurqualitätsdaten.<br>Keine Schätzungen.',
+    'topoiq.s3.h':'DXF, LandXML & PDF exportieren','topoiq.s3.p':'DXF- oder Civil-3D-fertige LandXML-Geländedatei mit Höhenlinien im gewählten Abstand — für konzeptionelles CAD-Layout — plus PDF-Geländebericht mit Höhen- und Neigungskarten.',
+    'why.label':'Warum PVMath','why.title':'Screening-Schätzungen auf Ingenieursniveau.<br>Kein bankfähiges Gutachten.',
     'why.sub':'Basiert auf denselben Satelliten-, Solar- und Geländedatensätzen, die auch in bankfähigen Ertragsgutachten verwendet werden. Die Ergebnisse sind vorläufige Screening-Resultate — schnell genug für eine Go/No-Go-Entscheidung, aber kein Ersatz für eine vollständige technische Planung.',
     'why.c1.h':'Branchenstandard-Solardaten','why.c1.p':'GHI und Einstrahlung von PVGIS (EC JRC) — dieselbe Datenquelle, die Ingenieure weltweit in bankfähigen Vor-Machbarkeitsstudien verwenden.',
     'why.c2.h':'Satellitengelände-Daten','why.c2.p':'Copernicus GLO-30 DEM (~30m Horizontalauflösung). Neigungskarten, Höhenprofile und Höhenlinien — in Sekunden extrahiert, nicht in Tagen.',
     'why.c3.h':'CAD-Software-kompatibel','why.c3.p':'DXF- und Civil 3D-fertige LandXML-Geländedateien funktionieren in jeder CAD-Software — Civil 3D, BricsCAD, QGIS und mehr. Keine Konvertierung nötig.',
     'why.c4.h':'Unter 2 Minuten','why.c4.p':'SiteIQ, TopoIQ und YieldIQ benötigen jeweils unter 2 Minuten. Vollständige Vorprüfung noch während des Kundengesprächs.',
-    'why.c5.h':'Kundenfähige Berichte','why.c5.p':'Gebrandete PDF-Ausgaben aus allen 3 Modulen — Standortprüfung, Geländeanalyse und Energieertrag. Drucken, per E-Mail senden, präsentieren.',
+    'why.c5.h':'Screening-Berichte','why.c5.p':'Gebrandete PDF-Ausgaben aus allen 3 Modulen — Standortprüfung, Geländeanalyse und Energieertrag. Für interne Go/No-Go-Entscheidungen und frühe Kundengespräche, nicht für bankfähige Deliverables.',
     'why.c6.h':'Von einem Solaringenieur entwickelt','why.c6.p':'Kein Software-Startup, das rät, was Ingenieure brauchen. Entwickelt von einem Solar Engineering Expert mit praktischer Erfahrung in Utility-Scale-Solar, Trackersystemen und EPC-Projekten weltweit.',
     'reviews.label':'Early Access','reviews.title':'Gestalten Sie mit, was als Nächstes kommt.',
     'reviews.sub':'PVMath ist im Early Access. Echte Kundenstimmen folgen, sobald die Plattform wächst.',
@@ -1194,6 +1242,16 @@ var T = {
     'pricing.per.monthly':'/ Monat','pricing.per.annual':'/ Jahr','pricing.year':'Jahr',
     'pricing.save.pro':'€298 gegenüber Monatlich sparen — 2 Monate gratis',
     'pricing.save.dev':'€499 gegenüber Monatlich sparen — 1 Monat gratis',
+    'faq.label':'FAQ','faq.title':'Häufige Fragen von Ingenieuren.',
+    'faq.sub':'Wie PVMath in einen echten Freiflächen-Entwicklungsworkflow passt — und was es nicht ist.',
+    'faq.q1':'Worin unterscheidet sich PVMath von PVGIS und QGIS?',
+    'faq.a1':'PVGIS und Copernicus DEM können manuell abgerufen werden — PVMath bündelt dieselben branchenüblichen Datensätze in einem Workflow: strukturiertes Site-Screening, tracker-bewusste Gelände-PDFs, CAD-Geländeexport und Vier-Konfigurations-Ertragsvergleich in unter 2 Minuten pro Modul, mit querverlinkten Berichten und gemeinsamer Projekteinrichtung.',
+    'faq.q2':'Ist das ein bankfähiges Gutachten oder Ersatz für PVsyst / DNV / Aurora?',
+    'faq.a2':'Nein. PVMath ist eine Vor-Machbarkeits-Screening-Schicht für interne Go/No-Go-Entscheidungen und frühe Kundengespräche. YieldIQ nennt explizit ±8–15% Unsicherheit gegenüber einem bankfähigen Ertragsgutachten. TopoIQ nutzt Satelliten-DEM, kein vermessungsgenaues LiDAR. SiteIQ-Hochwasser- und Regulierungsausgaben sind indikativ, keine Genehmigungsprüfung.',
+    'faq.q3':'Was bedeutet Early Access?',
+    'faq.a3':'SiteIQ, TopoIQ und YieldIQ sind heute live und nutzbar, die Plattform befindet sich aber noch im Early Access. Features, Preise und Berichtsformate können sich anhand von Ingenieursfeedback weiterentwickeln. Der Free-Tarif umfasst PDF-Download und CAD-Export — ohne Kreditkarte.',
+    'faq.q4':'Für wen ist PVMath gebaut?',
+    'faq.a4':'Solar-EPCs, Projektentwickler und Ingenieurbüros, die Freiflächen-Utility-Scale-Standorte weltweit screenen. Festaufständerung und Einachs-Tracker, Standard und Agri-PV. Nicht für Dach, Carport, Floating oder BIPV.',
     'about.label':'Über PVMath','about.title':'Aus der Praxis.<br>Nicht vom Schreibtisch.',
     'about.p1':'PVMath wurde von einem Solar Engineering Expert mit praktischer Erfahrung in Utility-Scale-Solar gegründet — Trackersysteme, Geländeanalyse, Standortplanung und EPC-Projektabwicklung weltweit. Entwickelt in Deutschland.',
     'about.p2':'Unsere Tools sind gebaut, um Probleme zu lösen, die echte Projektstunden kosten — keine Features, die im Konferenzraum erfunden wurden. Das Ergebnis ist eine Plattform, die dieselbe Sprache spricht wie die Ingenieure, die sie nutzen.',
@@ -1211,7 +1269,7 @@ var T = {
     'form.message':'Ihre Nachricht...','form.submit':'Nachricht senden →',
     'footer.tagline':'Solar-Standortintelligenz für EPCs und Projektentwickler. Von Ingenieuren für Ingenieure.',
     'footer.platform':'Plattform','footer.company':'Unternehmen','footer.legal':'Rechtliches',
-    'footer.yieldiq':'YieldIQ','\footer.about':'Über uns','footer.about':'Über uns',
+    'footer.yieldiq':'YieldIQ','footer.about':'Über uns',
     'footer.pricing':'Preise','footer.contact':'Kontakt','footer.presskit':'Logo herunterladen','footer.impressum':'Impressum',
     'footer.privacy':'Datenschutz','footer.terms':'AGB','footer.copy':'© 2026 PVMath. Alle Rechte vorbehalten.',
     'footer.sources':'Datenquellen: PVGIS (EC JRC) · Copernicus EU-DEM / SRTM · OpenStreetMap'

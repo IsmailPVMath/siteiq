@@ -46,8 +46,13 @@ div[data-testid="stVerticalBlock"]:has(div.ov-actions-anchor) div[data-testid="s
 
 st.markdown(f"""
 <div style="padding:1.5rem 0 0.5rem 0;border-bottom:2px solid #e8f5ee;margin-bottom:1.5rem;">
-  <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;
-              letter-spacing:0.12em;color:#1d9e52;margin-bottom:0.3rem;">Overview</div>
+  <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.35rem;">
+    <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;
+                letter-spacing:0.12em;color:#1d9e52;">Overview</div>
+    <span style="display:inline-flex;align-items:center;gap:0.3rem;background:#e8f5ee;border:1px solid #b8ddc8;
+                 color:#145f34;font-size:0.62rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;
+                 padding:0.22rem 0.5rem;border-radius:100px;">Early Access</span>
+  </div>
   <h1 style="font-size:2rem;font-weight:800;color:#1a2e1a;margin:0 0 0.3rem 0;">Welcome back</h1>
   <p style="color:#5a7a5a;font-size:1rem;margin:0;">{_email}</p>
 </div>
