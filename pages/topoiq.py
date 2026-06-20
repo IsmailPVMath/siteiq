@@ -46,7 +46,8 @@ except ImportError:
 # downloads and grid memory on Railway's single Streamlit worker.
 MAX_SITE_AREA_HA = 10_000
 MAX_DEM_TILES = 80           # pick lower zoom if bbox needs more tiles
-MAX_GRID_POINTS = 300_000    # coarsen output grid above this point count
+MAX_GRID_POINTS_LAYOUT = 1_500_000  # keep requested spacing (e.g. 5 m) for layout sites
+MAX_GRID_POINTS_FAST = 300_000      # legacy coarsen budget when auto-coarsen enabled
 DEM_ZOOM_MIN = 11
 DEM_ZOOM_MAX = 14
 TILE_FETCH_WORKERS = 8
@@ -73,6 +74,7 @@ from pvmath_topo_export import (
     epsg_utm_wgs84,
     export_dxf_contours,
     export_landxml_utm,
+    export_linear_units,
     export_xyz_geo,
     export_xyz_georef,
     export_xyz_local,
@@ -529,8 +531,9 @@ def pick_dem_zoom(south, north, west, east, max_tiles=MAX_DEM_TILES):
 
 
 def effective_grid_spacing(p_w, p_e, p_s, p_n, grid_m, lat_c,
-                           max_points=MAX_GRID_POINTS):
-    """Coarsen grid spacing if bbox × spacing would exceed point budget."""
+                           allow_coarsen: bool = False):
+    """Keep requested spacing for layout; optional coarsen on very large sites."""
+    max_points = MAX_GRID_POINTS_FAST if allow_coarsen else MAX_GRID_POINTS_LAYOUT
     m_per_deg_lat = 111320.0
     m_per_deg_lon = 111320.0 * math.cos(math.radians(lat_c))
     width_m = max((p_e - p_w) * m_per_deg_lon, grid_m)
@@ -540,6 +543,8 @@ def effective_grid_spacing(p_w, p_e, p_s, p_n, grid_m, lat_c,
     points = n_rows * n_cols
     if points <= max_points:
         return float(grid_m)
+    if not allow_coarsen:
+        return None
     scale = math.sqrt(points / max_points)
     return float(math.ceil(grid_m * scale))
 
@@ -609,7 +614,8 @@ def _polygon_mask(X, Y, polygon_coords):
 
 
 def resample_to_grid(mosaic, lat_n, lat_s, lon_w, lon_e,
-                     polygon_coords=None, polygon_list=None, grid_m=5.0):
+                     polygon_coords=None, polygon_list=None, grid_m=5.0,
+                     allow_coarsen: bool = False):
     h, w = mosaic.shape
     lat_c = (lat_n + lat_s) / 2
     m_per_deg_lat = 111320.0
@@ -627,7 +633,9 @@ def resample_to_grid(mosaic, lat_n, lat_s, lon_w, lon_e,
     else:
         p_w, p_e, p_s, p_n = lon_w, lon_e, lat_s, lat_n
 
-    grid_m = effective_grid_spacing(p_w, p_e, p_s, p_n, grid_m, lat_c)
+    grid_m = effective_grid_spacing(p_w, p_e, p_s, p_n, grid_m, lat_c, allow_coarsen=allow_coarsen)
+    if grid_m is None:
+        raise ValueError("GRID_TOO_LARGE")
     step_lat = grid_m / m_per_deg_lat
     step_lon = grid_m / m_per_deg_lon
 
@@ -737,6 +745,7 @@ run = False
 grid_spacing = 5
 contour_minor = 0.5
 contour_major = 1.0
+allow_coarsen = False
 
 with left:
     st.markdown(
@@ -871,12 +880,18 @@ with left:
         st.markdown('<div class="pvm-topo-settings"></div>', unsafe_allow_html=True)
         sc1, sc2, sc3 = st.columns(3)
         grid_spacing = sc1.slider(
-            "Analysis grid request (m)", min_value=3, max_value=10, value=5, step=1,
-            help="Requested slope-analysis grid. GLO-30 is ~30 m native; large sites auto-coarsen "
-                 "(e.g. 11 m) — actual spacing is shown in the report.",
+            "Analysis grid (m)", min_value=3, max_value=10, value=5, step=1,
+            help="Default 5 m for layout work. Copernicus GLO-30 is ~30 m native; "
+                 "TopoIQ resamples to this spacing inside your boundary.",
         )
         contour_minor = sc2.slider("Minor contour (m)", min_value=0.1, max_value=2.0, value=0.5, step=0.1)
         contour_major = sc3.slider("Major contour (m)", min_value=0.5, max_value=10.0, value=1.0, step=0.5)
+        allow_coarsen = st.checkbox(
+            "Auto-coarsen grid on very large sites (faster, lower resolution)",
+            value=False,
+            help="Off (default): keep requested spacing (e.g. 5 m) up to ~1.5M grid points — "
+                 "best for layout. On: may increase spacing on huge boundaries to speed up the run.",
+        )
 
         _site_area_ha = boundaries_union_area_ha(_enabled_polys) if _enabled_polys else None
         _area_over_limit = (
@@ -933,11 +948,22 @@ with right:
             st.error("Could not fetch terrain data. Check your internet connection.")
             st.stop()
 
-        with st.spinner(f"Processing {grid_spacing}m grid…"):
-            X, Y, Z, grid_m_used = resample_to_grid(
-                mosaic, lat_n, lat_s, lon_w, lon_e,
-                polygon_list=_enabled_polys, grid_m=float(grid_spacing)
-            )
+        with st.spinner(f"Processing {grid_spacing} m grid…"):
+            try:
+                X, Y, Z, grid_m_used = resample_to_grid(
+                    mosaic, lat_n, lat_s, lon_w, lon_e,
+                    polygon_list=_enabled_polys, grid_m=float(grid_spacing),
+                    allow_coarsen=allow_coarsen,
+                )
+            except ValueError as exc:
+                if str(exc) == "GRID_TOO_LARGE":
+                    st.error(
+                        f"This boundary is too large for a **{grid_spacing} m** grid at full resolution. "
+                        "Enable **Auto-coarsen grid** above, reduce enabled parcels, draw a smaller "
+                        "analysis polygon, or increase grid spacing."
+                    )
+                    st.stop()
+                raise
             slope = compute_slope(Z, grid_m_used)
 
         if X.shape[0] < 2 or X.shape[1] < 2:
@@ -961,9 +987,9 @@ with right:
         increment_usage(st.session_state.get("pvm_user_id", "guest"), "topoiq")
 
         if grid_m_used > float(grid_spacing):
-            st.info(
+            st.warning(
                 f"Grid coarsened to **{grid_m_used:.0f} m** "
-                f"({len(z_valid):,} points) to stay within processing limits."
+                f"(requested {grid_spacing:.0f} m) — auto-coarsen is enabled for this large boundary."
             )
         if dem_zoom < DEM_ZOOM_MAX:
             st.caption(
@@ -1157,6 +1183,8 @@ with right:
         )
 
         _export_base = sanitize_topo_basename(_proj.get("name", ""))
+        _cad_units = export_linear_units(_proj.get("country", ""))
+        _unit_label = "US Survey Feet" if _cad_units == "imperial_us_survey" else "meters"
         _ref_elev = float(z_valid.mean())
         _ref_epsg = epsg_utm_wgs84(lat_c, lon_c)
         _ref_utm_e, _ref_utm_n, _ = latlon_to_utm(lat_c, lon_c)
@@ -1165,9 +1193,15 @@ with right:
         st.info(
             f"**Reference point:** boundary centroid at {format_coords(lat_c, lon_c)} "
             f"(EPSG:{_ref_epsg} UTM). Local CAD exports use **(0, 0)** at this point. "
+            f"Georef exports use **{_unit_label}**. "
             f"Parcel linework is on layer **SITE_BOUNDARY** in the DXF files and in LandXML (Parcels). "
             f"See `{_export_base}_reference.json` in the ZIP."
         )
+        if _cad_units == "imperial_us_survey":
+            st.caption(
+                "USA project: import georef LandXML/DXF into an **imperial CAD drawing** — "
+                "coordinates are already in US Survey Feet. Do not apply extra feet↔meter scaling."
+            )
         if _parcel_count > 1:
             st.warning(
                 f"**{_parcel_count} enabled parcels** — one merged LandXML surface is exported. "
@@ -1218,10 +1252,10 @@ with right:
 
             lxml = export_landxml_utm(
                 X, Y, Z, site_name=_export_base, lat_c=lat_c, lon_c=lon_c,
-                polygon_list=_enabled_polys,
+                polygon_list=_enabled_polys, units=_cad_units,
             )
-            xyz_local = export_xyz_local(X, Y, Z, lat_c, lon_c)
-            xyz_georef = export_xyz_georef(X, Y, Z, lat_c, lon_c)
+            xyz_local = export_xyz_local(X, Y, Z, lat_c, lon_c, units=_cad_units)
+            xyz_georef = export_xyz_georef(X, Y, Z, lat_c, lon_c, units=_cad_units)
             xyz_geo = export_xyz_geo(X, Y, Z)
             reference_json = build_reference_json(
                 project_name=_proj.get("name", ""),
@@ -1234,6 +1268,8 @@ with right:
                 utm_n=_ref_utm_n,
                 parcel_count=_parcel_count,
                 analysis_mode=st.session_state.get("topo_analysis_mode", "parcels"),
+                country=_proj.get("country", ""),
+                linear_units=_cad_units,
             )
             dxf_local = None
             dxf_georef = None
@@ -1246,6 +1282,7 @@ with right:
                     minor_int=contour_minor,
                     major_int=contour_major,
                     georef=False,
+                    units=_cad_units,
                 )
                 dxf_georef = export_dxf_contours(
                     X, Y, Z,
@@ -1255,6 +1292,7 @@ with right:
                     minor_int=contour_minor,
                     major_int=contour_major,
                     georef=True,
+                    units=_cad_units,
                 )
 
         _zip_bytes, _zip_files = build_topo_export_zip(

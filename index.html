@@ -1123,6 +1123,7 @@
       <div class="section-label" data-i18n="contact.label">Contact</div>
       <h2 class="section-title" data-i18n="contact.title">Get in touch.</h2>
       <p class="section-sub" data-i18n="contact.sub">Pricing, access, or enterprise? We reply within one business day.</p>
+      <p id="contact-sent" style="display:none;margin-top:1rem;padding:0.75rem 1rem;background:#e8f5ee;border:1px solid #b8ddc8;border-radius:8px;color:#145f34;font-size:0.92rem;font-weight:600;" data-i18n="contact.sent">Message sent — we&rsquo;ll reply within one business day.</p>
     </div>
     <div class="contact-grid">
       <div class="contact-info">
@@ -1135,22 +1136,26 @@
           <p style="font-size:0.82rem;color:var(--muted);" data-i18n-html="contact.response"><strong>Response time:</strong> Within 1 business day<br><strong>Languages:</strong> English, Deutsch</p>
         </div>
       </div>
-      <form action="https://formspree.io/f/xpwzgkvo" method="POST">
+      <form action="https://formsubmit.co/contact@pvmath.com" method="POST">
+        <input type="hidden" name="_subject" value="PVMath website inquiry" />
+        <input type="hidden" name="_next" value="https://pvmath.com/?sent=1#contact" />
+        <input type="hidden" name="_captcha" value="false" />
+        <input type="text" name="_honey" style="display:none" tabindex="-1" autocomplete="off" />
         <div class="form-row">
           <input type="text" name="name" data-i18n-ph="form.name" placeholder="Your name" required />
           <input type="email" name="email" data-i18n-ph="form.email" placeholder="Work email" required />
         </div>
         <input type="text" name="company" data-i18n-ph="form.company" placeholder="Company / Organisation" />
-        <select name="subject">
-          <option value="" data-i18n="form.s0">What can we help with?</option>
-          <option data-i18n="form.s3">YieldIQ access</option>
-          <option data-i18n="form.s4">Professional plan</option>
-          <option data-i18n="form.s5">Developer plan</option>
-          <option data-i18n="form.s6">Billing &amp; invoicing question</option>
-          <option data-i18n="form.s7">Technical support</option>
-          <option data-i18n="form.s8">Other</option>
+        <select name="subject" required>
+          <option value="" disabled selected data-i18n="form.s0">What can we help with?</option>
+          <option value="YieldIQ access" data-i18n="form.s3">YieldIQ access</option>
+          <option value="Professional plan" data-i18n="form.s4">Professional plan</option>
+          <option value="Developer plan" data-i18n="form.s5">Developer plan</option>
+          <option value="Billing & invoicing" data-i18n="form.s6">Billing &amp; invoicing question</option>
+          <option value="Technical support" data-i18n="form.s7">Technical support</option>
+          <option value="Other" data-i18n="form.s8">Other</option>
         </select>
-        <textarea name="message" data-i18n-ph="form.message" placeholder="Your message..."></textarea>
+        <textarea name="message" data-i18n-ph="form.message" placeholder="Your message..." required></textarea>
         <button type="submit" class="form-submit" data-i18n="form.submit">Send Message &rarr;</button>
       </form>
     </div>
@@ -1315,6 +1320,7 @@ var T = {
     'contact.sub':'Pricing, access, or enterprise? We reply within one business day.',
     'contact.info':'Solar site intelligence for EPCs, developers, and engineering firms worldwide.',
     'contact.response':'<strong>Response time:</strong> Within 1 business day<br><strong>Languages:</strong> English, Deutsch',
+    'contact.sent':"Message sent — we'll reply within one business day.",
     'form.name':'Your name','form.email':'Work email','form.company':'Company / Organisation',
     'form.s0':'What can we help with?',
     'form.s3':'YieldIQ access','form.s4':'Professional plan','form.s5':'Developer plan',
@@ -1437,6 +1443,7 @@ var T = {
     'contact.sub':'Preise, Zugang oder Enterprise? Antwort innerhalb eines Werktags.',
     'contact.info':'Solar-Standortintelligenz für EPCs, Entwickler und Ingenieurbüros weltweit.',
     'contact.response':'<strong>Antwortzeit:</strong> Innerhalb 1 Werktag<br><strong>Sprachen:</strong> English, Deutsch',
+    'contact.sent':'Nachricht gesendet — Antwort innerhalb eines Werktags.',
     'form.name':'Ihr Name','form.email':'Geschäfts-E-Mail','form.company':'Unternehmen / Organisation',
     'form.s0':'Womit können wir helfen?',
     'form.s3':'YieldIQ Zugang','form.s4':'Professional-Plan','form.s5':'Developer-Plan',
@@ -1538,6 +1545,10 @@ document.addEventListener('DOMContentLoaded', function() {
   if (lblA) lblA.style.opacity = '.5';
   initMobileNav();
   initNavScrollShadow();
+  if (new URLSearchParams(location.search).get('sent') === '1') {
+    var sent = document.getElementById('contact-sent');
+    if (sent) sent.style.display = 'block';
+  }
 });
 
 function initMobileNav() {

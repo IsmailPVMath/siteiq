@@ -30,6 +30,28 @@ except ImportError:
 _WGS84_A = 6378137.0
 _WGS84_F = 1 / 298.257223563
 _WGS84_K0 = 0.9996
+_M_PER_US_SURVEY_FT = 0.304800609601219
+
+
+def is_us_project(country: str) -> bool:
+    c = (country or "").strip().lower().replace(".", "")
+    return c in (
+        "us", "usa", "united states", "united states of america",
+    )
+
+
+def export_linear_units(country: str) -> str:
+    return "imperial_us_survey" if is_us_project(country) else "metric"
+
+
+def _linear_scale(units: str) -> float:
+    if units == "imperial_us_survey":
+        return 1.0 / _M_PER_US_SURVEY_FT
+    return 1.0
+
+
+def _dxf_insunits(units: str) -> int:
+    return 2 if units == "imperial_us_survey" else 6
 
 
 def sanitize_topo_basename(project_name: str, fallback: str = "Project") -> str:
@@ -121,7 +143,10 @@ def build_reference_json(
     utm_n: float,
     parcel_count: int,
     analysis_mode: str,
+    country: str = "",
+    linear_units: str = "metric",
 ) -> bytes:
+    unit_label = "US survey feet" if linear_units == "imperial_us_survey" else "meters"
     payload = {
         "format": "TopoIQ_reference_v1",
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -137,24 +162,46 @@ def build_reference_json(
             "projected_utm": f"EPSG:{epsg}",
             "utm_easting_m": round(utm_e, 3),
             "utm_northing_m": round(utm_n, 3),
+            "export_linear_units": unit_label,
+        },
+        "cad_import": {
+            "georef_package_units": unit_label,
+            "use_georef_for_map_location": True,
+            "local_package_note": "Local DXF/XYZ use (0,0) at boundary centroid — not map coordinates.",
+            "do_not_scale_on_import": (
+                "Coordinates in georef LandXML/DXF already match the declared units. "
+                "Do not apply feet↔meter scaling after import."
+            ),
         },
         "exports": {
-            "local_package": "DXF *_contours_local.dxf (SITE_BOUNDARY layer) and XYZ *_local.csv — Easting/Northing meters from centroid",
-            "georef_package": "LandXML *.xml, DXF *_contours_georef.dxf (SITE_BOUNDARY layer), XYZ *_georef.csv — WGS84 UTM meters",
+            "local_package": (
+                f"DXF *_contours_local.dxf (SITE_BOUNDARY layer) and XYZ *_local.csv — "
+                f"from centroid in {unit_label}"
+            ),
+            "georef_package": (
+                f"LandXML *.xml, DXF *_contours_georef.dxf (SITE_BOUNDARY layer), "
+                f"XYZ *_georef.csv — WGS84 UTM in {unit_label}"
+            ),
             "geo_csv": "Lon/Lat/Elevation for GIS and PVsyst — not the primary CAD surface path",
         },
         "analysis": {
             "grid_spacing_m": grid_m,
             "boundary_mode": analysis_mode,
             "enabled_parcels": parcel_count,
+            "project_country": country or "Unknown",
         },
         "notes": [
-            "Import LandXML or georef DXF for map-aligned workflows in CAD (BricsCAD, QGIS, etc.).",
+            "Import georef LandXML or georef DXF for map-aligned workflows in CAD.",
             "Site parcel linework is on layer SITE_BOUNDARY in contour DXF files and in Parcels/PlanFeatures (LandXML).",
             "Use local DXF/XYZ to work near drawing origin (0,0) at the centroid.",
             "Multiple disconnected parcels may show TIN seams between separate blocks.",
         ],
     }
+    if is_us_project(country):
+        payload["cad_import"]["usa_note"] = (
+            "USA project: georef exports use US Survey Feet on WGS84 UTM (EPSG). "
+            "Create/open an imperial CAD drawing before import — do not manually scale."
+        )
     return json.dumps(payload, indent=2).encode("utf-8")
 
 
@@ -169,27 +216,45 @@ def export_xyz_geo(X: np.ndarray, Y: np.ndarray, Z: np.ndarray) -> bytes:
     return buf.getvalue().encode()
 
 
-def export_xyz_local(X: np.ndarray, Y: np.ndarray, Z: np.ndarray, lat_c: float, lon_c: float) -> bytes:
+def export_xyz_local(
+    X: np.ndarray, Y: np.ndarray, Z: np.ndarray,
+    lat_c: float, lon_c: float, *, units: str = "metric",
+) -> bytes:
     easting, northing = local_en_from_latlon(X, Y, lon_c, lat_c)
+    scale = _linear_scale(units)
+    suffix = "ft" if units == "imperial_us_survey" else "m"
     buf = io.StringIO()
     writer = csv.writer(buf)
-    writer.writerow(["Easting_m", "Northing_m", "Elevation_m"])
+    writer.writerow([f"Easting_{suffix}", f"Northing_{suffix}", f"Elevation_{suffix}"])
     for r in range(X.shape[0]):
         for c in range(X.shape[1]):
             if not np.isnan(Z[r, c]):
-                writer.writerow([f"{easting[r, c]:.3f}", f"{northing[r, c]:.3f}", f"{Z[r, c]:.3f}"])
+                writer.writerow([
+                    f"{easting[r, c] * scale:.3f}",
+                    f"{northing[r, c] * scale:.3f}",
+                    f"{Z[r, c] * scale:.3f}",
+                ])
     return buf.getvalue().encode()
 
 
-def export_xyz_georef(X: np.ndarray, Y: np.ndarray, Z: np.ndarray, lat_c: float, lon_c: float) -> bytes:
+def export_xyz_georef(
+    X: np.ndarray, Y: np.ndarray, Z: np.ndarray,
+    lat_c: float, lon_c: float, *, units: str = "metric",
+) -> bytes:
     eastings, northings, _ = utm_grids_from_latlon(X, Y, lat_c, lon_c)
+    scale = _linear_scale(units)
+    suffix = "ft" if units == "imperial_us_survey" else "m"
     buf = io.StringIO()
     writer = csv.writer(buf)
-    writer.writerow(["UTM_Easting_m", "UTM_Northing_m", "Elevation_m"])
+    writer.writerow([f"UTM_Easting_{suffix}", f"UTM_Northing_{suffix}", f"Elevation_{suffix}"])
     for r in range(X.shape[0]):
         for c in range(X.shape[1]):
             if not np.isnan(Z[r, c]):
-                writer.writerow([f"{eastings[r, c]:.3f}", f"{northings[r, c]:.3f}", f"{Z[r, c]:.3f}"])
+                writer.writerow([
+                    f"{eastings[r, c] * scale:.3f}",
+                    f"{northings[r, c] * scale:.3f}",
+                    f"{Z[r, c] * scale:.3f}",
+                ])
     return buf.getvalue().encode()
 
 
@@ -234,6 +299,7 @@ def _boundary_vertices_utm(
     X: np.ndarray,
     Y: np.ndarray,
     Z: np.ndarray,
+    linear_scale: float = 1.0,
     closed: bool = True,
 ) -> list[tuple[float, float, float]]:
     """Convert a lon/lat ring to UTM (northing, easting, elev) vertices."""
@@ -246,7 +312,7 @@ def _boundary_vertices_utm(
     for lon, lat in ring:
         e, n, _ = latlon_to_utm(lat, lon)
         z = _sample_z_nearest(X, Y, Z, lon, lat)
-        pts.append((n, e, z))
+        pts.append((n * linear_scale, e * linear_scale, z * linear_scale))
     return pts
 
 
@@ -263,6 +329,7 @@ def _append_landxml_site_boundaries(
     X: np.ndarray,
     Y: np.ndarray,
     Z: np.ndarray,
+    linear_scale: float = 1.0,
 ) -> None:
     """Parcels + PlanFeatures so CAD tools import parcel linework."""
     valid_polys = [p for p in polygon_list if p and len(p) >= 3]
@@ -273,7 +340,9 @@ def _append_landxml_site_boundaries(
     plan_features = ET.SubElement(root, "PlanFeatures")
 
     for i, coords in enumerate(valid_polys, start=1):
-        pts = _boundary_vertices_utm(coords, lat_c=lat_c, lon_c=lon_c, X=X, Y=Y, Z=Z)
+        pts = _boundary_vertices_utm(
+            coords, lat_c=lat_c, lon_c=lon_c, X=X, Y=Y, Z=Z, linear_scale=linear_scale,
+        )
         if len(pts) < 2:
             continue
         label = f"Site_Boundary_{i}" if len(valid_polys) > 1 else "Site_Boundary"
@@ -304,11 +373,13 @@ def export_landxml_utm(
     lat_c: float,
     lon_c: float,
     polygon_list: list | None = None,
+    units: str = "metric",
 ) -> bytes | None:
     pt_idx, faces = _tin_faces_from_grid(Z)
     if len(pt_idx) < 3 or not faces:
         return None
 
+    linear_scale = _linear_scale(units)
     epsg = epsg_utm_wgs84(lat_c, lon_c)
     zone = epsg % 100
     hemi = "North" if lat_c >= 0 else "South"
@@ -327,14 +398,23 @@ def export_landxml_utm(
         "language": "English",
         "readOnly": "false",
     })
-    units = ET.SubElement(root, "Units")
-    ET.SubElement(units, "Metric", {
-        "areaUnit": "squareMeter",
-        "linearUnit": "meter",
-        "volumeUnit": "cubicMeter",
-        "temperatureUnit": "celsius",
-        "pressureUnit": "milliBars",
-    })
+    units_el = ET.SubElement(root, "Units")
+    if units == "imperial_us_survey":
+        ET.SubElement(units_el, "Imperial", {
+            "areaUnit": "squareFoot",
+            "linearUnit": "foot",
+            "volumeUnit": "cubicFoot",
+            "temperatureUnit": "fahrenheit",
+            "pressureUnit": "inchHG",
+        })
+    else:
+        ET.SubElement(units_el, "Metric", {
+            "areaUnit": "squareMeter",
+            "linearUnit": "meter",
+            "volumeUnit": "cubicMeter",
+            "temperatureUnit": "celsius",
+            "pressureUnit": "milliBars",
+        })
     cs = ET.SubElement(root, "CoordinateSystem", {
         "horizontalDatum": "WGS84",
         "horizontalCoordinateSystemName": f"UTM-WGS84 Zone {zone} {hemi}",
@@ -347,16 +427,19 @@ def export_landxml_utm(
     surfaces = ET.SubElement(root, "Surfaces")
     surface = ET.SubElement(surfaces, "Surface", {
         "name": site_name,
-        "desc": "TopoIQ satellite DEM — merged TIN, WGS84 UTM",
+        "desc": (
+            "TopoIQ satellite DEM — merged TIN, WGS84 UTM"
+            + (" (US survey feet)" if units == "imperial_us_survey" else " (meters)")
+        ),
     })
     defn = ET.SubElement(surface, "Definition", {"surfType": "TIN"})
     pnts = ET.SubElement(defn, "Pnts")
     faces_el = ET.SubElement(defn, "Faces")
 
     for (r, c), i in pt_idx.items():
-        n_val = northings[r, c]
-        e_val = eastings[r, c]
-        z_val = Z[r, c]
+        n_val = northings[r, c] * linear_scale
+        e_val = eastings[r, c] * linear_scale
+        z_val = Z[r, c] * linear_scale
         ET.SubElement(pnts, "P", {"id": str(i)}).text = f"{n_val:.3f} {e_val:.3f} {z_val:.3f}"
 
     for a, b, c in faces:
@@ -365,6 +448,7 @@ def export_landxml_utm(
     if polygon_list:
         _append_landxml_site_boundaries(
             root, polygon_list, lat_c=lat_c, lon_c=lon_c, X=X, Y=Y, Z=Z,
+            linear_scale=linear_scale,
         )
 
     xml_str = minidom.parseString(ET.tostring(root)).toprettyxml(indent="  ")
@@ -406,15 +490,23 @@ def export_dxf_contours(
     minor_int: float = 0.5,
     major_int: float = 1.0,
     georef: bool = False,
+    units: str = "metric",
 ) -> bytes | None:
     if not HAS_EZDXF or not HAS_SCIPY:
         return None
 
-    z_valid = Z[~np.isnan(Z)]
+    scale = _linear_scale(units)
+    easting = easting * scale
+    northing = northing * scale
+    z_plot = Z * scale
+    minor_int = minor_int * scale
+    major_int = major_int * scale
+    z_valid = z_plot[~np.isnan(z_plot)]
     if len(z_valid) == 0:
         return None
 
     doc = ezdxf.new("R2010")
+    doc.header["$INSUNITS"] = _dxf_insunits(units)
     msp = doc.modelspace()
     doc.layers.add("CONTOUR_MINOR", color=3)
     doc.layers.add("CONTOUR_MAJOR", color=1)
@@ -429,7 +521,7 @@ def export_dxf_contours(
     import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots()
-    cs = ax.contour(easting, northing, Z, levels=levels)
+    cs = ax.contour(easting, northing, z_plot, levels=levels)
     plt.close(fig)
 
     for i, level in enumerate(cs.levels):
@@ -445,7 +537,7 @@ def export_dxf_contours(
             def _vertex(lon, lat):
                 e, n, _ = latlon_to_utm(lat, lon)
                 z = _sample_z_nearest(X, Y, Z, lon, lat)
-                return (float(e), float(n), z)
+                return (float(e * scale), float(n * scale), z * scale)
         else:
             m_per_deg_lat = 111_320.0
             m_per_deg_lon = 111_320.0 * math.cos(math.radians(lat_c))
@@ -454,7 +546,7 @@ def export_dxf_contours(
                 e = (lon - lon_c) * m_per_deg_lon
                 n = (lat - lat_c) * m_per_deg_lat
                 z = _sample_z_nearest(X, Y, Z, lon, lat)
-                return (float(e), float(n), z)
+                return (float(e * scale), float(n * scale), z * scale)
 
         _add_boundary_polylines(msp, polygon_list, _vertex)
 
