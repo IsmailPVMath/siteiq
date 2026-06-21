@@ -5,16 +5,114 @@ import requests
 
 _NOMINATIM_HEADERS = {"User-Agent": "SiteIQ/1.0 (pvmath.com; contact@pvmath.com)"}
 
+_LOCALITY_KEYS = (
+    "city",
+    "town",
+    "village",
+    "hamlet",
+    "suburb",
+    "municipality",
+    "city_district",
+    "neighbourhood",
+)
+
+_DISTRICT_KEYS = (
+    "state_district",
+    "county",
+    "district",
+    "region",
+)
+
+
+def _dedupe_parts(parts: list[str]) -> list[str]:
+    out: list[str] = []
+    seen: set[str] = set()
+    for part in parts:
+        text = (part or "").strip()
+        if not text:
+            continue
+        key = text.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(text)
+    return out
+
+
+def _locality_from_addr(addr: dict) -> str:
+    for key in _LOCALITY_KEYS:
+        val = (addr.get(key) or "").strip()
+        if val:
+            return val
+    return ""
+
+
+def _district_from_addr(addr: dict) -> str:
+    for key in _DISTRICT_KEYS:
+        val = (addr.get(key) or "").strip()
+        if val:
+            return val
+    return ""
+
+
+def _country_label(country: str, country_code: str = "") -> str:
+    code = (country_code or "").lower()
+    if code == "us" or country in ("United States", "USA"):
+        return "USA"
+    if code == "gb" or country == "United Kingdom":
+        return "UK"
+    return country
+
+
+def _label_from_address(addr: dict) -> str:
+    """Build a readable label from Nominatim address components."""
+    country = addr.get("country", "")
+    country_code = addr.get("country_code", "")
+    is_us = country in ("United States", "USA") or country_code.lower() == "us"
+
+    if is_us:
+        state = (addr.get("state") or "").strip()
+        county = (addr.get("county") or "").strip() or _locality_from_addr(addr)
+        parts = _dedupe_parts([county, state, _country_label(country, country_code)])
+        if len(parts) >= 2:
+            return ", ".join(parts)
+
+    locality = _locality_from_addr(addr)
+    district = _district_from_addr(addr)
+    state = (addr.get("state") or addr.get("region") or "").strip()
+    country_out = _country_label(country, country_code)
+
+    parts = _dedupe_parts([locality, district, state, country_out])
+    if len(parts) >= 2:
+        return ", ".join(parts)
+    if parts:
+        return parts[0]
+    return ""
+
+
+def label_from_display_name(display: str, max_parts: int = 4) -> str:
+    """Trim Nominatim search display_name — drop postcodes, dedupe segments."""
+    if not display:
+        return ""
+    segs = [s.strip() for s in display.split(",") if s.strip()]
+    trimmed: list[str] = []
+    for seg in segs:
+        if seg.isdigit() and len(seg) >= 4:
+            continue
+        trimmed.append(seg)
+    parts = _dedupe_parts(trimmed)
+    return ", ".join(parts[:max_parts]) if parts else display
+
 
 def reverse_geocode(lat: float, lon: float) -> Optional[str]:
     """
-    Resolve coordinates to a human-readable admin label.
-    US: 'County, State, Country' when available; else best-effort display_name tail.
+    Resolve coordinates to a human-readable admin label (pin-level detail).
+    US: 'County, State, USA'. Else: 'Locality, District, State, Country' when available.
     """
     try:
         r = requests.get(
             "https://nominatim.openstreetmap.org/reverse",
-            params={"lat": lat, "lon": lon, "format": "json", "zoom": 10},
+            params={"lat": lat, "lon": lon, "format": "json", "zoom": 18, "addressdetails": 1},
             headers=_NOMINATIM_HEADERS,
             timeout=10,
         )
@@ -22,33 +120,19 @@ def reverse_geocode(lat: float, lon: float) -> Optional[str]:
             return None
         data = r.json()
         addr = data.get("address") or {}
-        country = addr.get("country", "")
-        is_us = country in ("United States", "USA") or addr.get("country_code", "").lower() == "us"
-        if is_us:
-            state = addr.get("state", "")
-            county = addr.get("county", "") or addr.get("city", "")
-            parts = [p for p in (county, state, "USA") if p]
-            if len(parts) >= 2:
-                return ", ".join(parts)
-        locality = (
-            addr.get("city")
-            or addr.get("town")
-            or addr.get("village")
-            or addr.get("suburb")
-            or addr.get("municipality")
-            or ""
-        )
-        state = addr.get("state", "") or addr.get("region", "") or addr.get("county", "")
-        parts = [p for p in (locality, state, country) if p]
-        if len(parts) >= 2:
-            return ", ".join(parts)
-        parts = [p for p in (state, country) if p]
-        if parts:
-            return ", ".join(parts)
+        label = _label_from_address(addr)
+        if label:
+            return label
         display = data.get("display_name", "")
         if display:
-            segs = [s.strip() for s in display.split(",")]
-            return ", ".join(segs[:3]) if len(segs) > 3 else display
+            segs = [s.strip() for s in display.split(",") if s.strip()]
+            # Drop trailing postcode-only segments where possible
+            trimmed = []
+            for seg in segs[:5]:
+                if seg.isdigit() and len(seg) >= 4:
+                    continue
+                trimmed.append(seg)
+            return ", ".join(trimmed[:4]) if trimmed else display
     except Exception:
         pass
     return None

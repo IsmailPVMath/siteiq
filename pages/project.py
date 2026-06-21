@@ -18,7 +18,7 @@ from streamlit_folium import st_folium
 from pvmath_styles import inject_styles
 from pvmath_auth import save_project, ensure_db_session
 from pvmath_session import clear_blank_project_flag
-from pvmath_geocode import reverse_geocode, format_coords
+from pvmath_geocode import reverse_geocode, format_coords, label_from_display_name
 from pvmath_boundary_ui import render_grouped_boundary_manager
 from pvmath_kml import (
     BOUNDARY_COLORS,
@@ -53,11 +53,7 @@ def _pin_coord_sig(lat: float, lon: float) -> str:
 
 
 def _short_nominatim_label(display: str) -> str:
-    """Trim Nominatim display_name to city/region/country style."""
-    if not display:
-        return ""
-    segs = [s.strip() for s in display.split(",") if s.strip()]
-    return ", ".join(segs[:3]) if len(segs) > 3 else display
+    return label_from_display_name(display)
 
 
 def _resolve_pin_label(lat: float, lon: float, prefer: str = "") -> str:
