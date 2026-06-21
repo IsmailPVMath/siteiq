@@ -9,7 +9,10 @@ show the same thing.
 import streamlit as st
 from concurrent.futures import ThreadPoolExecutor
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
-from pvmath_auth import list_projects, get_usage, get_plan, can_download_engineering_manual, plan_label, UPGRADE_CONTACT, usage_status
+from pvmath_auth import (
+    list_projects, get_usage, get_plan, can_download_engineering_manual,
+    plan_label, UPGRADE_CONTACT, usage_status, engineering_manual_caption,
+)
 from pvmath_resources import load_public_manual_bytes, PUBLIC_MANUAL_FILENAME, KNOWLEDGE_CENTRE_URL
 from pvmath_session import clear_module_project_state
 from pvmath_styles import inject_styles
@@ -186,7 +189,6 @@ with _kc_col:
     st.caption("GLO-30, cross-row slope, CAD exports, screening vs survey.")
 
 with _manual_col:
-    _plan = get_plan(_uid)
     if can_download_engineering_manual(_uid):
         _manual = load_public_manual_bytes()
         if _manual:
@@ -198,7 +200,7 @@ with _manual_col:
                 use_container_width=True,
                 help="Public Edition — concepts and definitions; formulas redacted.",
             )
-            st.caption(f"Included with your {plan_label(_plan)} plan.")
+            st.caption(engineering_manual_caption(_uid))
         else:
             st.warning("Manual file unavailable — contact contact@pvmath.com.")
     else:

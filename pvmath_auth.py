@@ -668,6 +668,14 @@ def can_download_engineering_manual(user_id: str) -> bool:
     return has_paid_plan(get_plan(user_id))
 
 
+def engineering_manual_caption(user_id: str) -> str:
+    """Overview caption — avoid 'Free plan' for admin-only access."""
+    plan = get_plan(user_id)
+    if is_admin(user_id) and not has_paid_plan(plan):
+        return "Admin preview — Professional plan and above for customers."
+    return f"Included with your {plan_label(plan)} plan."
+
+
 def team_member_count(team_id: str) -> int:
     try:
         r = _req.get(f"{_sb_url()}/rest/v1/profiles",
