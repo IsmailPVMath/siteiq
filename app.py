@@ -441,24 +441,27 @@ with st.sidebar:
                     f'Email: {email}</div>',
                     unsafe_allow_html=True,
                 )
-                _set_fn = st.text_input(
-                    "First name",
-                    value=st.session_state.get("pvm_first_name", ""),
-                    key="pvm_settings_first",
-                    placeholder="Mohammed",
-                )
-                _set_ln = st.text_input(
-                    "Last name",
-                    value=st.session_state.get("pvm_last_name", ""),
-                    key="pvm_settings_last",
-                    placeholder="Pasha",
-                )
-                if st.button("Save name", key="pvm_save_name", use_container_width=True):
-                    _res = update_user_name(_set_fn, _set_ln)
-                    if _res.get("success"):
-                        st.success("Name saved — reports will show this.")
-                    else:
-                        st.error(_res.get("error", "Could not save name."))
+                with st.form("pvm_name_form", clear_on_submit=False):
+                    _set_fn = st.text_input(
+                        "Given name(s)",
+                        value=st.session_state.get("pvm_first_name", ""),
+                        key="pvm_settings_first",
+                        placeholder="Mohammed",
+                        help="Multiple words OK.",
+                    )
+                    _set_ln = st.text_input(
+                        "Family name(s)",
+                        value=st.session_state.get("pvm_last_name", ""),
+                        key="pvm_settings_last",
+                        placeholder="Pasha",
+                        help="Multiple words OK (e.g. Van der Berg).",
+                    )
+                    if st.form_submit_button("Save name", use_container_width=True):
+                        _res = update_user_name(_set_fn, _set_ln)
+                        if _res.get("success"):
+                            st.success("Name saved — reports will show this.")
+                        else:
+                            st.error(_res.get("error", "Could not save name."))
 
             # "Manage Membership" just opens STRIPE_LINK — no price is hardcoded
             # here anymore (it was stale at €49 and the popover tooltip overlapped
