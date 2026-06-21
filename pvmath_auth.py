@@ -122,8 +122,8 @@ def _parse_err(r: _req.Response) -> str:
 def sign_up(email: str, password: str, first_name: str = "", last_name: str = "") -> dict:
     try:
         payload: dict = {"email": email, "password": password}
-        fn = (first_name or "").strip()
-        ln = (last_name or "").strip()
+        fn = normalize_name_part(first_name)
+        ln = normalize_name_part(last_name)
         if fn or ln:
             payload["data"] = {
                 "first_name": fn,
@@ -294,12 +294,17 @@ def user_display_name() -> str:
     return (st.session_state.get("pvm_display_name") or "").strip()
 
 
+def normalize_name_part(name: str) -> str:
+    """Trim and collapse internal whitespace — allows multi-word given/family names."""
+    return " ".join((name or "").split())
+
+
 def update_user_name(first_name: str, last_name: str) -> dict:
     """Persist first/last name to Supabase user_metadata (existing accounts)."""
-    fn = (first_name or "").strip()
-    ln = (last_name or "").strip()
+    fn = normalize_name_part(first_name)
+    ln = normalize_name_part(last_name)
     if not fn or not ln:
-        return {"success": False, "error": "First and last name are required."}
+        return {"success": False, "error": "Given name and family name are required."}
     token = st.session_state.get("pvm_access_token", "")
     if not token:
         return {"success": False, "error": "Not signed in."}
@@ -1348,20 +1353,34 @@ def render_auth_page(app_name: str = "PVMath"):
             """, unsafe_allow_html=True)
 
             st.markdown('<div class="auth-title">Create your account</div>', unsafe_allow_html=True)
-            st.markdown('<div class="auth-sub">Your name appears on SiteIQ, YieldIQ, and TopoIQ reports.</div>', unsafe_allow_html=True)
+            st.markdown(
+                '<div class="auth-sub">Your name appears on SiteIQ, YieldIQ, and TopoIQ reports. '
+                'Multiple words are fine (e.g.&nbsp;Maria Jose, Van der Berg).</div>',
+                unsafe_allow_html=True,
+            )
 
-            _reg_name1, _reg_name2 = st.columns(2)
-            with _reg_name1:
-                reg_first = st.text_input("First name", key="reg_first", placeholder="Mohammed")
-            with _reg_name2:
-                reg_last = st.text_input("Last name", key="reg_last", placeholder="Pasha")
-            reg_email = st.text_input("Email address", key="reg_email", placeholder="you@company.com")
-            reg_pass  = st.text_input("Password", key="reg_pass", type="password", placeholder="Min. 8 characters")
-            reg_pass2 = st.text_input("Confirm password", key="reg_pass2", type="password", placeholder="Repeat password")
+            with st.form("register_form", clear_on_submit=False):
+                _reg_name1, _reg_name2 = st.columns(2)
+                with _reg_name1:
+                    reg_first = st.text_input(
+                        "Given name(s)", key="reg_first", placeholder="Mohammed",
+                        help="First and middle names — multiple words OK.",
+                    )
+                with _reg_name2:
+                    reg_last = st.text_input(
+                        "Family name(s)", key="reg_last", placeholder="Pasha",
+                        help="Surname — multiple words OK (e.g. Van der Berg).",
+                    )
+                reg_email = st.text_input("Email address", key="reg_email", placeholder="you@company.com")
+                reg_pass  = st.text_input("Password", key="reg_pass", type="password", placeholder="Min. 8 characters")
+                reg_pass2 = st.text_input("Confirm password", key="reg_pass2", type="password", placeholder="Repeat password")
+                register_submitted = st.form_submit_button("Create Account →")
 
-            if st.button("Create Account →", key="btn_register"):
-                if not reg_first.strip() or not reg_last.strip():
-                    st.error("Please enter your first and last name.")
+            if register_submitted:
+                reg_first = normalize_name_part(reg_first)
+                reg_last = normalize_name_part(reg_last)
+                if not reg_first or not reg_last:
+                    st.error("Please enter your given name and family name.")
                 elif not reg_email or not reg_pass:
                     st.error("Please enter your email and password.")
                 elif len(reg_pass) < 8:
@@ -1379,7 +1398,7 @@ def render_auth_page(app_name: str = "PVMath"):
                             _apply_user_fields(result["user"], email=reg_email)
                             if not user_display_name():
                                 st.session_state["pvm_display_name"] = (
-                                    f"{reg_first.strip()} {reg_last.strip()}".strip()
+                                    f"{reg_first} {reg_last}".strip()
                                 )
                             st.session_state["pvm_access_token"] = result["access_token"]
                             if result.get("refresh_token"):
@@ -1416,28 +1435,7 @@ def render_auth_page(app_name: str = "PVMath"):
                 login_pass  = st.text_input("Password", key="login_pass", type="password", placeholder="Your password")
                 login_submitted = st.form_submit_button("Log In →")
 
-            # Tell the browser's own password manager what these fields are, so it
-            # offers to save + autofill them next time. Streamlit doesn't set
-            # autocomplete/name on its <input> tags by default, which is why
-            # Chrome/Safari/Edge never remembered the email here before.
-            st.markdown("""
-            <script>
-            (function () {
-              function tagLoginFields() {
-                document.querySelectorAll('[data-testid="stForm"] input[type="text"]').forEach(function(el){
-                  el.setAttribute('autocomplete', 'username');
-                  el.setAttribute('name', 'email');
-                });
-                document.querySelectorAll('[data-testid="stForm"] input[type="password"]').forEach(function(el){
-                  el.setAttribute('autocomplete', 'current-password');
-                  el.setAttribute('name', 'password');
-                });
-              }
-              tagLoginFields();
-              new MutationObserver(tagLoginFields).observe(document.body, {childList: true, subtree: true});
-            })();
-            </script>
-            """, unsafe_allow_html=True)
+            # Autocomplete + Tab order fixes (login + register forms) — see script below tabs.
 
             if login_submitted:
                 if not login_email or not login_pass:
@@ -1483,6 +1481,41 @@ def render_auth_page(app_name: str = "PVMath"):
                             st.success("✅ Reset link sent — check your inbox. Click the link and you'll be brought back here to set a new password.")
                         else:
                             st.error(f"Failed to send reset email: {result.get('error', 'Unknown error')}")
+
+        # Auth forms: password-manager tags + skip show/hide eye on Tab + Enter submits via st.form
+        st.markdown("""
+        <script>
+        (function () {
+          function fixAuthForms() {
+            document.querySelectorAll('[data-testid="stForm"]').forEach(function(form) {
+              var textInputs = Array.from(form.querySelectorAll('input[type="text"], input:not([type="password"]):not([type="hidden"])')).filter(function(el){ return el.type !== 'checkbox'; });
+              var passInputs = form.querySelectorAll('input[type="password"]');
+              if (passInputs.length === 1 && textInputs.length === 1) {
+                textInputs[0].setAttribute('autocomplete', 'username');
+                textInputs[0].setAttribute('name', 'email');
+                passInputs[0].setAttribute('autocomplete', 'current-password');
+              } else if (passInputs.length >= 2 && textInputs.length >= 3) {
+                textInputs[0].setAttribute('autocomplete', 'given-name');
+                textInputs[1].setAttribute('autocomplete', 'family-name');
+                textInputs[2].setAttribute('autocomplete', 'email');
+                textInputs[2].setAttribute('name', 'email');
+                passInputs.forEach(function(el) { el.setAttribute('autocomplete', 'new-password'); });
+              }
+              passInputs.forEach(function(el) { el.setAttribute('name', 'password'); });
+            });
+            document.querySelectorAll(
+              '[data-testid="stTextInput"] button, [data-testid="stForm"] [data-baseweb="input"] button'
+            ).forEach(function(btn) {
+              if (!btn.closest('[data-testid="stFormSubmitButton"]')) {
+                btn.tabIndex = -1;
+              }
+            });
+          }
+          fixAuthForms();
+          new MutationObserver(fixAuthForms).observe(document.body, {childList: true, subtree: true});
+        })();
+        </script>
+        """, unsafe_allow_html=True)
 
         st.markdown("""
         <div class="auth-footer">
