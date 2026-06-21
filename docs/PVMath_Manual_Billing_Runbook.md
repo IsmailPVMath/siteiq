@@ -5,7 +5,7 @@
 1. User hits upgrade in app → `contact@pvmath.com` (already wired).
 2. You reply with **Pilot Subscription Agreement** + **Proforma invoice** (docs folder).
 3. Customer signs + pays by bank transfer.
-4. You activate plan in Supabase (below).
+4. You activate plan in Supabase (below), **or** use **Manage membership → Team** if the account is on Developer (after `supabase_migration_team_invites.sql` is applied).
 5. Customer refreshes app — new limits apply immediately.
 
 ## Activate plan in Supabase

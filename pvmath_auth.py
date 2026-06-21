@@ -682,6 +682,7 @@ def engineering_manual_caption(user_id: str) -> str:
 
 
 def team_member_count(team_id: str) -> int:
+    """Teammates only (excludes the owner)."""
     try:
         r = _req.get(f"{_sb_url()}/rest/v1/profiles",
                      params={"team_id": f"eq.{team_id}", "select": "id"},
@@ -691,14 +692,17 @@ def team_member_count(team_id: str) -> int:
         return 0
 
 
-def can_add_seat(team_id: str, plan: str) -> bool:
-    """Whether a team still has room for another member under its plan's seat cap.
-    No invite UI calls this yet — it's here so a future team-invite flow has a
-    ready-made check instead of re-deriving the seat math."""
+def team_occupied_seats(owner_id: str) -> int:
+    """Owner + teammates — Developer plan allows 5 seats total."""
+    return 1 + team_member_count(owner_id)
+
+
+def can_add_seat(owner_id: str, plan: str) -> bool:
+    """Whether the team still has a free seat (owner counts as one seat)."""
     limit = seat_limit(plan)
     if limit is None:
         return True
-    return team_member_count(team_id) < limit
+    return team_occupied_seats(owner_id) < limit
 
 
 def _usage_key(user_id: str) -> str:

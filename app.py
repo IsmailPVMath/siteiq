@@ -3,9 +3,10 @@ import json
 import streamlit as st
 import streamlit.components.v1 as components
 from pvmath_auth import (
-    render_auth_page, sign_out, load_latest_project, UPGRADE_CONTACT,
+    render_auth_page, sign_out, load_latest_project,
     refresh_user_profile, update_user_name,
 )
+from pvmath_team import render_membership_panel, render_team_invite_banner
 
 st.set_page_config(
     page_title="PVMath — Solar Site Intelligence",
@@ -433,6 +434,12 @@ with st.sidebar:
 
             if st.button("Settings", key="pvm_settings_toggle", use_container_width=True):
                 st.session_state["pvm_show_settings"] = not st.session_state.get("pvm_show_settings", False)
+            if st.button("Manage membership", key="pvm_membership_toggle", use_container_width=True):
+                st.session_state["pvm_show_membership"] = not st.session_state.get("pvm_show_membership", False)
+
+            _uid = st.session_state.get("pvm_user_id", "")
+            render_team_invite_banner(_uid, email)
+
             if st.session_state.get("pvm_show_settings"):
                 refresh_user_profile()
                 st.markdown(
@@ -463,14 +470,8 @@ with st.sidebar:
                         else:
                             st.error(_res.get("error", "Could not save name."))
 
-            # "Manage Membership" just opens STRIPE_LINK — no price is hardcoded
-            # here anymore (it was stale at €49 and the popover tooltip overlapped
-            # surrounding sidebar content on touch/focus, looking broken). Once
-            # STRIPE_LINK points to a real Stripe Customer Portal session, Stripe
-            # itself will show the user's current plan and the correct upgrade
-            # path (e.g. Pro -> Developer) — that should live in Stripe's config,
-            # not be duplicated/hardcoded in the app.
-            st.link_button("Upgrade / Billing", UPGRADE_CONTACT, use_container_width=True)
+            if st.session_state.get("pvm_show_membership"):
+                render_membership_panel(_uid, email)
 
             if st.button("Log out", key="sidebar_logout", use_container_width=True):
                 sign_out()
