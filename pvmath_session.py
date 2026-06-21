@@ -9,6 +9,8 @@ _PROJECT_STATE_KEYS = (
     "proj_mode_sel",
     "proj_pin_lat",
     "proj_pin_lon",
+    "proj_pin_label",
+    "proj_pin_label_sig",
     "proj_map_center",
     "proj_map_zoom",
     "proj_last_search",

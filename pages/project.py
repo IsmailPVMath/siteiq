@@ -18,7 +18,7 @@ from streamlit_folium import st_folium
 from pvmath_styles import inject_styles
 from pvmath_auth import save_project, ensure_db_session
 from pvmath_session import clear_blank_project_flag
-from pvmath_geocode import reverse_geocode
+from pvmath_geocode import reverse_geocode, format_coords
 from pvmath_boundary_ui import render_grouped_boundary_manager
 from pvmath_kml import (
     BOUNDARY_COLORS,
@@ -46,6 +46,66 @@ def geocode_address(query: str):
     except Exception:
         pass
     return None, None, ""
+
+
+def _pin_coord_sig(lat: float, lon: float) -> str:
+    return f"{lat:.5f},{lon:.5f}"
+
+
+def _short_nominatim_label(display: str) -> str:
+    """Trim Nominatim display_name to city/region/country style."""
+    if not display:
+        return ""
+    segs = [s.strip() for s in display.split(",") if s.strip()]
+    return ", ".join(segs[:3]) if len(segs) > 3 else display
+
+
+def _resolve_pin_label(lat: float, lon: float, prefer: str = "") -> str:
+    """Human-readable place label for the map pin (cached per coordinate)."""
+    sig = _pin_coord_sig(lat, lon)
+    if st.session_state.get("proj_pin_label_sig") == sig:
+        cached = st.session_state.get("proj_pin_label")
+        if cached:
+            return cached
+    label = _short_nominatim_label(prefer) if prefer else ""
+    if not label:
+        label = reverse_geocode(lat, lon) or ""
+    st.session_state["proj_pin_label"] = label
+    st.session_state["proj_pin_label_sig"] = sig
+    return label
+
+
+def _set_proj_pin(lat: float, lon: float, *, label: str = "", center_map: bool = True) -> bool:
+    """Update pin session state; return True if coordinates changed."""
+    prev_lat = st.session_state.get("proj_pin_lat")
+    prev_lon = st.session_state.get("proj_pin_lon")
+    changed = (
+        prev_lat is None
+        or prev_lon is None
+        or abs(prev_lat - lat) > 1e-6
+        or abs(prev_lon - lon) > 1e-6
+    )
+    st.session_state["proj_pin_lat"] = lat
+    st.session_state["proj_pin_lon"] = lon
+    if center_map:
+        st.session_state["proj_map_center"] = [lat, lon]
+    if changed:
+        new_sig = _pin_coord_sig(lat, lon)
+        if label:
+            st.session_state["proj_pin_label"] = _short_nominatim_label(label)
+            st.session_state["proj_pin_label_sig"] = new_sig
+        else:
+            st.session_state.pop("proj_pin_label", None)
+            st.session_state.pop("proj_pin_label_sig", None)
+    return changed
+
+
+def _format_pin_status(lat: float, lon: float) -> str:
+    label = _resolve_pin_label(lat, lon)
+    coords = format_coords(lat, lon)
+    if label:
+        return f"📌 **{label}** · {coords}"
+    return f"📌 Site pin · {coords}"
 
 
 def parse_google_maps_url(raw: str):
@@ -268,15 +328,13 @@ def _render_proj_map_fragment(is_full: bool, show_search: bool, coord_center):
         )
         if search_q and search_q != st.session_state.get("proj_last_search", ""):
             with st.spinner("Searching…"):
-                slat, slon, _ = geocode_address(search_q)
+                slat, slon, display = geocode_address(search_q)
+            st.session_state["proj_last_search"] = search_q
             if slat:
-                st.session_state["proj_map_center"] = [slat, slon]
                 st.session_state["proj_map_zoom"] = 13
-                st.session_state["proj_pin_lat"] = slat
-                st.session_state["proj_pin_lon"] = slon
-                st.session_state["proj_last_search"] = search_q
+                _set_proj_pin(slat, slon, label=display)
+                st.rerun()
             else:
-                st.session_state["proj_last_search"] = search_q
                 st.warning("Location not found — try adding the country name.")
 
     if coord_center:
@@ -369,9 +427,8 @@ def _render_proj_map_fragment(is_full: bool, show_search: bool, coord_center):
         )
         if map_result and map_result.get("last_clicked") and not _proj_bounds:
             lc = map_result["last_clicked"]
-            st.session_state["proj_pin_lat"] = lc["lat"]
-            st.session_state["proj_pin_lon"] = lc["lng"]
-            st.session_state["proj_map_center"] = [lc["lat"], lc["lng"]]
+            if _set_proj_pin(lc["lat"], lc["lng"]):
+                st.rerun()
         if map_result:
             raw_drawings = map_result.get("all_drawings")
             _poly = _polygon_from_drawings(raw_drawings)
@@ -400,7 +457,10 @@ def _render_proj_map_fragment(is_full: bool, show_search: bool, coord_center):
                 st.session_state["proj_boundaries"] = []
                 st.session_state["proj_polygon_cleared"] = True
     else:
-        st.caption("Click the map to place or move the site pin. KMZ parcels are shown for reference.")
+        st.caption(
+            "**Single-click** the map to place the site pin (search also drops a pin). "
+            "Boundary drawing and TopoIQ require **Full Mode** above."
+        )
         map_result = st_folium(
             m, width=None, height=400,
             returned_objects=["last_clicked"],
@@ -408,9 +468,8 @@ def _render_proj_map_fragment(is_full: bool, show_search: bool, coord_center):
         )
         if map_result and map_result.get("last_clicked"):
             lc = map_result["last_clicked"]
-            st.session_state["proj_pin_lat"] = lc["lat"]
-            st.session_state["proj_pin_lon"] = lc["lng"]
-            st.session_state["proj_map_center"] = [lc["lat"], lc["lng"]]
+            if _set_proj_pin(lc["lat"], lc["lng"]):
+                st.rerun()
 
     _pin_lat = st.session_state.get("proj_pin_lat")
     _pin_lon = st.session_state.get("proj_pin_lon")
@@ -465,7 +524,7 @@ def _render_proj_map_fragment(is_full: bool, show_search: bool, coord_center):
                     st.session_state["proj_polygon_cleared"] = True
                     st.rerun()
     elif _pin_lat is not None and _pin_lon is not None:
-        st.success(f"📌 Site pin: {_pin_lat:.5f}°N, {_pin_lon:.5f}°E")
+        st.success(_format_pin_status(_pin_lat, _pin_lon))
     elif is_full:
         st.markdown(
             '<div style="background:#7a4800;color:#fff;border-radius:7px;padding:0.4rem 0.8rem;'
@@ -604,10 +663,13 @@ if True:
 
     _loc_label = proj.get("location_label", "")
     if proj.get("lat") and proj.get("lon"):
+        _pin_preview = _loc_label or st.session_state.get("proj_pin_label", "")
+        if not _pin_preview and st.session_state.get("proj_pin_lat") is not None:
+            _pin_preview = _resolve_pin_label(proj["lat"], proj["lon"])
         st.caption(
-            f"Resolved location: **{_loc_label}**"
-            if _loc_label
-            else "Location label updates on save (state/county from coordinates)."
+            f"Resolved location: **{_pin_preview}**"
+            if _pin_preview
+            else "Location label appears below the map once you place a pin."
         )
 
     st.divider()
@@ -629,8 +691,9 @@ if True:
           <h4 style="margin:0 0 0.3rem 0;font-size:1rem;font-weight:700;color:#1a2e1a;">
             ⚡ Quick Mode — Pin Drop</h4>
           <p style="margin:0;font-size:0.84rem;color:#5a7a5a;line-height:1.5;">
-            Drop a pin on the map. Enables <strong>SiteIQ</strong> and <strong>YieldIQ</strong>.
-            Ideal for rapid pre-screening. Under 2 minutes.</p>
+            <strong>Single-click</strong> to drop a site pin — no boundary drawing in this mode.
+            Enables <strong>SiteIQ</strong> and <strong>YieldIQ</strong>.
+            Switch to Full Mode for polygons and TopoIQ.</p>
         </div>
         """, unsafe_allow_html=True)
         if st.button("✓ Select Quick Mode" if is_q else "Select Quick Mode",
