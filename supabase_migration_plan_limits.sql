@@ -4,12 +4,13 @@
 --
 -- What this enables (see pvmath_auth.py):
 --   - profiles.plan      — 'free' | 'professional' | 'developer' | 'enterprise'.
---                          Until Stripe webhooks exist, set this by hand after
---                          manually confirming a payment.
+--                          Professional = 75 analyses/month POOLED across modules.
+--                          Developer = 150/month POOLED (team shares one counter via usage_key).
+--                          Free = 5/module.
 --   - profiles.team_id   — set this to the SAME value (e.g. the paying owner's
 --                          own user id) for every member of a Developer-tier
 --                          team, so their usage pools against one shared
---                          250/module/month counter instead of 250 each.
+--                          Developer's 5 seats share one monthly counter instead of separate caps.
 --                          Leave NULL for solo Free/Professional accounts.
 --   - usage_tracking.usage_key — the id usage is actually counted against:
 --                          a team_id for pooled team members, else the

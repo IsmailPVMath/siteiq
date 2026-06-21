@@ -9,7 +9,7 @@ show the same thing.
 import streamlit as st
 from concurrent.futures import ThreadPoolExecutor
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
-from pvmath_auth import list_projects, get_usage, get_plan, can_download_engineering_manual, plan_label, UPGRADE_CONTACT
+from pvmath_auth import list_projects, get_usage, get_plan, can_download_engineering_manual, plan_label, UPGRADE_CONTACT, usage_status
 from pvmath_resources import load_public_manual_bytes, PUBLIC_MANUAL_FILENAME, KNOWLEDGE_CENTRE_URL
 from pvmath_session import clear_module_project_state
 from pvmath_styles import inject_styles
@@ -101,6 +101,10 @@ with st.spinner("Loading your stats…"):
 
 _project_count  = len(_rows)
 _analysis_total = _siteiq_n + _topoiq_n + _yieldiq_n
+_usage = usage_status(_uid)
+_plan = _usage["plan"]
+_limit_mode = _usage["mode"]
+_limit = _usage["limit"]
 
 c1, c2 = st.columns(2)
 with c1:
@@ -111,15 +115,44 @@ with c1:
     </div>
     """, unsafe_allow_html=True)
 with c2:
-    st.markdown(f"""
-    <div class="ov-stat-card">
-      <div class="ov-stat-num">{_analysis_total}</div>
-      <div class="ov-stat-lbl">Analyses run (all modules)</div>
-      <div class="ov-module-row">
-        <b>{_siteiq_n}</b> SiteIQ &nbsp;·&nbsp; <b>{_topoiq_n}</b> TopoIQ &nbsp;·&nbsp; <b>{_yieldiq_n}</b> YieldIQ
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
+    if _limit_mode == "pooled" and _limit is not None and _usage["remaining_total"] is not None:
+        _rem = _usage["remaining_total"]
+        _used_pooled = _analysis_total
+        st.markdown(f"""
+        <div class="ov-stat-card">
+          <div class="ov-stat-num">{_used_pooled} / {_limit}</div>
+          <div class="ov-stat-lbl">Analyses used this month ({plan_label(_plan)} pool)</div>
+          <div class="ov-module-row"><b>{_rem}</b> remaining &nbsp;·&nbsp; shared across all modules</div>
+          <div class="ov-module-row">
+            <b>{_siteiq_n}</b> SiteIQ &nbsp;·&nbsp; <b>{_topoiq_n}</b> TopoIQ &nbsp;·&nbsp; <b>{_yieldiq_n}</b> YieldIQ
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+        <div class="ov-stat-card">
+          <div class="ov-stat-num">{_analysis_total}</div>
+          <div class="ov-stat-lbl">Analyses run (all modules)</div>
+          <div class="ov-module-row">
+            <b>{_siteiq_n}</b> SiteIQ &nbsp;·&nbsp; <b>{_topoiq_n}</b> TopoIQ &nbsp;·&nbsp; <b>{_yieldiq_n}</b> YieldIQ
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+if _limit_mode == "pooled" and _usage.get("at_limit"):
+    st.warning(
+        f"Monthly limit reached ({_limit} analyses on {plan_label(_plan)}). "
+        f"Contact us to upgrade or wait until next month."
+    )
+elif _limit_mode == "per_module" and _limit is not None and _usage.get("remaining_per_app"):
+    _rem_apps = _usage["remaining_per_app"]
+    _low = min(_rem_apps.values())
+    if _low <= 1:
+        st.caption(
+            f"Per-module limits ({_limit}/module on {plan_label(_plan)}): "
+            f"SiteIQ {_rem_apps['siteiq']} left · TopoIQ {_rem_apps['topoiq']} left · "
+            f"YieldIQ {_rem_apps['yieldiq']} left."
+        )
 
 st.markdown("<div style='margin-top:1.5rem;'></div>", unsafe_allow_html=True)
 
