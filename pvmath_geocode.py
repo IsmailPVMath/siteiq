@@ -30,7 +30,18 @@ def reverse_geocode(lat: float, lon: float) -> Optional[str]:
             parts = [p for p in (county, state, "USA") if p]
             if len(parts) >= 2:
                 return ", ".join(parts)
+        locality = (
+            addr.get("city")
+            or addr.get("town")
+            or addr.get("village")
+            or addr.get("suburb")
+            or addr.get("municipality")
+            or ""
+        )
         state = addr.get("state", "") or addr.get("region", "") or addr.get("county", "")
+        parts = [p for p in (locality, state, country) if p]
+        if len(parts) >= 2:
+            return ", ".join(parts)
         parts = [p for p in (state, country) if p]
         if parts:
             return ", ".join(parts)
