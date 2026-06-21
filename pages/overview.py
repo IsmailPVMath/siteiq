@@ -9,7 +9,8 @@ show the same thing.
 import streamlit as st
 from concurrent.futures import ThreadPoolExecutor
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
-from pvmath_auth import list_projects, get_usage
+from pvmath_auth import list_projects, get_usage, get_plan, can_download_engineering_manual, plan_label, UPGRADE_CONTACT, usage_status
+from pvmath_resources import load_public_manual_bytes, PUBLIC_MANUAL_FILENAME, KNOWLEDGE_CENTRE_URL
 from pvmath_session import clear_module_project_state
 from pvmath_styles import inject_styles
 
@@ -100,6 +101,10 @@ with st.spinner("Loading your stats…"):
 
 _project_count  = len(_rows)
 _analysis_total = _siteiq_n + _topoiq_n + _yieldiq_n
+_usage = usage_status(_uid)
+_plan = _usage["plan"]
+_limit_mode = _usage["mode"]
+_limit = _usage["limit"]
 
 c1, c2 = st.columns(2)
 with c1:
@@ -110,15 +115,44 @@ with c1:
     </div>
     """, unsafe_allow_html=True)
 with c2:
-    st.markdown(f"""
-    <div class="ov-stat-card">
-      <div class="ov-stat-num">{_analysis_total}</div>
-      <div class="ov-stat-lbl">Analyses run (all modules)</div>
-      <div class="ov-module-row">
-        <b>{_siteiq_n}</b> SiteIQ &nbsp;·&nbsp; <b>{_topoiq_n}</b> TopoIQ &nbsp;·&nbsp; <b>{_yieldiq_n}</b> YieldIQ
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
+    if _limit_mode == "pooled" and _limit is not None and _usage["remaining_total"] is not None:
+        _rem = _usage["remaining_total"]
+        _used_pooled = _analysis_total
+        st.markdown(f"""
+        <div class="ov-stat-card">
+          <div class="ov-stat-num">{_used_pooled} / {_limit}</div>
+          <div class="ov-stat-lbl">Analyses used this month ({plan_label(_plan)} pool)</div>
+          <div class="ov-module-row"><b>{_rem}</b> remaining &nbsp;·&nbsp; shared across all modules</div>
+          <div class="ov-module-row">
+            <b>{_siteiq_n}</b> SiteIQ &nbsp;·&nbsp; <b>{_topoiq_n}</b> TopoIQ &nbsp;·&nbsp; <b>{_yieldiq_n}</b> YieldIQ
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+        <div class="ov-stat-card">
+          <div class="ov-stat-num">{_analysis_total}</div>
+          <div class="ov-stat-lbl">Analyses run (all modules)</div>
+          <div class="ov-module-row">
+            <b>{_siteiq_n}</b> SiteIQ &nbsp;·&nbsp; <b>{_topoiq_n}</b> TopoIQ &nbsp;·&nbsp; <b>{_yieldiq_n}</b> YieldIQ
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+if _limit_mode == "pooled" and _usage.get("at_limit"):
+    st.warning(
+        f"Monthly limit reached ({_limit} analyses on {plan_label(_plan)}). "
+        f"Contact us to upgrade or wait until next month."
+    )
+elif _limit_mode == "per_module" and _limit is not None and _usage.get("remaining_per_app"):
+    _rem_apps = _usage["remaining_per_app"]
+    _low = min(_rem_apps.values())
+    if _low <= 1:
+        st.caption(
+            f"Per-module limits ({_limit}/module on {plan_label(_plan)}): "
+            f"SiteIQ {_rem_apps['siteiq']} left · TopoIQ {_rem_apps['topoiq']} left · "
+            f"YieldIQ {_rem_apps['yieldiq']} left."
+        )
 
 st.markdown("<div style='margin-top:1.5rem;'></div>", unsafe_allow_html=True)
 
@@ -138,3 +172,39 @@ with _a3:
 if _project_count == 0:
     st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
     st.caption("No projects yet — use **+ New Project** above to set up your first site.")
+
+st.markdown("<div style='margin-top:2rem;border-top:1px solid #e8f5ee;padding-top:1.5rem;'></div>", unsafe_allow_html=True)
+st.markdown("#### Resources")
+st.caption("Engineering concepts for customers — proprietary scoring stays internal.")
+
+_kc_col, _manual_col = st.columns(2)
+with _kc_col:
+    st.markdown(
+        f"**Knowledge Centre** — free guides for all signed-in users  \n"
+        f"[Open guides ↗]({KNOWLEDGE_CENTRE_URL})"
+    )
+    st.caption("GLO-30, cross-row slope, CAD exports, screening vs survey.")
+
+with _manual_col:
+    _plan = get_plan(_uid)
+    if can_download_engineering_manual(_uid):
+        _manual = load_public_manual_bytes()
+        if _manual:
+            st.download_button(
+                "⬇ Engineering Reference Manual (Word)",
+                _manual,
+                file_name=PUBLIC_MANUAL_FILENAME,
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                use_container_width=True,
+                help="Public Edition — concepts and definitions; formulas redacted.",
+            )
+            st.caption(f"Included with your {plan_label(_plan)} plan.")
+        else:
+            st.warning("Manual file unavailable — contact contact@pvmath.com.")
+    else:
+        st.markdown(
+            "**Engineering Reference Manual (Word)**  \n"
+            "Public Edition — Professional plan and above."
+        )
+        st.link_button("Contact us to upgrade →", UPGRADE_CONTACT, use_container_width=True)
+        st.caption("Free tier: use the Knowledge Centre for public guides.")

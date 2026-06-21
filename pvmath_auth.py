@@ -32,12 +32,22 @@ MODULE_CONFIDENCE = {
 
 PLAN_LIMITS = {
     "free":         5,
-    "professional": 50,
-    "developer":    250,
+    "professional": 75,    # pooled across SiteIQ + TopoIQ + YieldIQ per month
+    "developer":    150,   # pooled across modules; team shares one monthly pool (usage_key)
     "enterprise":   None,
 }
 DEFAULT_PLAN = "free"
 FREE_LIMIT   = PLAN_LIMITS["free"]   # kept for backward compat — pages/*.py import this directly
+
+# free: cap each module separately. professional + developer: one shared monthly pool.
+PLAN_LIMIT_MODE = {
+    "free":         "per_module",
+    "professional": "pooled",
+    "developer":    "pooled",
+    "enterprise":   None,
+}
+
+USAGE_APPS = ("siteiq", "topoiq", "yieldiq")
 
 # Team seat caps, by plan. Usage is pooled across a team (see get_team_id/_usage_key
 # below) — seats control how many logins can draw on that one shared monthly pool,
@@ -562,8 +572,75 @@ def get_team_id(user_id: str):
 
 
 def plan_limit(plan: str):
-    """Per-module monthly analysis cap for a plan. None = unlimited."""
+    """Monthly analysis cap for a plan. None = unlimited."""
     return PLAN_LIMITS.get(plan, PLAN_LIMITS[DEFAULT_PLAN])
+
+
+def plan_limit_mode(plan: str) -> str:
+    """'pooled' = shared cap across modules; 'per_module' = separate cap each."""
+    mode = PLAN_LIMIT_MODE.get(plan, "per_module")
+    return mode or "per_module"
+
+
+def get_total_usage(user_id: str) -> int:
+    """Sum of SiteIQ + TopoIQ + YieldIQ runs this calendar month."""
+    return sum(get_usage(user_id, app) for app in USAGE_APPS)
+
+
+def usage_status(user_id: str) -> dict:
+    """Dashboard-friendly usage snapshot for the current month."""
+    plan = get_plan(user_id)
+    limit = plan_limit(plan)
+    mode = plan_limit_mode(plan)
+    per_app = {app: get_usage(user_id, app) for app in USAGE_APPS}
+    total = sum(per_app.values())
+    if is_admin(user_id) or limit is None:
+        return {
+            "plan": plan, "mode": mode, "limit": limit,
+            "total": total, "per_app": per_app,
+            "remaining_total": None, "remaining_per_app": None,
+            "at_limit": False,
+        }
+    if mode == "pooled":
+        rem = max(0, limit - total)
+        return {
+            "plan": plan, "mode": mode, "limit": limit,
+            "total": total, "per_app": per_app,
+            "remaining_total": rem, "remaining_per_app": None,
+            "at_limit": total >= limit,
+        }
+    rem_apps = {app: max(0, limit - per_app[app]) for app in USAGE_APPS}
+    return {
+        "plan": plan, "mode": mode, "limit": limit,
+        "total": total, "per_app": per_app,
+        "remaining_total": None, "remaining_per_app": rem_apps,
+        "at_limit": any(per_app[a] >= limit for a in USAGE_APPS),
+    }
+
+
+def limit_reached_message(user_id: str, app_label: str) -> tuple[str, str]:
+    """Title + HTML body for paywall when monthly cap is hit."""
+    plan = get_plan(user_id)
+    limit = plan_limit(plan)
+    mode = plan_limit_mode(plan)
+    if plan == "free":
+        return (
+            "Free trial complete",
+            f"You've used your {limit} free {app_label} analyses. "
+            f"Upgrade to Professional for {PLAN_LIMITS['professional']} analyses/month "
+            f"(shared across SiteIQ, TopoIQ, and YieldIQ).",
+        )
+    if mode == "pooled":
+        return (
+            "Monthly limit reached",
+            f"You've used all <b>{limit} {plan_label(plan)} analyses</b> this month "
+            f"(shared across SiteIQ, TopoIQ, and YieldIQ).<br>Your limit resets at the start of next month.",
+        )
+    return (
+        "Monthly limit reached",
+        f"You've used all <b>{limit} {plan_label(plan)} {app_label}</b> analyses for this month.<br>"
+        f"Your limit resets at the start of next month.",
+    )
 
 
 def seat_limit(plan: str):
@@ -642,19 +719,25 @@ def is_over_limit(user_id: str, app: str) -> bool:
     """Admins and Enterprise (uncapped) are never over the limit."""
     if is_admin(user_id):
         return False
-    limit = plan_limit(get_plan(user_id))
+    plan = get_plan(user_id)
+    limit = plan_limit(plan)
     if limit is None:
         return False
+    if plan_limit_mode(plan) == "pooled":
+        return get_total_usage(user_id) >= limit
     return get_usage(user_id, app) >= limit
 
 
 def remaining(user_id: str, app: str) -> int:
-    """Admins and Enterprise see unlimited (999) remaining."""
+    """Analyses left before paywall. Pooled plans: shared remainder across modules."""
     if is_admin(user_id):
         return 999
-    limit = plan_limit(get_plan(user_id))
+    plan = get_plan(user_id)
+    limit = plan_limit(plan)
     if limit is None:
         return 999
+    if plan_limit_mode(plan) == "pooled":
+        return max(0, limit - get_total_usage(user_id))
     return max(0, limit - get_usage(user_id, app))
 
 
@@ -1405,18 +1488,12 @@ def show_paywall(app_label: str):
     monthly cap) instead of always claiming Professional is unlimited."""
     user_id = st.session_state.get("pvm_user_id", "guest")
     plan = get_plan(user_id)
-    limit = plan_limit(plan)
+    title, body = limit_reached_message(user_id, app_label)
 
     if plan == "free":
-        title = "Free trial complete"
-        body = (f"You've used your {limit} free {app_label} analyses. "
-                f"Upgrade to Professional for {PLAN_LIMITS['professional']} analyses/month.")
         cta_text, cta_href = "Contact us to upgrade →", UPGRADE_CONTACT
     else:
-        title = "Monthly limit reached"
-        body = (f"You've used all {limit} {plan_label(plan)} {app_label} analyses for this month. "
-                f"Your limit resets at the start of next month.")
-        cta_text, cta_href = "Contact us about a higher limit →", "mailto:contact@pvmath.com"
+        cta_text, cta_href = "Contact us about a higher limit →", UPGRADE_CONTACT
 
     st.markdown(f"""
     <div style="

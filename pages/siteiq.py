@@ -12,7 +12,7 @@ import folium
 from pvmath_auth import (
     show_paywall,
     increment_usage, is_over_limit, remaining, FREE_LIMIT, UPGRADE_CONTACT,
-    get_plan, plan_limit, plan_label,
+    get_plan, plan_limit, plan_label, limit_reached_message,
     prepared_by_line, module_confidence_label,
 )
 from pvmath_styles import inject_styles
@@ -1921,15 +1921,7 @@ with left:
     _left = remaining(_username, "siteiq")
 
     if is_over_limit(_username, "siteiq"):
-        _plan = get_plan(_username)
-        _limit = plan_limit(_plan)
-        if _plan == "free":
-            _pw_title = "Free Trial Complete"
-            _pw_body = f"You've used all <b>{_limit} free analyses</b> in SiteIQ.<br>Upgrade to run more screenings."
-        else:
-            _pw_title = "Monthly Limit Reached"
-            _pw_body = (f"You've used all <b>{_limit} {plan_label(_plan)} analyses</b> in SiteIQ "
-                        f"this month.<br>Your limit resets next month.")
+        _pw_title, _pw_body = limit_reached_message(_username, "SiteIQ")
         st.markdown(f"""
         <div style="background:#fff;border:1.5px solid #e2ede2;border-radius:14px;
                     padding:1.8rem 1.6rem;text-align:center;margin-top:0.5rem;
