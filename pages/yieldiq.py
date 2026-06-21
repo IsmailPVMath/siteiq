@@ -47,7 +47,7 @@ from pvmath_capacity import (
     GCR_SCREEN_LO,
     GCR_SCREEN_HI,
 )
-from pvmath_geocode import format_coords
+from pvmath_geocode import format_coords, resolve_location_label, pdf_escape
 from pvmath_yield import (
     PVGIS_URL,
     CONFIG_ORDER,
@@ -307,7 +307,8 @@ def build_pdf(project_name, lat, lon, area_ha, land_use, gcr_1p, gcr_2p,
               soiling_loss, other_loss, results, chart_bytes,
               best_mwh, best_cfg, ghi=None, dni=None, dhi=None,
               screening_note: str = "", cross_ref_text: str = "",
-              prepared_by: str = "", module_confidence: str = "") -> bytes:
+              prepared_by: str = "", module_confidence: str = "",
+              location_label: str = "", country: str = "") -> bytes:
     """Generate ReportLab PDF report."""
     buf  = io.BytesIO()
     doc  = SimpleDocTemplate(buf, pagesize=A4,
@@ -327,10 +328,10 @@ def build_pdf(project_name, lat, lon, area_ha, land_use, gcr_1p, gcr_2p,
     ORANGE_C = colors.HexColor("#e85d04")
 
     lbl  = S("lbl",  fontSize=7.5, fontName="Helvetica-Bold", textColor=MUTED)
-    bod  = S("bod",  fontSize=9,   textColor=DARK_TXT, leading=13)
+    bod  = S("bod",  fontSize=9,   textColor=DARK_TXT, leading=12, wordWrap="LTR")
     sh   = S("sh",   fontSize=11,  fontName="Helvetica-Bold", textColor=DARK_TXT, spaceAfter=5)
     note = S("note", fontSize=7.5, textColor=colors.HexColor("#7a4f00"), leading=11)
-    def lp(txt, style=bod): return Paragraph(str(txt), style)
+    def lp(txt, style=bod): return Paragraph(pdf_escape(str(txt)), style)
 
     def section_hdr(text):
         t = Table([[
@@ -366,36 +367,34 @@ def build_pdf(project_name, lat, lon, area_ha, land_use, gcr_1p, gcr_2p,
     ]))
     story += [hdr, Spacer(1, 0.35*cm)]
 
-    # ── Project info ──────────────────────────────────────────────────────────
+    # ── Project info (2-column — Location wraps in wide value cell) ───────────
+    _loc = resolve_location_label(lat, lon, saved_label=location_label, country=country) or "—"
     info_rows = [
-        [lp("PROJECT",     lbl), lp(project_name, bod),
-         lp("LOCATION",    lbl), lp(format_coords(lat, lon), bod)],
-        [lp("SITE AREA",   lbl), lp(f"{area_ha:,.1f} ha" if area_ha else "—", bod),
-         lp("LAND USE",    lbl), lp(land_use, bod)],
-        [lp("GCR — 1P",   lbl), lp(f"{gcr_1p:.2f}", bod),
-         lp("GCR — 2P",   lbl), lp(f"{gcr_2p:.2f}", bod)],
-        [lp("SOILING / OTHER LOSSES", lbl), lp(f"{soiling_loss:.1f}% / {other_loss:.1f}% (excl. row shading)", bod),
-         lp("DATE",        lbl), lp(str(date.today()), bod)],
-        [lp("DATA SOURCE", lbl), lp("PVGIS JRC (EU Commission)", bod),
-         lp("", lbl), lp("", bod)],
+        [lp("PROJECT", lbl), lp(project_name or "—", bod)],
+        [lp("LOCATION", lbl), lp(_loc, bod)],
+        [lp("COORDINATES", lbl), lp(format_coords(lat, lon), bod)],
+        [lp("SITE AREA", lbl), lp(f"{area_ha:,.1f} ha" if area_ha else "—", bod)],
+        [lp("LAND USE", lbl), lp(land_use, bod)],
+        [lp("GCR — 1P", lbl), lp(f"{gcr_1p:.2f}", bod)],
+        [lp("GCR — 2P", lbl), lp(f"{gcr_2p:.2f}", bod)],
+        [lp("SOILING / OTHER LOSSES", lbl),
+         lp(f"{soiling_loss:.1f}% / {other_loss:.1f}% (excl. row shading)", bod)],
+        [lp("DATE", lbl), lp(str(date.today()), bod)],
+        [lp("DATA SOURCE", lbl), lp("PVGIS JRC (EU Commission)", bod)],
     ]
     if prepared_by:
-        info_rows.append(
-            [lp("PREPARED BY", lbl), lp(prepared_by, bod),
-             lp("", lbl), lp("", bod)]
-        )
+        info_rows.append([lp("PREPARED BY", lbl), lp(prepared_by, bod)])
     if module_confidence:
-        info_rows.append(
-            [lp("MODULE CONFIDENCE", lbl), lp(module_confidence, bod),
-             lp("", lbl), lp("", bod)]
-        )
-    info = Table(info_rows, colWidths=[3*cm, 6*cm, 3*cm, 6*cm])
+        info_rows.append([lp("MODULE CONFIDENCE", lbl), lp(module_confidence, bod)])
+    info = Table(info_rows, colWidths=[3.2*cm, 13.8*cm])
     info.setStyle(TableStyle([
         ("BACKGROUND",    (0,0),(-1,-1), LGRAY),
         ("BOX",           (0,0),(-1,-1), 0.5, BORDER),
+        ("VALIGN",        (0,0),(-1,-1), "TOP"),
         ("TOPPADDING",    (0,0),(-1,-1), 5),
         ("BOTTOMPADDING", (0,0),(-1,-1), 5),
         ("LEFTPADDING",   (0,0),(-1,-1), 8),
+        ("RIGHTPADDING",  (0,0),(-1,-1), 8),
     ]))
     story += [info, Spacer(1, 0.5*cm)]
 
@@ -738,10 +737,15 @@ st.markdown('<div class="yiq-section">📍 Project Inputs</div>', unsafe_allow_h
 
 with st.form("yieldiq_form"):
     if _has_proj:
+        _yiq_loc = resolve_location_label(
+            _proj_lat, _proj_lon,
+            saved_label=_proj.get("location_label", ""),
+            country=_proj.get("country", ""),
+        )
         st.markdown(
             f"**Site Location** — from Project: "
-            f"`{format_coords(_proj_lat, _proj_lon)}`",
-            help="Change site location in the Project page."
+            f"**{_yiq_loc or _proj.get('country', '—')}** · `{format_coords(_proj_lat, _proj_lon)}`",
+            help="Change site location in the Project page.",
         )
         location_raw = ""
         c1_name = st.columns(1)[0]
@@ -999,6 +1003,12 @@ if submitted:
     # ── PDF download (generated once, shown immediately) ──────────────────────
     st.markdown("---")
     st.caption(module_confidence_label("yieldiq"))
+    _yiq_country = _proj.get("country", "") if _has_proj else ""
+    _yiq_loc_label = resolve_location_label(
+        lat, lon,
+        saved_label=_proj.get("location_label", "") if _has_proj else "",
+        country=_yiq_country,
+    )
     pdf_bytes = build_pdf(
         project_name, lat, lon, _area_for_cap, _yiq_land_use,
         gcr_1p, gcr_2p, soiling_loss, other_loss,
@@ -1007,6 +1017,8 @@ if submitted:
         cross_ref_text=yield_cross_ref_yieldiq_pdf_text(_screening_yields, results),
         prepared_by=prepared_by_line(),
         module_confidence=module_confidence_label("yieldiq"),
+        location_label=_yiq_loc_label,
+        country=_yiq_country,
     )
     safe_name = re.sub(r"[^\w\- ]", "", project_name).strip().replace(" ", "_")
     st.download_button(

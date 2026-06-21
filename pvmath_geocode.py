@@ -1,5 +1,6 @@
 """Reverse geocoding via OpenStreetMap Nominatim (shared across modules)."""
 from typing import Optional
+from xml.sax.saxutils import escape
 
 import requests
 
@@ -143,3 +144,25 @@ def format_coords(lat: float, lon: float) -> str:
     ns = "N" if lat >= 0 else "S"
     ew = "E" if lon >= 0 else "W"
     return f"{abs(lat):.5f}°{ns}, {abs(lon):.5f}°{ew}"
+
+
+def pdf_escape(text: str) -> str:
+    """Escape user text for ReportLab Paragraph cells."""
+    return escape(str(text or ""))
+
+
+def resolve_location_label(
+    lat: float,
+    lon: float,
+    *,
+    saved_label: str = "",
+    country: str = "",
+) -> str:
+    """Human-readable location for reports — saved label, then reverse geocode, then country."""
+    label = (saved_label or "").strip()
+    if label:
+        return label
+    label = reverse_geocode(lat, lon) or ""
+    if label:
+        return label
+    return (country or "").strip()

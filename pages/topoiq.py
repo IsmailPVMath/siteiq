@@ -62,7 +62,7 @@ from pvmath_terrain_report import (
     _verdict_from_mean,
     verdict_for_mount,
 )
-from pvmath_geocode import format_coords
+from pvmath_geocode import format_coords, resolve_location_label
 from pvmath_yield import (
     fetch_yield_cross_ref_bundle,
     yield_cross_ref_topoiq_html,
@@ -1221,7 +1221,11 @@ with right:
             _ctx = build_report_context(
                 project_name=_proj.get("name", ""),
                 country=_proj.get("country", ""),
-                location_label=_proj.get("location_label", ""),
+                location_label=resolve_location_label(
+                    lat_c, lon_c,
+                    saved_label=_proj.get("location_label", ""),
+                    country=_proj.get("country", ""),
+                ),
                 lat_c=lat_c, lon_c=lon_c,
                 area_ha=area_ha, grid_spacing=grid_m_used,
                 grid_spacing_requested=float(grid_spacing),

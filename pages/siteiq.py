@@ -18,7 +18,7 @@ from pvmath_auth import (
 from pvmath_styles import inject_styles
 from pvmath_help import help_caption
 from pvmath_kml import filter_boundary_list
-from pvmath_geocode import reverse_geocode, format_coords
+from pvmath_geocode import reverse_geocode, format_coords, resolve_location_label, pdf_escape
 from pvmath_topo_cache import resolve_terrain_for_siteiq, get_topo_cache, topo_cache_valid_for_siteiq
 from pvmath_screening_library import (
     calculate_pvmath_score,
@@ -1294,9 +1294,9 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
 
     def lp(text, color=DARK_TXT, bold=False, size=8.5):
         fn = "Helvetica-Bold" if bold else "Helvetica"
-        return Paragraph(text, ParagraphStyle("lp", parent=styles["Normal"],
+        return Paragraph(pdf_escape(str(text)), ParagraphStyle("lp", parent=styles["Normal"],
                          fontSize=size, fontName=fn, textColor=color,
-                         leading=11, spaceAfter=0))
+                         leading=11, spaceAfter=0, wordWrap="LTR"))
 
     def section_hdr(text):
         """Section title with orange left-accent stripe."""
@@ -1340,27 +1340,30 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
     story += [hdr, Spacer(1, 0.4*cm)]
 
     site_rows = [
-        ["Project Name",   site_name or "—"],
-        ["Location",       location_label or project_country or country or "—"],
-        ["Country",        project_country or country],
-        ["Coordinates",    f"{format_coords(lat, lon)}" + (f" ({coord_note})" if coord_note else "")],
-        ["Site Area",      f"{area_ha} ha"],
-        ["Land Use Type",  land_use],
-        ["Mounting System",mount_type],
-        ["Report Date",    datetime.now().strftime("%d.%m.%Y")],
+        [lp("Project Name", bold=True), lp(site_name or "—")],
+        [lp("Location", bold=True), lp(location_label or project_country or country or "—")],
+        [lp("Country", bold=True), lp(project_country or country or "—")],
+        [lp("Coordinates", bold=True),
+         lp(f"{format_coords(lat, lon)}" + (f" ({coord_note})" if coord_note else ""))],
+        [lp("Site Area", bold=True), lp(f"{area_ha} ha")],
+        [lp("Land Use Type", bold=True), lp(land_use)],
+        [lp("Mounting System", bold=True), lp(mount_type)],
+        [lp("Report Date", bold=True), lp(datetime.now().strftime("%d.%m.%Y"))],
     ]
     if prepared_by:
-        site_rows.append(["Prepared by", prepared_by])
+        site_rows.append([lp("Prepared by", bold=True), lp(prepared_by)])
     if module_confidence:
-        site_rows.append(["Module confidence", module_confidence])
+        site_rows.append([lp("Module confidence", bold=True), lp(module_confidence)])
     t = Table(site_rows, colWidths=[5*cm, 12*cm])
     t.setStyle(TableStyle([
         ("BACKGROUND",   (0,0),(0,-1), colors.HexColor("#e8f5e9")),
-        ("FONTNAME",     (0,0),(0,-1), "Helvetica-Bold"),
+        ("VALIGN",       (0,0),(-1,-1), "TOP"),
         ("FONTSIZE",     (0,0),(-1,-1), 10),
         ("GRID",         (0,0),(-1,-1), 0.5, colors.lightgrey),
         ("TOPPADDING",   (0,0),(-1,-1), 6),
         ("BOTTOMPADDING",(0,0),(-1,-1), 6),
+        ("LEFTPADDING",  (0,0),(-1,-1), 6),
+        ("RIGHTPADDING", (0,0),(-1,-1), 6),
     ]))
     story.append(t)
     story.append(Spacer(1, 0.5*cm))
@@ -1994,7 +1997,11 @@ with right:
             st.session_state["siteiq_area_ha"]      = area_ha
 
             _coord_note = "Site boundary centre" if _enabled_polys_latlon else "Reference pin"
-            _location_label = _proj.get("location_label", "") or reverse_geocode(lat, lon) or ""
+            _location_label = resolve_location_label(
+                lat, lon,
+                saved_label=_proj.get("location_label", ""),
+                country=project_country_input or _proj.get("country", ""),
+            )
 
             increment_usage(_username, "siteiq")
 

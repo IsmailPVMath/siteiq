@@ -606,9 +606,12 @@ def _verdict_box(vlabel: str, vdetail: str, width, heading: str):
 def _lp(text, size=9, bold=False, color="#333333"):
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.platypus import Paragraph
+    from pvmath_geocode import pdf_escape
+
     fn = "Helvetica-Bold" if bold else "Helvetica"
-    return Paragraph(text, ParagraphStyle(
+    return Paragraph(pdf_escape(str(text)), ParagraphStyle(
         "lp", fontName=fn, fontSize=size, textColor=color, leading=size + 4,
+        wordWrap="LTR",
     ))
 
 
@@ -834,9 +837,13 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
 
     # ── Project summary ───────────────────────────────────────────────────
     story.append(Paragraph("Project Summary", hdr_style))
-    loc_line = ctx.get("location_label") or ctx.get("country") or "—"
-    if ctx.get("country") and ctx.get("location_label"):
-        loc_line = f"{ctx['location_label']}"
+    from pvmath_geocode import format_coords, resolve_location_label
+
+    loc_line = resolve_location_label(
+        ctx["lat_c"], ctx["lon_c"],
+        saved_label=ctx.get("location_label", ""),
+        country=ctx.get("country", ""),
+    ) or "—"
 
     info_rows = []
     if ctx.get("project_name"):
@@ -850,7 +857,7 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
     ])
     info_rows.append([
         _lp("Coordinates", bold=True, color=DARK_BLUE),
-        _lp(f"Lat {ctx['lat_c']:.5f}°, Lon {ctx['lon_c']:.5f}°"),
+        _lp(format_coords(ctx["lat_c"], ctx["lon_c"])),
     ])
     info_rows.append([
         _lp("Site area", bold=True, color=DARK_BLUE),
