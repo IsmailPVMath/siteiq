@@ -14,12 +14,17 @@ import requests
 import streamlit as st
 import folium
 from folium.plugins import Draw
-from streamlit_folium import st_folium
 from pvmath_styles import inject_styles
 from pvmath_auth import save_project, ensure_db_session
 from pvmath_session import clear_blank_project_flag
 from pvmath_geocode import reverse_geocode, format_coords, label_from_display_name
 from pvmath_boundary_ui import render_grouped_boundary_manager
+from pvmath_folium_draw import (
+    draw_signature,
+    polygon_from_map_result,
+    st_folium_pin_drop,
+    st_folium_with_draw,
+)
 from pvmath_kml import (
     BOUNDARY_COLORS,
     apply_site_areas_only_selection,
@@ -276,44 +281,15 @@ def _stable_proj_map_key(is_full: bool) -> str:
     return "proj_map_full" if is_full else "proj_map_quick"
 
 
-def _drawing_to_polygon(drawing):
-    """Completed Folium Draw polygon from last_active_drawing (lat/lon vertices)."""
-    if not drawing or not isinstance(drawing, dict):
-        return None
-    geom = drawing.get("geometry", {})
-    if geom.get("type") != "Polygon":
-        return None
-    ring = geom.get("coordinates", [[]])[0]
-    if len(ring) < 4:
-        return None
-    return [[c[1], c[0]] for c in ring]
-
-
-def _polygon_from_drawings(drawings):
-    """Last completed Folium Draw polygon from all_drawings list (legacy / TopoIQ)."""
-    if isinstance(drawings, dict):
-        return _drawing_to_polygon(drawings)
-    if not isinstance(drawings, list):
-        return None
-    for drawing in reversed(drawings):
-        poly = _drawing_to_polygon(drawing)
-        if poly:
-            return poly
-    return None
-
-
 def _draw_signature(poly: list):
-    if not poly or len(poly) < 3:
-        return None
-    pts = poly[:-1] if len(poly) > 1 and poly[0] == poly[-1] else poly
-    return tuple(round(p[0], 5) for p in pts[:16])
+    return draw_signature(poly)
 
 
 @st.fragment
 def _render_proj_map_fragment(is_full: bool, show_search: bool, coord_center):
     """
-    Map + draw tools in a Streamlit fragment so placing polygon vertices only
-    reruns this block — not the whole page (no dim / reload per click).
+    Map + draw tools in a Streamlit fragment.
+    Draw mode MUST use st_folium_with_draw (pvmath_folium_draw) — never all_drawings.
     """
     proj = st.session_state.get("pvm_project", {})
     _proj_bounds = st.session_state.get("proj_boundaries", [])
@@ -423,18 +399,15 @@ def _render_proj_map_fragment(is_full: bool, show_search: bool, coord_center):
             "Use the **polygon tool** (left toolbar) to draw a site boundary — "
             "click each vertex, then close the shape on the first point."
         )
-        # last_active_drawing only — all_drawings / last_clicked rerun on every
-        # vertex click and remount the map, which breaks polygon drawing.
-        map_result = st_folium(
-            m, width=None, height=420,
-            returned_objects=["last_active_drawing"],
-            key=_map_key,
-            center=(center[0], center[1]),
-            zoom=int(zoom),
+        map_result = st_folium_with_draw(
+            m,
+            map_key=_map_key,
+            center=center,
+            zoom=zoom,
+            height=420,
         )
         if map_result:
-            active = map_result.get("last_active_drawing")
-            _poly = _drawing_to_polygon(active)
+            _poly = polygon_from_map_result(map_result, lonlat=False)
             if _poly:
                 _sig = _draw_signature(_poly)
                 if _sig and st.session_state.get("proj_last_draw_sig") != _sig:
@@ -458,10 +431,12 @@ def _render_proj_map_fragment(is_full: bool, show_search: bool, coord_center):
             "**Single-click** the map to place the site pin (search also drops a pin). "
             "Boundary drawing and TopoIQ require **Full Mode** above."
         )
-        map_result = st_folium(
-            m, width=None, height=400,
-            returned_objects=["last_clicked"],
-            key=_map_key,
+        map_result = st_folium_pin_drop(
+            m,
+            map_key=_map_key,
+            center=center,
+            zoom=zoom,
+            height=400,
         )
         if map_result and map_result.get("last_clicked"):
             lc = map_result["last_clicked"]

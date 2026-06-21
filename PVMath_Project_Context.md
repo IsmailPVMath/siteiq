@@ -123,6 +123,7 @@ Engineering Reference Manual download is gated to Professional+ (`can_download_e
 | `pvmath_geocode.py` | `reverse_geocode()`, `format_coords()` |
 | `pvmath_session.py` | Project state key cleanup |
 | `pvmath_help.py` | In-app ⓘ help for modules |
+| **`pvmath_folium_draw.py`** | **Folium Draw contract — only entry point for draw maps** |
 | `pvmath_marketing/` + `scripts/pvmath_marketing_bot.py` | LinkedIn draft generator (local) |
 
 ---
@@ -137,6 +138,7 @@ Engineering Reference Manual download is gated to Professional+ (`can_download_e
 6. **`assess_eeg()` project_country-first priority**
 7. **No hardcoded stale prices in UI** — use plan-aware copy from `pvmath_auth.py`
 8. **PDF: Paragraph wrapping, no emoji**
+9. **Folium Draw maps** — Full Mode / TopoIQ draw must use `st_folium_with_draw()` from `pvmath_folium_draw.py` with **`last_active_drawing` only**. Never add `all_drawings` or `last_clicked` to draw-mode `returned_objects` (reruns every vertex → map remounts → 4× regression). Run `python3 scripts/check_folium_draw_regression.py` before deploy.
 
 ---
 
@@ -151,6 +153,7 @@ Engineering Reference Manual download is gated to Professional+ (`can_download_e
 ## 8. Recently fixed (Jun 2026 — do not re-break)
 
 - **Auth UX:** multi-word given/family names; register/settings in `st.form`; Enter submits login; Tab skips password eye icon (`pvmath_auth.py`, `app.py`)
+- **Folium Draw (4× regression):** centralized in `pvmath_folium_draw.py` + `tests/test_folium_draw.py` + `scripts/check_folium_draw_regression.py`
 - **Project Setup map:** single-click pin + immediate rerun; place name in status bar; Quick vs Full Mode guidance (`pages/project.py`, `pvmath_geocode.py`)
 - **Pooled usage limits:** Pro 75 / Dev 300 per month (`pvmath_auth.py`, `pages/overview.py`)
 - **Engineering manual:** paid-plan gate + admin caption fix

@@ -19,6 +19,10 @@ from pvmath_auth import (
     prepared_by_line, module_confidence_label, save_project,
 )
 from pvmath_topo_cache import build_topo_cache, persist_topo_cache, fingerprint_from_latlon_polys
+from pvmath_folium_draw import (
+    polygon_from_map_result,
+    st_folium_with_draw,
+)
 from pvmath_styles import inject_styles
 
 # ── optional heavy deps — graceful fallback ──────────────────────────────────
@@ -128,37 +132,7 @@ def _polygons_mask(X, Y, polygon_list):
 
 def _extract_drawn_polygon(map_data):
     """Read the most recent completed polygon from Folium Draw output."""
-    if not map_data:
-        return None
-    active = map_data.get("last_active_drawing")
-    if active:
-        geom = active.get("geometry", {})
-        if geom.get("type") == "Polygon":
-            ring = geom.get("coordinates", [[]])[0]
-            if len(ring) >= 4:
-                return [(c[0], c[1]) for c in ring]
-        elif geom.get("type") == "LineString":
-            pts = [(c[0], c[1]) for c in geom["coordinates"]]
-            if len(pts) >= 3:
-                if pts[0] != pts[-1]:
-                    pts.append(pts[0])
-                return pts
-    if not map_data.get("all_drawings"):
-        return None
-    polygon_coords = None
-    for feat in reversed(map_data["all_drawings"]):
-        geom = feat.get("geometry", {})
-        if geom.get("type") == "LineString":
-            pts = [(c[0], c[1]) for c in geom["coordinates"]]
-            if len(pts) >= 3:
-                if pts[0] != pts[-1]:
-                    pts.append(pts[0])
-                polygon_coords = pts
-                break
-        elif geom.get("type") == "Polygon":
-            polygon_coords = [(c[0], c[1]) for c in geom["coordinates"][0]]
-            break
-    return polygon_coords
+    return polygon_from_map_result(map_data, lonlat=True)
 
 
 TOPO_MAP_KEY = "topo_boundary_map"
@@ -288,11 +262,20 @@ def _render_topo_boundary_map(
             edit_options={"edit": True, "remove": True},
         ).add_to(m)
 
+    if enable_draw:
+        return st_folium_with_draw(
+            m,
+            map_key=TOPO_MAP_KEY,
+            center=center,
+            zoom=zoom,
+            height=height,
+        )
+
     return st_folium(
         m,
         width=None,
         height=height,
-        returned_objects=["last_active_drawing"] if enable_draw else [],
+        returned_objects=[],
         key=TOPO_MAP_KEY,
         center=(center[0], center[1]),
         zoom=int(zoom),
