@@ -521,14 +521,14 @@ with st.sidebar:
                         "Given name(s)",
                         value=st.session_state.get("pvm_first_name", ""),
                         key="pvm_settings_first",
-                        placeholder="Mohammed",
+                        placeholder="Your given name(s)",
                         help="Multiple words OK.",
                     )
                     _set_ln = st.text_input(
                         "Family name(s)",
                         value=st.session_state.get("pvm_last_name", ""),
                         key="pvm_settings_last",
-                        placeholder="Pasha",
+                        placeholder="Your family name(s)",
                         help="Multiple words OK (e.g. Van der Berg).",
                     )
                     if st.form_submit_button("Save name", use_container_width=True):

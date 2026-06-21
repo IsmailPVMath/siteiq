@@ -1513,12 +1513,12 @@ def render_auth_page(app_name: str = "PVMath"):
                 _reg_name1, _reg_name2 = st.columns(2)
                 with _reg_name1:
                     reg_first = st.text_input(
-                        "Given name(s)", key="reg_first", placeholder="Mohammed",
+                        "Given name(s)", key="reg_first", placeholder="Your given name(s)",
                         help="First and middle names — multiple words OK.",
                     )
                 with _reg_name2:
                     reg_last = st.text_input(
-                        "Family name(s)", key="reg_last", placeholder="Pasha",
+                        "Family name(s)", key="reg_last", placeholder="Your family name(s)",
                         help="Surname — multiple words OK (e.g. Van der Berg).",
                     )
                 reg_email = st.text_input("Email address", key="reg_email", placeholder="you@company.com")
