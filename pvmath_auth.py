@@ -1286,7 +1286,47 @@ def render_auth_page(app_name: str = "PVMath"):
         line-height: 1.5; letter-spacing: 0.01em;
     }
 
-    /* Buttons */
+    /* Buttons — scoped to auth shell so sidebar styles never bleed in */
+    div[data-testid="stVerticalBlock"]:has(.pvm-auth-shell) .stButton > button {
+        background: linear-gradient(135deg, #1d9e52, #145f34) !important;
+        color: #fff !important; border: none !important;
+        border-radius: 9px !important; font-weight: 700 !important;
+        font-size: 0.92rem !important; padding: 0.72rem 1rem !important;
+        width: 100% !important; transition: all .2s !important;
+        letter-spacing: 0.01em !important;
+        box-shadow: 0 2px 10px rgba(29,158,82,.25) !important;
+        justify-content: center !important;
+    }
+    div[data-testid="stVerticalBlock"]:has(.pvm-auth-shell) .stButton > button:hover {
+        box-shadow: 0 6px 20px rgba(29,158,82,.4) !important;
+        transform: translateY(-1px) !important;
+    }
+    div[data-testid="stVerticalBlock"]:has(.pvm-auth-shell) [data-testid="stFormSubmitButton"] > button,
+    div[data-testid="stVerticalBlock"]:has(.pvm-auth-shell) [data-testid="stFormSubmitButton"] button {
+        background: linear-gradient(135deg, #1d9e52, #145f34) !important;
+        color: #fff !important; border: none !important;
+        border-radius: 9px !important; font-weight: 700 !important;
+        font-size: 0.92rem !important; padding: 0.72rem 1rem !important;
+        width: 100% !important; transition: all .2s !important;
+        letter-spacing: 0.01em !important;
+        box-shadow: 0 2px 10px rgba(29,158,82,.25) !important;
+        justify-content: center !important;
+    }
+    div[data-testid="stVerticalBlock"]:has(.pvm-auth-shell) [data-testid="stFormSubmitButton"] > button:hover,
+    div[data-testid="stVerticalBlock"]:has(.pvm-auth-shell) [data-testid="stFormSubmitButton"] button:hover {
+        box-shadow: 0 6px 20px rgba(29,158,82,.4) !important;
+        transform: translateY(-1px) !important;
+    }
+    /* Link-style controls inside auth — must follow solid-button rules */
+    div[data-testid="stVerticalBlock"]:has(.pvm-auth-shell) div[data-testid="stButton"].st-key-btn_show_forgot > button,
+    div[data-testid="stVerticalBlock"]:has(.pvm-auth-shell) div[data-testid="stButton"].st-key-btn_forgot_back > button {
+        background: transparent !important; border: none !important; box-shadow: none !important;
+        color: #1d9e52 !important; font-size: 0.82rem !important; font-weight: 600 !important;
+        padding: 0.15rem 0 !important; min-height: 0 !important; width: auto !important;
+        justify-content: flex-start !important;
+    }
+
+    /* Legacy global selectors (kept for OTP / recovery sub-pages) */
     .stButton > button {
         background: linear-gradient(135deg, #1d9e52, #145f34) !important;
         color: #fff !important; border: none !important;
@@ -1300,9 +1340,6 @@ def render_auth_page(app_name: str = "PVMath"):
         box-shadow: 0 6px 20px rgba(29,158,82,.4) !important;
         transform: translateY(-1px) !important;
     }
-
-    /* st.form_submit_button renders separately from st.button — match the same style
-       so the Log In button inside the form looks identical to every other button. */
     [data-testid="stFormSubmitButton"] > button {
         background: linear-gradient(135deg, #1d9e52, #145f34) !important;
         color: #fff !important; border: none !important;
@@ -1331,7 +1368,32 @@ def render_auth_page(app_name: str = "PVMath"):
     }
     .stTextInput > label { color: #5a7a5a !important; font-size: 0.82rem !important; }
 
-    /* Tabs */
+    /* Tabs — pill-style segmented control */
+    div[data-testid="stVerticalBlock"]:has(.pvm-auth-shell) .stTabs [data-baseweb="tab-list"] {
+        gap: 0.35rem; border-bottom: none !important;
+        background: #e8f0e8 !important;
+        padding: 0.35rem !important; border-radius: 10px !important;
+    }
+    div[data-testid="stVerticalBlock"]:has(.pvm-auth-shell) .stTabs [data-baseweb="tab"] {
+        flex: 1 !important; justify-content: center !important;
+        font-weight: 700 !important; color: #5a7a5a !important;
+        font-size: 0.88rem !important;
+        background: transparent !important;
+        border-radius: 8px !important;
+        padding: 0.6rem 0.75rem !important;
+        border: none !important;
+    }
+    div[data-testid="stVerticalBlock"]:has(.pvm-auth-shell) .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, #1d9e52, #145f34) !important;
+        color: #ffffff !important;
+        border-bottom: none !important;
+        box-shadow: 0 2px 8px rgba(29,158,82,.28) !important;
+    }
+    div[data-testid="stVerticalBlock"]:has(.pvm-auth-shell) .stTabs [data-baseweb="tab-highlight"] {
+        display: none !important;
+    }
+
+    /* Tabs — fallback for OTP/recovery pages */
     .stTabs [data-baseweb="tab-list"] {
         gap: 0.5rem; border-bottom: 2px solid #d4e0d4;
         background: transparent !important;
@@ -1358,11 +1420,15 @@ def render_auth_page(app_name: str = "PVMath"):
         text-align: left !important; justify-content: flex-start !important;
     }
     .auth-link-btn > button:hover { text-decoration: underline !important; transform: none !important; }
-    div[data-testid="stVerticalBlock"]:has(.st-key-btn_show_forgot) button {
+    div[data-testid="stButton"].st-key-btn_show_forgot > button {
         background: transparent !important; border: none !important; box-shadow: none !important;
         color: #1d9e52 !important; font-size: 0.82rem !important; font-weight: 600 !important;
         padding: 0.15rem 0 !important; min-height: 0 !important; width: auto !important;
         justify-content: flex-start !important;
+    }
+    div[data-testid="stButton"].st-key-btn_show_forgot > button:hover {
+        text-decoration: underline !important; transform: none !important;
+        box-shadow: none !important;
     }
     .auth-free-note {
         font-size: 0.78rem; color: #5a7a5a; text-align: center; margin: -0.75rem 0 1.2rem;
@@ -1424,6 +1490,7 @@ def render_auth_page(app_name: str = "PVMath"):
 
     col1, col2, col3 = st.columns([1, 1.6, 1])
     with col2:
+        st.markdown('<div class="pvm-auth-shell"></div>', unsafe_allow_html=True)
 
         tab_login, tab_register = st.tabs(["Log In", "Create Account"])
 

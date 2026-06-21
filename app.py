@@ -293,6 +293,16 @@ st.markdown(f"""
     background: #eafaf0 !important;
     color: #145f34 !important;
   }}
+  div[data-testid="stVerticalBlock"]:has(div.pvm-settings-panel) [data-testid="stForm"] label,
+  div[data-testid="stVerticalBlock"]:has(div.pvm-settings-panel) [data-testid="stForm"] label p {{
+    color: #e6f5e6 !important;
+    font-size: 0.72rem !important;
+    font-weight: 600 !important;
+  }}
+  .pvm-field-hint {{
+    font-size: 0.65rem; color: #8ab88a; line-height: 1.4;
+    margin: -0.2rem 0 0.55rem 0.05rem;
+  }}
   /* Cross-browser fix: Streamlit has its OWN native responsive auto-collapse
      for narrow viewports, completely separate from our pvm_sidebar_open
      toggle above. On some browsers (different default window size, browser
@@ -539,10 +549,35 @@ with st.sidebar:
                         unsafe_allow_html=True,
                     )
                     with st.form("pvm_change_pass_form", clear_on_submit=False):
-                        _cur_pass = st.text_input("Current password", type="password", key="pvm_cur_pass")
-                        _new_pass = st.text_input("New password", type="password", key="pvm_new_pass")
+                        _cur_pass = st.text_input(
+                            "Current password",
+                            type="password",
+                            key="pvm_cur_pass",
+                            placeholder="Your existing login password",
+                        )
+                        st.markdown(
+                            '<div class="pvm-field-hint">The password you use to sign in today</div>',
+                            unsafe_allow_html=True,
+                        )
+                        _new_pass = st.text_input(
+                            "New password",
+                            type="password",
+                            key="pvm_new_pass",
+                            placeholder="At least 8 characters",
+                        )
+                        st.markdown(
+                            '<div class="pvm-field-hint">Choose a new password (min. 8 characters)</div>',
+                            unsafe_allow_html=True,
+                        )
                         _new_pass2 = st.text_input(
-                            "Confirm new password", type="password", key="pvm_new_pass2"
+                            "Confirm new password",
+                            type="password",
+                            key="pvm_new_pass2",
+                            placeholder="Type the new password again",
+                        )
+                        st.markdown(
+                            '<div class="pvm-field-hint">Must match the new password above</div>',
+                            unsafe_allow_html=True,
                         )
                         _save_pass = st.form_submit_button("Save password", use_container_width=True)
                     if st.button("Cancel", key="pvm_change_pass_cancel", use_container_width=True):
