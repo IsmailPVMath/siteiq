@@ -14,7 +14,7 @@
 **Tagline:** "From site to system."  
 **Focus:** Ground-mount solar ONLY — Fixed Tilt and Single-Axis Tracker, Standard and Agri-PV (dual use). No rooftop, carport, floating, or BIPV.  
 **Target users:** Solar EPCs, project developers, engineering firms worldwide  
-**Monetization:** Freemium — Free (5 screenings/month per module), Pro €49/month, Enterprise custom
+**Monetization:** Freemium — Free (5 analyses/month **per module**), Professional **€149/month** (75 pooled analyses/month across SiteIQ + TopoIQ + YieldIQ), Developer **€499/month** (300 pooled/month, team pool), Enterprise custom. Stripe not wired yet — manual billing via `contact@pvmath.com` (see `docs/PVMath_Manual_Billing_Runbook.md`).
 
 ---
 
@@ -55,10 +55,12 @@ These `siteiq`/`topoiq` CNAMEs are true reverse-proxy records (Railway terminate
 | # | Name | Status | Description |
 |---|---|---|---|
 | 1 | **SiteIQ** | ✅ Live | Rapid site screening — solar, terrain, flood, regulatory, capacity, PDF |
-| 2 | **RevenueIQ** | 🔜 Coming Soon | EEG / feed-in tariff revenue calculator, Agri-PV bonus |
-| 3 | **LayoutIQ** | 🔜 Coming Soon | Auto layout + BOM generation, delta BOM for revisions |
-| 4 | **ProcureIQ** | 📋 Planned | Supplier lead time tracking, trade risk alerts |
-| 5 | **FieldIQ** | 📋 Planned | BIM-based QA, post-install verification, after-sales |
+| 2 | **TopoIQ** | ✅ Live | Terrain/slope analysis, CAD export (DXF/LandXML), PDF |
+| 3 | **YieldIQ** | ✅ Live | Pre-layout yield estimation, PVGIS-based, PDF |
+| 4 | **RevenueIQ** | 🔜 Coming Soon | EEG / feed-in tariff revenue calculator, Agri-PV bonus |
+| 5 | **LayoutIQ** | 🔜 Admin-only | Auto layout + BOM generation — not public yet |
+| 6 | **ProcureIQ** | 📋 Planned | Supplier lead time tracking, trade risk alerts |
+| 7 | **FieldIQ** | 📋 Planned | BIM-based QA, post-install verification, after-sales |
 
 ---
 
@@ -79,8 +81,13 @@ These `siteiq`/`topoiq` CNAMEs are true reverse-proxy records (Railway terminate
 | File | Location |
 |---|---|
 | Main app | `~/Desktop/solarscout/app.py` |
+| Project Setup | `~/Desktop/solarscout/pages/project.py` |
+| Auth / plans / usage | `~/Desktop/solarscout/pvmath_auth.py` |
+| Geocoding | `~/Desktop/solarscout/pvmath_geocode.py` |
 | Dependencies | `~/Desktop/solarscout/requirements.txt` |
 | Website | `~/Desktop/solarscout/index.html` (deploy to GitHub Pages root) |
+| Billing runbook | `~/Desktop/solarscout/docs/PVMath_Manual_Billing_Runbook.md` |
+| Project context (short) | `~/Desktop/solarscout/PVMath_Project_Context.md` |
 
 ### requirements.txt
 ```
@@ -127,7 +134,24 @@ dataset = "eudem25m" if in_europe else "srtm30m"
 1. Plain coordinate paste: `"17.14, 78.48"` (Google Maps right-click format)
 2. Google Maps URL patterns: `@lat,lon`, `q=lat,lon`, `ll=lat,lon`, `place/.../@lat,lon`
 
-### Map search
+### Map search / Project Setup pin
+```python
+# pages/project.py — search sets pin + st.rerun(); map click uses _set_proj_pin() + st.rerun()
+st.session_state["proj_pin_lat"] / ["proj_pin_lon"] / ["proj_pin_label"]
+reverse_geocode(lat, lon)  # status bar + saved as location_label on Save Project
+```
+- **Quick Mode:** single-click pin — SiteIQ + YieldIQ only
+- **Full Mode:** draw polygon — enables TopoIQ; map in `@st.fragment` to avoid full-page dim while drawing
+
+### Auth forms
+- Register + login wrapped in `st.form` — Enter submits
+- Multi-word given/family names allowed (`normalize_name_part()`)
+- JS in `render_auth_page()` skips password visibility button in tab order
+
+### Usage limits (`pvmath_auth.py`)
+- Free: 5 per module · Professional: 75 pooled/month · Developer: 300 pooled/month (team)
+
+### Map search (SiteIQ legacy)
 ```python
 st.session_state["last_map_search"]  # tracks last search to avoid re-run loop
 st.rerun()  # force map to redraw after geocoding
@@ -208,7 +232,9 @@ Remote `staging` was ~60 commits behind `main`. Before the next fix, run **`sync
 - Geocoding blocked by Nominatim — old User-Agent `"SolarScout/1.0"`. Fix: updated to `"SiteIQ/1.0 (pvmath.com; contact@pvmath.com)"`.
 - Google Maps coordinate paste failing — only handled URLs. Fix: added plain coord regex `r'^(-?\d{1,3}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)'`.
 - Agricultural zoning shown for Standard projects — `get_next_steps()` was not conditional. Fix: added `agri` flag check.
-- Every refresh logged the user out, on every browser, every time — not a DNS/redirect issue (confirmed via DNS check, real CNAME to Railway). Root cause: Streamlit's own multipage `st.navigation()` strips query params from the visible URL on page transitions, and the Supabase refresh token only ever lived in that URL param. Fix: refresh token now also kept in `st.session_state["pvm_refresh_token"]`, re-asserted into `st.query_params["s"]` as the last line of `app.py` on every run.
+- Every refresh logged the user out — fix: `pvm_refresh_token` in session + `?s=` re-asserted last line of `app.py`.
+- Auth: multi-word names rejected / Enter didn't login / Tab hit password eye — fix: `st.form` + JS tab order (Jun 2026).
+- Project Setup: double-click for pin, coords-only status bar, Quick vs Full unclear — fix: rerun on pin change, `reverse_geocode` in status bar, copy updates (Jun 2026).
 
 ---
 
