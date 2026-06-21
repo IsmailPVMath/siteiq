@@ -5,7 +5,7 @@
 -- What this enables (see pvmath_auth.py):
 --   - profiles.plan      — 'free' | 'professional' | 'developer' | 'enterprise'.
 --                          Professional = 75 analyses/month POOLED across modules.
---                          Developer = 150/month POOLED (team shares one counter via usage_key).
+--                          Developer = 300/month POOLED (team shares one counter via usage_key).
 --                          Free = 5/module.
 --   - profiles.team_id   — set this to the SAME value (e.g. the paying owner's
 --                          own user id) for every member of a Developer-tier
