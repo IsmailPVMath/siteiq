@@ -33,7 +33,7 @@ MODULE_CONFIDENCE = {
 PLAN_LIMITS = {
     "free":         5,
     "professional": 75,    # pooled across SiteIQ + TopoIQ + YieldIQ per month
-    "developer":    150,   # pooled across modules; team shares one monthly pool (usage_key)
+    "developer":    300,   # pooled across modules; team shares one monthly pool (usage_key)
     "enterprise":   None,
 }
 DEFAULT_PLAN = "free"

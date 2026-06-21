@@ -17,7 +17,7 @@
 -- Professional (75 analyses/month pooled across modules)
 update profiles set plan = 'professional' where id = '<user-uuid>';
 
--- Developer (150/month pooled — team shares usage_key; owner uuid = team_id for members)
+-- Developer (300/month pooled — team shares usage_key; owner uuid = team_id for members)
 update profiles set plan = 'developer' where id = '<owner-uuid>';
 -- teammates:
 update profiles set plan = 'developer', team_id = '<owner-uuid>' where id = '<teammate-uuid>';
@@ -28,7 +28,7 @@ update profiles set plan = 'developer', team_id = '<owner-uuid>' where id = '<te
 ## How limits work (Professional & Developer)
 
 - **Professional:** **75 total runs/month** across SiteIQ + TopoIQ + YieldIQ.
-- **Developer:** **150 total runs/month** — **entire team shares one pool** (up to 5 seats).
+- **Developer:** **300 total runs/month** — **entire team shares one pool** (up to 5 seats).
 - Example: 60 TopoIQ + 15 SiteIQ = 75 → Professional paywall until next month.
 - Enforced in app via `is_over_limit()` — no manual tracking needed.
 - Customer sees **X / limit** on **Overview** dashboard.

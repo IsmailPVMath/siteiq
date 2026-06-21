@@ -49,7 +49,7 @@ def build_pilot_agreement() -> Document:
         ("3. Plan & limits", [
             "Plan: [ ] Professional (€149/month)  [ ] Developer (€499/month)",
             "Professional: 75 analyses per calendar month, shared across SiteIQ, TopoIQ, and YieldIQ.",
-            "Developer: 150 analyses per calendar month, shared team pool (up to 5 seats).",
+            "Developer: 300 analyses per calendar month, shared team pool (up to 5 seats).",
             "Limits reset on the 1st of each month (UTC). Unused analyses do not roll over.",
         ]),
         ("4. Term & payment", [
@@ -94,7 +94,7 @@ def build_pilot_agreement() -> Document:
     doc.add_heading("Deutsch — Kurzfassung (Referenz)", level=1)
     doc.add_paragraph(
         "Pilot-Zugang zu PVMath (SiteIQ, TopoIQ, YieldIQ). Screening-Qualität, keine "
-        "Bankfähigkeit. Professional: 75 Analysen/Monat gesamt. Developer: 150/Monat Team-Pool. "
+        "Bankfähigkeit. Professional: 75 Analysen/Monat gesamt. Developer: 300/Monat Team-Pool. "
         "Freischaltung nach Zahlungseingang. Bei UG-Gründung nahtlose Fortführung."
     )
     return doc
@@ -137,7 +137,7 @@ def build_invoice() -> Document:
     table.rows[1].cells[1].text = "[Month YYYY-MM]"
     table.rows[1].cells[2].text = "149.00"
     table.rows[1].cells[3].text = "19%"
-    table.rows[2].cells[0].text = "PVMath Developer — Early Access pilot (150/month team pool, 5 seats)"
+    table.rows[2].cells[0].text = "PVMath Developer — Early Access pilot (300/month team pool, 5 seats)"
     table.rows[2].cells[1].text = "[Month YYYY-MM]"
     table.rows[2].cells[2].text = "499.00"
     table.rows[2].cells[3].text = "19%"
@@ -180,7 +180,7 @@ def write_runbook() -> None:
 -- Professional (75 analyses/month pooled across modules)
 update profiles set plan = 'professional' where id = '<user-uuid>';
 
--- Developer (150/month pooled — team shares usage_key; owner uuid = team_id for members)
+-- Developer (300/month pooled — team shares usage_key; owner uuid = team_id for members)
 update profiles set plan = 'developer' where id = '<owner-uuid>';
 -- teammates:
 update profiles set plan = 'developer', team_id = '<owner-uuid>' where id = '<teammate-uuid>';
@@ -191,7 +191,7 @@ update profiles set plan = 'developer', team_id = '<owner-uuid>' where id = '<te
 ## How limits work (Professional & Developer)
 
 - **Professional:** **75 total runs/month** across SiteIQ + TopoIQ + YieldIQ.
-- **Developer:** **150 total runs/month** — **entire team shares one pool** (up to 5 seats).
+- **Developer:** **300 total runs/month** — **entire team shares one pool** (up to 5 seats).
 - Example: 60 TopoIQ + 15 SiteIQ = 75 → Professional paywall until next month.
 - Enforced in app via `is_over_limit()` — no manual tracking needed.
 - Customer sees **X / limit** on **Overview** dashboard.
