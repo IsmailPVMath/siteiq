@@ -4,7 +4,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 from pvmath_auth import (
     render_auth_page, sign_out, load_latest_project,
-    refresh_user_profile, update_user_name,
+    refresh_user_profile, update_user_name, sidebar_plan_usage_html,
 )
 from pvmath_team import render_membership_panel, render_team_invite_banner
 
@@ -252,6 +252,10 @@ st.markdown(f"""
     background: #eafaf0 !important;
     color: #145f34 !important;
   }}
+  div[data-testid="stVerticalBlock"]:has(div.pvm-membership-btn) div[data-testid="stButton"] > button {{
+    border-color: #4ade80 !important;
+    color: #b8f5c8 !important;
+  }}
   /* Cross-browser fix: Streamlit has its OWN native responsive auto-collapse
      for narrow viewports, completely separate from our pvm_sidebar_open
      toggle above. On some browsers (different default window size, browser
@@ -432,13 +436,17 @@ with st.sidebar:
             </div>
             """, unsafe_allow_html=True)
 
+            _uid = st.session_state.get("pvm_user_id", "")
+            _usage_html = sidebar_plan_usage_html(_uid)
+            if _usage_html:
+                st.markdown(_usage_html, unsafe_allow_html=True)
+            render_team_invite_banner(_uid, email)
+
             if st.button("Settings", key="pvm_settings_toggle", use_container_width=True):
                 st.session_state["pvm_show_settings"] = not st.session_state.get("pvm_show_settings", False)
+            st.markdown('<div class="pvm-membership-btn"></div>', unsafe_allow_html=True)
             if st.button("Manage membership", key="pvm_membership_toggle", use_container_width=True):
                 st.session_state["pvm_show_membership"] = not st.session_state.get("pvm_show_membership", False)
-
-            _uid = st.session_state.get("pvm_user_id", "")
-            render_team_invite_banner(_uid, email)
 
             if st.session_state.get("pvm_show_settings"):
                 refresh_user_profile()

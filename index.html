@@ -505,9 +505,14 @@
     }
     @media (max-width: 600px) {
       :root { --section-y: 3.5rem; --section-y-compact: 2.5rem; --section-x: clamp(1.25rem, 5vw, 1.75rem); }
-      .hero { padding: 6rem var(--section-x) 3.5rem; }
+      .hero { padding: 5.5rem var(--section-x) 2.75rem; }
+      .hero h1 { font-size: clamp(1.85rem, 8vw, 2.35rem); margin-bottom: 0.85rem; }
+      .hero p { font-size: 1.05rem; margin-bottom: 1.5rem; }
+      .hero-stats { display: none; }
+      .hero-scan { grid-template-columns: 1fr; gap: 0.65rem; margin-top: 1.25rem; }
+      .hero-scan-item span { display: none; }
       .section-header { margin-bottom: 2.5rem; }
-      body { font-size: 1.0625rem; }
+      body { font-size: 1.0625rem; padding-bottom: 4.5rem; }
       .stat-lbl, .stats-bar-lbl { font-size: 1rem; }
       .footer-bottom { font-size: var(--text-sm); }
       .footer-col a { padding: 0.35rem 0; min-height: 44px; display: flex; align-items: center; }
@@ -516,6 +521,24 @@
         min-height: 44px; display: inline-flex; align-items: center;
         padding: 0.65rem 1.15rem;
       }
+    }
+
+    /* ── MOBILE STICKY CTA ── */
+    .mobile-sticky-cta {
+      display: none;
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 120;
+      padding: 0.65rem var(--section-x) calc(0.65rem + env(safe-area-inset-bottom, 0px));
+      background: rgba(245,247,245,.97); backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border);
+      box-shadow: 0 -8px 24px rgba(0,0,0,.08);
+    }
+    .mobile-sticky-cta a {
+      display: block; text-align: center; width: 100%;
+      background: var(--green); color: #fff; font-weight: 800; font-size: 0.95rem;
+      padding: 0.85rem 1rem; border-radius: 10px; text-decoration: none;
+    }
+    @media (max-width: 600px) {
+      .mobile-sticky-cta { display: block; }
     }
   </style>
 </head>
@@ -594,7 +617,13 @@
     <div style="text-align:center;margin-bottom:2.5rem;">
       <div class="section-label" style="justify-content:center;display:flex;">See it in action</div>
       <h2 class="section-title">Real outputs. &le; 4 minutes per module.</h2>
-      <p class="section-sub" style="margin:0 auto;">187 ha site, southern Spain.</p>
+      <p class="section-sub" style="margin:0 auto 0.75rem;">187 ha site, southern Spain.</p>
+      <p style="margin:0 auto;font-size:0.88rem;">
+        <a href="/assets/sample-siteiq-report.pdf" target="_blank" rel="noopener"
+           style="color:var(--green-dk);font-weight:700;text-decoration:none;border-bottom:1.5px solid rgba(29,158,82,.35);">
+          Download sample SiteIQ screening PDF &rarr;
+        </a>
+      </p>
     </div>
     <div class="preview-grid">
 
@@ -999,11 +1028,11 @@
         <div class="price-tier">Free</div>
         <div class="price-amount">&euro;0<span> / month</span></div>
         <div class="price-annual-note">&nbsp;</div>
-        <p class="price-desc">No credit card. 5 tries per module, every month.</p>
+        <p class="price-desc">No credit card. 5 runs per module each month — not a shared pool.</p>
         <ul class="price-features">
-          <li class="yes">5 SiteIQ screenings / month</li>
-          <li class="yes">5 TopoIQ analyses / month</li>
-          <li class="yes">5 YieldIQ runs / month</li>
+          <li class="yes">5 SiteIQ screenings / month (separate cap)</li>
+          <li class="yes">5 TopoIQ analyses / month (separate cap)</li>
+          <li class="yes">5 YieldIQ runs / month (separate cap)</li>
           <li class="yes">PDF report download</li>
           <li class="yes">DXF & LandXML terrain export</li>
           <li class="no">Engineering Reference Manual</li>
@@ -1042,8 +1071,8 @@
         <ul class="price-features">
           <li class="yes">300 analyses / month (shared team pool — up to 5 seats)</li>
           <li class="yes">All Professional features</li>
-          <li class="yes">Up to 5 team seats</li>
-          <li class="yes">Shared project workspace</li>
+          <li class="yes">Up to 5 team seats (email invite links)</li>
+          <li class="yes">Shared monthly analysis pool across the team</li>
           <li class="yes">Priority support</li>
           <li class="yes">Custom invoice &amp; VAT billing</li>
         </ul>
@@ -1062,7 +1091,7 @@
     </div>
 
     <p style="text-align:center;margin-top:1.5rem;font-size:0.82rem;color:var(--muted);">
-      Free tier: 5 tries per module every month. No credit card required. Cancel anytime. VAT (19%) added for EU customers.
+      Free tier: 5 runs per module each month (separate caps, not pooled). Paid plans use one shared pool. No credit card required. Cancel anytime. VAT (19%) added for EU customers.
     </p>
   </div>
 </section>
@@ -1294,7 +1323,7 @@ var T = {
     'pf.p.f5':'Global solar data (PVGIS JRC)','pf.p.f6':'Copernicus Satellite DEM terrain',
     'pf.p.f7':'YieldIQ — Full Access',
     'pf.t.f1':'Up to 5 team seats','pf.t.f2':'Unlimited all modules',
-    'pf.t.f3':'All Professional features','pf.t.f4':'Shared project workspace',
+    'pf.t.f3':'All Professional features','pf.t.f4':'Team invites — shared pooled plan (up to 5 seats)',
     'pf.t.f5':'Priority support','pf.t.f6':'YieldIQ — Full Access','pf.t.f7':'Custom invoice & billing',
     'pricing.btn.start':'Get Started →','pricing.btn.sub':'Subscribe →','pricing.btn.contact':'Contact Us →',
     'pricing.note':'Free tier: 5 tries per module every month. No credit card required. Cancel anytime. VAT (19%) added for EU customers.',
@@ -1417,7 +1446,7 @@ var T = {
     'pf.p.f5':'Globale Solardaten (PVGIS JRC)','pf.p.f6':'Copernicus Satellite DEM-Gelände',
     'pf.p.f7':'YieldIQ — Vollzugang',
     'pf.t.f1':'Bis zu 5 Team-Zugänge','pf.t.f2':'Unbegrenzt alle Module',
-    'pf.t.f3':'Alle Professional-Features','pf.t.f4':'Gemeinsamer Projekt-Workspace',
+    'pf.t.f3':'Alle Professional-Features','pf.t.f4':'Team-Einladungen — gemeinsames Kontingent (bis 5 Sitze)',
     'pf.t.f5':'Prioritäts-Support','pf.t.f6':'YieldIQ — Vollzugang','pf.t.f7':'Individuelle Rechnung & Abrechnung',
     'pricing.btn.start':'Jetzt starten →','pricing.btn.sub':'Abonnieren →','pricing.btn.contact':'Kontakt →',
     'pricing.note':'Free-Tarif: 5 Versuche pro Modul und Monat. Keine Kreditkarte erforderlich. Jederzeit kündbar. Zzgl. MwSt. 19% für EU-Kunden.',
@@ -1595,6 +1624,10 @@ function initNavScrollShadow() {
   window.addEventListener('scroll', onScroll, { passive: true });
 }
 </script>
+
+<div class="mobile-sticky-cta" aria-hidden="false">
+  <a href="https://siteiq.pvmath.com" target="_blank" rel="noopener">Try PVMath Free &rarr;</a>
+</div>
 
 </body>
 </html>

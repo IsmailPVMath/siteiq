@@ -625,6 +625,37 @@ def usage_status(user_id: str) -> dict:
     }
 
 
+def sidebar_plan_usage_html(user_id: str) -> str:
+    """Compact plan + usage line for the app sidebar (always visible)."""
+    if not user_id:
+        return ""
+    if is_admin(user_id):
+        return (
+            '<div style="font-size:0.72rem;color:#b8f5c8;line-height:1.45;margin:0.35rem 0 0.5rem;">'
+            '<span style="color:#4ade80;font-weight:700;">Admin</span> · unlimited preview</div>'
+        )
+    u = usage_status(user_id)
+    plan = plan_label(u["plan"])
+    if u["mode"] == "pooled" and u["limit"] is not None:
+        used, lim = u["total"], u["limit"]
+        return (
+            f'<div style="font-size:0.72rem;color:#b8f5c8;line-height:1.45;margin:0.35rem 0 0.5rem;">'
+            f'<span style="color:#4ade80;font-weight:700;">{plan}</span> · '
+            f'{used} / {lim} analyses this month (shared pool)</div>'
+        )
+    if u["limit"] is not None and u.get("remaining_per_app"):
+        rem = u["remaining_per_app"]
+        return (
+            f'<div style="font-size:0.72rem;color:#b8f5c8;line-height:1.45;margin:0.35rem 0 0.5rem;">'
+            f'<span style="color:#4ade80;font-weight:700;">{plan}</span> · '
+            f'Free: {rem["siteiq"]} SiteIQ · {rem["topoiq"]} TopoIQ · {rem["yieldiq"]} YieldIQ left</div>'
+        )
+    return (
+        f'<div style="font-size:0.72rem;color:#b8f5c8;line-height:1.45;margin:0.35rem 0 0.5rem;">'
+        f'<span style="color:#4ade80;font-weight:700;">{plan}</span></div>'
+    )
+
+
 def limit_reached_message(user_id: str, app_label: str) -> tuple[str, str]:
     """Title + HTML body for paywall when monthly cap is hit."""
     plan = get_plan(user_id)
@@ -1290,6 +1321,23 @@ def render_auth_page(app_name: str = "PVMath"):
         font-size: 0.75rem; color: #5a7a5a;
     }
     .auth-footer a { color: #1d9e52; text-decoration: none; font-weight: 600; }
+    .auth-link-btn > button {
+        background: transparent !important; border: none !important; box-shadow: none !important;
+        color: #1d9e52 !important; font-size: 0.82rem !important; font-weight: 600 !important;
+        padding: 0.25rem 0 !important; min-height: 0 !important; width: auto !important;
+        text-align: left !important; justify-content: flex-start !important;
+    }
+    .auth-link-btn > button:hover { text-decoration: underline !important; transform: none !important; }
+    div[data-testid="stVerticalBlock"]:has(.st-key-btn_show_forgot) button {
+        background: transparent !important; border: none !important; box-shadow: none !important;
+        color: #1d9e52 !important; font-size: 0.82rem !important; font-weight: 600 !important;
+        padding: 0.15rem 0 !important; min-height: 0 !important; width: auto !important;
+        justify-content: flex-start !important;
+    }
+    .auth-free-note {
+        font-size: 0.78rem; color: #5a7a5a; text-align: center; margin: -0.75rem 0 1.2rem;
+        line-height: 1.45;
+    }
     </style>
     <script>
     // Convert Supabase recovery fragment (#access_token=...) to query params
@@ -1340,6 +1388,7 @@ def render_auth_page(app_name: str = "PVMath"):
         <span style="font-family:Inter,sans-serif;font-size:1.7rem;font-weight:800;color:#1a2e1a;letter-spacing:-0.04em;">PVMath</span>
       </a>
       <div class="auth-logo-sub">Solar Site Intelligence &nbsp;·&nbsp; SiteIQ · TopoIQ · YieldIQ</div>
+      <div class="auth-free-note">Free tier: 5 runs per module each month · No credit card</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -1472,19 +1521,39 @@ def render_auth_page(app_name: str = "PVMath"):
                         st.error("Incorrect email or password.")
 
             # ── Forgot password ───────────────────────────────
-            st.markdown("<div style='margin-top:0.5rem;'></div>", unsafe_allow_html=True)
-            if st.toggle("Forgot password?", key="toggle_forgot"):
-                forgot_email = st.text_input("Enter your account email", key="forgot_email", placeholder="you@company.com")
-                if st.button("Send Reset Link →", key="btn_forgot"):
-                    if not forgot_email:
-                        st.error("Please enter your email address.")
-                    else:
-                        with st.spinner("Sending reset email…"):
-                            result = reset_password_email(forgot_email)
-                        if result["success"]:
-                            st.success("✅ Reset link sent — check your inbox. Click the link and you'll be brought back here to set a new password.")
+            if not st.session_state.get("pvm_show_forgot"):
+                if st.button("Forgot password?", key="btn_show_forgot", type="secondary"):
+                    st.session_state["pvm_show_forgot"] = True
+                    st.rerun()
+            else:
+                st.markdown(
+                    '<div style="font-size:0.82rem;font-weight:700;color:#1a2e1a;margin:0.5rem 0 0.35rem;">'
+                    "Reset password</div>",
+                    unsafe_allow_html=True,
+                )
+                forgot_email = st.text_input(
+                    "Account email",
+                    key="forgot_email",
+                    placeholder="you@company.com",
+                )
+                fc1, fc2 = st.columns(2)
+                with fc1:
+                    if st.button("Send reset link →", key="btn_forgot", use_container_width=True):
+                        if not forgot_email:
+                            st.error("Please enter your email address.")
                         else:
-                            st.error(f"Failed to send reset email: {result.get('error', 'Unknown error')}")
+                            with st.spinner("Sending reset email…"):
+                                result = reset_password_email(forgot_email)
+                            if result["success"]:
+                                st.success(
+                                    "Reset link sent — check your inbox, then return here to set a new password."
+                                )
+                            else:
+                                st.error(f"Failed to send reset email: {result.get('error', 'Unknown error')}")
+                with fc2:
+                    if st.button("← Back to login", key="btn_forgot_back", use_container_width=True):
+                        st.session_state["pvm_show_forgot"] = False
+                        st.rerun()
 
         # Auth forms: password-manager tags + skip show/hide eye on Tab + Enter submits via st.form
         st.markdown("""

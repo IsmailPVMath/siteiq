@@ -109,6 +109,22 @@ _plan = _usage["plan"]
 _limit_mode = _usage["mode"]
 _limit = _usage["limit"]
 
+if _project_count == 0:
+    st.markdown("""
+    <div style="background:linear-gradient(135deg,#e8f5ee,#f4faf6);border:1.5px solid #b8ddc8;
+                border-radius:12px;padding:1.15rem 1.25rem;margin-bottom:1.25rem;">
+      <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;
+                  color:#1d9e52;margin-bottom:0.35rem;">Start here</div>
+      <div style="font-size:1rem;font-weight:700;color:#1a2e1a;margin-bottom:0.35rem;">
+        Create your first project to unlock SiteIQ, TopoIQ, and YieldIQ
+      </div>
+      <div style="font-size:0.88rem;color:#3a5a3a;line-height:1.5;">
+        Open <strong>Project Setup</strong> in the sidebar — enter a name, country, and location once.
+        All three modules inherit the same site.
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
 c1, c2 = st.columns(2)
 with c1:
     st.markdown(f"""
