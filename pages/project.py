@@ -276,18 +276,29 @@ def _stable_proj_map_key(is_full: bool) -> str:
     return "proj_map_full" if is_full else "proj_map_quick"
 
 
+def _drawing_to_polygon(drawing):
+    """Completed Folium Draw polygon from last_active_drawing (lat/lon vertices)."""
+    if not drawing or not isinstance(drawing, dict):
+        return None
+    geom = drawing.get("geometry", {})
+    if geom.get("type") != "Polygon":
+        return None
+    ring = geom.get("coordinates", [[]])[0]
+    if len(ring) < 4:
+        return None
+    return [[c[1], c[0]] for c in ring]
+
+
 def _polygon_from_drawings(drawings):
-    """Last completed Folium Draw polygon, or None while the user is still placing vertices."""
+    """Last completed Folium Draw polygon from all_drawings list (legacy / TopoIQ)."""
+    if isinstance(drawings, dict):
+        return _drawing_to_polygon(drawings)
     if not isinstance(drawings, list):
         return None
     for drawing in reversed(drawings):
-        geom = drawing.get("geometry", {})
-        if geom.get("type") != "Polygon":
-            continue
-        ring = geom.get("coordinates", [[]])[0]
-        if len(ring) < 4:
-            continue
-        return [[c[1], c[0]] for c in ring]
+        poly = _drawing_to_polygon(drawing)
+        if poly:
+            return poly
     return None
 
 
@@ -409,25 +420,21 @@ def _render_proj_map_fragment(is_full: bool, show_search: bool, coord_center):
     if is_full:
         st.caption(
             "Checked parcels are solid; unchecked are faint. "
-            "Use the **polygon tool** (Full Mode) to draw a site boundary, or click the map to move the pin."
+            "Use the **polygon tool** (left toolbar) to draw a site boundary — "
+            "click each vertex, then close the shape on the first point."
         )
-        # Do not subscribe to last_clicked when KMZ parcels are on the map — every
-        # vertex click during drawing is also a map click and was forcing a full rerun.
-        _returns = ["all_drawings"]
-        if not _proj_bounds:
-            _returns.append("last_clicked")
+        # last_active_drawing only — all_drawings / last_clicked rerun on every
+        # vertex click and remount the map, which breaks polygon drawing.
         map_result = st_folium(
             m, width=None, height=420,
-            returned_objects=_returns,
+            returned_objects=["last_active_drawing"],
             key=_map_key,
+            center=(center[0], center[1]),
+            zoom=int(zoom),
         )
-        if map_result and map_result.get("last_clicked") and not _proj_bounds:
-            lc = map_result["last_clicked"]
-            if _set_proj_pin(lc["lat"], lc["lng"]):
-                st.rerun()
         if map_result:
-            raw_drawings = map_result.get("all_drawings")
-            _poly = _polygon_from_drawings(raw_drawings)
+            active = map_result.get("last_active_drawing")
+            _poly = _drawing_to_polygon(active)
             if _poly:
                 _sig = _draw_signature(_poly)
                 if _sig and st.session_state.get("proj_last_draw_sig") != _sig:
@@ -442,16 +449,10 @@ def _render_proj_map_fragment(is_full: bool, show_search: bool, coord_center):
                     _clat, _clon = centroid_of(_poly)
                     st.session_state["proj_pin_lat"] = _clat
                     st.session_state["proj_pin_lon"] = _clon
+                    st.session_state.pop("proj_pin_label", None)
+                    st.session_state.pop("proj_pin_label_sig", None)
                     st.session_state.pop("proj_polygon_cleared", None)
                     st.session_state.pop("proj_kml_upload_key", None)
-            elif isinstance(raw_drawings, list) and not raw_drawings and \
-                    st.session_state.get("proj_polygon_draft"):
-                st.session_state.pop("proj_polygon_draft", None)
-                st.session_state.pop("proj_pin_lat", None)
-                st.session_state.pop("proj_pin_lon", None)
-                st.session_state.pop("proj_last_draw_sig", None)
-                st.session_state["proj_boundaries"] = []
-                st.session_state["proj_polygon_cleared"] = True
     else:
         st.caption(
             "**Single-click** the map to place the site pin (search also drops a pin). "

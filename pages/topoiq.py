@@ -127,8 +127,23 @@ def _polygons_mask(X, Y, polygon_list):
 
 
 def _extract_drawn_polygon(map_data):
-    """Read the most recent polygon from Folium Draw output."""
-    if not map_data or not map_data.get("all_drawings"):
+    """Read the most recent completed polygon from Folium Draw output."""
+    if not map_data:
+        return None
+    active = map_data.get("last_active_drawing")
+    if active:
+        geom = active.get("geometry", {})
+        if geom.get("type") == "Polygon":
+            ring = geom.get("coordinates", [[]])[0]
+            if len(ring) >= 4:
+                return [(c[0], c[1]) for c in ring]
+        elif geom.get("type") == "LineString":
+            pts = [(c[0], c[1]) for c in geom["coordinates"]]
+            if len(pts) >= 3:
+                if pts[0] != pts[-1]:
+                    pts.append(pts[0])
+                return pts
+    if not map_data.get("all_drawings"):
         return None
     polygon_coords = None
     for feat in reversed(map_data["all_drawings"]):
@@ -277,8 +292,10 @@ def _render_topo_boundary_map(
         m,
         width=None,
         height=height,
-        returned_objects=["all_drawings"] if enable_draw else [],
+        returned_objects=["last_active_drawing"] if enable_draw else [],
         key=TOPO_MAP_KEY,
+        center=(center[0], center[1]),
+        zoom=int(zoom),
     )
 
 
@@ -845,7 +862,6 @@ with left:
             )
         _prune_stale_folium_maps()
         if _use_draw and _map_data:
-            raw_drawings = _map_data.get("all_drawings")
             _drawn = _extract_drawn_polygon(_map_data)
             if _drawn:
                 _sig = tuple(round(c[0], 5) for c in _drawn[: min(8, len(_drawn))])
@@ -859,10 +875,6 @@ with left:
                     st.success(
                         f"Analysis boundary — {len(_drawn) - 1} vertices · {_da:,.1f} ha"
                     )
-            elif isinstance(raw_drawings, list) and not raw_drawings:
-                if st.session_state.pop("topo_analysis_polygon", None):
-                    st.session_state.pop("topo_last_draw_sig", None)
-                    st.rerun()
             elif not st.session_state.get("topo_analysis_polygon"):
                 st.caption("Draw your analysis boundary on the map above — polygon tool in the left toolbar.")
 
