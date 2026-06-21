@@ -299,6 +299,36 @@ def normalize_name_part(name: str) -> str:
     return " ".join((name or "").split())
 
 
+def change_password_logged_in(email: str, current_password: str, new_password: str) -> dict:
+    """Verify current password, then set a new one for the signed-in user."""
+    if len(new_password) < 8:
+        return {"success": False, "error": "Password must be at least 8 characters."}
+    verify = sign_in(email, current_password)
+    if not verify.get("success"):
+        return {"success": False, "error": "Current password is incorrect."}
+    access = verify.get("access_token") or st.session_state.get("pvm_access_token", "")
+    refresh = verify.get("refresh_token") or st.session_state.get("pvm_refresh_token", "")
+    if not access:
+        return {"success": False, "error": "Session expired — log in again."}
+    result = update_password(access, refresh, new_password)
+    if result.get("success"):
+        st.session_state["pvm_access_token"] = access
+        if refresh:
+            st.session_state["pvm_refresh_token"] = refresh
+    return result
+
+
+def sidebar_mailto_link(label: str, href: str) -> None:
+    """Sidebar mailto CTA — st.link_button often fails on mailto: in Streamlit apps."""
+    import html as _html
+    safe_href = _html.escape(href, quote=True)
+    safe_label = _html.escape(label)
+    st.markdown(
+        f'<div class="pvm-sidebar-mail"><a href="{safe_href}">{safe_label}</a></div>',
+        unsafe_allow_html=True,
+    )
+
+
 def update_user_name(first_name: str, last_name: str) -> dict:
     """Persist first/last name to Supabase user_metadata (existing accounts)."""
     fn = normalize_name_part(first_name)
@@ -632,7 +662,7 @@ def sidebar_plan_usage_html(user_id: str) -> str:
     if is_admin(user_id):
         return (
             '<div style="font-size:0.72rem;color:#b8f5c8;line-height:1.45;margin:0.35rem 0 0.5rem;">'
-            '<span style="color:#4ade80;font-weight:700;">Admin</span> · unlimited preview</div>'
+            '<span style="color:#4ade80;font-weight:700;">Admin preview</span> · unlimited access</div>'
         )
     u = usage_status(user_id)
     plan = plan_label(u["plan"])

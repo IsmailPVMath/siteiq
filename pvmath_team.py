@@ -18,9 +18,9 @@ from pvmath_auth import (
     seat_limit,
     team_occupied_seats,
     can_add_seat,
-    plan_label,
-    PLAN_LIMITS,
     UPGRADE_CONTACT,
+    sidebar_mailto_link,
+    is_admin,
 )
 
 APP_URL = "https://siteiq.pvmath.com"
@@ -286,35 +286,27 @@ def render_team_settings(user_id: str, email: str) -> None:
 
 
 def render_membership_panel(user_id: str, email: str) -> None:
-    """Plan, billing, and Developer team seats — not profile/name settings."""
+    """Billing, upgrades, and Developer team seats — plan/usage lives in the sidebar."""
     if not user_id:
         return
 
+    if is_admin(user_id):
+        st.markdown(
+            '<div style="font-size:0.78rem;color:#8ab88a;line-height:1.45;margin:0.25rem 0 0.5rem;">'
+            "Admin preview — unlimited access. Plan limits do not apply.</div>",
+            unsafe_allow_html=True,
+        )
+        return
+
     plan = get_plan(user_id)
-    limit = PLAN_LIMITS.get(plan)
-    label = plan_label(plan)
-
-    if limit is None:
-        limit_txt = "Unlimited analyses"
-    elif plan in ("professional", "developer"):
-        limit_txt = f"{limit} analyses/month · shared across SiteIQ, TopoIQ, YieldIQ"
-    else:
-        limit_txt = f"{limit} analyses per module/month"
-
-    st.markdown(
-        f'<div style="font-size:0.8rem;color:#e6f5e6;line-height:1.5;margin-bottom:0.5rem;">'
-        f"<b>Plan:</b> {label}<br>"
-        f'<span style="color:#8ab88a;font-size:0.74rem;">{limit_txt}</span></div>',
-        unsafe_allow_html=True,
-    )
 
     if plan == "developer":
         render_team_settings(user_id, email)
     elif plan == "free":
         st.markdown(
-            '<div style="font-size:0.76rem;color:#8ab88a;line-height:1.45;margin:0.35rem 0;">'
-            "Upgrade to Developer for team seats (up to 5) and a shared analysis pool.</div>",
+            '<div style="font-size:0.76rem;color:#8ab88a;line-height:1.45;margin:0.25rem 0;">'
+            "Need team access? Developer adds 5 seats and 300 analyses/month.</div>",
             unsafe_allow_html=True,
         )
 
-    st.link_button("Upgrade / contact billing", UPGRADE_CONTACT, use_container_width=True)
+    sidebar_mailto_link("Upgrade / contact billing", UPGRADE_CONTACT)

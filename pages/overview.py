@@ -224,5 +224,10 @@ with _manual_col:
             "**Engineering Reference Manual (Word)**  \n"
             "Public Edition — Professional plan and above."
         )
-        st.link_button("Contact us to upgrade →", UPGRADE_CONTACT, use_container_width=True)
+        st.markdown(
+            f'<a href="{UPGRADE_CONTACT}" style="display:inline-block;background:#1d9e52;color:#fff;'
+            f'font-weight:700;padding:0.45rem 1rem;border-radius:8px;text-decoration:none;">'
+            f'Contact us to upgrade →</a>',
+            unsafe_allow_html=True,
+        )
         st.caption("Free tier: use the Knowledge Centre for public guides.")

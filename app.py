@@ -5,6 +5,7 @@ import streamlit.components.v1 as components
 from pvmath_auth import (
     render_auth_page, sign_out, load_latest_project,
     refresh_user_profile, update_user_name, sidebar_plan_usage_html,
+    change_password_logged_in,
 )
 from pvmath_team import render_membership_panel, render_team_invite_banner
 
@@ -252,9 +253,45 @@ st.markdown(f"""
     background: #eafaf0 !important;
     color: #145f34 !important;
   }}
-  div[data-testid="stVerticalBlock"]:has(div.pvm-membership-btn) div[data-testid="stButton"] > button {{
+  /* Account actions — Settings, membership, billing mailto, log out (same look) */
+  div[data-testid="stVerticalBlock"]:has(div.pvm-account-anchor) div[data-testid="stButton"] > button,
+  div[data-testid="stVerticalBlock"]:has(div.pvm-account-anchor) .pvm-sidebar-mail a {{
+    background: #16241a !important;
+    color: #ffffff !important;
+    border: 1px solid #4ade80 !important;
+    border-radius: 6px !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    padding: 0.28rem 0.7rem !important;
+    min-height: 0 !important;
+    height: auto !important;
+    line-height: 1.3 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    text-decoration: none !important;
+    display: block !important;
+    text-align: center !important;
+  }}
+  div[data-testid="stVerticalBlock"]:has(div.pvm-account-anchor) div[data-testid="stButton"] > button:hover,
+  div[data-testid="stVerticalBlock"]:has(div.pvm-account-anchor) .pvm-sidebar-mail a:hover {{
+    background: #1d3a1d !important;
+    color: #ffffff !important;
     border-color: #4ade80 !important;
-    color: #b8f5c8 !important;
+  }}
+  div[data-testid="stVerticalBlock"]:has(div.pvm-account-anchor) .pvm-sidebar-mail {{
+    margin: 0.25rem 0;
+  }}
+  /* Settings panel — solid white primary for Save name / Save password */
+  div[data-testid="stVerticalBlock"]:has(div.pvm-settings-panel) [data-testid="stForm"] div[data-testid="stButton"] > button {{
+    background: #ffffff !important;
+    color: #145f34 !important;
+    border: 1px solid #ffffff !important;
+    font-weight: 700 !important;
+    justify-content: center !important;
+  }}
+  div[data-testid="stVerticalBlock"]:has(div.pvm-settings-panel) [data-testid="stForm"] div[data-testid="stButton"] > button:hover {{
+    background: #eafaf0 !important;
+    color: #145f34 !important;
   }}
   /* Cross-browser fix: Streamlit has its OWN native responsive auto-collapse
      for narrow viewports, completely separate from our pvm_sidebar_open
@@ -442,13 +479,26 @@ with st.sidebar:
                 st.markdown(_usage_html, unsafe_allow_html=True)
             render_team_invite_banner(_uid, email)
 
+            st.markdown('<div class="pvm-account-anchor"></div>', unsafe_allow_html=True)
+
             if st.button("Settings", key="pvm_settings_toggle", use_container_width=True):
-                st.session_state["pvm_show_settings"] = not st.session_state.get("pvm_show_settings", False)
-            st.markdown('<div class="pvm-membership-btn"></div>', unsafe_allow_html=True)
+                _open = not st.session_state.get("pvm_show_settings", False)
+                st.session_state["pvm_show_settings"] = _open
+                if _open:
+                    st.session_state["pvm_show_membership"] = False
+                else:
+                    st.session_state["pvm_show_change_pass"] = False
+                st.rerun()
             if st.button("Manage membership", key="pvm_membership_toggle", use_container_width=True):
-                st.session_state["pvm_show_membership"] = not st.session_state.get("pvm_show_membership", False)
+                _open = not st.session_state.get("pvm_show_membership", False)
+                st.session_state["pvm_show_membership"] = _open
+                if _open:
+                    st.session_state["pvm_show_settings"] = False
+                    st.session_state["pvm_show_change_pass"] = False
+                st.rerun()
 
             if st.session_state.get("pvm_show_settings"):
+                st.markdown('<div class="pvm-settings-panel"></div>', unsafe_allow_html=True)
                 refresh_user_profile()
                 st.markdown(
                     f'<div style="font-size:0.8rem;color:#ffffff;line-height:1.6;'
@@ -477,6 +527,41 @@ with st.sidebar:
                             st.success("Name saved — reports will show this.")
                         else:
                             st.error(_res.get("error", "Could not save name."))
+
+                if not st.session_state.get("pvm_show_change_pass"):
+                    if st.button("Change password", key="pvm_change_pass_toggle", use_container_width=True):
+                        st.session_state["pvm_show_change_pass"] = True
+                        st.rerun()
+                else:
+                    st.markdown(
+                        '<div style="font-size:0.78rem;font-weight:700;color:#ffffff;'
+                        'margin:0.5rem 0 0.35rem;">Change password</div>',
+                        unsafe_allow_html=True,
+                    )
+                    with st.form("pvm_change_pass_form", clear_on_submit=False):
+                        _cur_pass = st.text_input("Current password", type="password", key="pvm_cur_pass")
+                        _new_pass = st.text_input("New password", type="password", key="pvm_new_pass")
+                        _new_pass2 = st.text_input(
+                            "Confirm new password", type="password", key="pvm_new_pass2"
+                        )
+                        _save_pass = st.form_submit_button("Save password", use_container_width=True)
+                    if st.button("Cancel", key="pvm_change_pass_cancel", use_container_width=True):
+                        st.session_state["pvm_show_change_pass"] = False
+                        st.rerun()
+                    if _save_pass:
+                        if not _cur_pass or not _new_pass or not _new_pass2:
+                            st.error("Fill in all password fields.")
+                        elif _new_pass != _new_pass2:
+                            st.error("New passwords do not match.")
+                        else:
+                            with st.spinner("Updating password…"):
+                                _pres = change_password_logged_in(email, _cur_pass, _new_pass)
+                            if _pres.get("success"):
+                                st.session_state["pvm_show_change_pass"] = False
+                                st.success("Password updated.")
+                                st.rerun()
+                            else:
+                                st.error(_pres.get("error", "Could not update password."))
 
             if st.session_state.get("pvm_show_membership"):
                 render_membership_panel(_uid, email)
