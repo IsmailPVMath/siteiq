@@ -109,6 +109,34 @@ def _format_pin_status(lat: float, lon: float) -> str:
     return f"📌 Site pin · {coords}"
 
 
+def _format_site_location_line(lat: float, lon: float) -> str:
+    """Human-readable place + signed coords (Quick and Full Mode)."""
+    label = _resolve_pin_label(lat, lon)
+    coords = format_coords(lat, lon)
+    if label:
+        return f"**{label}** · {coords}"
+    return coords
+
+
+def _format_boundary_status(
+    lat: float,
+    lon: float,
+    *,
+    n_boundaries: int = 1,
+    total_ha=None,
+    area_ha=None,
+) -> str:
+    loc = _format_site_location_line(lat, lon)
+    if total_ha is not None:
+        return (
+            f"✅ **{n_boundaries}** boundar{'y' if n_boundaries == 1 else 'ies'} · "
+            f"{loc} · Combined: **{total_ha:,.1f} ha**"
+        )
+    if area_ha is not None:
+        return f"✅ Boundary drawn · {loc} · Area: **{area_ha:,.1f} ha**"
+    return f"✅ Site · {loc}"
+
+
 def parse_google_maps_url(raw: str):
     raw = raw.strip()
     m = re.match(r"^(-?\d{1,3}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)$", raw)
@@ -424,6 +452,7 @@ def _render_proj_map_fragment(is_full: bool, show_search: bool, coord_center):
                     st.session_state["proj_pin_lon"] = _clon
                     st.session_state.pop("proj_pin_label", None)
                     st.session_state.pop("proj_pin_label_sig", None)
+                    _resolve_pin_label(_clat, _clon)
                     st.session_state.pop("proj_polygon_cleared", None)
                     st.session_state.pop("proj_kml_upload_key", None)
     else:
@@ -461,8 +490,11 @@ def _render_proj_map_fragment(is_full: bool, show_search: bool, coord_center):
             _ps1, _ps2 = st.columns([4, 1])
             with _ps1:
                 st.success(
-                    f"✅ **{len(_enabled_bounds)}** boundar{'y' if len(_enabled_bounds) == 1 else 'ies'} · "
-                    f"Site: {lat:.5f}°N, {lon:.5f}°E · Combined: **{_total:,.1f} ha**"
+                    _format_boundary_status(
+                        lat, lon,
+                        n_boundaries=len(_enabled_bounds),
+                        total_ha=_total,
+                    )
                 )
             with _ps2:
                 if st.button("🗑️ Clear", use_container_width=True, help="Remove all boundaries",
@@ -470,6 +502,8 @@ def _render_proj_map_fragment(is_full: bool, show_search: bool, coord_center):
                     st.session_state.pop("proj_polygon_draft", None)
                     st.session_state.pop("proj_pin_lat", None)
                     st.session_state.pop("proj_pin_lon", None)
+                    st.session_state.pop("proj_pin_label", None)
+                    st.session_state.pop("proj_pin_label_sig", None)
                     st.session_state.pop("proj_kml_upload_key", None)
                     st.session_state.pop("proj_last_draw_sig", None)
                     st.session_state["proj_boundaries"] = []
@@ -483,7 +517,7 @@ def _render_proj_map_fragment(is_full: bool, show_search: bool, coord_center):
             _ps1, _ps2 = st.columns([4, 1])
             with _ps1:
                 st.success(
-                    f"✅ Boundary drawn · Site: {lat:.5f}°N, {lon:.5f}°E · Area: **{area_from_poly} ha**"
+                    _format_boundary_status(lat, lon, area_ha=area_from_poly)
                 )
             with _ps2:
                 if st.button("🗑️ Clear", use_container_width=True, help="Remove the drawn boundary",
@@ -491,6 +525,8 @@ def _render_proj_map_fragment(is_full: bool, show_search: bool, coord_center):
                     st.session_state.pop("proj_polygon_draft", None)
                     st.session_state.pop("proj_pin_lat", None)
                     st.session_state.pop("proj_pin_lon", None)
+                    st.session_state.pop("proj_pin_label", None)
+                    st.session_state.pop("proj_pin_label_sig", None)
                     st.session_state.pop("proj_last_draw_sig", None)
                     st.session_state["proj_boundaries"] = []
                     st.session_state["proj_polygon_cleared"] = True
