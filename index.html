@@ -312,7 +312,10 @@
     .contact-detail { display: flex; align-items: center; gap: 0.6rem; font-size: 0.85rem; margin-bottom: 0.6rem; }
     .contact-detail a { color: var(--green); text-decoration: none; font-weight: 600; }
     form { display: flex; flex-direction: column; gap: 1rem; }
-    input, select, textarea { width: 100%; padding: 0.75rem 1rem; border: 1.5px solid var(--border); border-radius: 9px; font-family: inherit; font-size: 0.88rem; background: var(--bg); color: var(--text); transition: border-color .2s; outline: none; }
+    .form-field { display: flex; flex-direction: column; gap: 0.35rem; }
+    .form-field label { font-size: 0.78rem; font-weight: 700; color: var(--muted); letter-spacing: 0.02em; }
+    .form-optional { font-weight: 500; color: #9aaa9a; font-size: 0.72rem; }
+    input, select, textarea { width: 100%; padding: 0.75rem 1rem; border: 1.5px solid var(--border); border-radius: 9px; font-family: inherit; font-size: 0.88rem; background: var(--bg); color: var(--text); transition: border-color .2s; outline: none; box-sizing: border-box; }
     input:focus, select:focus, textarea:focus { border-color: var(--green); }
     textarea { resize: vertical; min-height: 110px; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
@@ -1172,21 +1175,34 @@
         <input type="hidden" name="_next" value="https://pvmath.com/?sent=1#contact" />
         <input type="hidden" name="_captcha" value="false" />
         <input type="text" name="_honey" style="display:none" tabindex="-1" autocomplete="off" />
-        <div class="form-row">
-          <input type="text" name="name" data-i18n-ph="form.name" placeholder="Your name" required />
-          <input type="email" name="email" data-i18n-ph="form.email" placeholder="Work email" required />
+        <div class="form-field">
+          <label for="contact-name" data-i18n="form.labelName">Full name</label>
+          <input id="contact-name" type="text" name="name" data-i18n-ph="form.name" placeholder="e.g. Mohammed Ismail Pasha" required autocomplete="name" />
         </div>
-        <input type="text" name="company" data-i18n-ph="form.company" placeholder="Company / Organisation" />
-        <select name="subject" required>
-          <option value="" disabled selected data-i18n="form.s0">What can we help with?</option>
-          <option value="YieldIQ access" data-i18n="form.s3">YieldIQ access</option>
-          <option value="Professional plan" data-i18n="form.s4">Professional plan</option>
-          <option value="Developer plan" data-i18n="form.s5">Developer plan</option>
-          <option value="Billing & invoicing" data-i18n="form.s6">Billing &amp; invoicing question</option>
-          <option value="Technical support" data-i18n="form.s7">Technical support</option>
-          <option value="Other" data-i18n="form.s8">Other</option>
-        </select>
-        <textarea name="message" data-i18n-ph="form.message" placeholder="Your message..." required></textarea>
+        <div class="form-field">
+          <label for="contact-email" data-i18n="form.labelEmail">Email address</label>
+          <input id="contact-email" type="email" name="email" data-i18n-ph="form.email" placeholder="you@company.com" required autocomplete="email" />
+        </div>
+        <div class="form-field">
+          <label for="contact-company" data-i18n="form.labelCompany">Company (optional)</label>
+          <input id="contact-company" type="text" name="company" data-i18n-ph="form.company" placeholder="Company or organisation" autocomplete="organization" />
+        </div>
+        <div class="form-field">
+          <label for="contact-subject" data-i18n="form.labelTopic">Topic</label>
+          <select id="contact-subject" name="subject" required>
+            <option value="" disabled selected data-i18n="form.s0">What can we help with?</option>
+            <option value="YieldIQ access" data-i18n="form.s3">YieldIQ access</option>
+            <option value="Professional plan" data-i18n="form.s4">Professional plan</option>
+            <option value="Developer plan" data-i18n="form.s5">Developer plan</option>
+            <option value="Billing & invoicing" data-i18n="form.s6">Billing &amp; invoicing question</option>
+            <option value="Technical support" data-i18n="form.s7">Technical support</option>
+            <option value="Other" data-i18n="form.s8">Other</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="contact-message" data-i18n="form.labelMessage">Message (optional)</label>
+          <textarea id="contact-message" name="message" data-i18n-ph="form.message" placeholder="Anything else we should know? (optional)"></textarea>
+        </div>
         <button type="submit" class="form-submit" data-i18n="form.submit">Send Message &rarr;</button>
       </form>
     </div>
@@ -1356,11 +1372,13 @@ var T = {
     'contact.info':'Solar site intelligence for EPCs, developers, and engineering firms worldwide.',
     'contact.response':'<strong>Response time:</strong> Within 1 business day<br><strong>Languages:</strong> English, Deutsch',
     'contact.sent':"Message sent — we'll reply within one business day.",
-    'form.name':'Your name','form.email':'Work email','form.company':'Company / Organisation',
+    'form.labelName':'Full name','form.labelEmail':'Email address',
+    'form.labelCompany':'Company (optional)','form.labelTopic':'Topic','form.labelMessage':'Message (optional)',
+    'form.name':'e.g. Mohammed Ismail Pasha','form.email':'you@company.com','form.company':'Company or organisation',
     'form.s0':'What can we help with?',
     'form.s3':'YieldIQ access','form.s4':'Professional plan','form.s5':'Developer plan',
     'form.s6':'Billing & invoicing question','form.s7':'Technical support','form.s8':'Other',
-    'form.message':'Your message...','form.submit':'Send Message →',
+    'form.message':'Anything else we should know? (optional)','form.submit':'Send Message →',
     'footer.tagline':'Solar site intelligence for EPCs and developers. By engineers, for engineers.',
     'footer.platform':'Platform','footer.company':'Company','footer.legal':'Legal',
     'footer.yieldiq':'YieldIQ','footer.about':'About','footer.pricing':'Pricing',
@@ -1479,11 +1497,13 @@ var T = {
     'contact.info':'Solar-Standortintelligenz für EPCs, Entwickler und Ingenieurbüros weltweit.',
     'contact.response':'<strong>Antwortzeit:</strong> Innerhalb 1 Werktag<br><strong>Sprachen:</strong> English, Deutsch',
     'contact.sent':'Nachricht gesendet — Antwort innerhalb eines Werktags.',
-    'form.name':'Ihr Name','form.email':'Geschäfts-E-Mail','form.company':'Unternehmen / Organisation',
+    'form.labelName':'Vollständiger Name','form.labelEmail':'E-Mail-Adresse',
+    'form.labelCompany':'Unternehmen (optional)','form.labelTopic':'Thema','form.labelMessage':'Nachricht (optional)',
+    'form.name':'z. B. Mohammed Ismail Pasha','form.email':'sie@firma.de','form.company':'Unternehmen oder Organisation',
     'form.s0':'Womit können wir helfen?',
     'form.s3':'YieldIQ Zugang','form.s4':'Professional-Plan','form.s5':'Developer-Plan',
     'form.s6':'Abrechnungsfrage','form.s7':'Technischer Support','form.s8':'Sonstiges',
-    'form.message':'Ihre Nachricht...','form.submit':'Nachricht senden →',
+    'form.message':'Noch etwas, das wir wissen sollten? (optional)','form.submit':'Nachricht senden →',
     'footer.tagline':'Solar-Standortintelligenz für EPCs und Entwickler. Von Ingenieuren, für Ingenieure.',
     'footer.platform':'Plattform','footer.company':'Unternehmen','footer.legal':'Rechtliches',
     'footer.yieldiq':'YieldIQ','footer.about':'Über uns',
