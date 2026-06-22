@@ -69,7 +69,7 @@ PLAN_LABELS = {
 PAID_PLANS = frozenset({"professional", "developer", "enterprise"})
 
 STRIPE_LINK  = "https://buy.stripe.com/YOUR_LINK_HERE"
-UPGRADE_CONTACT = "mailto:contact@pvmath.com?subject=PVMath%20%E2%80%94%20Professional%20upgrade"
+UPGRADE_CONTACT = "mailto:contact@pvmath.com?subject=PVMath%20%E2%80%94%20Billing%20or%20upgrade%20inquiry"
 PRICE_LABEL  = "€149 / month"
 
 # ── Supabase helpers (direct REST — no supabase-py) ───────────
@@ -319,13 +319,28 @@ def change_password_logged_in(email: str, current_password: str, new_password: s
 
 
 def sidebar_mailto_link(label: str, href: str) -> None:
-    """Sidebar mailto CTA — st.link_button often fails on mailto: in Streamlit apps."""
+    """Sidebar mailto CTA — markdown anchors often fail in Streamlit; use top-level navigation."""
     import html as _html
+    import streamlit.components.v1 as components
+
     safe_href = _html.escape(href, quote=True)
     safe_label = _html.escape(label)
-    st.markdown(
-        f'<div class="pvm-sidebar-mail"><a href="{safe_href}">{safe_label}</a></div>',
-        unsafe_allow_html=True,
+    components.html(
+        f"""
+        <div class="pvm-sidebar-mail">
+          <a href="{safe_href}" target="_top" rel="noopener noreferrer"
+             onclick="window.top.location.href=this.href;return false;"
+             style="display:block;box-sizing:border-box;width:100%;text-align:center;
+                    background:#16241a;color:#ffffff;border:1px solid #4ade80;
+                    border-radius:6px;font-size:0.78rem;font-weight:600;
+                    padding:0.28rem 0.7rem;line-height:1.3;text-decoration:none;
+                    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+                    cursor:pointer;">
+            {safe_label}
+          </a>
+        </div>
+        """,
+        height=44,
     )
 
 

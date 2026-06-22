@@ -5,7 +5,7 @@ import streamlit.components.v1 as components
 from pvmath_auth import (
     render_auth_page, sign_out, load_latest_project,
     refresh_user_profile, update_user_name, sidebar_plan_usage_html,
-    change_password_logged_in,
+    change_password_logged_in, sidebar_mailto_link, UPGRADE_CONTACT, is_admin,
 )
 from pvmath_team import render_membership_panel, render_team_invite_banner
 
@@ -600,6 +600,9 @@ with st.sidebar:
 
             if st.session_state.get("pvm_show_membership"):
                 render_membership_panel(_uid, email)
+
+            if not is_admin(_uid):
+                sidebar_mailto_link("Upgrade / contact billing", UPGRADE_CONTACT)
 
             if st.button("Log out", key="sidebar_logout", use_container_width=True):
                 sign_out()

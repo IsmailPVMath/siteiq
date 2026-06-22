@@ -18,8 +18,6 @@ from pvmath_auth import (
     seat_limit,
     team_occupied_seats,
     can_add_seat,
-    UPGRADE_CONTACT,
-    sidebar_mailto_link,
     is_admin,
 )
 
@@ -308,5 +306,3 @@ def render_membership_panel(user_id: str, email: str) -> None:
             "Need team access? Developer adds 5 seats and 300 analyses/month.</div>",
             unsafe_allow_html=True,
         )
-
-    sidebar_mailto_link("Upgrade / contact billing", UPGRADE_CONTACT)
