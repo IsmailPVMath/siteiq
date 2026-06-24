@@ -72,6 +72,11 @@ STRIPE_LINK  = "https://buy.stripe.com/YOUR_LINK_HERE"
 UPGRADE_CONTACT = "mailto:contact@pvmath.com?subject=PVMath%20%E2%80%94%20Billing%20or%20upgrade%20inquiry"
 PRICE_LABEL  = "€149 / month"
 
+LAYOUTIQ_ADMIN_EMAILS = frozenset({
+    "ismailpasha747@gmail.com",
+    "ismail.p@pvmath.de",
+})
+
 # ── Supabase helpers (direct REST — no supabase-py) ───────────
 def _sb_url() -> str:
     v = os.environ.get("SUPABASE_URL", "")
@@ -589,6 +594,13 @@ def is_admin(user_id: str) -> bool:
         return bool(data[0]["is_admin"]) if data else False
     except Exception:
         return False
+
+
+def can_access_layoutiq(user_id: str = "", email: str = "") -> bool:
+    """Internal layout module — email allowlist or Supabase is_admin."""
+    if email.lower().strip() in LAYOUTIQ_ADMIN_EMAILS:
+        return True
+    return is_admin(user_id) if user_id else False
 
 
 # ── Plan + team helpers ─────────────────────────────────────────

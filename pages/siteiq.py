@@ -48,6 +48,7 @@ from pvmath_pdf import (
     SITEIQ_DISCLAIMER_BODY,
     append_pdf_disclaimer,
     append_pdf_footer,
+    append_siteiq_metrics_annexure,
     strip_pdf_label,
 )
 
@@ -1493,17 +1494,19 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
     story.append(Spacer(1, 0.15*cm))
 
     def _badge(text):
-        """Colour-coded rating badge matching website style."""
-        _t = text.split("—")[0].strip().upper()
+        """Colour-coded rating badge — plain text only (no HTML; lp escapes tags)."""
+        _t = strip_pdf_label(str(text or "").split("—")[0].strip()).upper()
+        if not _t or _t in ("—", "-"):
+            return lp("—", MUTED, size=8)
         if any(w in _t for w in ["EXCELLENT", "VERY GOOD", "GOOD", "LOW"]):
-            return lp(f"<b>{_t}</b>", C_GREEN, bold=True, size=8)
-        if any(w in _t for w in ["ACCEPTABLE","MODERATE","LOW-MOD","INDICATIVE","DATA UNAVAILABLE"]):
-            return lp(f"<b>{_t}</b>", C_YELLOW, bold=True, size=8)
-        if any(w in _t for w in ["CHALLENGING","HIGH"]):
-            return lp(f"<b>{_t}</b>", C_ORANGE, bold=True, size=8)
-        if any(w in _t for w in ["CRITICAL","VERY HIGH"]):
-            return lp(f"<b>{_t}</b>", C_RED, bold=True, size=8)
-        return lp(text, MUTED, size=8)
+            return lp(_t, C_GREEN, bold=True, size=8)
+        if any(w in _t for w in ["ACCEPTABLE", "MODERATE", "LOW-MOD", "INDICATIVE", "DATA UNAVAILABLE"]):
+            return lp(_t, C_YELLOW, bold=True, size=8)
+        if any(w in _t for w in ["CHALLENGING", "HIGH"]):
+            return lp(_t, C_ORANGE, bold=True, size=8)
+        if any(w in _t for w in ["CRITICAL", "VERY HIGH"]):
+            return lp(_t, C_RED, bold=True, size=8)
+        return lp(_t, MUTED, size=8)
 
     _slope_badge = _badge(slope_lbl)
     _solar_badge = _badge(solar_lbl)
@@ -1707,6 +1710,14 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
         story.append(Spacer(1, 0.2*cm))
 
     story.append(Spacer(1, 0.3*cm))
+
+    append_siteiq_metrics_annexure(
+        story,
+        accent_color="#e85d04",
+        muted_color="#5a7a5a",
+        border_color="#d4e0d4",
+        dark_color="#1a2e1a",
+    )
 
     story.append(section_hdr("REFERENCE"))
     story.append(Spacer(1, 0.12*cm))

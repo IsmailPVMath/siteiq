@@ -18,7 +18,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from pvmath_geocode import format_coords, pdf_escape
-from pvmath_pdf import SITEIQ_DISCLAIMER_BODY, append_pdf_disclaimer, append_pdf_footer
+from pvmath_pdf import SITEIQ_DISCLAIMER_BODY, append_pdf_disclaimer, append_pdf_footer, append_siteiq_metrics_annexure
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "assets" / "sample-siteiq-report.pdf"
@@ -119,6 +119,13 @@ def build_sample_pdf() -> bytes:
         "register free at siteiq.pvmath.com.",
         size=8,
     ))
+    append_siteiq_metrics_annexure(
+        story,
+        accent_color="#e85d04",
+        muted_color="#5a7a5a",
+        border_color="#d4e0d4",
+        dark_color="#1a2e1a",
+    )
     append_pdf_disclaimer(story, SITEIQ_DISCLAIMER_BODY)
     append_pdf_footer(
         story, "SiteIQ (sample)",

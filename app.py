@@ -6,6 +6,7 @@ from pvmath_auth import (
     render_auth_page, sign_out, load_latest_project,
     refresh_user_profile, update_user_name, sidebar_plan_usage_html,
     change_password_logged_in, sidebar_mailto_link, UPGRADE_CONTACT, is_admin,
+    can_access_layoutiq, LAYOUTIQ_ADMIN_EMAILS,
 )
 from pvmath_team import render_membership_panel, render_team_invite_banner
 
@@ -96,9 +97,9 @@ _pages = [
     st.Page("pages/topoiq.py",  title="TopoIQ"),
     st.Page("pages/yieldiq.py", title="YieldIQ"),
 ]
-_ADMIN = {"ismailpasha747@gmail.com", "ismail.p@pvmath.de"}
+_ADMIN = LAYOUTIQ_ADMIN_EMAILS
 _user_email = st.session_state.get("pvm_email", "").lower().strip()
-if _user_email in _ADMIN:
+if can_access_layoutiq(st.session_state.get("pvm_user_id", ""), _user_email):
     _pages.append(st.Page("pages/_layoutiq.py", title="LayoutIQ"))
 
 pg = st.navigation(_pages, position="hidden")
@@ -465,8 +466,6 @@ with st.sidebar:
         st.page_link("pages/siteiq.py", label="SiteIQ")
         st.page_link("pages/yieldiq.py", label="YieldIQ")
         st.page_link("pages/topoiq.py", label="TopoIQ")
-        if _user_email in _ADMIN:
-            st.page_link("pages/_layoutiq.py", label="LayoutIQ")
 
         # ── Bottom-pinned group: account / settings / membership / logout ──
         with st.container():
