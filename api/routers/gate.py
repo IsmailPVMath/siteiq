@@ -2,30 +2,42 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+import asyncio
+import os
+from functools import partial
 
+from fastapi import APIRouter, Depends, HTTPException
+
+from api.deps import get_current_user
 from api.schemas.gate import GateAnalyzeRequest, GateAnalyzeResponse
 from pvmath_gate.analyze import run_gate_analysis
 from pvmath_gate.models import GateRequest
+from pvmath_supabase import AuthUser, increment_usage, is_over_limit
 
 router = APIRouter(tags=["gate"])
 
+GATE_APP = "siteiq"
+GATE_TIMEOUT_SEC = int(os.environ.get("PVMATH_GATE_TIMEOUT", "120"))
 
-@router.post("/gate/analyze", response_model=GateAnalyzeResponse)
-def analyze_gate(body: GateAnalyzeRequest):
-    """
-    Unified gate analysis — one call, full screening payload.
 
-  Workflow (internal engines):
-    solar → terrain → flood → regulatory → capacity → yield (4 configs) → layout → BOM
-    """
+def _limit_detail() -> str:
+    return (
+        "Monthly analysis limit reached. Free plan: 5 SiteIQ analyses per month. "
+        "Upgrade at contact@pvmath.com"
+    )
+
+
+def _build_gate_request(body: GateAnalyzeRequest) -> GateRequest:
     boundary = None
     if body.boundary:
         boundary = [[p.lat, p.lon] for p in body.boundary]
         if len(boundary) < 3:
-            raise HTTPException(status_code=422, detail="boundary requires at least 3 points")
+            raise HTTPException(
+                status_code=422,
+                detail="boundary requires at least 3 points",
+            )
 
-    req = GateRequest(
+    return GateRequest(
         project_name=body.project_name,
         lat=body.lat,
         lon=body.lon,
@@ -45,7 +57,8 @@ def analyze_gate(body: GateAnalyzeRequest):
         gcr_2p=body.gcr_2p,
     )
 
-    result = run_gate_analysis(req)
+
+def _to_response(result) -> GateAnalyzeResponse:
     return GateAnalyzeResponse(
         success=result.success,
         project_name=result.project_name,
@@ -64,3 +77,43 @@ def analyze_gate(body: GateAnalyzeRequest):
         errors=result.errors,
         api_version=result.api_version,
     )
+
+
+@router.post("/gate/analyze", response_model=GateAnalyzeResponse)
+async def analyze_gate(
+    body: GateAnalyzeRequest,
+    user: AuthUser = Depends(get_current_user),
+):
+    """
+    Unified gate analysis — one call, full screening payload.
+
+    Requires Supabase Bearer token. Counts against SiteIQ monthly usage.
+    """
+    if user.access_token and is_over_limit(user.user_id, GATE_APP, user.access_token):
+        raise HTTPException(status_code=429, detail=_limit_detail())
+
+    req = _build_gate_request(body)
+    loop = asyncio.get_running_loop()
+    try:
+        result = await asyncio.wait_for(
+            loop.run_in_executor(None, partial(run_gate_analysis, req)),
+            timeout=GATE_TIMEOUT_SEC,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=(
+                f"Gate analysis timed out after {GATE_TIMEOUT_SEC}s. "
+                "Try run_layout=false or a smaller area."
+            ),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Gate analysis failed: {exc}",
+        ) from exc
+
+    if user.access_token:
+        increment_usage(user.user_id, GATE_APP, user.access_token)
+
+    return _to_response(result)
