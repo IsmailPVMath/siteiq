@@ -1,0 +1,11 @@
+# FastAPI gate API — install separately from Streamlit Railway app:
+#   pip install -r requirements-api.txt
+#
+# Regenerate lock:
+#   pip-compile requirements-api.in -o requirements-api.txt
+
+-r requirements.txt
+
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+pydantic>=2.0.0

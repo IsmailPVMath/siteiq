@@ -17,3 +17,5 @@ ezdxf
 shapely
 matplotlib
 altair
+fastapi
+uvicorn[standard]
