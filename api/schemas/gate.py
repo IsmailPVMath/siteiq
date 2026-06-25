@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -20,7 +20,7 @@ class GateAnalyzeRequest(BaseModel):
     land_use: Literal["Standard", "Agri-PV"] = "Standard"
     mount_type: str = Field(default="Fixed Tilt")
     country: str = Field(default="", max_length=120)
-    boundary: list[BoundaryPoint] | None = Field(
+    boundary: Optional[List[BoundaryPoint]] = Field(
         default=None,
         description="Site polygon (≥3 points). Enables boundary terrain + layout.",
     )
@@ -38,17 +38,17 @@ class GateAnalyzeRequest(BaseModel):
 class GateAnalyzeResponse(BaseModel):
     success: bool
     project_name: str
-    coordinates: dict[str, float]
-    solar: dict[str, Any]
-    terrain: dict[str, Any]
-    flood: dict[str, Any]
-    regulatory: dict[str, Any]
-    capacity: dict[str, Any]
-    yield_configs: dict[str, Any]
-    layout: dict[str, Any] | None
-    bom: dict[str, str] | None
-    pvmath_score: int | None
+    coordinates: Dict[str, float]
+    solar: Dict[str, Any]
+    terrain: Dict[str, Any]
+    flood: Dict[str, Any]
+    regulatory: Dict[str, Any]
+    capacity: Dict[str, Any]
+    yield_configs: Dict[str, Any]
+    layout: Optional[Dict[str, Any]] = None
+    bom: Optional[Dict[str, str]] = None
+    pvmath_score: Optional[int] = None
     verdict: str
     verdict_detail: str
-    errors: list[str]
+    errors: List[str]
     api_version: str = "v1"
