@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 
-from api.routers import gate, health, me
+from api.routers import auth_login, gate, health, me
 
 
 @asynccontextmanager
@@ -87,6 +87,7 @@ def create_app() -> FastAPI:
         return RedirectResponse(url="/api/docs")
 
     app.include_router(health.router, prefix="/api")
+    app.include_router(auth_login.router, prefix="/api/v1")
     app.include_router(me.router, prefix="/api/v1")
     app.include_router(gate.router, prefix="/api/v1")
     return app
