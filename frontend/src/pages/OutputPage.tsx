@@ -7,6 +7,8 @@ import {
   workflowLayoutDetail,
   workflowLayoutDxf,
   workflowLayoutSweep,
+  workflowProjectPackage,
+  workflowPvmathReportPdf,
   workflowScore,
   workflowTerrainMesh,
 } from "../lib/api";
@@ -78,6 +80,9 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
   const [layoutBifacial, setLayoutBifacial] = useState(false);
   const [layoutCustomGcr, setLayoutCustomGcr] = useState("");
   const [layoutCustomPitch, setLayoutCustomPitch] = useState("");
+  const [reportBusy, setReportBusy] = useState(false);
+  const [packageBusy, setPackageBusy] = useState(false);
+  const [exportError, setExportError] = useState("");
 
   const grid = result.grid as Record<string, unknown>;
   const nearest = grid?.nearest as Record<string, unknown> | undefined;
@@ -297,6 +302,56 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
     }
   }
 
+  function reportPayload() {
+    return {
+      project_name: result.project_name || input?.project_name || "Project",
+      country: input?.country || "",
+      lat: result.coordinates.lat,
+      lon: result.coordinates.lon,
+      land_use: input?.land_use || "Standard",
+      screening: result as unknown as Record<string, unknown>,
+      topo: topoResult as unknown as Record<string, unknown> | null,
+      score: finalScore as unknown as Record<string, unknown> | null,
+      layout_row: selectedLayoutRow,
+      yield_result: yieldResult as unknown as Record<string, unknown> | null,
+      selected_yield_mwh: selectedAnnualMwh,
+    };
+  }
+
+  async function handlePvmathReport() {
+    setReportBusy(true);
+    setExportError("");
+    try {
+      const blob = await workflowPvmathReportPdf(token, reportPayload());
+      const safe = (result.project_name || "PVMath").replace(/\s+/g, "_");
+      saveBlob(blob, `${safe}_PVMath_Report.pdf`);
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : "PVMath report failed");
+    } finally {
+      setReportBusy(false);
+    }
+  }
+
+  async function handleProjectPackage() {
+    if (!selectedLayoutRow || !hasBoundary) return;
+    setPackageBusy(true);
+    setExportError("");
+    try {
+      const blob = await workflowProjectPackage(token, {
+        ...reportPayload(),
+        boundaries,
+        config_key: selectedLayoutRow.config_key,
+        pitch_m: selectedLayoutRow.pitch_m,
+      });
+      const safe = (result.project_name || "PVMath").replace(/\s+/g, "_");
+      saveBlob(blob, `${safe}_Project_Package.zip`);
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : "Project package failed");
+    } finally {
+      setPackageBusy(false);
+    }
+  }
+
   const layoutRows: LayoutSweepRow[] = useMemo(() => {
     if (!layoutSweep?.rows) return [];
     if (layoutFilter === "all") return layoutSweep.rows.filter((r) => r.success);
@@ -461,6 +516,32 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
           </button>
         </div>
 
+        <div className="sidebar-group sidebar-deliverables">
+          <h3>Project deliverables</h3>
+          <p className="hint sidebar-hint">
+            PVMath report combines SiteIQ, TopoIQ, LayoutIQ, and YieldIQ. Project package adds A3 layout sheet, BOM CSV, and DXF.
+          </p>
+          <button
+            className="btn btn-primary btn-block"
+            type="button"
+            onClick={() => void handlePvmathReport()}
+            disabled={reportBusy}
+          >
+            {reportBusy ? "Generating report…" : "PVMath report (PDF)"}
+          </button>
+          <button
+            className="btn btn-ghost btn-block"
+            type="button"
+            onClick={() => void handleProjectPackage()}
+            disabled={packageBusy || !selectedLayoutRow || !hasBoundary}
+          >
+            {packageBusy ? "Building package…" : "Project package (ZIP)"}
+          </button>
+          {!selectedLayoutRow || !hasBoundary ? (
+            <p className="hint sidebar-hint">Select a layout row and boundary for the full package.</p>
+          ) : null}
+        </div>
+
         <div className="sidebar-group sidebar-score">
           <h3>Overall PVMath score</h3>
           {overallReady ? (
@@ -580,6 +661,7 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
           </>
         )}
         {topoError ? <div className="error-banner">{topoError}</div> : null}
+        {exportError ? <div className="error-banner">{exportError}</div> : null}
       </section>
 
       <section className="module-card module-layout">

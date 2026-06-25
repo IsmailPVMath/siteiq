@@ -159,3 +159,29 @@ class WorkflowTerrainMeshResponse(BaseModel):
     z_min: float
     z_max: float
     slope_mean: float
+
+
+class WorkflowPvmathReportRequest(BaseModel):
+    project_name: str = Field(default="Project", max_length=200)
+    country: str = Field(default="", max_length=120)
+    lat: Optional[float] = Field(default=None, ge=-90, le=90)
+    lon: Optional[float] = Field(default=None, ge=-180, le=180)
+    land_use: str = Field(default="Standard", max_length=40)
+    screening: Optional[Dict[str, Any]] = None
+    topo: Optional[Dict[str, Any]] = None
+    score: Optional[Dict[str, Any]] = None
+    layout_row: Optional[Dict[str, Any]] = None
+    yield_result: Optional[Dict[str, Any]] = None
+    selected_yield_mwh: Optional[float] = None
+
+
+class WorkflowProjectPackageRequest(WorkflowPvmathReportRequest):
+    boundary: Optional[List[BoundaryPoint]] = None
+    boundaries: Optional[List[List[BoundaryPoint]]] = None
+    config_key: str = Field(..., max_length=16)
+    pitch_m: float = Field(..., gt=0)
+    module_h: float = Field(default=2.094, gt=0)
+    module_w: float = Field(default=1.038, gt=0)
+    module_wp: int = Field(default=550, ge=200, le=1000)
+    setback_m: float = Field(default=5.0, ge=0)
+    azimuth: float = Field(default=180.0, ge=90, le=270)

@@ -11,6 +11,8 @@ import type {
   WorkflowLayoutMatrixResponse,
   WorkflowLayoutSweepRequest,
   WorkflowLayoutSweepResponse,
+  WorkflowPvmathReportRequest,
+  WorkflowProjectPackageRequest,
   WorkflowScoreResponse,
   WorkflowScreenRequest,
   WorkflowScreenResponse,
@@ -110,6 +112,14 @@ export function workflowTerrainMesh(token: string, body: WorkflowTerrainMeshRequ
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+export function workflowPvmathReportPdf(token: string, body: WorkflowPvmathReportRequest) {
+  return downloadBlob("/api/v1/workflow/pvmath-report-pdf", token, body, "application/pdf");
+}
+
+export function workflowProjectPackage(token: string, body: WorkflowProjectPackageRequest) {
+  return downloadBlob("/api/v1/workflow/project-package", token, body, "application/zip");
 }
 
 export function workflowLayoutMatrix(

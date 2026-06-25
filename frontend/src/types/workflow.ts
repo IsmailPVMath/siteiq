@@ -186,3 +186,24 @@ export interface WorkflowTerrainMeshResponse {
   z_max: number;
   slope_mean: number;
 }
+
+export interface WorkflowPvmathReportRequest {
+  project_name: string;
+  country?: string;
+  lat?: number;
+  lon?: number;
+  land_use?: string;
+  screening?: Record<string, unknown>;
+  topo?: Record<string, unknown> | null;
+  score?: Record<string, unknown> | null;
+  layout_row?: LayoutSweepRow | null;
+  yield_result?: Record<string, unknown> | null;
+  selected_yield_mwh?: number | null;
+}
+
+export interface WorkflowProjectPackageRequest extends WorkflowPvmathReportRequest {
+  boundaries?: { lat: number; lon: number }[][];
+  boundary?: { lat: number; lon: number }[];
+  config_key: string;
+  pitch_m: number;
+}

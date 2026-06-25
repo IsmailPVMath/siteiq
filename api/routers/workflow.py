@@ -18,6 +18,8 @@ from api.schemas.workflow import (
     WorkflowLayoutMatrixResponse,
     WorkflowLayoutSweepRequest,
     WorkflowLayoutSweepResponse,
+    WorkflowPvmathReportRequest,
+    WorkflowProjectPackageRequest,
     WorkflowScoreRequest,
     WorkflowScoreResponse,
     WorkflowScreenRequest,
@@ -29,6 +31,7 @@ from pvmath_supabase import AuthUser, increment_usage, is_over_limit
 from pvmath_workflow.layout_detail import build_layout_detail, export_layout_dxf
 from pvmath_workflow.layout_matrix import run_fixed_tilt_layout_matrix
 from pvmath_workflow.layout_sweep import run_layout_sweep
+from pvmath_workflow.project_report import build_pvmath_report_pdf, build_project_package_zip
 from pvmath_workflow.scoring import unified_pvmath_score
 from pvmath_workflow.screen import WorkflowScreenRequest as ScreenReq, run_workflow_screen
 from pvmath_workflow.terrain_mesh import build_terrain_mesh
@@ -364,3 +367,98 @@ async def workflow_terrain_mesh(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Terrain mesh failed: {exc}") from exc
     return WorkflowTerrainMeshResponse(**data)
+
+
+@router.post("/workflow/pvmath-report-pdf")
+async def workflow_pvmath_report_pdf(
+    body: WorkflowPvmathReportRequest,
+    _user: AuthUser = Depends(get_current_user),
+):
+    """Unified A4 PDF: SiteIQ screening → TopoIQ → LayoutIQ → YieldIQ → overall score."""
+    loop = asyncio.get_running_loop()
+    try:
+        pdf_bytes = await asyncio.wait_for(
+            loop.run_in_executor(
+                None,
+                partial(
+                    build_pvmath_report_pdf,
+                    project_name=body.project_name,
+                    country=body.country,
+                    lat=body.lat,
+                    lon=body.lon,
+                    land_use=body.land_use,
+                    screening=body.screening,
+                    topo=body.topo,
+                    score=body.score,
+                    layout_row=body.layout_row,
+                    yield_result=body.yield_result,
+                    selected_yield_mwh=body.selected_yield_mwh,
+                ),
+            ),
+            timeout=LAYOUT_TIMEOUT_SEC,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="PVMath report timed out.")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"PVMath report failed: {exc}") from exc
+
+    safe = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in body.project_name)[:60]
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{safe or "PVMath"}_Report.pdf"'},
+    )
+
+
+@router.post("/workflow/project-package")
+async def workflow_project_package(
+    body: WorkflowProjectPackageRequest,
+    _user: AuthUser = Depends(get_current_user),
+):
+    """ZIP deliverables: PVMath report PDF, A3 layout+BOM PDF, BOM CSV, layout DXF."""
+    polys = _latlon_polys(body.boundary, body.boundaries)
+    if not polys:
+        raise HTTPException(status_code=400, detail="A site boundary is required for the project package.")
+    loop = asyncio.get_running_loop()
+    try:
+        zip_bytes = await asyncio.wait_for(
+            loop.run_in_executor(
+                None,
+                partial(
+                    build_project_package_zip,
+                    project_name=body.project_name,
+                    country=body.country,
+                    lat=body.lat,
+                    lon=body.lon,
+                    land_use=body.land_use,
+                    boundaries=polys,
+                    config_key=body.config_key,
+                    pitch_m=body.pitch_m,
+                    module_h=body.module_h,
+                    module_w=body.module_w,
+                    module_wp=body.module_wp,
+                    setback_m=body.setback_m,
+                    azimuth=body.azimuth,
+                    screening=body.screening,
+                    topo=body.topo,
+                    score=body.score,
+                    layout_row=body.layout_row,
+                    yield_result=body.yield_result,
+                    selected_yield_mwh=body.selected_yield_mwh,
+                ),
+            ),
+            timeout=LAYOUT_TIMEOUT_SEC * 2,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Project package timed out.")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Project package failed: {exc}") from exc
+
+    safe = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in body.project_name)[:60]
+    return StreamingResponse(
+        io.BytesIO(zip_bytes),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{safe or "PVMath"}_Project_Package.zip"'},
+    )
