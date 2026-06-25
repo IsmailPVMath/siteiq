@@ -1,10 +1,14 @@
 # PVMath / SiteIQ — Project Memory
 
+> **Current state (business + priorities):** read **`PVMath/STATUS.md`** first — updated each milestone.  
+> **Founder ops (VAT, Stripe, accounting):** **`PVMath/README.md`**
+
 ## Owner
 - **Name:** Mohammed Ismail Pasha
 - **Role:** Solar Engineer / Product Owner at Ideematec GmbH, Regensburg, Germany
 - **Email:** ismailpasha747@gmail.com
 - **Company being built:** PVMath (solo founder, side project alongside Ideematec job)
+- **Legal entity (Jun 2026):** Registering **Einzelunternehmen** (Mohammed Ismail Pasha, trading as PVMath) — Steuerberater approved personal account; **UG deferred**
 - **Domains owned:** pvmath.com, pvmath.de, pvmath.eu
 
 ---
@@ -14,7 +18,7 @@
 **Tagline:** "From site to system."  
 **Focus:** Ground-mount solar ONLY — Fixed Tilt and Single-Axis Tracker, Standard and Agri-PV (dual use). No rooftop, carport, floating, or BIPV.  
 **Target users:** Solar EPCs, project developers, engineering firms worldwide  
-**Monetization:** Freemium — Free (5 analyses/month **per module**), Professional **€149/month** (75 pooled analyses/month across SiteIQ + TopoIQ + YieldIQ), Developer **€499/month** (300 pooled/month, team pool), Enterprise custom. Stripe not wired yet — manual billing via `contact@pvmath.com` (see `docs/PVMath_Manual_Billing_Runbook.md`).
+**Monetization:** Freemium — Free (5 analyses/month **per module**), Professional **€149/month** (75 pooled/month), Developer **€499/month** (300 pooled/month, 5 team seats), Enterprise custom. **Stripe not live** — manual Supabase activation (`docs/PVMath_Manual_Billing_Runbook.md`); website Subscribe → contact until Payment Links. **Team invites:** Manage membership → Team (`pvmath_team.py`).
 
 ---
 
@@ -87,6 +91,10 @@ These `siteiq`/`topoiq` CNAMEs are true reverse-proxy records (Railway terminate
 | Dependencies | `~/Desktop/solarscout/requirements.txt` |
 | Website | `~/Desktop/solarscout/index.html` (deploy to GitHub Pages root) |
 | Billing runbook | `~/Desktop/solarscout/docs/PVMath_Manual_Billing_Runbook.md` |
+| **Status snapshot** | `~/Desktop/solarscout/PVMath/STATUS.md` |
+| Founder Handbook | `~/Desktop/solarscout/PVMath/README.md` |
+| Team invites | `~/Desktop/solarscout/pvmath_team.py` |
+| Einzelunternehmen launch plan | `~/Desktop/solarscout/docs/PVMath_Einzelunternehmen_Launch_Plan.docx` |
 | Project context (short) | `~/Desktop/solarscout/PVMath_Project_Context.md` |
 
 ### requirements.txt
@@ -148,8 +156,11 @@ reverse_geocode(lat, lon)  # status bar + saved as location_label on Save Projec
 - Multi-word given/family names allowed (`normalize_name_part()`)
 - JS in `render_auth_page()` skips password visibility button in tab order
 
-### Usage limits (`pvmath_auth.py`)
+### Usage limits & membership (`pvmath_auth.py`, `pvmath_team.py`)
 - Free: 5 per module · Professional: 75 pooled/month · Developer: 300 pooled/month (team)
+- Sidebar: **Settings** (name) · **Manage membership** (plan, team, upgrade)
+- Developer seats: 5 total including owner — `team_occupied_seats()`, `_usage_key()` pools usage
+- Stripe: `STRIPE_LINK` placeholder; webhook auto-activation **not built yet**
 
 ### Map search (SiteIQ legacy)
 ```python

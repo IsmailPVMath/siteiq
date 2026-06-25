@@ -1,5 +1,15 @@
 # PVMath documentation
 
+## Founder Handbook (`PVMath/`)
+
+Internal ops manual — formation, finance, legal mirrors, accounting, tax notes.
+
+```bash
+python3 scripts/generate_founder_handbook.py   # sync invoice template, verify folders
+```
+
+Drop official **Gewerbeanmeldung.pdf** and **Tax Registration.pdf** into `PVMath/Company Formation/` locally (gitignored).
+
 ## Manuals
 
 | File | Audience | Safe to share? |
