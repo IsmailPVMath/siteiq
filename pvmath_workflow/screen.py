@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from pvmath_capacity import format_mwp_range, format_mwh_range, screening_capacity
 from pvmath_gate.screening import assess_regulatory, assess_solar, get_flood_risk
+from pvmath_workflow.grid import nearest_substation
 from pvmath_workflow.scoring import tier_score
 from pvmath_yield import get_solar_data
 
@@ -51,6 +52,7 @@ class WorkflowScreenResponse:
     coordinates: Dict[str, float]
     solar: Dict[str, Any] = field(default_factory=dict)
     flood: Dict[str, Any] = field(default_factory=dict)
+    grid: Dict[str, Any] = field(default_factory=dict)
     regulatory: Dict[str, Any] = field(default_factory=dict)
     capacity: Dict[str, Any] = field(default_factory=dict)
     score_components: Dict[str, int] = field(default_factory=dict)
@@ -75,6 +77,7 @@ def run_workflow_screen(req: WorkflowScreenRequest) -> WorkflowScreenResponse:
 
     center_elev = _pin_elevation_m(req.lat, req.lon)
     flood = get_flood_risk(req.lat, req.lon, center_elev)
+    grid = nearest_substation(req.lat, req.lon)
     regulatory = assess_regulatory(req.lat, req.lon, req.land_use, req.country)
 
     yield_kwh = solar.get("annual_yield") if solar.get("success") else None
@@ -101,6 +104,7 @@ def run_workflow_screen(req: WorkflowScreenRequest) -> WorkflowScreenResponse:
             "detail": solar_detail,
         },
         flood=flood,
+        grid=grid,
         regulatory=regulatory,
         capacity={
             "mwp_range": format_mwp_range(cap.get("mwp_lo"), cap.get("mwp_hi")),

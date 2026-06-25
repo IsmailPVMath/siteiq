@@ -61,6 +61,8 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
   const cap = result.capacity as Record<string, unknown>;
   const mwp = cap?.mwp_range as string | undefined;
   const mwh = cap?.mwh_range as string | undefined;
+  const grid = result.grid as Record<string, unknown>;
+  const nearest = grid?.nearest as Record<string, unknown> | undefined;
   const boundary = input?.boundary;
   const hasBoundary = Boolean(boundary && boundary.length >= 3);
 
@@ -236,12 +238,25 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
             String(result.flood.detail ?? ""),
           )}
           {metric(
+            "Grid proximity",
+            String(grid.rating ?? "—"),
+            String(grid.detail ?? ""),
+            grid.found && nearest
+              ? `${nearest.name ?? "Substation"} · ${grid.distance_km} km${
+                  nearest.voltage ? ` · ${nearest.voltage}` : ""
+                }`
+              : grid.found === false
+                ? `No OSM substation within ${grid.search_radius_km ?? "?"} km`
+                : undefined,
+          )}
+          {metric(
             "Regulatory",
             String(result.regulatory.status ?? "—"),
             String(result.regulatory.note ?? ""),
           )}
           {metric("Capacity", mwp || "—", mwh ? `${mwh} MWh/yr (screening band)` : undefined)}
         </div>
+        {grid.disclaimer ? <p className="module-note">{String(grid.disclaimer)}</p> : null}
       </section>
 
       {result.errors.length > 0 ? (

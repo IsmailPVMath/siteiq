@@ -25,7 +25,7 @@ from pvmath_workflow.screen import WorkflowScreenRequest as ScreenReq, run_workf
 router = APIRouter(tags=["workflow"])
 
 SCREEN_APP = "siteiq"
-SCREEN_TIMEOUT_SEC = int(os.environ.get("PVMATH_GATE_TIMEOUT", "120"))
+SCREEN_TIMEOUT_SEC = int(os.environ.get("PVMATH_GATE_TIMEOUT", "150"))
 LAYOUT_TIMEOUT_SEC = int(os.environ.get("PVMATH_LAYOUT_TIMEOUT", "120"))
 
 
@@ -81,6 +81,7 @@ async def workflow_screen(
         coordinates=result.coordinates,
         solar=result.solar,
         flood=result.flood,
+        grid=result.grid,
         regulatory=result.regulatory,
         capacity=result.capacity,
         score_components=result.score_components,

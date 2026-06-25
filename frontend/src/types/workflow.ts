@@ -9,6 +9,7 @@ export const WORKFLOW_STEPS: { id: WorkflowStep; label: string }[] = [
 /** Unified workflow — screening excludes terrain (TopoIQ only). */
 export const PROCESSING_STAGES = [
   "Solar resource (PVGIS)",
+  "Grid proximity (OSM)",
   "Flood screening",
   "Regulatory guidance",
   "Capacity estimate",
@@ -30,6 +31,7 @@ export interface WorkflowScreenResponse {
   coordinates: { lat: number; lon: number };
   solar: Record<string, unknown>;
   flood: Record<string, unknown>;
+  grid: Record<string, unknown>;
   regulatory: Record<string, unknown>;
   capacity: Record<string, unknown>;
   score_components: Record<string, number>;

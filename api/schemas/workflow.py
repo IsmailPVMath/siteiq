@@ -25,6 +25,7 @@ class WorkflowScreenResponse(BaseModel):
     coordinates: Dict[str, float]
     solar: Dict[str, Any]
     flood: Dict[str, Any]
+    grid: Dict[str, Any]
     regulatory: Dict[str, Any]
     capacity: Dict[str, Any]
     score_components: Dict[str, int]

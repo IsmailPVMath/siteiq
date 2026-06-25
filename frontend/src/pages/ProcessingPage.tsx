@@ -22,8 +22,8 @@ export function ProcessingPage({ projectName }: Props) {
         <h1>Running site screening</h1>
         <p className="processing-project">{projectName}</p>
         <p className="hint">
-          Fetching PVGIS solar data, flood heuristic, and regulatory pointers. Terrain
-          slope is assessed separately in TopoIQ on your boundary.
+          Fetching PVGIS solar data, nearest substation (OpenStreetMap), flood heuristic,
+          and regulatory pointers. Terrain slope is assessed separately in TopoIQ.
         </p>
 
         <ol className="processing-list">
