@@ -15,7 +15,9 @@ async function apiFetch<T>(
     headers: {
       Accept: "application/json",
       Authorization: `Bearer ${token}`,
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
+      ...(init?.body && !(init.body instanceof FormData)
+        ? { "Content-Type": "application/json" }
+        : {}),
       ...init?.headers,
     },
   });
@@ -50,4 +52,56 @@ export function runGateAnalysis(token: string, body: GateAnalyzeRequest) {
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+export interface GeocodeResult {
+  lat: number;
+  lon: number;
+  label: string;
+}
+
+export function searchLocation(token: string, q: string) {
+  const params = new URLSearchParams({ q });
+  return apiFetch<{ results: GeocodeResult[] }>(
+    `/api/v1/geocode/search?${params}`,
+    token,
+  );
+}
+
+export interface BoundaryParseResult {
+  name: string;
+  area_ha: number;
+  lat: number;
+  lon: number;
+  boundary: { lat: number; lon: number }[];
+  point_count: number;
+}
+
+export function parseBoundaryFile(token: string, file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  return apiFetch<BoundaryParseResult>("/api/v1/boundary/parse", token, {
+    method: "POST",
+    body: form,
+  });
+}
+
+export async function downloadScreeningPdf(
+  token: string,
+  result: GateAnalyzeResponse,
+): Promise<Blob> {
+  const res = await fetch(`${API_URL}/api/v1/reports/screening-pdf`, {
+    method: "POST",
+    headers: {
+      Accept: "application/pdf",
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(result),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `HTTP ${res.status}`);
+  }
+  return res.blob();
 }

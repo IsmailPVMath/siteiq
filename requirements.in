@@ -19,3 +19,4 @@ matplotlib
 altair
 fastapi
 uvicorn[standard]
+python-multipart

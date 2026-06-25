@@ -20,8 +20,8 @@ export function Header({ email, profile, onLogout }: Props) {
   return (
     <header className="topbar">
       <div className="brand">
-        <strong>PVMath Gate</strong>
-        <span>React POC · api.pvmath.com</span>
+        <strong>PVMath</strong>
+        <span>From site to system</span>
       </div>
       <div className="user-chip">
         <div>{email}</div>

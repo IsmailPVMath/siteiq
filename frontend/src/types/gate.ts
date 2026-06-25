@@ -1,5 +1,10 @@
 export type LandUse = "Standard" | "Agri-PV";
 
+export interface BoundaryPoint {
+  lat: number;
+  lon: number;
+}
+
 export interface GateAnalyzeRequest {
   project_name: string;
   lat: number;
@@ -8,6 +13,7 @@ export interface GateAnalyzeRequest {
   land_use: LandUse;
   mount_type: string;
   country: string;
+  boundary?: BoundaryPoint[];
   run_layout: boolean;
 }
 

@@ -27,8 +27,8 @@ export function LoginPanel({ onSignedIn }: Props) {
 
   return (
     <div className="card" style={{ maxWidth: 420, margin: "3rem auto" }}>
-      <h2>Sign in to PVMath Gate</h2>
-      <p className="hint">Use the same account as SiteIQ.</p>
+      <h2>Sign in to PVMath</h2>
+      <p className="hint">From site to system. Use your SiteIQ account.</p>
       {error ? <div className="error-banner">{error}</div> : null}
       <form onSubmit={handleSubmit}>
         <div className="field">

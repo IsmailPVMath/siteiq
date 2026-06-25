@@ -12,6 +12,11 @@ __pycache__/
 .venv-test/
 .DS_Store
 
+# React POC
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
 # Marketing drafts (local working copies — regenerate with scripts/pvmath_content_bot.py)
 marketing/drafts/*.md
 !marketing/drafts/.gitkeep
@@ -22,3 +27,6 @@ marketing/linkedin_drafts/*.md
 docs/PVMath_Engineering_Reference_Manual.docx
 docs/PVMath_Engineering_Reference_Manual_INTERNAL.docx
 scripts/manual_terms_data.py
+
+# Founder Handbook — official registration PDFs (personal tax IDs)
+PVMath/Company Formation/*.pdf

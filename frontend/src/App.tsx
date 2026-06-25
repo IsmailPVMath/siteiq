@@ -1,24 +1,27 @@
 import { useCallback, useEffect, useState } from "react";
-import { AnalysisForm } from "./components/AnalysisForm";
 import { Header } from "./components/Header";
 import { LoginPanel } from "./components/LoginPanel";
-import { ResultsPanel } from "./components/ResultsPanel";
+import { Stepper } from "./components/Stepper";
+import { InputPage } from "./pages/InputPage";
+import { OutputPage } from "./pages/OutputPage";
+import { ProcessingPage } from "./pages/ProcessingPage";
 import { fetchMe, runGateAnalysis } from "./lib/api";
 import { loadSession, signOut, type AuthSession } from "./lib/auth";
 import type { GateAnalyzeRequest, GateAnalyzeResponse, MeResponse } from "./types/gate";
+import type { WorkflowStep } from "./types/workflow";
 
 export default function App() {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [profile, setProfile] = useState<MeResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [analyzing, setAnalyzing] = useState(false);
+  const [booting, setBooting] = useState(true);
+  const [step, setStep] = useState<WorkflowStep>("input");
+  const [lastInput, setLastInput] = useState<GateAnalyzeRequest | null>(null);
   const [error, setError] = useState("");
   const [result, setResult] = useState<GateAnalyzeResponse | null>(null);
 
   const loadProfile = useCallback(async (accessToken: string) => {
     try {
-      const me = await fetchMe(accessToken);
-      setProfile(me);
+      setProfile(await fetchMe(accessToken));
     } catch {
       setProfile(null);
     }
@@ -27,10 +30,8 @@ export default function App() {
   useEffect(() => {
     const saved = loadSession();
     setSession(saved);
-    setLoading(false);
-    if (saved?.access_token) {
-      void loadProfile(saved.access_token);
-    }
+    setBooting(false);
+    if (saved?.access_token) void loadProfile(saved.access_token);
   }, [loadProfile]);
 
   function handleSignedIn(next: AuthSession) {
@@ -43,27 +44,37 @@ export default function App() {
     setSession(null);
     setProfile(null);
     setResult(null);
+    setLastInput(null);
+    setStep("input");
     setError("");
   }
 
-  async function handleAnalyze(body: GateAnalyzeRequest) {
+  function resetWorkflow() {
+    setResult(null);
+    setLastInput(null);
+    setError("");
+    setStep("input");
+  }
+
+  async function handleStartScreening(body: GateAnalyzeRequest) {
     const token = session?.access_token;
     if (!token) return;
-    setAnalyzing(true);
+    setLastInput(body);
     setError("");
     setResult(null);
+    setStep("processing");
     try {
       const data = await runGateAnalysis(token, body);
       setResult(data);
       await loadProfile(token);
+      setStep("output");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Analysis failed");
-    } finally {
-      setAnalyzing(false);
+      setError(err instanceof Error ? err.message : "Screening failed");
+      setStep("input");
     }
   }
 
-  if (loading) {
+  if (booting) {
     return (
       <div className="app-shell">
         <p className="hint">Loading…</p>
@@ -80,17 +91,33 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className="app-shell app-shell-wide">
       <Header
         email={session.email || profile?.email || ""}
         profile={profile}
         onLogout={handleLogout}
       />
+      <Stepper current={step} />
       {error ? <div className="error-banner">{error}</div> : null}
-      <div className="grid-2">
-        <AnalysisForm loading={analyzing} onSubmit={handleAnalyze} />
-        <ResultsPanel result={result} />
-      </div>
+
+      {step === "input" ? (
+        <InputPage
+          token={session.access_token}
+          initial={lastInput ?? undefined}
+          onSubmit={handleStartScreening}
+        />
+      ) : null}
+      {step === "processing" && lastInput ? (
+        <ProcessingPage projectName={lastInput.project_name} />
+      ) : null}
+      {step === "output" && result ? (
+        <OutputPage
+          token={session.access_token}
+          result={result}
+          onEditInput={() => setStep("input")}
+          onNewScreening={resetWorkflow}
+        />
+      ) : null}
     </div>
   );
 }
