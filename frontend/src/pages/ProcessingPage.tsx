@@ -22,8 +22,8 @@ export function ProcessingPage({ projectName }: Props) {
         <h1>Running site screening</h1>
         <p className="processing-project">{projectName}</p>
         <p className="hint">
-          Fetching PVGIS solar data, terrain slope, flood heuristic, and regulatory
-          pointers. This usually takes 30–90 seconds.
+          Fetching PVGIS solar data, flood heuristic, and regulatory pointers. Terrain
+          slope is assessed separately in TopoIQ on your boundary.
         </p>
 
         <ol className="processing-list">

@@ -5,6 +5,12 @@ import type {
   YieldIQAnalyzeRequest,
   YieldIQAnalyzeResponse,
 } from "../types/topoiq";
+import type {
+  WorkflowLayoutMatrixResponse,
+  WorkflowScoreResponse,
+  WorkflowScreenRequest,
+  WorkflowScreenResponse,
+} from "../types/workflow";
 import type * as GeoJSON from "geojson";
 
 const API_URL = (import.meta.env.VITE_API_URL || "https://api.pvmath.com").replace(
@@ -52,6 +58,40 @@ async function apiFetch<T>(
 
 export function fetchMe(token: string) {
   return apiFetch<MeResponse>("/api/v1/me", token);
+}
+
+export function runWorkflowScreen(token: string, body: WorkflowScreenRequest) {
+  return apiFetch<WorkflowScreenResponse>("/api/v1/workflow/screen", token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function workflowScore(
+  token: string,
+  body: { score_components: Record<string, number>; terrain_score: number },
+) {
+  return apiFetch<WorkflowScoreResponse>("/api/v1/workflow/score", token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function workflowLayoutMatrix(
+  token: string,
+  body: {
+    boundary: { lat: number; lon: number }[];
+    module_h?: number;
+    module_w?: number;
+    module_wp?: number;
+    pitch_m?: number;
+    setback_m?: number;
+  },
+) {
+  return apiFetch<WorkflowLayoutMatrixResponse>("/api/v1/workflow/layout-matrix", token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }
 
 export function runGateAnalysis(token: string, body: GateAnalyzeRequest) {

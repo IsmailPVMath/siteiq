@@ -5,10 +5,10 @@ import { Stepper } from "./components/Stepper";
 import { InputPage } from "./pages/InputPage";
 import { OutputPage } from "./pages/OutputPage";
 import { ProcessingPage } from "./pages/ProcessingPage";
-import { fetchMe, runGateAnalysis } from "./lib/api";
+import { fetchMe, runWorkflowScreen } from "./lib/api";
 import { loadSession, signOut, type AuthSession } from "./lib/auth";
-import type { GateAnalyzeRequest, GateAnalyzeResponse, MeResponse } from "./types/gate";
-import type { WorkflowStep } from "./types/workflow";
+import type { GateAnalyzeRequest, MeResponse } from "./types/gate";
+import type { WorkflowScreenResponse, WorkflowStep } from "./types/workflow";
 
 export default function App() {
   const [session, setSession] = useState<AuthSession | null>(null);
@@ -17,7 +17,7 @@ export default function App() {
   const [step, setStep] = useState<WorkflowStep>("input");
   const [lastInput, setLastInput] = useState<GateAnalyzeRequest | null>(null);
   const [error, setError] = useState("");
-  const [result, setResult] = useState<GateAnalyzeResponse | null>(null);
+  const [result, setResult] = useState<WorkflowScreenResponse | null>(null);
 
   const loadProfile = useCallback(async (accessToken: string) => {
     try {
@@ -64,7 +64,15 @@ export default function App() {
     setResult(null);
     setStep("processing");
     try {
-      const data = await runGateAnalysis(token, body);
+      const data = await runWorkflowScreen(token, {
+        project_name: body.project_name,
+        lat: body.lat,
+        lon: body.lon,
+        area_ha: body.area_ha,
+        land_use: body.land_use,
+        mount_type: body.mount_type,
+        country: body.country,
+      });
       setResult(data);
       await loadProfile(token);
       setStep("output");

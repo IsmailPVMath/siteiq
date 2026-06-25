@@ -424,6 +424,67 @@ a {
   border-left: 4px solid #1565c0;
 }
 
+.score-pill-pending {
+  background: #e8ece8;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.module-screen {
+  border-left: 4px solid var(--accent);
+}
+
+.module-layout {
+  border-left: 4px solid #7c3aed;
+}
+
+.layout-matrix {
+  margin-top: 0.85rem;
+}
+
+.layout-fail td {
+  color: #9a3412;
+}
+
+.bom-panel {
+  margin-top: 0.85rem;
+  padding: 0.85rem 1rem;
+  background: #f8faf8;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.bom-panel h3 {
+  margin: 0 0 0.6rem;
+  font-size: 0.95rem;
+}
+
+.bom-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.35rem 1rem;
+  margin: 0;
+}
+
+.bom-list div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.bom-list dt {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.bom-list dd {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
 .module-yieldiq {
   border-left: 4px solid var(--accent);
 }

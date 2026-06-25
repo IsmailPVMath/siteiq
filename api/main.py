@@ -19,6 +19,7 @@ from api.routers import (
     projects,
     reports,
     topoiq,
+    workflow,
     yieldiq,
 )
 
@@ -107,6 +108,7 @@ def create_app() -> FastAPI:
     app.include_router(gate.router, prefix="/api/v1")
     app.include_router(topoiq.router, prefix="/api/v1")
     app.include_router(yieldiq.router, prefix="/api/v1")
+    app.include_router(workflow.router, prefix="/api/v1")
     return app
 
 

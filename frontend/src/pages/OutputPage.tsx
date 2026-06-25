@@ -1,17 +1,23 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   analyzeTopo,
   analyzeYield,
-  downloadScreeningPdf,
   topoExportsZip,
   topoReportPdf,
+  workflowLayoutMatrix,
+  workflowScore,
 } from "../lib/api";
-import type { GateAnalyzeRequest, GateAnalyzeResponse } from "../types/gate";
+import type { GateAnalyzeRequest } from "../types/gate";
 import type { TopoIQAnalyzeRequest, TopoIQAnalyzeResponse, YieldIQAnalyzeResponse } from "../types/topoiq";
+import type {
+  LayoutMatrixConfig,
+  WorkflowScoreResponse,
+  WorkflowScreenResponse,
+} from "../types/workflow";
 
 interface Props {
   token: string;
-  result: GateAnalyzeResponse;
+  result: WorkflowScreenResponse;
   input?: GateAnalyzeRequest;
   onNewScreening: () => void;
   onEditInput: () => void;
@@ -38,8 +44,6 @@ function saveBlob(blob: Blob, filename: string) {
 }
 
 export function OutputPage({ token, result, input, onNewScreening, onEditInput }: Props) {
-  const [pdfBusy, setPdfBusy] = useState(false);
-  const [pdfError, setPdfError] = useState("");
   const [topoBusy, setTopoBusy] = useState(false);
   const [topoError, setTopoError] = useState("");
   const [topoResult, setTopoResult] = useState<TopoIQAnalyzeResponse | null>(null);
@@ -48,11 +52,15 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
   const [yieldBusy, setYieldBusy] = useState(false);
   const [yieldError, setYieldError] = useState("");
   const [yieldResult, setYieldResult] = useState<YieldIQAnalyzeResponse | null>(null);
+  const [finalScore, setFinalScore] = useState<WorkflowScoreResponse | null>(null);
+  const [layoutBusy, setLayoutBusy] = useState(false);
+  const [layoutError, setLayoutError] = useState("");
+  const [layoutConfigs, setLayoutConfigs] = useState<LayoutMatrixConfig[] | null>(null);
+  const [expandedLayout, setExpandedLayout] = useState<string | null>(null);
 
   const cap = result.capacity as Record<string, unknown>;
   const mwp = cap?.mwp_range as string | undefined;
   const mwh = cap?.mwh_range as string | undefined;
-  const layout = result.layout as Record<string, unknown> | null | undefined;
   const boundary = input?.boundary;
   const hasBoundary = Boolean(boundary && boundary.length >= 3);
 
@@ -83,17 +91,17 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
     [input?.mount_type, result.coordinates.lat, result.coordinates.lon],
   );
 
-  async function handlePdf() {
-    setPdfBusy(true);
-    setPdfError("");
+  async function refreshFinalScore(topo: TopoIQAnalyzeResponse) {
+    const terrainScore = topo.terrain_drivers.terrain_score as number | undefined;
+    if (terrainScore == null) return;
     try {
-      const blob = await downloadScreeningPdf(token, result);
-      const safe = (result.project_name || "screening").replace(/\s+/g, "_");
-      saveBlob(blob, `PVMath_${safe}.pdf`);
-    } catch (err) {
-      setPdfError(err instanceof Error ? err.message : "PDF download failed");
-    } finally {
-      setPdfBusy(false);
+      const scored = await workflowScore(token, {
+        score_components: result.score_components,
+        terrain_score: terrainScore,
+      });
+      setFinalScore(scored);
+    } catch {
+      setFinalScore(null);
     }
   }
 
@@ -102,13 +110,22 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
     setTopoBusy(true);
     setTopoError("");
     try {
-      setTopoResult(await analyzeTopo(token, topoPayload));
+      const topo = await analyzeTopo(token, topoPayload);
+      setTopoResult(topo);
+      await refreshFinalScore(topo);
     } catch (err) {
       setTopoError(err instanceof Error ? err.message : "TopoIQ analysis failed");
     } finally {
       setTopoBusy(false);
     }
   }
+
+  useEffect(() => {
+    if (topoPayload && !topoResult && !topoBusy) {
+      void handleRunTopo();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topoPayload]);
 
   async function handleTopoPdf() {
     if (!topoPayload) return;
@@ -119,7 +136,7 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
       const safe = (topoPayload.project_name || "topoiq").replace(/\s+/g, "_");
       saveBlob(blob, `${safe}_terrain_report.pdf`);
     } catch (err) {
-      setTopoError(err instanceof Error ? err.message : "TopoIQ PDF download failed");
+      setTopoError(err instanceof Error ? err.message : "Terrain PDF failed");
     } finally {
       setTopoPdfBusy(false);
     }
@@ -134,7 +151,7 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
       const safe = (topoPayload.project_name || "topoiq").replace(/\s+/g, "_");
       saveBlob(blob, `${safe}_topoiq_exports.zip`);
     } catch (err) {
-      setTopoError(err instanceof Error ? err.message : "TopoIQ CAD ZIP download failed");
+      setTopoError(err instanceof Error ? err.message : "CAD ZIP failed");
     } finally {
       setTopoZipBusy(false);
     }
@@ -152,21 +169,47 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
     }
   }
 
+  async function handleLayoutMatrix() {
+    if (!boundary || boundary.length < 3) return;
+    setLayoutBusy(true);
+    setLayoutError("");
+    try {
+      const res = await workflowLayoutMatrix(token, { boundary });
+      setLayoutConfigs(res.configs);
+      const firstOk = res.configs.find((c) => c.success);
+      if (firstOk) setExpandedLayout(firstOk.config_key);
+    } catch (err) {
+      setLayoutError(err instanceof Error ? err.message : "Layout matrix failed");
+    } finally {
+      setLayoutBusy(false);
+    }
+  }
+
+  const scorePill = finalScore?.pvmath_score;
+  const verdictLabel = finalScore?.verdict ?? (hasBoundary ? "PENDING TOPOIQ" : "SCREENING ONLY");
+  const verdictDetail =
+    finalScore?.verdict_detail ??
+    (hasBoundary
+      ? "Run TopoIQ on your boundary to compute the PVMath score (terrain from grid, not pin sample)."
+      : result.terrain_note);
+
   return (
     <div className="workflow-page">
       <div className="page-intro">
-        <h1>Screening results</h1>
+        <h1>Project results</h1>
         <p>{result.project_name}</p>
       </div>
 
       <div className="verdict-hero">
         <div className="verdict-score">
-          {result.pvmath_score != null ? (
-            <span className="score-pill">{result.pvmath_score}</span>
-          ) : null}
+          {scorePill != null ? (
+            <span className="score-pill">{scorePill}</span>
+          ) : (
+            <span className="score-pill score-pill-pending">—</span>
+          )}
           <div>
-            <strong>{result.verdict}</strong>
-            <p>{result.verdict_detail}</p>
+            <strong>{verdictLabel}</strong>
+            <p>{verdictDetail}</p>
           </div>
         </div>
         <div className="coord-pill">
@@ -174,72 +217,63 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
         </div>
       </div>
 
-      <div className="metrics">
-        {metric(
-          "Solar",
-          String(result.solar.rating ?? "—"),
-          String(result.solar.detail ?? ""),
-          result.solar.annual_ghi
-            ? `${result.solar.annual_ghi} kWh/m²/yr`
-            : undefined,
-        )}
-        {metric(
-          "Terrain",
-          String(result.terrain.rating ?? "—"),
-          String(result.terrain.detail ?? ""),
-          `${result.terrain.boundary_sampled ? "Boundary sample" : "Pin sample"}${
-            result.terrain.terrain_source_used
-              ? ` · ${String(result.terrain.terrain_source_used)}`
-              : ""
-          }`,
-        )}
-        {metric(
-          "Flood",
-          String(result.flood.risk ?? "—"),
-          String(result.flood.detail ?? ""),
-        )}
-        {metric(
-          "Regulatory",
-          String(result.regulatory.status ?? "—"),
-          String(result.regulatory.note ?? ""),
-        )}
-        {metric("Capacity", mwp || "—", mwh ? `${mwh} MWh/yr (screening)` : undefined)}
-        {layout
-          ? metric(
-              "Layout",
-              `${layout.total_modules ?? "—"} modules`,
-              layout.dc_kwp ? `${layout.dc_kwp} MWp DC (indicative)` : undefined,
-            )
-          : null}
-      </div>
+      <section className="module-card module-screen">
+        <div className="module-head">
+          <h2>Site screening</h2>
+          <span className="module-tag">Step 1</span>
+        </div>
+        <p className="hint">{result.terrain_note}</p>
+        <div className="metrics">
+          {metric(
+            "Solar",
+            String(result.solar.rating ?? "—"),
+            String(result.solar.detail ?? ""),
+            result.solar.annual_ghi ? `${result.solar.annual_ghi} kWh/m²/yr` : undefined,
+          )}
+          {metric(
+            "Flood",
+            String(result.flood.risk ?? "—"),
+            String(result.flood.detail ?? ""),
+          )}
+          {metric(
+            "Regulatory",
+            String(result.regulatory.status ?? "—"),
+            String(result.regulatory.note ?? ""),
+          )}
+          {metric("Capacity", mwp || "—", mwh ? `${mwh} MWh/yr (screening band)` : undefined)}
+        </div>
+      </section>
 
       {result.errors.length > 0 ? (
         <div className="error-banner" style={{ marginTop: "1rem" }}>
           {result.errors.join(" · ")}
         </div>
       ) : null}
-      {pdfError ? <div className="error-banner">{pdfError}</div> : null}
 
       <section className="module-card module-topoiq">
         <div className="module-head">
-          <h2>TopoIQ terrain analysis</h2>
-          <span className="module-tag">Module 02</span>
+          <h2>TopoIQ terrain</h2>
+          <span className="module-tag">Step 2 · authoritative terrain</span>
         </div>
         {!hasBoundary ? (
           <p className="hint">
-            TopoIQ requires a site boundary polygon. Go to Project input and draw the site boundary on
-            the map (or upload KML/KMZ), then rerun screening.
+            Draw or upload a site boundary on Project input. Terrain slope and the PVMath
+            terrain score come only from TopoIQ — not from site screening.
           </p>
         ) : (
           <>
-            <button
-              className="btn btn-primary"
-              type="button"
-              onClick={() => void handleRunTopo()}
-              disabled={topoBusy}
-            >
-              {topoBusy ? "Running TopoIQ…" : "Run TopoIQ"}
-            </button>
+            {topoBusy && !topoResult ? (
+              <p className="hint">Running TopoIQ on your boundary grid…</p>
+            ) : (
+              <button
+                className="btn btn-primary"
+                type="button"
+                onClick={() => void handleRunTopo()}
+                disabled={topoBusy}
+              >
+                {topoBusy ? "Running TopoIQ…" : "Re-run TopoIQ"}
+              </button>
+            )}
             {topoResult ? (
               <>
                 <div className="metrics module-metrics">
@@ -250,20 +284,18 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
                   {metric(">10% Area", `${topoResult.slope.pct_over10.toFixed(1)}%`)}
                   {metric(
                     "Terrain Score",
-                    String((topoResult.terrain_drivers.terrain_score as number | undefined) ?? "—"),
-                    String(
-                      (topoResult.terrain_drivers.terrain_score_label as string | undefined) ?? "",
-                    ),
+                    String(topoResult.terrain_drivers.terrain_score ?? "—"),
+                    String(topoResult.terrain_drivers.terrain_score_label ?? ""),
                   )}
                 </div>
                 <div className="module-note">
-                  <strong>Fixed Tilt:</strong> {topoResult.verdict_fixed.label} -{" "}
+                  <strong>Fixed Tilt:</strong> {topoResult.verdict_fixed.label} —{" "}
                   {topoResult.verdict_fixed.detail}
                   <br />
-                  <strong>Single-Axis Tracker:</strong> {topoResult.verdict_tracker.label} -{" "}
+                  <strong>Single-Axis Tracker:</strong> {topoResult.verdict_tracker.label} —{" "}
                   {topoResult.verdict_tracker.detail}
                   <br />
-                  <strong>Terrain source:</strong> {topoResult.terrain_source_used}
+                  <strong>Source:</strong> {topoResult.terrain_source_used}
                 </div>
               </>
             ) : null}
@@ -272,17 +304,17 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
                 className="btn btn-ghost"
                 type="button"
                 onClick={() => void handleTopoPdf()}
-                disabled={topoPdfBusy || !hasBoundary}
+                disabled={topoPdfBusy || !topoResult}
               >
-                {topoPdfBusy ? "Generating Terrain PDF…" : "Download Terrain PDF"}
+                {topoPdfBusy ? "Generating…" : "Terrain PDF"}
               </button>
               <button
                 className="btn btn-ghost"
                 type="button"
                 onClick={() => void handleTopoZip()}
-                disabled={topoZipBusy || !hasBoundary}
+                disabled={topoZipBusy || !topoResult}
               >
-                {topoZipBusy ? "Preparing CAD ZIP…" : "Download CAD ZIP"}
+                {topoZipBusy ? "Preparing…" : "CAD ZIP"}
               </button>
             </div>
           </>
@@ -292,13 +324,9 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
 
       <section className="module-card module-yieldiq">
         <div className="module-head">
-          <h2>YieldIQ energy yield analysis</h2>
-          <span className="module-tag">Module 03</span>
+          <h2>YieldIQ yield matrix</h2>
+          <span className="module-tag">Step 3</span>
         </div>
-        <p className="hint">
-          Uses site pin coordinates with PVGIS 4-configuration comparison (1P/2P Fixed Tilt and
-          Single-Axis Tracker).
-        </p>
         <button
           className="btn btn-primary"
           type="button"
@@ -335,31 +363,120 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
         {yieldError ? <div className="error-banner">{yieldError}</div> : null}
       </section>
 
+      <section className="module-card module-layout">
+        <div className="module-head">
+          <h2>LayoutIQ — Fixed Tilt 1P–4P</h2>
+          <span className="module-tag">Step 4</span>
+        </div>
+        {!hasBoundary ? (
+          <p className="hint">Draw a site boundary to run the layout + BOM matrix.</p>
+        ) : (
+          <>
+            <p className="hint">
+              Row-sweep layout on your boundary — four Fixed Tilt portrait options (1P–4P)
+              with preliminary BOM. Uses actual polygon area, not the gross area field alone.
+            </p>
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={() => void handleLayoutMatrix()}
+              disabled={layoutBusy}
+            >
+              {layoutBusy ? "Computing layouts…" : "Run layout matrix"}
+            </button>
+            {layoutConfigs ? (
+              <div className="layout-matrix">
+                <table className="yield-table">
+                  <thead>
+                    <tr>
+                      <th>Config</th>
+                      <th>Modules</th>
+                      <th>DC (MWp)</th>
+                      <th>MW/ha</th>
+                      <th>Pitch</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {layoutConfigs.map((cfg) => (
+                      <tr key={cfg.config_key} className={cfg.success ? "" : "layout-fail"}>
+                        <td>{cfg.label}</td>
+                        <td>
+                          {cfg.success && cfg.layout
+                            ? cfg.layout.total_modules.toLocaleString()
+                            : "—"}
+                        </td>
+                        <td>
+                          {cfg.success && cfg.layout ? cfg.layout.dc_kwp.toLocaleString() : "—"}
+                        </td>
+                        <td>
+                          {cfg.success && cfg.layout?.mw_per_ha != null
+                            ? cfg.layout.mw_per_ha.toFixed(2)
+                            : "—"}
+                        </td>
+                        <td>{cfg.pitch_m != null ? `${cfg.pitch_m} m` : "—"}</td>
+                        <td>
+                          {cfg.success ? (
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              onClick={() =>
+                                setExpandedLayout(
+                                  expandedLayout === cfg.config_key ? null : cfg.config_key,
+                                )
+                              }
+                            >
+                              BOM
+                            </button>
+                          ) : (
+                            <span className="sub">{cfg.error}</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {expandedLayout && layoutConfigs.find((c) => c.config_key === expandedLayout)?.bom ? (
+                  <div className="bom-panel">
+                    <h3>
+                      {layoutConfigs.find((c) => c.config_key === expandedLayout)?.label} — BOM
+                    </h3>
+                    <dl className="bom-list">
+                      {Object.entries(
+                        layoutConfigs.find((c) => c.config_key === expandedLayout)!.bom!,
+                      ).map(([k, v]) => (
+                        <div key={k}>
+                          <dt>{k}</dt>
+                          <dd>{v}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </>
+        )}
+        {layoutError ? <div className="error-banner">{layoutError}</div> : null}
+      </section>
+
       <div className="output-actions">
         <button className="btn btn-ghost" type="button" onClick={onEditInput}>
           ← Edit input
         </button>
-        <button
-          className="btn btn-ghost"
-          type="button"
-          onClick={() => void handlePdf()}
-          disabled={pdfBusy}
-        >
-          {pdfBusy ? "Generating PDF…" : "Download PDF"}
-        </button>
         <button className="btn btn-primary" type="button" onClick={onNewScreening}>
-          New screening
+          New project
         </button>
       </div>
 
       <details className="raw-json">
-        <summary>Technical JSON (for engineers)</summary>
-        <pre>{JSON.stringify(result, null, 2)}</pre>
+        <summary>Technical JSON</summary>
+        <pre>{JSON.stringify({ screening: result, topo: topoResult, score: finalScore, layout: layoutConfigs }, null, 2)}</pre>
       </details>
 
       <p className="disclaimer footer-note">
-        Screening-grade only — not bankable. Data: PVGIS (JRC), routed public DEM source,
-        OpenStreetMap.
+        Screening-grade only — not bankable. Terrain from TopoIQ grid only. Data: PVGIS (JRC),
+        routed public DEM, OpenStreetMap.
       </p>
     </div>
   );

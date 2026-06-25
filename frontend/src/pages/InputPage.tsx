@@ -42,7 +42,6 @@ export function InputPage({ token, initial, onSubmit }: Props) {
   const [country, setCountry] = useState(initial?.country ?? DEFAULTS.country);
   const [landUse, setLandUse] = useState<LandUse>(initial?.land_use ?? DEFAULTS.land_use);
   const [mountType, setMountType] = useState(initial?.mount_type ?? DEFAULTS.mount_type);
-  const [runLayout, setRunLayout] = useState(initial?.run_layout ?? false);
   const [siteBoundary, setSiteBoundary] = useState<BoundaryPoint[] | undefined>(
     initial?.boundary,
   );
@@ -98,7 +97,7 @@ export function InputPage({ token, initial, onSubmit }: Props) {
       country: country.trim(),
       workflow: {
         area_ha: Number(areaHa),
-        run_layout: runLayout,
+        run_layout: false,
         buildable_area_ha: buildableAreaHa,
       },
     };
@@ -117,7 +116,6 @@ export function InputPage({ token, initial, onSubmit }: Props) {
     if (payload.workflow?.area_ha) {
       setAreaHa(Number(payload.workflow.area_ha));
     }
-    setRunLayout(Boolean(payload.workflow?.run_layout));
     const site = payload.site_boundary_geojson;
     if (site?.type === "Polygon" && Array.isArray(site.coordinates?.[0])) {
       setSiteBoundary(
@@ -313,7 +311,7 @@ export function InputPage({ token, initial, onSubmit }: Props) {
       mount_type: mountType,
       country: country.trim(),
       boundary: siteBoundary && siteBoundary.length >= 3 ? siteBoundary : undefined,
-      run_layout: runLayout,
+      run_layout: false,
     });
   }
 
@@ -322,8 +320,8 @@ export function InputPage({ token, initial, onSubmit }: Props) {
       <div className="page-intro">
         <h1>Project input</h1>
         <p>
-          Search, click the map, paste coordinates, or upload KML — then run unified site
-          screening (SiteIQ engines via API).
+          Search, click the map, paste coordinates, or upload KML — then run the unified
+          workflow (screening → TopoIQ terrain → YieldIQ → layout matrix).
         </p>
       </div>
 
@@ -513,7 +511,7 @@ export function InputPage({ token, initial, onSubmit }: Props) {
           </div>
           <div className="grid-2">
             <div className="field">
-              <label htmlFor="mount">Mounting system</label>
+              <label htmlFor="mount">Mounting system (yield reference)</label>
               <select
                 id="mount"
                 value={mountType}
@@ -522,16 +520,6 @@ export function InputPage({ token, initial, onSubmit }: Props) {
                 <option value="Fixed Tilt">Fixed Tilt</option>
                 <option value="Single-Axis Tracker">Single-Axis Tracker</option>
               </select>
-            </div>
-            <div className="field checkbox-field">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={runLayout}
-                  onChange={(e) => setRunLayout(e.target.checked)}
-                />
-                Include layout + BOM (slower; needs boundary polygon)
-              </label>
             </div>
           </div>
         </section>
