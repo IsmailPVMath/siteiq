@@ -68,3 +68,24 @@ class WorkflowLayoutMatrixRequest(BaseModel):
 
 class WorkflowLayoutMatrixResponse(BaseModel):
     configs: List[Dict[str, Any]]
+
+
+class WorkflowLayoutSweepRequest(BaseModel):
+    boundary: List[BoundaryPoint] = Field(..., min_length=3)
+    module_h: float = Field(default=2.094, gt=0)
+    module_w: float = Field(default=1.038, gt=0)
+    module_wp: int = Field(default=550, ge=200, le=1000)
+    setback_m: float = Field(default=5.0, ge=0)
+    azimuth: float = Field(default=180.0, ge=90, le=270)
+    pitch_steps_m: Optional[List[float]] = Field(
+        default=None,
+        description="Optional pitch list (m). Defaults to standard sweep from min pitch upward.",
+    )
+    include_bom: bool = False
+
+
+class WorkflowLayoutSweepResponse(BaseModel):
+    rows: List[Dict[str, Any]]
+    best_by_config: Dict[str, Any]
+    config_count: int
+    row_count: int

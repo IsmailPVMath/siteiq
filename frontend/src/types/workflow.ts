@@ -66,3 +66,27 @@ export interface LayoutMatrixConfig {
 export interface WorkflowLayoutMatrixResponse {
   configs: LayoutMatrixConfig[];
 }
+
+export interface WorkflowLayoutSweepResponse {
+  rows: LayoutSweepRow[];
+  best_by_config: Record<string, LayoutSweepRow>;
+  config_count: number;
+  row_count: number;
+}
+
+export interface LayoutSweepRow {
+  config_key: string;
+  label: string;
+  mount_type: string;
+  n_portrait: number;
+  pitch_m: number;
+  gcr: number;
+  success: boolean;
+  error?: string;
+  total_modules?: number;
+  total_rows?: number;
+  area_ha?: number;
+  dc_kwp?: number;
+  mw_per_ha?: number | null;
+  bom?: Record<string, string>;
+}

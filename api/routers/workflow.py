@@ -12,6 +12,8 @@ from api.deps import get_current_user
 from api.schemas.workflow import (
     WorkflowLayoutMatrixRequest,
     WorkflowLayoutMatrixResponse,
+    WorkflowLayoutSweepRequest,
+    WorkflowLayoutSweepResponse,
     WorkflowScoreRequest,
     WorkflowScoreResponse,
     WorkflowScreenRequest,
@@ -19,6 +21,7 @@ from api.schemas.workflow import (
 )
 from pvmath_supabase import AuthUser, increment_usage, is_over_limit
 from pvmath_workflow.layout_matrix import run_fixed_tilt_layout_matrix
+from pvmath_workflow.layout_sweep import run_layout_sweep
 from pvmath_workflow.scoring import unified_pvmath_score
 from pvmath_workflow.screen import WorkflowScreenRequest as ScreenReq, run_workflow_screen
 
@@ -153,3 +156,49 @@ async def workflow_layout_matrix(
         raise HTTPException(status_code=500, detail=f"Layout matrix failed: {exc}") from exc
 
     return WorkflowLayoutMatrixResponse(configs=configs)
+
+
+@router.post("/workflow/layout-sweep", response_model=WorkflowLayoutSweepResponse)
+async def workflow_layout_sweep(
+    body: WorkflowLayoutSweepRequest,
+    user: AuthUser = Depends(get_current_user),
+):
+    """
+    LayoutIQ sweep — Fixed Tilt 1P–4P and Tracker 1P–2P across increasing pitch/GCR.
+
+    Returns a comparison table (capacity vs pitch) plus best DC per configuration.
+    """
+    boundary = [[p.lat, p.lon] for p in body.boundary]
+    loop = asyncio.get_running_loop()
+    try:
+        data = await asyncio.wait_for(
+            loop.run_in_executor(
+                None,
+                partial(
+                    run_layout_sweep,
+                    boundary,
+                    module_h=body.module_h,
+                    module_w=body.module_w,
+                    module_wp=body.module_wp,
+                    setback_m=body.setback_m,
+                    azimuth=body.azimuth,
+                    pitch_steps_m=body.pitch_steps_m,
+                    include_bom=body.include_bom,
+                ),
+            ),
+            timeout=LAYOUT_TIMEOUT_SEC,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=f"Layout sweep timed out after {LAYOUT_TIMEOUT_SEC}s.",
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Layout sweep failed: {exc}") from exc
+
+    return WorkflowLayoutSweepResponse(
+        rows=data.get("rows") or [],
+        best_by_config=data.get("best_by_config") or {},
+        config_count=int(data.get("config_count") or 0),
+        row_count=int(data.get("row_count") or 0),
+    )

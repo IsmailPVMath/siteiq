@@ -434,6 +434,19 @@ a {
   border-left: 4px solid var(--accent);
 }
 
+.layout-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.75rem 0;
+}
+
+.layout-filter-row .btn.active {
+  background: #ede9fe;
+  border-color: #7c3aed;
+  color: #5b21b6;
+}
+
 .module-layout {
   border-left: 4px solid #7c3aed;
 }

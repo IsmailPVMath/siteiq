@@ -7,6 +7,7 @@ import type {
 } from "../types/topoiq";
 import type {
   WorkflowLayoutMatrixResponse,
+  WorkflowLayoutSweepResponse,
   WorkflowScoreResponse,
   WorkflowScreenRequest,
   WorkflowScreenResponse,
@@ -75,6 +76,27 @@ export function workflowScore(
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+export function workflowLayoutSweep(
+  token: string,
+  body: {
+    boundary: { lat: number; lon: number }[];
+    module_h?: number;
+    module_w?: number;
+    module_wp?: number;
+    setback_m?: number;
+    include_bom?: boolean;
+  },
+) {
+  return apiFetch<WorkflowLayoutSweepResponse>(
+    "/api/v1/workflow/layout-sweep",
+    token,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
 }
 
 export function workflowLayoutMatrix(

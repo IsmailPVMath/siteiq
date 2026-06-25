@@ -4,13 +4,14 @@ import {
   analyzeYield,
   topoExportsZip,
   topoReportPdf,
-  workflowLayoutMatrix,
+  workflowLayoutSweep,
   workflowScore,
 } from "../lib/api";
 import type { GateAnalyzeRequest } from "../types/gate";
 import type { TopoIQAnalyzeRequest, TopoIQAnalyzeResponse, YieldIQAnalyzeResponse } from "../types/topoiq";
 import type {
-  LayoutMatrixConfig,
+  LayoutSweepRow,
+  WorkflowLayoutSweepResponse,
   WorkflowScoreResponse,
   WorkflowScreenResponse,
 } from "../types/workflow";
@@ -55,8 +56,8 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
   const [finalScore, setFinalScore] = useState<WorkflowScoreResponse | null>(null);
   const [layoutBusy, setLayoutBusy] = useState(false);
   const [layoutError, setLayoutError] = useState("");
-  const [layoutConfigs, setLayoutConfigs] = useState<LayoutMatrixConfig[] | null>(null);
-  const [expandedLayout, setExpandedLayout] = useState<string | null>(null);
+  const [layoutSweep, setLayoutSweep] = useState<WorkflowLayoutSweepResponse | null>(null);
+  const [layoutFilter, setLayoutFilter] = useState<string>("all");
 
   const cap = result.capacity as Record<string, unknown>;
   const mwp = cap?.mwp_range as string | undefined;
@@ -171,21 +172,31 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
     }
   }
 
-  async function handleLayoutMatrix() {
+  async function handleLayoutSweep() {
     if (!boundary || boundary.length < 3) return;
     setLayoutBusy(true);
     setLayoutError("");
     try {
-      const res = await workflowLayoutMatrix(token, { boundary });
-      setLayoutConfigs(res.configs);
-      const firstOk = res.configs.find((c) => c.success);
-      if (firstOk) setExpandedLayout(firstOk.config_key);
+      const res = await workflowLayoutSweep(token, { boundary, include_bom: false });
+      setLayoutSweep(res);
+      setLayoutFilter("all");
     } catch (err) {
-      setLayoutError(err instanceof Error ? err.message : "Layout matrix failed");
+      setLayoutError(err instanceof Error ? err.message : "Layout sweep failed");
     } finally {
       setLayoutBusy(false);
     }
   }
+
+  const layoutRows: LayoutSweepRow[] = useMemo(() => {
+    if (!layoutSweep?.rows) return [];
+    if (layoutFilter === "all") return layoutSweep.rows.filter((r) => r.success);
+    return layoutSweep.rows.filter((r) => r.success && r.config_key === layoutFilter);
+  }, [layoutFilter, layoutSweep]);
+
+  const layoutConfigKeys = useMemo(() => {
+    if (!layoutSweep?.best_by_config) return [];
+    return Object.keys(layoutSweep.best_by_config).sort();
+  }, [layoutSweep]);
 
   const scorePill = finalScore?.pvmath_score;
   const verdictLabel = finalScore?.verdict ?? (hasBoundary ? "PENDING TOPOIQ" : "SCREENING ONLY");
@@ -380,94 +391,85 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
 
       <section className="module-card module-layout">
         <div className="module-head">
-          <h2>LayoutIQ — Fixed Tilt 1P–4P</h2>
+          <h2>LayoutIQ — capacity vs pitch</h2>
           <span className="module-tag">Step 4</span>
         </div>
         {!hasBoundary ? (
-          <p className="hint">Draw a site boundary to run the layout + BOM matrix.</p>
+          <p className="hint">Draw a site boundary to run the layout sweep.</p>
         ) : (
           <>
             <p className="hint">
-              Row-sweep layout on your boundary — four Fixed Tilt portrait options (1P–4P)
-              with preliminary BOM. Uses actual polygon area, not the gross area field alone.
+              Sweeps Fixed Tilt 1P–4P and Single-Axis Tracker 1P–2P across increasing row pitch
+              (GCR decreases as pitch increases). Pick a configuration before YieldIQ.
             </p>
+            {!topoResult ? (
+              <p className="module-note">TopoIQ should finish first — layout uses your boundary polygon.</p>
+            ) : null}
             <button
               className="btn btn-primary"
               type="button"
-              onClick={() => void handleLayoutMatrix()}
+              onClick={() => void handleLayoutSweep()}
               disabled={layoutBusy}
             >
-              {layoutBusy ? "Computing layouts…" : "Run layout matrix"}
+              {layoutBusy ? "Running layout sweep…" : "Run layout sweep"}
             </button>
-            {layoutConfigs ? (
+            {layoutSweep && layoutConfigKeys.length > 0 ? (
               <div className="layout-matrix">
+                <div className="layout-filter-row">
+                  <button
+                    type="button"
+                    className={`btn btn-ghost btn-sm${layoutFilter === "all" ? " active" : ""}`}
+                    onClick={() => setLayoutFilter("all")}
+                  >
+                    All
+                  </button>
+                  {layoutConfigKeys.map((key) => (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`btn btn-ghost btn-sm${layoutFilter === key ? " active" : ""}`}
+                      onClick={() => setLayoutFilter(key)}
+                    >
+                      {layoutSweep.best_by_config[key]?.label ?? key}
+                    </button>
+                  ))}
+                </div>
+                {layoutFilter !== "all" && layoutSweep.best_by_config[layoutFilter] ? (
+                  <p className="module-note">
+                    Best for this config:{" "}
+                    <strong>{layoutSweep.best_by_config[layoutFilter].dc_kwp} MWp</strong> at pitch{" "}
+                    {layoutSweep.best_by_config[layoutFilter].pitch_m} m (GCR{" "}
+                    {layoutSweep.best_by_config[layoutFilter].gcr})
+                  </p>
+                ) : null}
                 <table className="yield-table">
                   <thead>
                     <tr>
-                      <th>Config</th>
+                      <th>Configuration</th>
+                      <th>Pitch (m)</th>
+                      <th>GCR</th>
                       <th>Modules</th>
                       <th>DC (MWp)</th>
                       <th>MW/ha</th>
-                      <th>Pitch</th>
-                      <th></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {layoutConfigs.map((cfg) => (
-                      <tr key={cfg.config_key} className={cfg.success ? "" : "layout-fail"}>
-                        <td>{cfg.label}</td>
-                        <td>
-                          {cfg.success && cfg.layout
-                            ? cfg.layout.total_modules.toLocaleString()
-                            : "—"}
-                        </td>
-                        <td>
-                          {cfg.success && cfg.layout ? cfg.layout.dc_kwp.toLocaleString() : "—"}
-                        </td>
-                        <td>
-                          {cfg.success && cfg.layout?.mw_per_ha != null
-                            ? cfg.layout.mw_per_ha.toFixed(2)
-                            : "—"}
-                        </td>
-                        <td>{cfg.pitch_m != null ? `${cfg.pitch_m} m` : "—"}</td>
-                        <td>
-                          {cfg.success ? (
-                            <button
-                              type="button"
-                              className="btn btn-ghost btn-sm"
-                              onClick={() =>
-                                setExpandedLayout(
-                                  expandedLayout === cfg.config_key ? null : cfg.config_key,
-                                )
-                              }
-                            >
-                              BOM
-                            </button>
-                          ) : (
-                            <span className="sub">{cfg.error}</span>
-                          )}
-                        </td>
+                    {layoutRows.map((row) => (
+                      <tr key={`${row.config_key}-${row.pitch_m}`}>
+                        <td>{row.label}</td>
+                        <td>{row.pitch_m}</td>
+                        <td>{row.gcr.toFixed(2)}</td>
+                        <td>{row.total_modules?.toLocaleString() ?? "—"}</td>
+                        <td>{row.dc_kwp?.toLocaleString() ?? "—"}</td>
+                        <td>{row.mw_per_ha != null ? row.mw_per_ha.toFixed(2) : "—"}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-                {expandedLayout && layoutConfigs.find((c) => c.config_key === expandedLayout)?.bom ? (
-                  <div className="bom-panel">
-                    <h3>
-                      {layoutConfigs.find((c) => c.config_key === expandedLayout)?.label} — BOM
-                    </h3>
-                    <dl className="bom-list">
-                      {Object.entries(
-                        layoutConfigs.find((c) => c.config_key === expandedLayout)!.bom!,
-                      ).map(([k, v]) => (
-                        <div key={k}>
-                          <dt>{k}</dt>
-                          <dd>{v}</dd>
-                        </div>
-                      ))}
-                    </dl>
-                  </div>
-                ) : null}
+                <p className="module-note">
+                  {layoutSweep.row_count} pitch steps across {layoutSweep.config_count} mount/portrait
+                  combinations. Interactive map + layout DXF — next phase.
+                </p>
               </div>
             ) : null}
           </>
@@ -486,7 +488,7 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
 
       <details className="raw-json">
         <summary>Technical JSON</summary>
-        <pre>{JSON.stringify({ screening: result, topo: topoResult, score: finalScore, layout: layoutConfigs }, null, 2)}</pre>
+        <pre>{JSON.stringify({ screening: result, topo: topoResult, score: finalScore, layoutSweep }, null, 2)}</pre>
       </details>
 
       <p className="disclaimer footer-note">
