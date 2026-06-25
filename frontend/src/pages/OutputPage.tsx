@@ -560,8 +560,8 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
                 />
                 Bifacial (wider spacing bias)
               </label>
-              <details className="sidebar-advanced">
-                <summary>Module &amp; access roads</summary>
+              <details className="sidebar-advanced" open>
+                <summary>Module, strings, trackers &amp; roads</summary>
                 <div className="grid-2 layout-custom-row">
                   <div className="field">
                     <label htmlFor="out-module-wp">Module Wp</label>

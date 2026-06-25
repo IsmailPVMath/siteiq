@@ -863,7 +863,7 @@ export function InputPage({ token, initial, onSubmit }: Props) {
           </div>
         </section>
 
-        <details className="form-section layout-advanced">
+        <details className="form-section layout-advanced" open>
           <summary>
             <h2>Module &amp; electrical (LayoutIQ)</h2>
           </summary>
