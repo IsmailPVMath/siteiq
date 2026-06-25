@@ -114,6 +114,7 @@ export default function App() {
         <OutputPage
           token={session.access_token}
           result={result}
+          input={lastInput ?? undefined}
           onEditInput={() => setStep("input")}
           onNewScreening={resetWorkflow}
         />

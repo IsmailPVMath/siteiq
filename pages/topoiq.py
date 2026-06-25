@@ -3,17 +3,10 @@ from __future__ import annotations
 import streamlit as st
 import streamlit.components.v1 as components
 import numpy as np
-import requests
-import math
-import os
 import io
-import concurrent.futures
-import json
-from PIL import Image
 import folium
 from folium.plugins import Draw
 from streamlit_folium import st_folium
-from datetime import datetime
 from pvmath_auth import (
     show_paywall,
     increment_usage, is_over_limit, remaining, FREE_LIMIT,
@@ -40,22 +33,6 @@ try:
 except ImportError:
     HAS_EZDXF = False
 
-try:
-    from shapely.geometry import shape, Polygon as ShapelyPolygon
-    from shapely.ops import unary_union
-    HAS_SHAPELY = True
-except ImportError:
-    HAS_SHAPELY = False
-
-# Largest site boundary TopoIQ will process — larger polygons exhaust tile
-# downloads and grid memory on Railway's single Streamlit worker.
-MAX_SITE_AREA_HA = 10_000
-MAX_DEM_TILES = 80           # pick lower zoom if bbox needs more tiles
-MAX_GRID_POINTS_LAYOUT = 1_500_000  # keep requested spacing (e.g. 5 m) for layout sites
-MAX_GRID_POINTS_FAST = 300_000      # legacy coarsen budget when auto-coarsen enabled
-DEM_ZOOM_MIN = 11
-DEM_ZOOM_MAX = 14
-TILE_FETCH_WORKERS = 8
 from pvmath_kml import BOUNDARY_COLORS, filter_boundary_list
 from pvmath_terrain_report import (
     build_report_context,
@@ -97,40 +74,17 @@ from pvmath_capacity import (
     GCR_SCREEN_HI,
 )
 from pvmath_terrain_sources import route_payload, select_terrain_route
-
-def boundaries_union_area_ha(polygon_list):
-    """Total area (ha) — union when shapely available, else sum of parts."""
-    polys = [p for p in polygon_list if p and len(p) >= 3]
-    if not polys:
-        return 0.0
-    if len(polys) == 1:
-        return boundary_area_ha(polys[0])
-    if HAS_SHAPELY:
-        try:
-            shapes = []
-            for coords in polys:
-                lats = [c[1] for c in coords]
-                mean_lat = sum(lats) / len(lats)
-                lat_m = 111320.0
-                lon_m = 111320.0 * math.cos(math.radians(mean_lat))
-                pts = [(c[0] * lon_m, c[1] * lat_m) for c in coords]
-                shapes.append(ShapelyPolygon(pts))
-            u = unary_union(shapes)
-            return round(u.area / 10_000, 2)
-        except Exception:
-            pass
-    return round(sum(boundary_area_ha(p) for p in polys), 2)
-
-
-def _polygons_mask(X, Y, polygon_list):
-    if not polygon_list:
-        return np.ones(X.shape, dtype=bool)
-    mask = np.zeros(X.shape, dtype=bool)
-    for coords in polygon_list:
-        if coords and len(coords) >= 3:
-            mask |= _polygon_mask(X, Y, coords)
-    return mask
-
+from pvmath_topo_engine import (
+    MAX_SITE_AREA_HA,
+    DEM_ZOOM_MAX,
+    boundaries_union_area_ha,
+    boundary_area_ha,
+    compute_slope,
+    get_dem_for_bbox,
+    pick_dem_zoom,
+    resample_to_grid,
+    tile_count_for_bbox,
+)
 
 def _extract_drawn_polygon(map_data):
     """Read the most recent completed polygon from Folium Draw output."""
@@ -282,23 +236,6 @@ def _render_topo_boundary_map(
         center=(center[0], center[1]),
         zoom=int(zoom),
     )
-
-
-def boundary_area_ha(polygon_coords):
-    """Approximate polygon area (ha). Vertices are (lon, lat) tuples."""
-    if not polygon_coords or len(polygon_coords) < 3:
-        return 0.0
-    lats = [c[1] for c in polygon_coords]
-    mean_lat = sum(lats) / len(lats)
-    lat_m = 111320.0
-    lon_m = 111320.0 * math.cos(math.radians(mean_lat))
-    pts = [(c[0] * lon_m, c[1] * lat_m) for c in polygon_coords]
-    n = len(pts)
-    area_m2 = abs(sum(
-        pts[i][0] * pts[(i + 1) % n][1] - pts[(i + 1) % n][0] * pts[i][1]
-        for i in range(n)
-    )) / 2.0
-    return round(area_m2 / 10_000, 2)
 
 
 def _area_limit_message(area_ha: float) -> str:
@@ -475,216 +412,6 @@ st.markdown("""
   </div>
 </div>
 """, unsafe_allow_html=True)
-
-# ─── Tile utilities ───────────────────────────────────────────────────────────
-
-def deg2tile(lat, lon, zoom):
-    n = 2 ** zoom
-    x = int((lon + 180.0) / 360.0 * n)
-    y = int((1.0 - math.log(math.tan(math.radians(lat)) +
-             1.0 / math.cos(math.radians(lat))) / math.pi) / 2.0 * n)
-    return x, y
-
-def tile2deg(x, y, zoom):
-    n = 2 ** zoom
-    lon = x / n * 360.0 - 180.0
-    lat = math.degrees(math.atan(math.sinh(math.pi * (1 - 2 * y / n))))
-    return lat, lon
-
-TILE_PX = 256  # terrarium tiles are always 256x256
-
-def _tile_url_for_source(terrain_source: str, zoom: int, x: int, y: int) -> str:
-    """Resolve DEM tile URL template by selected terrain source."""
-    source = (terrain_source or "").strip().lower()
-    env_key = {
-        "copernicus_eea10": "PVMATH_EEA10_TILE_URL",
-        "fabdem": "PVMATH_FABDEM_TILE_URL",
-    }.get(source)
-    if env_key:
-        _tpl = (os.environ.get(env_key) or "").strip()
-        if _tpl:
-            return _tpl.format(z=zoom, x=x, y=y)
-    return f"https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{zoom}/{x}/{y}.png"
-
-
-def fetch_terrarium_tile(x, y, zoom, terrain_source="copernicus_glo30"):
-    """Fetch one terrarium DEM tile. Bounds are always returned (computed purely from
-    tile indices) so a failed/corrupt fetch can still be placed correctly in the mosaic —
-    this is what keeps the grid georeferenced even when some tiles 404 or time out."""
-    lat_n, lon_w = tile2deg(x, y, zoom)
-    lat_s, lon_e = tile2deg(x + 1, y + 1, zoom)
-    bounds = {"lat_n": lat_n, "lat_s": lat_s, "lon_w": lon_w, "lon_e": lon_e}
-    url = _tile_url_for_source(terrain_source, zoom, x, y)
-    try:
-        r = requests.get(url, timeout=15)
-        if r.status_code != 200:
-            return None, bounds
-        img = Image.open(io.BytesIO(r.content)).convert("RGB")
-        if img.size != (TILE_PX, TILE_PX):
-            return None, bounds
-        arr = np.array(img, dtype=np.float32)
-        elev = arr[:, :, 0] * 256.0 + arr[:, :, 1] + arr[:, :, 2] / 256.0 - 32768.0
-        # Reject physically implausible values — corrupt/blank tiles decode to the
-        # terrarium zero-point (~-32768m); real land elevation runs roughly
-        # -420m (Dead Sea) to +8849m (Everest). Treat anything outside that as nodata.
-        elev = np.where((elev < -500) | (elev > 9000), np.nan, elev)
-    except Exception:
-        return None, bounds
-    return elev, bounds
-
-
-def tile_count_for_bbox(south, north, west, east, zoom):
-    x_min, y_min = deg2tile(north, west, zoom)
-    x_max, y_max = deg2tile(south, east, zoom)
-    return (x_max - x_min + 1) * (y_max - y_min + 1)
-
-
-def pick_dem_zoom(south, north, west, east, max_tiles=MAX_DEM_TILES):
-    """Choose terrarium zoom — highest detail that stays within tile budget."""
-    for zoom in range(DEM_ZOOM_MAX, DEM_ZOOM_MIN - 1, -1):
-        if tile_count_for_bbox(south, north, west, east, zoom) <= max_tiles:
-            return zoom
-    return DEM_ZOOM_MIN
-
-
-def effective_grid_spacing(p_w, p_e, p_s, p_n, grid_m, lat_c,
-                           allow_coarsen: bool = False):
-    """Keep requested spacing for layout; optional coarsen on very large sites."""
-    max_points = MAX_GRID_POINTS_FAST if allow_coarsen else MAX_GRID_POINTS_LAYOUT
-    m_per_deg_lat = 111320.0
-    m_per_deg_lon = 111320.0 * math.cos(math.radians(lat_c))
-    width_m = max((p_e - p_w) * m_per_deg_lon, grid_m)
-    height_m = max((p_n - p_s) * m_per_deg_lat, grid_m)
-    n_cols = max(1, int(math.ceil(width_m / grid_m)))
-    n_rows = max(1, int(math.ceil(height_m / grid_m)))
-    points = n_rows * n_cols
-    if points <= max_points:
-        return float(grid_m)
-    if not allow_coarsen:
-        return None
-    scale = math.sqrt(points / max_points)
-    return float(math.ceil(grid_m * scale))
-
-
-def get_dem_for_bbox(south, north, west, east, zoom=14, terrain_source="copernicus_glo30"):
-    x_min, y_min = deg2tile(north, west, zoom)
-    x_max, y_max = deg2tile(south, east, zoom)
-    tile_list = [
-        (tx, ty)
-        for ty in range(y_min, y_max + 1)
-        for tx in range(x_min, x_max + 1)
-    ]
-    total = len(tile_list)
-    prog = st.progress(0, text=f"Downloading terrain tiles (zoom {zoom})…")
-    fetched = {}
-    any_success = False
-    done = 0
-
-    def _fetch_one(tx_ty):
-        tx, ty = tx_ty
-        return tx_ty, fetch_terrarium_tile(tx, ty, zoom, terrain_source=terrain_source)
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=TILE_FETCH_WORKERS) as ex:
-        futs = [ex.submit(_fetch_one, t) for t in tile_list]
-        for fut in concurrent.futures.as_completed(futs):
-            (tx, ty), (elev, bounds) = fut.result()
-            fetched[(tx, ty)] = (elev, bounds)
-            if elev is not None:
-                any_success = True
-            done += 1
-            prog.progress(done / total, text=f"Downloading tile {done}/{total}…")
-    prog.empty()
-    if not any_success:
-        return None, None, None, None, None
-
-    tile_rows, bounds_grid = [], []
-    for ty in range(y_min, y_max + 1):
-        row_imgs, row_bounds = [], []
-        for tx in range(x_min, x_max + 1):
-            elev, bounds = fetched[(tx, ty)]
-            if elev is None:
-                elev = np.full((TILE_PX, TILE_PX), np.nan, dtype=np.float32)
-            row_imgs.append(elev)
-            row_bounds.append(bounds)
-        tile_rows.append(row_imgs)
-        bounds_grid.append(row_bounds)
-
-    mosaic = np.concatenate(
-        [np.concatenate(row, axis=1) for row in tile_rows], axis=0
-    )
-    lat_n_all = bounds_grid[0][0]["lat_n"]
-    lat_s_all = bounds_grid[-1][0]["lat_s"]
-    lon_w_all = bounds_grid[0][0]["lon_w"]
-    lon_e_all = bounds_grid[0][-1]["lon_e"]
-    return mosaic, lat_n_all, lat_s_all, lon_w_all, lon_e_all
-
-
-def _polygon_mask(X, Y, polygon_coords):
-    if not polygon_coords or len(polygon_coords) < 3:
-        return np.ones(X.shape, dtype=bool)
-    if HAS_SHAPELY:
-        from shapely.vectorized import contains as shp_contains
-        return shp_contains(ShapelyPolygon(polygon_coords), X, Y)
-    from matplotlib.path import Path
-    pts = np.column_stack([X.ravel(), Y.ravel()])
-    return Path(polygon_coords).contains_points(pts).reshape(X.shape)
-
-
-def resample_to_grid(mosaic, lat_n, lat_s, lon_w, lon_e,
-                     polygon_coords=None, polygon_list=None, grid_m=5.0,
-                     allow_coarsen: bool = False):
-    h, w = mosaic.shape
-    lat_c = (lat_n + lat_s) / 2
-    m_per_deg_lat = 111320.0
-    m_per_deg_lon = 111320.0 * math.cos(math.radians(lat_c))
-
-    polys = polygon_list if polygon_list else (
-        [polygon_coords] if polygon_coords else []
-    )
-
-    if polys:
-        all_lons = [c[0] for p in polys for c in p]
-        all_lats = [c[1] for p in polys for c in p]
-        p_w, p_e = min(all_lons), max(all_lons)
-        p_s, p_n = min(all_lats), max(all_lats)
-    else:
-        p_w, p_e, p_s, p_n = lon_w, lon_e, lat_s, lat_n
-
-    grid_m = effective_grid_spacing(p_w, p_e, p_s, p_n, grid_m, lat_c, allow_coarsen=allow_coarsen)
-    if grid_m is None:
-        raise ValueError("GRID_TOO_LARGE")
-    step_lat = grid_m / m_per_deg_lat
-    step_lon = grid_m / m_per_deg_lon
-
-    grid_lons = np.arange(p_w, p_e, step_lon)
-    grid_lats = np.arange(p_n, p_s, -step_lat)
-    if len(grid_lons) < 2:
-        grid_lons = np.array([p_w, p_e])
-    if len(grid_lats) < 2:
-        grid_lats = np.array([p_n, p_s])
-    X, Y = np.meshgrid(grid_lons, grid_lats)
-
-    col = (X - lon_w) / (lon_e - lon_w) * (w - 1)
-    row = (lat_n - Y) / (lat_n - lat_s) * (h - 1)
-    col = np.clip(col, 0, w - 2).astype(int)
-    row = np.clip(row, 0, h - 2).astype(int)
-    Z = mosaic[row, col].astype(float)
-
-    if polys:
-        Z = np.where(_polygons_mask(X, Y, polys), Z, np.nan)
-
-    return X, Y, Z, grid_m
-
-
-def compute_slope(Z, grid_m):
-    if HAS_SCIPY:
-        Zf = gaussian_filter(Z.astype(float), sigma=1)
-    else:
-        Zf = Z.astype(float)
-    dz_dy, dz_dx = np.gradient(Zf, grid_m)
-    slope_pct = np.sqrt(dz_dx**2 + dz_dy**2) * 100.0
-    return slope_pct
-
 
 # ─── Export functions → pvmath_topo_export.py ────────────────────────────────
 
@@ -956,6 +683,11 @@ with right:
         dem_zoom = pick_dem_zoom(south, north, west, east)
 
         with st.spinner("Fetching satellite terrain data…"):
+            _tile_prog = st.progress(0, text=f"Downloading terrain tiles (zoom {dem_zoom})…")
+
+            def _progress_cb(fraction, message):
+                _tile_prog.progress(float(max(0.0, min(1.0, fraction))), text=f"{message}…")
+
             mosaic, lat_n, lat_s, lon_w, lon_e = get_dem_for_bbox(
                 south,
                 north,
@@ -963,7 +695,9 @@ with right:
                 east,
                 zoom=dem_zoom,
                 terrain_source=terrain_source_used,
+                progress_cb=_progress_cb,
             )
+            _tile_prog.empty()
 
         if mosaic is None:
             st.error("Could not fetch terrain data. Check your internet connection.")

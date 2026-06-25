@@ -412,6 +412,86 @@ a {
   margin-top: 1.5rem;
 }
 
+.module-card {
+  margin-top: 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+.module-topoiq {
+  border-left: 4px solid #1565c0;
+}
+
+.module-yieldiq {
+  border-left: 4px solid var(--accent);
+}
+
+.module-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.module-head h2 {
+  margin: 0;
+  font-size: 1.04rem;
+}
+
+.module-tag {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.module-actions {
+  justify-content: flex-start;
+  margin-top: 0.75rem;
+}
+
+.module-note {
+  margin-top: 0.6rem;
+  font-size: 0.86rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.module-metrics {
+  margin-top: 0.8rem;
+}
+
+.yield-table-wrap {
+  margin-top: 0.85rem;
+}
+
+.yield-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 0.88rem;
+}
+
+.yield-table th,
+.yield-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.5rem 0.55rem;
+  text-align: left;
+}
+
+.yield-table thead th {
+  background: #f0faf3;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
 .raw-json {
   margin-top: 1.5rem;
 }

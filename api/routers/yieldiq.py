@@ -1,0 +1,98 @@
+"""YieldIQ analysis endpoint."""
+
+from __future__ import annotations
+
+import asyncio
+import os
+from functools import partial
+from typing import Any, Dict
+
+from fastapi import APIRouter, Depends, HTTPException
+
+from api.deps import get_current_user
+from api.schemas.yieldiq import YieldIQAnalyzeRequest, YieldIQAnalyzeResponse
+from pvmath_supabase import AuthUser, increment_usage, is_over_limit
+from pvmath_yield import (
+    PROFILE_ANALYSIS,
+    config_display_name,
+    fetch_yield_cross_ref_bundle,
+    profile_description,
+    run_all_configs,
+)
+
+router = APIRouter(tags=["yieldiq"])
+
+YIELD_APP = "yieldiq"
+YIELD_TIMEOUT_SEC = int(os.environ.get("PVMATH_YIELD_TIMEOUT", "120"))
+
+
+def _limit_detail() -> str:
+    return (
+        "Monthly analysis limit reached. Free plan: 5 YieldIQ analyses per month. "
+        "Upgrade at contact@pvmath.com"
+    )
+
+
+def _run_yield(body: YieldIQAnalyzeRequest) -> Dict[str, Any]:
+    results, raddatabase = run_all_configs(
+        body.lat,
+        body.lon,
+        body.gcr_1p,
+        body.gcr_2p,
+        body.soiling_loss,
+        body.other_loss,
+    )
+    cross_ref = fetch_yield_cross_ref_bundle(body.lat, body.lon)
+    configs: Dict[str, Dict[str, Any]] = {}
+    for key, payload in results.items():
+        item = dict(payload)
+        item["display_name"] = config_display_name(key)
+        configs[key] = item
+    return {
+        "raddatabase": raddatabase,
+        "configs": configs,
+        "cross_ref": cross_ref,
+    }
+
+
+@router.post("/yieldiq/analyze", response_model=YieldIQAnalyzeResponse)
+async def analyze_yieldiq(
+    body: YieldIQAnalyzeRequest,
+    user: AuthUser = Depends(get_current_user),
+):
+    if user.access_token and is_over_limit(user.user_id, YIELD_APP, user.access_token):
+        raise HTTPException(status_code=429, detail=_limit_detail())
+
+    loop = asyncio.get_running_loop()
+    try:
+        data = await asyncio.wait_for(
+            loop.run_in_executor(None, partial(_run_yield, body)),
+            timeout=YIELD_TIMEOUT_SEC,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=f"YieldIQ analysis timed out after {YIELD_TIMEOUT_SEC}s.",
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"YieldIQ analysis failed: {exc}",
+        ) from exc
+
+    if user.access_token:
+        increment_usage(user.user_id, YIELD_APP, user.access_token)
+
+    disclosure = (
+        f"{profile_description(PROFILE_ANALYSIS)}. "
+        "Includes four PVGIS configurations: 1P/2P Fixed Tilt and 1P/2P Single-Axis Tracker."
+    )
+    return YieldIQAnalyzeResponse(
+        lat=body.lat,
+        lon=body.lon,
+        mount_type=body.mount_type,
+        raddatabase=data["raddatabase"],
+        configs=data["configs"],
+        cross_ref_bundle=data["cross_ref"],
+        disclosure=disclosure,
+    )

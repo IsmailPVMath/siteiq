@@ -1,4 +1,10 @@
 import type { GateAnalyzeRequest, GateAnalyzeResponse, MeResponse } from "../types/gate";
+import type {
+  TopoIQAnalyzeRequest,
+  TopoIQAnalyzeResponse,
+  YieldIQAnalyzeRequest,
+  YieldIQAnalyzeResponse,
+} from "../types/topoiq";
 import type * as GeoJSON from "geojson";
 
 const API_URL = (import.meta.env.VITE_API_URL || "https://api.pvmath.com").replace(
@@ -50,6 +56,20 @@ export function fetchMe(token: string) {
 
 export function runGateAnalysis(token: string, body: GateAnalyzeRequest) {
   return apiFetch<GateAnalyzeResponse>("/api/v1/gate/analyze", token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function analyzeTopo(token: string, body: TopoIQAnalyzeRequest) {
+  return apiFetch<TopoIQAnalyzeResponse>("/api/v1/topoiq/analyze", token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function analyzeYield(token: string, body: YieldIQAnalyzeRequest) {
+  return apiFetch<YieldIQAnalyzeResponse>("/api/v1/yieldiq/analyze", token, {
     method: "POST",
     body: JSON.stringify(body),
   });
@@ -165,4 +185,29 @@ export async function downloadScreeningPdf(
     throw new Error(text || `HTTP ${res.status}`);
   }
   return res.blob();
+}
+
+async function downloadBlob(path: string, token: string, body: unknown, accept: string): Promise<Blob> {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    headers: {
+      Accept: accept,
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `HTTP ${res.status}`);
+  }
+  return res.blob();
+}
+
+export function topoReportPdf(token: string, body: TopoIQAnalyzeRequest) {
+  return downloadBlob("/api/v1/topoiq/report-pdf", token, body, "application/pdf");
+}
+
+export function topoExportsZip(token: string, body: TopoIQAnalyzeRequest) {
+  return downloadBlob("/api/v1/topoiq/exports", token, body, "application/zip");
 }
