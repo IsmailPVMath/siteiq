@@ -461,6 +461,43 @@ a {
   border-bottom: 1px solid #c4b5fd;
 }
 
+.layout-strategy-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem 1rem;
+  margin: 0.75rem 0;
+  align-items: end;
+}
+
+.layout-strategy-controls .layout-bifacial {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.layout-custom-row {
+  margin-bottom: 0.75rem;
+}
+
+.layout-strategy-note {
+  margin-top: 0.75rem;
+}
+
+.layout-row-recommended td {
+  background: #f0faf3;
+}
+
+.layout-rec-badge {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  background: #1d9e52;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
 .layout-fail td {
   color: #9a3412;
 }

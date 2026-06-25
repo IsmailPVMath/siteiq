@@ -6,15 +6,26 @@ from typing import Any, Dict, List, Optional
 
 from layoutiq.bom import compute_bom
 from layoutiq.engine import run_layout
+from pvmath_workflow.gcr_strategy import config_key_for, pitch_from_gcr, recommended_gcr
 
 FT_PORTRAITS = (1, 2, 3, 4)
 
 
-def _default_pitch_m(module_h: float, n_portrait: int, pitch_m: Optional[float]) -> float:
+def _default_pitch_m(
+    module_h: float,
+    module_w: float,
+    n_portrait: int,
+    pitch_m: Optional[float],
+    *,
+    lat: Optional[float] = None,
+    country: str = "",
+) -> float:
     if pitch_m and pitch_m > 0:
         return float(pitch_m)
     row_ns = module_h * n_portrait
-    return max(5.0, round(row_ns * 1.65, 1))
+    key = config_key_for(n_portrait, tracker=False)
+    gcr = recommended_gcr(key, mode="balanced", country=country, lat=lat)
+    return pitch_from_gcr(row_ns, gcr)
 
 
 def run_fixed_tilt_layout_matrix(
@@ -40,7 +51,7 @@ def run_fixed_tilt_layout_matrix(
 
     results: List[Dict[str, Any]] = []
     for n in FT_PORTRAITS:
-        pitch = _default_pitch_m(module_h, n, pitch_m)
+        pitch = _default_pitch_m(module_h, module_w, n, pitch_m)
         row_ns = module_h * n
         if pitch <= row_ns:
             pitch = round(row_ns + 0.5, 1)

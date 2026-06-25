@@ -221,6 +221,13 @@ async def workflow_layout_sweep(
                     setback_m=body.setback_m,
                     azimuth=body.azimuth,
                     pitch_steps_m=body.pitch_steps_m,
+                    optimization_mode=body.optimization_mode,
+                    land_cost=body.land_cost,
+                    country=body.country,
+                    lat=body.lat,
+                    bifacial=body.bifacial,
+                    custom_gcr=body.custom_gcr,
+                    custom_pitch_m=body.custom_pitch_m,
                     include_bom=body.include_bom,
                 ),
             ),
@@ -237,6 +244,9 @@ async def workflow_layout_sweep(
     return WorkflowLayoutSweepResponse(
         rows=data.get("rows") or [],
         best_by_config=data.get("best_by_config") or {},
+        recommended_by_config=data.get("recommended_by_config") or {},
+        gcr_guidance=data.get("gcr_guidance") or {},
+        strategy=data.get("strategy") or {},
         config_count=int(data.get("config_count") or 0),
         row_count=int(data.get("row_count") or 0),
     )

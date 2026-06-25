@@ -83,14 +83,30 @@ class WorkflowLayoutSweepRequest(BaseModel):
     azimuth: float = Field(default=180.0, ge=90, le=270)
     pitch_steps_m: Optional[List[float]] = Field(
         default=None,
-        description="Optional pitch list (m). Defaults to standard sweep from min pitch upward.",
+        description="Optional extra pitch values (m) added to the mode-specific sweep.",
     )
+    optimization_mode: Literal["high_energy", "balanced", "land_optimized", "custom"] = Field(
+        default="balanced",
+        description="GCR strategy: high energy (wider), balanced defaults, land optimized (tighter), or custom.",
+    )
+    land_cost: Literal["auto", "cheap", "balanced", "expensive"] = Field(
+        default="auto",
+        description="Land-cost class; auto infers from country / latitude.",
+    )
+    country: str = Field(default="", max_length=120)
+    lat: Optional[float] = Field(default=None, ge=-90, le=90)
+    bifacial: bool = False
+    custom_gcr: Optional[float] = Field(default=None, gt=0, le=0.85)
+    custom_pitch_m: Optional[float] = Field(default=None, gt=0, le=30)
     include_bom: bool = False
 
 
 class WorkflowLayoutSweepResponse(BaseModel):
     rows: List[Dict[str, Any]]
     best_by_config: Dict[str, Any]
+    recommended_by_config: Dict[str, Any] = Field(default_factory=dict)
+    gcr_guidance: Dict[str, Any] = Field(default_factory=dict)
+    strategy: Dict[str, Any] = Field(default_factory=dict)
     config_count: int
     row_count: int
 

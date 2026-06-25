@@ -15,6 +15,8 @@ import { Terrain3DView } from "../components/Terrain3DView";
 import type { GateAnalyzeRequest } from "../types/gate";
 import type { TopoIQAnalyzeRequest, TopoIQAnalyzeResponse, YieldIQAnalyzeResponse } from "../types/topoiq";
 import type {
+  LayoutOptimizationMode,
+  LayoutLandCost,
   LayoutSweepRow,
   WorkflowLayoutDetailResponse,
   WorkflowLayoutSweepResponse,
@@ -71,6 +73,11 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
   const [layoutDetail, setLayoutDetail] = useState<WorkflowLayoutDetailResponse | null>(null);
   const [terrain3DBusy, setTerrain3DBusy] = useState(false);
   const [terrain3D, setTerrain3D] = useState<WorkflowTerrainMeshResponse | null>(null);
+  const [layoutOptimization, setLayoutOptimization] = useState<LayoutOptimizationMode>("balanced");
+  const [layoutLandCost, setLayoutLandCost] = useState<LayoutLandCost>("auto");
+  const [layoutBifacial, setLayoutBifacial] = useState(false);
+  const [layoutCustomGcr, setLayoutCustomGcr] = useState("");
+  const [layoutCustomPitch, setLayoutCustomPitch] = useState("");
 
   const cap = result.capacity as Record<string, unknown>;
   const mwp = cap?.mwp_range as string | undefined;
@@ -211,7 +218,22 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
     setLayoutBusy(true);
     setLayoutError("");
     try {
-      const res = await workflowLayoutSweep(token, { boundaries, include_bom: false });
+      const body: Parameters<typeof workflowLayoutSweep>[1] = {
+        boundaries,
+        include_bom: false,
+        optimization_mode: layoutOptimization,
+        land_cost: layoutLandCost,
+        country: input?.country || "",
+        lat: result.coordinates.lat,
+        bifacial: layoutBifacial,
+      };
+      if (layoutOptimization === "custom") {
+        const gcr = Number(layoutCustomGcr);
+        const pitch = Number(layoutCustomPitch);
+        if (gcr > 0) body.custom_gcr = gcr;
+        if (pitch > 0) body.custom_pitch_m = pitch;
+      }
+      const res = await workflowLayoutSweep(token, body);
       setLayoutSweep(res);
       setLayoutFilter("all");
       setSelectedLayoutRow(null);
@@ -427,11 +449,77 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
         ) : (
           <>
             <p className="hint">
-              Sweeps Fixed Tilt 1P–4P and Single-Axis Tracker 1P–2P across increasing row pitch
-              (GCR decreases as pitch increases). Pick a configuration before YieldIQ.
+              Sweeps Fixed Tilt 1P–4P and Single-Axis Tracker 1P–2P across industry pitch/GCR
+              bands. Recommended rows follow utility-scale defaults; pick a row before YieldIQ.
             </p>
             {!topoResult ? (
               <p className="module-note">TopoIQ should finish first — layout uses your boundary polygon.</p>
+            ) : null}
+            <div className="layout-strategy-controls">
+              <div className="field">
+                <label htmlFor="layout-opt-mode">Optimization mode</label>
+                <select
+                  id="layout-opt-mode"
+                  value={layoutOptimization}
+                  onChange={(e) => setLayoutOptimization(e.target.value as LayoutOptimizationMode)}
+                >
+                  <option value="balanced">Balanced (industry default GCR)</option>
+                  <option value="high_energy">High energy — wider spacing, lower GCR</option>
+                  <option value="land_optimized">Land optimized — tighter spacing, higher GCR</option>
+                  <option value="custom">Custom GCR or pitch</option>
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="layout-land-cost">Land cost</label>
+                <select
+                  id="layout-land-cost"
+                  value={layoutLandCost}
+                  onChange={(e) => setLayoutLandCost(e.target.value as LayoutLandCost)}
+                >
+                  <option value="auto">Auto (from country)</option>
+                  <option value="cheap">Cheap land (TX, AU, SA, IN…)</option>
+                  <option value="balanced">Moderate</option>
+                  <option value="expensive">Expensive land (DE, NL, JP, KR…)</option>
+                </select>
+              </div>
+              <label className="checkbox-field layout-bifacial">
+                <input
+                  type="checkbox"
+                  checked={layoutBifacial}
+                  onChange={(e) => setLayoutBifacial(e.target.checked)}
+                />
+                Bifacial modules (wider spacing bias)
+              </label>
+            </div>
+            {layoutOptimization === "custom" ? (
+              <div className="grid-2 layout-custom-row">
+                <div className="field">
+                  <label htmlFor="layout-custom-gcr">Custom GCR (optional)</label>
+                  <input
+                    id="layout-custom-gcr"
+                    type="number"
+                    step="0.01"
+                    min="0.15"
+                    max="0.75"
+                    placeholder="e.g. 0.45"
+                    value={layoutCustomGcr}
+                    onChange={(e) => setLayoutCustomGcr(e.target.value)}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="layout-custom-pitch">Custom pitch m (optional)</label>
+                  <input
+                    id="layout-custom-pitch"
+                    type="number"
+                    step="0.1"
+                    min="3"
+                    max="20"
+                    placeholder="e.g. 6.5"
+                    value={layoutCustomPitch}
+                    onChange={(e) => setLayoutCustomPitch(e.target.value)}
+                  />
+                </div>
+              </div>
             ) : null}
             <button
               className="btn btn-primary"
@@ -443,6 +531,15 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
             </button>
             {layoutSweep && layoutConfigKeys.length > 0 ? (
               <div className="layout-matrix">
+                {layoutSweep.strategy?.mode_label ? (
+                  <p className="module-note layout-strategy-note">
+                    <strong>{layoutSweep.strategy.mode_label}</strong>
+                    {layoutSweep.strategy.land_cost_label
+                      ? ` · ${layoutSweep.strategy.land_cost_label}`
+                      : null}
+                    {layoutSweep.strategy.note ? ` — ${layoutSweep.strategy.note}` : null}
+                  </p>
+                ) : null}
                 <div className="layout-filter-row">
                   <button
                     type="button"
@@ -462,12 +559,28 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
                     </button>
                   ))}
                 </div>
-                {layoutFilter !== "all" && layoutSweep.best_by_config[layoutFilter] ? (
+                {layoutFilter !== "all" && layoutSweep.recommended_by_config?.[layoutFilter] ? (
                   <p className="module-note">
-                    Best for this config:{" "}
-                    <strong>{layoutSweep.best_by_config[layoutFilter].dc_kwp} MWp</strong> at pitch{" "}
-                    {layoutSweep.best_by_config[layoutFilter].pitch_m} m (GCR{" "}
-                    {layoutSweep.best_by_config[layoutFilter].gcr})
+                    Recommended for this config:{" "}
+                    <strong>
+                      GCR {layoutSweep.recommended_by_config[layoutFilter].gcr?.toFixed(2)} · pitch{" "}
+                      {layoutSweep.recommended_by_config[layoutFilter].pitch_m} m
+                    </strong>
+                    {layoutSweep.recommended_by_config[layoutFilter].success ? (
+                      <>
+                        {" "}
+                        → {layoutSweep.recommended_by_config[layoutFilter].dc_kwp?.toLocaleString()} kWp
+                      </>
+                    ) : (
+                      " (did not fit boundary at recommended pitch)"
+                    )}
+                    {layoutSweep.best_by_config[layoutFilter] ? (
+                      <>
+                        {" "}
+                        · Max capacity: {layoutSweep.best_by_config[layoutFilter].dc_kwp?.toLocaleString()}{" "}
+                        kWp at GCR {layoutSweep.best_by_config[layoutFilter].gcr?.toFixed(2)}
+                      </>
+                    ) : null}
                   </p>
                 ) : null}
                 <table className="yield-table">
@@ -490,10 +603,17 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
                           selectedLayoutRow?.config_key === row.config_key &&
                           selectedLayoutRow?.pitch_m === row.pitch_m
                             ? "layout-row-selected"
-                            : ""
+                            : row.is_recommended
+                              ? "layout-row-recommended"
+                              : ""
                         }
                       >
-                        <td>{row.label}</td>
+                        <td>
+                          {row.label}
+                          {row.is_recommended ? (
+                            <span className="layout-rec-badge">Rec.</span>
+                          ) : null}
+                        </td>
                         <td>{row.pitch_m}</td>
                         <td>{row.gcr.toFixed(2)}</td>
                         <td>{row.total_modules?.toLocaleString() ?? "—"}</td>
@@ -523,7 +643,8 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
                 </table>
                 <p className="module-note">
                   {layoutSweep.row_count} pitch steps across {layoutSweep.config_count} mount/portrait
-                  combinations. Select one row, then run YieldIQ for its GCR and mount type.
+                  combinations. <strong>Rec.</strong> marks the industry-recommended GCR/pitch for your
+                  optimization mode. Select one row, then run YieldIQ for its GCR and mount type.
                 </p>
                 {selectedLayoutRow ? (
                   <div className="layout-preview-panel">

@@ -69,15 +69,52 @@ export interface WorkflowLayoutMatrixResponse {
   configs: LayoutMatrixConfig[];
 }
 
+export type LayoutOptimizationMode = "high_energy" | "balanced" | "land_optimized" | "custom";
+export type LayoutLandCost = "auto" | "cheap" | "balanced" | "expensive";
+
 export interface WorkflowLayoutSweepRequest {
   boundary?: { lat: number; lon: number }[];
   boundaries?: { lat: number; lon: number }[][];
   include_bom?: boolean;
+  optimization_mode?: LayoutOptimizationMode;
+  land_cost?: LayoutLandCost;
+  country?: string;
+  lat?: number;
+  bifacial?: boolean;
+  custom_gcr?: number;
+  custom_pitch_m?: number;
+}
+
+export interface GcrGuidanceEntry {
+  config_key: string;
+  recommended_gcr: number;
+  recommended_pitch_m: number;
+  gcr_typical_min: number;
+  gcr_typical_max: number;
+  pitch_m_min: number;
+  pitch_m_max: number;
+  balanced_default_gcr: number;
+  land_cost: string;
+}
+
+export interface LayoutSweepStrategy {
+  optimization_mode: LayoutOptimizationMode;
+  land_cost_input: LayoutLandCost;
+  land_cost_resolved: string;
+  country: string;
+  latitude: number | null;
+  bifacial: boolean;
+  mode_label: string;
+  land_cost_label: string;
+  note: string;
 }
 
 export interface WorkflowLayoutSweepResponse {
   rows: LayoutSweepRow[];
   best_by_config: Record<string, LayoutSweepRow>;
+  recommended_by_config: Record<string, LayoutSweepRow>;
+  gcr_guidance: Record<string, GcrGuidanceEntry>;
+  strategy: LayoutSweepStrategy;
   config_count: number;
   row_count: number;
 }
@@ -96,6 +133,7 @@ export interface LayoutSweepRow {
   area_ha?: number;
   dc_kwp?: number;
   mw_per_ha?: number | null;
+  is_recommended?: boolean;
   bom?: Record<string, string>;
 }
 

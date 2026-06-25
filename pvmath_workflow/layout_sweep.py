@@ -6,33 +6,21 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from layoutiq.bom import compute_bom
 from layoutiq.engine import run_layout
+from pvmath_workflow.gcr_strategy import (
+    FT_PORTRAITS,
+    SAT_PORTRAITS,
+    config_guidance,
+    gcr_from_pitch,
+    pitch_sweep_values,
+    sweep_strategy_summary,
+)
 
-FT_PORTRAITS = (1, 2, 3, 4)
-SAT_PORTRAITS = (1, 2)
-DEFAULT_PITCH_STEPS_M = (5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 9.0, 10.0, 11.0, 12.0)
+OptimizationMode = str
+LandCost = str
 
 
 def _row_ns_m(module_h: float, module_w: float, n_portrait: int, tracker: bool) -> float:
     return module_w * n_portrait if tracker else module_h * n_portrait
-
-
-def _gcr(row_ns: float, pitch_m: float) -> float:
-    if pitch_m <= 0:
-        return 0.0
-    return round(row_ns / pitch_m, 3)
-
-
-def _pitch_candidates(row_ns: float, extra_pitches: Optional[List[float]] = None) -> List[float]:
-    min_pitch = round(row_ns + 0.5, 2)
-    seen = set()
-    out: List[float] = []
-    for p in [min_pitch] + list(extra_pitches or DEFAULT_PITCH_STEPS_M):
-        val = round(float(p), 2)
-        if val <= row_ns or val in seen:
-            continue
-        seen.add(val)
-        out.append(val)
-    return sorted(out)
 
 
 def _config_specs() -> List[Tuple[str, str, int, bool]]:
@@ -61,6 +49,24 @@ def _normalize_polys(
     return polys
 
 
+def _pick_recommended_row(
+    rows: List[Dict[str, Any]],
+    config_key: str,
+    recommended_pitch: float,
+) -> Optional[Dict[str, Any]]:
+    """Row closest to the strategy-recommended pitch for this config."""
+    candidates = [
+        r for r in rows
+        if r.get("config_key") == config_key and r.get("success")
+    ]
+    if not candidates:
+        return None
+    return min(
+        candidates,
+        key=lambda r: abs(float(r.get("pitch_m", 0)) - recommended_pitch),
+    )
+
+
 def run_layout_sweep(
     boundary: Optional[List[List[float]]] = None,
     *,
@@ -71,6 +77,13 @@ def run_layout_sweep(
     setback_m: float = 5.0,
     azimuth: float = 180.0,
     pitch_steps_m: Optional[List[float]] = None,
+    optimization_mode: OptimizationMode = "balanced",
+    land_cost: LandCost = "auto",
+    country: str = "",
+    lat: Optional[float] = None,
+    bifacial: bool = False,
+    custom_gcr: Optional[float] = None,
+    custom_pitch_m: Optional[float] = None,
     modules_per_string: int = 28,
     strings_per_inv: int = 4,
     inv_ac_kw: float = 100.0,
@@ -79,23 +92,61 @@ def run_layout_sweep(
     """
     Iterate mount/portrait × pitch across one or more site parcels.
 
-    Multiple parcels share a metric origin and their module counts/areas are
-    summed per configuration. Returns a comparison table plus best row per config.
+    Pitch steps follow industry GCR bands (see gcr_strategy) for the selected
+    optimization mode. Returns comparison rows, max-DC best per config, and
+    strategy-recommended pitch per config.
     """
     polys = _normalize_polys(boundary, boundaries)
     if not polys:
-        return {"rows": [], "best_by_config": {}, "config_count": 0, "row_count": 0}
+        return {
+            "rows": [],
+            "best_by_config": {},
+            "recommended_by_config": {},
+            "gcr_guidance": {},
+            "strategy": sweep_strategy_summary(
+                mode=optimization_mode,
+                land_cost=land_cost,
+                country=country,
+                lat=lat,
+                bifacial=bifacial,
+            ),
+            "config_count": 0,
+            "row_count": 0,
+        }
 
     ref_lat, ref_lon = _shared_ref(polys)
+    site_lat = lat if lat is not None else ref_lat
+
     table_rows: List[Dict[str, Any]] = []
     best_by_config: Dict[str, Dict[str, Any]] = {}
+    gcr_guidance: Dict[str, Dict[str, Any]] = {}
+    recommended_by_config: Dict[str, Dict[str, Any]] = {}
 
     for config_key, label, n_portrait, tracker in _config_specs():
         row_ns = _row_ns_m(module_h, module_w, n_portrait, tracker)
         mount_type = "sat" if tracker else "fixed_tilt"
         mount_label = "Single-Axis Tracker" if tracker else "Fixed Tilt"
-        for pitch in _pitch_candidates(row_ns, pitch_steps_m):
-            gcr = _gcr(row_ns, pitch)
+
+        pitches, guidance = pitch_sweep_values(
+            config_key,
+            row_ns,
+            mode=optimization_mode,
+            land_cost=land_cost,
+            country=country,
+            lat=site_lat,
+            bifacial=bifacial,
+            custom_gcr=custom_gcr,
+            custom_pitch_m=custom_pitch_m,
+            extra_pitches=pitch_steps_m,
+        )
+        gcr_guidance[config_key] = guidance
+        rec_pitch = float(guidance["recommended_pitch_m"])
+        rec_gcr = float(guidance["recommended_gcr"])
+
+        for pitch in pitches:
+            gcr = gcr_from_pitch(row_ns, pitch)
+            is_recommended = abs(pitch - rec_pitch) < 0.26
+
             total_modules = 0
             total_rows = 0
             total_area_ha = 0.0
@@ -126,6 +177,7 @@ def run_layout_sweep(
                         "n_portrait": n_portrait,
                         "pitch_m": pitch,
                         "gcr": gcr,
+                        "is_recommended": is_recommended,
                         "success": False,
                         "error": "No rows fit at this pitch",
                     }
@@ -141,6 +193,7 @@ def run_layout_sweep(
                 "n_portrait": n_portrait,
                 "pitch_m": pitch,
                 "gcr": gcr,
+                "is_recommended": is_recommended,
                 "success": True,
                 "total_modules": total_modules,
                 "total_rows": total_rows,
@@ -176,9 +229,35 @@ def run_layout_sweep(
             if prev is None or (entry["dc_kwp"] > prev.get("dc_kwp", 0)):
                 best_by_config[config_key] = entry
 
+        rec_row = _pick_recommended_row(table_rows, config_key, rec_pitch)
+        if rec_row:
+            recommended_by_config[config_key] = rec_row
+        else:
+            # Fallback guidance row when no layout fits at recommended pitch
+            recommended_by_config[config_key] = {
+                "config_key": config_key,
+                "label": label,
+                "mount_type": mount_label,
+                "n_portrait": n_portrait,
+                "pitch_m": rec_pitch,
+                "gcr": rec_gcr,
+                "is_recommended": True,
+                "success": False,
+                "error": "Recommended pitch did not fit boundary",
+            }
+
     return {
         "rows": table_rows,
         "best_by_config": best_by_config,
+        "recommended_by_config": recommended_by_config,
+        "gcr_guidance": gcr_guidance,
+        "strategy": sweep_strategy_summary(
+            mode=optimization_mode,
+            land_cost=land_cost,
+            country=country,
+            lat=site_lat,
+            bifacial=bifacial,
+        ),
         "config_count": len(_config_specs()),
         "row_count": len(table_rows),
     }
