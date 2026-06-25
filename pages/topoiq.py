@@ -5,6 +5,7 @@ import streamlit.components.v1 as components
 import numpy as np
 import requests
 import math
+import os
 import io
 import concurrent.futures
 import json
@@ -95,6 +96,7 @@ from pvmath_capacity import (
     GCR_SCREEN_LO,
     GCR_SCREEN_HI,
 )
+from pvmath_terrain_sources import route_payload, select_terrain_route
 
 def boundaries_union_area_ha(polygon_list):
     """Total area (ha) — union when shapely available, else sum of parts."""
@@ -469,7 +471,7 @@ st.markdown("""
       <span class="pvmath-app-name">TopoIQ</span>
       <span class="pvmath-app-sub">by PVMath</span>
     </div>
-    <div class="pvmath-tagline">Tracker-aware terrain screening from Copernicus DEM — slope, cross-row grades, and client-ready PDFs before you order LiDAR.</div>
+    <div class="pvmath-tagline">Tracker-aware terrain screening from routed free DEM sources — slope, cross-row grades, and client-ready PDFs before you order LiDAR.</div>
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -491,14 +493,28 @@ def tile2deg(x, y, zoom):
 
 TILE_PX = 256  # terrarium tiles are always 256x256
 
-def fetch_terrarium_tile(x, y, zoom):
+def _tile_url_for_source(terrain_source: str, zoom: int, x: int, y: int) -> str:
+    """Resolve DEM tile URL template by selected terrain source."""
+    source = (terrain_source or "").strip().lower()
+    env_key = {
+        "copernicus_eea10": "PVMATH_EEA10_TILE_URL",
+        "fabdem": "PVMATH_FABDEM_TILE_URL",
+    }.get(source)
+    if env_key:
+        _tpl = (os.environ.get(env_key) or "").strip()
+        if _tpl:
+            return _tpl.format(z=zoom, x=x, y=y)
+    return f"https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{zoom}/{x}/{y}.png"
+
+
+def fetch_terrarium_tile(x, y, zoom, terrain_source="copernicus_glo30"):
     """Fetch one terrarium DEM tile. Bounds are always returned (computed purely from
     tile indices) so a failed/corrupt fetch can still be placed correctly in the mosaic —
     this is what keeps the grid georeferenced even when some tiles 404 or time out."""
     lat_n, lon_w = tile2deg(x, y, zoom)
     lat_s, lon_e = tile2deg(x + 1, y + 1, zoom)
     bounds = {"lat_n": lat_n, "lat_s": lat_s, "lon_w": lon_w, "lon_e": lon_e}
-    url = f"https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{zoom}/{x}/{y}.png"
+    url = _tile_url_for_source(terrain_source, zoom, x, y)
     try:
         r = requests.get(url, timeout=15)
         if r.status_code != 200:
@@ -550,7 +566,7 @@ def effective_grid_spacing(p_w, p_e, p_s, p_n, grid_m, lat_c,
     return float(math.ceil(grid_m * scale))
 
 
-def get_dem_for_bbox(south, north, west, east, zoom=14):
+def get_dem_for_bbox(south, north, west, east, zoom=14, terrain_source="copernicus_glo30"):
     x_min, y_min = deg2tile(north, west, zoom)
     x_max, y_max = deg2tile(south, east, zoom)
     tile_list = [
@@ -566,7 +582,7 @@ def get_dem_for_bbox(south, north, west, east, zoom=14):
 
     def _fetch_one(tx_ty):
         tx, ty = tx_ty
-        return tx_ty, fetch_terrarium_tile(tx, ty, zoom)
+        return tx_ty, fetch_terrarium_tile(tx, ty, zoom, terrain_source=terrain_source)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=TILE_FETCH_WORKERS) as ex:
         futs = [ex.submit(_fetch_one, t) for t in tile_list]
@@ -877,7 +893,7 @@ with left:
         sc1, sc2, sc3 = st.columns(3)
         grid_spacing = sc1.slider(
             "Analysis grid (m)", min_value=3, max_value=10, value=5, step=1,
-            help="Default 5 m for layout work. Copernicus GLO-30 is ~30 m native; "
+            help="Default 5 m for layout work. Public DEM source depends on route; "
                  "TopoIQ resamples to this spacing inside your boundary.",
         )
         contour_minor = sc2.slider("Minor contour (m)", min_value=0.1, max_value=2.0, value=0.5, step=0.1)
@@ -934,11 +950,19 @@ with right:
         lat_c = (south + north) / 2
         lon_c = (west  + east)  / 2
         area_ha = _run_area_ha
+        terrain_route = select_terrain_route(lat_c, lon_c)
+        terrain_meta = route_payload(terrain_route)
+        terrain_source_used = terrain_meta["source"]
         dem_zoom = pick_dem_zoom(south, north, west, east)
 
         with st.spinner("Fetching satellite terrain data…"):
             mosaic, lat_n, lat_s, lon_w, lon_e = get_dem_for_bbox(
-                south, north, west, east, zoom=dem_zoom
+                south,
+                north,
+                west,
+                east,
+                zoom=dem_zoom,
+                terrain_source=terrain_source_used,
             )
 
         if mosaic is None:
@@ -994,6 +1018,14 @@ with right:
                 f"({tile_count_for_bbox(south, north, west, east, dem_zoom)} tiles) "
                 f"for this site size — resampled to your output grid."
             )
+        st.caption(
+            f"Terrain source route: **{terrain_source_used}** ({terrain_meta['region']})"
+            + (
+                f" · fallback chain: {', '.join(terrain_meta['fallback_sources'])}"
+                if terrain_meta.get("fallback_sources")
+                else ""
+            )
+        )
 
         m1, m2, m3, m4 = st.columns(4)
         metrics = [
@@ -1149,7 +1181,7 @@ with right:
             f'background:#f0f4f8;border-radius:8px;padding:0.55rem 1rem;margin-top:0.3rem;">'
             f'📐 <b>{area_ha:.1f} ha</b> &nbsp;·&nbsp; '
             f'🔢 <b>{len(z_valid):,}</b> points at <b>{grid_m_used:.0f} m</b> output grid &nbsp;·&nbsp; '
-            f'<span style="font-size:0.85em;color:#555;">GLO-30 native ~30 m</span> &nbsp;·&nbsp; '
+                f'<span style="font-size:0.85em;color:#555;">Routed public DEM source</span> &nbsp;·&nbsp; '
             f'⚠️ <b>{pct_over5:.1f}%</b> (&gt;5% slope) &nbsp;·&nbsp; '
             f'🔴 <b>{pct_over10:.1f}%</b> (&gt;10%, ≈{ha_over10:.1f} ha) · max point <b>{s_valid.max():.1f}%</b>'
             f'</div>',
@@ -1238,6 +1270,8 @@ with right:
                 siteiq_run_cache=st.session_state.get("siteiq_run_cache"),
                 project_row_id=st.session_state.get("pvm_project_row_id"),
                 dem_zoom=dem_zoom,
+                terrain_source=terrain_meta,
+                terrain_source_used=terrain_source_used,
                 yield_cross_ref=_yield_xref_txt,
             )
             pdf_bytes = generate_pdf_report(_ctx)
@@ -1373,8 +1407,10 @@ with right:
         st.markdown(f"""
         <div class="accuracy-card">
           <h4><i class="fa-solid fa-circle-info" style="margin-right:0.3rem;"></i> Data Source & Accuracy</h4>
-          <p><strong>Source:</strong> Copernicus DEM GLO-30 (ESA/EC, 2021) via AWS Terrain Tiles</p>
-          <p><strong>Native resolution:</strong> ~30 m horizontal (GLO-30); tiles at zoom {dem_zoom}</p>
+          <p><strong>Source route:</strong> {terrain_source_used} ({terrain_meta['region']})</p>
+          <p><strong>Routing note:</strong> {terrain_meta.get("disclaimer", "Public DEM routing by region.")}</p>
+          <p><strong>Preferred native resolution:</strong> ~{terrain_meta.get("preferred_resolution_m", 30):.0f} m (screening route target)</p>
+          <p><strong>Tile sampling:</strong> zoom {dem_zoom} terrain tiles for this run</p>
           <p><strong>Output grid:</strong> {grid_m_used:.0f} m — resampled for layout/CAD (default 5 m; not survey-grade feature detail)</p>
           <p><strong>Vertical accuracy:</strong> ±1–3 m RMSE typical (better on open ground; worse in dense vegetation)</p>
           <p><strong>Recommendation:</strong> Screening-grade terrain assessment only. Verify critical slopes and grades with LiDAR or RTK survey before FEED and pile layout.</p>
@@ -1391,7 +1427,7 @@ with right:
         wc1, wc2 = st.columns(2)
         _wcards = [
             (wc1, "Satellite DEM",
-             "Copernicus GLO-30 · ~30 m native · resampled to 5 m for layout"),
+             "Region-routed free DEM source · resampled for layout"),
             (wc2, "CAD package",
              "UTM LandXML surface, DXF contours & parcel linework from your KMZ"),
             (wc1, "DXF + LandXML",

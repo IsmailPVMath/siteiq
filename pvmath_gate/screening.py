@@ -6,6 +6,8 @@ import math
 
 import requests
 
+from pvmath_terrain_sources import TerrainSource, route_payload, select_terrain_route
+
 USER_AGENT = "PVMath/1.0 (pvmath.com; contact@pvmath.com)"
 
 
@@ -33,10 +35,50 @@ def _haversine_m(lat1, lon1, lat2, lon2):
     return 2 * r * math.asin(math.sqrt(a))
 
 
+def _fetch_opentopodata_elevations(points, dataset: str, headers: dict, timeout: int = 20):
+    locations = "|".join(f"{p[0]},{p[1]}" for p in points)
+    r = requests.get(
+        f"https://api.opentopodata.org/v1/{dataset}",
+        params={"locations": locations},
+        headers=headers,
+        timeout=timeout,
+    )
+    rows = r.json().get("results", [])
+    elevs = []
+    for row in rows:
+        elev = row.get("elevation")
+        elevs.append(float(elev) if elev is not None else None)
+    return elevs
+
+
+def _fetch_usgs_epqs_elevation(lat: float, lon: float, timeout: int = 12):
+    r = requests.get(
+        "https://epqs.nationalmap.gov/v1/json",
+        params={"x": lon, "y": lat, "units": "Meters", "wkid": 4326},
+        headers={"User-Agent": USER_AGENT},
+        timeout=timeout,
+    )
+    val = (
+        r.json()
+        .get("value")
+        or r.json().get("USGS_Elevation_Point_Query_Service", {}).get("Elevation_Query", {}).get("Elevation")
+    )
+    return float(val) if val is not None else None
+
+
+def _fetch_usgs_epqs_elevations(points):
+    values = []
+    for lat, lon in points:
+        try:
+            values.append(_fetch_usgs_epqs_elevation(lat, lon))
+        except Exception:
+            values.append(None)
+    return values
+
+
 def get_terrain_data(lat, lon, polygon=None, polygons=None, radius_km=0.5):
-    """Slope/elevation screening via OpenTopoData (same logic as SiteIQ)."""
-    in_europe = 34 <= lat <= 72 and -25 <= lon <= 45
-    dataset = "eudem25m" if in_europe else "srtm30m"
+    """Slope/elevation screening with smart terrain-source routing."""
+    route = select_terrain_route(lat, lon)
 
     poly_list = []
     if polygons:
@@ -63,20 +105,23 @@ def get_terrain_data(lat, lon, polygon=None, polygons=None, radius_km=0.5):
             clat, clon = sum(all_lats) / len(all_lats), sum(all_lons) / len(all_lons)
             grid_pts = [(clat, clon)]
         grid_pts = grid_pts[:40]
-        locations = "|".join(f"{p[0]},{p[1]}" for p in grid_pts)
         try:
-            r = requests.get(
-                f"https://api.opentopodata.org/v1/{dataset}",
-                params={"locations": locations},
-                headers=headers,
-                timeout=20,
-            )
-            results = r.json().get("results", [])
-            pts = [
-                (grid_pts[i][0], grid_pts[i][1], res["elevation"])
-                for i, res in enumerate(results)
-                if res.get("elevation") is not None
-            ]
+            used_source = route.source
+            if route.source == TerrainSource.USGS_3DEP:
+                elevs = _fetch_usgs_epqs_elevations(grid_pts)
+            elif route.source == TerrainSource.COPERNICUS_EEA10:
+                elevs = _fetch_opentopodata_elevations(grid_pts, "eudem25m", headers, timeout=20)
+            else:
+                try:
+                    elevs = _fetch_opentopodata_elevations(grid_pts, "fabdem", headers, timeout=20)
+                except Exception:
+                    used_source = TerrainSource.COPERNICUS_GLO30
+                    elevs = _fetch_opentopodata_elevations(grid_pts, "srtm30m", headers, timeout=20)
+
+            pts = []
+            for i, elev in enumerate(elevs):
+                if elev is not None:
+                    pts.append((grid_pts[i][0], grid_pts[i][1], elev))
             if len(pts) < 4:
                 return {"success": False, "error": "Insufficient data"}
             slopes = []
@@ -99,6 +144,8 @@ def get_terrain_data(lat, lon, polygon=None, polygons=None, radius_km=0.5):
                 "elevation_range": round(max(zs) - min(zs), 1),
                 "sample_points": len(pts),
                 "boundary_sampled": True,
+                "terrain_source": route_payload(route),
+                "terrain_source_used": used_source.value,
             }
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -110,16 +157,20 @@ def get_terrain_data(lat, lon, polygon=None, polygons=None, radius_km=0.5):
         (0.7071, 0.7071), (0.7071, -0.7071), (-0.7071, 0.7071), (-0.7071, -0.7071),
     ]
     points = [(lat, lon)] + [(lat + dy * delta, lon + dx * delta) for dy, dx in dirs]
-    locations = "|".join(f"{p[0]},{p[1]}" for p in points)
     try:
-        r = requests.get(
-            f"https://api.opentopodata.org/v1/{dataset}",
-            params={"locations": locations},
-            headers=headers,
-            timeout=15,
-        )
-        results = r.json().get("results", [])
-        elevs = [res["elevation"] for res in results if res.get("elevation") is not None]
+        used_source = route.source
+        if route.source == TerrainSource.USGS_3DEP:
+            elev_candidates = _fetch_usgs_epqs_elevations(points)
+        elif route.source == TerrainSource.COPERNICUS_EEA10:
+            elev_candidates = _fetch_opentopodata_elevations(points, "eudem25m", headers, timeout=15)
+        else:
+            try:
+                elev_candidates = _fetch_opentopodata_elevations(points, "fabdem", headers, timeout=15)
+            except Exception:
+                used_source = TerrainSource.COPERNICUS_GLO30
+                elev_candidates = _fetch_opentopodata_elevations(points, "srtm30m", headers, timeout=15)
+
+        elevs = [e for e in elev_candidates if e is not None]
         if len(elevs) >= 5:
             center = elevs[0]
             slopes = [abs(e - center) / dist_m * 100 for e in elevs[1:]]
@@ -131,6 +182,8 @@ def get_terrain_data(lat, lon, polygon=None, polygons=None, radius_km=0.5):
                 "elevation_range": round(max(elevs) - min(elevs), 1),
                 "sample_points": len(elevs),
                 "boundary_sampled": False,
+                "terrain_source": route_payload(route),
+                "terrain_source_used": used_source.value,
             }
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -180,7 +233,7 @@ def get_flood_risk(lat: float, lon: float, elevation: float | None) -> dict:
     return {
         "risk": risk,
         "detail": detail,
-        "source": "OpenTopoData DEM — elevation heuristic only",
+        "source": "Public DEM (routed by region) — elevation heuristic only",
         "confidence": "Low — not official flood-zone mapping",
     }
 

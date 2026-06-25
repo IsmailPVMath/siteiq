@@ -331,7 +331,7 @@ def _grid_resolution_label(grid_spacing: float, grid_spacing_requested: float | 
 def _grid_resolution_note(grid_spacing: float, grid_spacing_requested: float | None = None) -> str:
     """Footnote clarifying GLO-30 native limit vs output grid."""
     base = (
-        "GLO-30 native ~30 m horizontal detail; output grid is resampled for smoother "
+        "Public DEM native detail depends on source route; output grid is resampled for smoother "
         "slopes and CAD — not LiDAR-grade feature resolution."
     )
     if grid_spacing_requested and grid_spacing > grid_spacing_requested + 0.5:
@@ -353,7 +353,7 @@ def _grid_limitations_text(grid_spacing: float, grid_spacing_requested: float | 
     )
     return (
         "<b>Screening limitations</b><br/>"
-        f"Copernicus DEM GLO-30 (~30 m native horizontal detail), {spacing_phrase}. "
+        f"Region-routed public DEM source ({spacing_phrase}). "
         "Typical vertical accuracy ±1–3 m RMSE. Vegetation and structures may bias slopes. "
         "Field survey (LiDAR/GNSS) required before detailed design and pile layout."
     )
@@ -876,6 +876,18 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
             _lp("Boundary source", bold=True, color=DARK_BLUE),
             _lp(ctx["boundary_provenance"]),
         ])
+    if ctx.get("terrain_source_used"):
+        info_rows.append([
+            _lp("Terrain source route", bold=True, color=DARK_BLUE),
+            _lp(
+                f"{ctx['terrain_source_used']} ({(ctx.get('terrain_source') or {}).get('region', 'global')})"
+            ),
+        ])
+    if (ctx.get("terrain_source") or {}).get("disclaimer"):
+        info_rows.append([
+            _lp("Terrain disclaimer", bold=True, color=DARK_BLUE),
+            _lp((ctx.get("terrain_source") or {}).get("disclaimer")),
+        ])
     if ctx.get("land_use"):
         info_rows.append([
             _lp("Land use", bold=True, color=DARK_BLUE),
@@ -1155,7 +1167,9 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
     append_pdf_footer(
         story,
         "TopoIQ",
-        data_sources="Copernicus DEM GLO-30 (ESA/EC 2021) via AWS Terrain Tiles.",
+        data_sources=(
+            f"Region-routed free DEM source: {ctx.get('terrain_source_used', 'copernicus_glo30')}."
+        ),
         note="Pre-survey terrain screening only — GLO-30 ~30 m native; output grid resampled for layout. Not a substitute for topographic survey or geotechnical investigation. ",
         muted_color=MUTED,
         border_color=colors.HexColor("#cccccc"),
@@ -1180,6 +1194,8 @@ def build_report_context(
     siteiq_run_cache=None,
     project_row_id=None,
     dem_zoom=None,
+    terrain_source=None,
+    terrain_source_used="copernicus_glo30",
     yield_cross_ref: str = "",
 ) -> dict:
     """Assemble all PDF fields from analysis outputs and project metadata."""
@@ -1238,6 +1254,8 @@ def build_report_context(
         "gcr_tr_lo": tr_band["gcr_lo"],
         "gcr_tr_hi": tr_band["gcr_hi"],
         "dem_zoom": dem_zoom,
+        "terrain_source": terrain_source or {},
+        "terrain_source_used": terrain_source_used,
         "boundary_provenance": boundary_provenance,
         "prepared_by": prepared_by,
         "module_confidence": module_confidence,

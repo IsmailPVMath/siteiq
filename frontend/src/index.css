@@ -116,6 +116,14 @@ a {
   padding: 0.55rem 0.7rem;
 }
 
+.paste-row select {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+  background: #fff;
+}
+
 .grid-3 {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -150,6 +158,10 @@ a {
   border-radius: 10px;
   margin: 0.75rem 0;
   z-index: 0;
+}
+
+.site-map .leaflet-control-container .leaflet-draw-toolbar a {
+  background-color: #fff;
 }
 
 .search-results {

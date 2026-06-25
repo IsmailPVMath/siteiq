@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 
-from api.routers import auth_login, boundary, gate, geocode, health, me, reports
+from api.routers import auth_login, boundary, gate, geocode, health, me, projects, reports
 
 
 @asynccontextmanager
@@ -91,6 +91,7 @@ def create_app() -> FastAPI:
     app.include_router(geocode.router, prefix="/api/v1")
     app.include_router(boundary.router, prefix="/api/v1")
     app.include_router(reports.router, prefix="/api/v1")
+    app.include_router(projects.router, prefix="/api/v1")
     app.include_router(me.router, prefix="/api/v1")
     app.include_router(gate.router, prefix="/api/v1")
     return app

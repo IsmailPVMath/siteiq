@@ -1,7 +1,16 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import type * as GeoJSON from "geojson";
 import { SiteMap } from "../components/SiteMap";
 import { parseCoordinates } from "../lib/coords";
-import { parseBoundaryFile, searchLocation } from "../lib/api";
+import {
+  computeBuildableArea,
+  createProject,
+  getProject,
+  listProjects,
+  parseBoundaryFile,
+  searchLocation,
+  updateProject,
+} from "../lib/api";
 import type { BoundaryPoint, GateAnalyzeRequest, LandUse } from "../types/gate";
 
 export type ScreeningFormValues = GateAnalyzeRequest;
@@ -34,9 +43,15 @@ export function InputPage({ token, initial, onSubmit }: Props) {
   const [landUse, setLandUse] = useState<LandUse>(initial?.land_use ?? DEFAULTS.land_use);
   const [mountType, setMountType] = useState(initial?.mount_type ?? DEFAULTS.mount_type);
   const [runLayout, setRunLayout] = useState(initial?.run_layout ?? false);
-  const [boundary, setBoundary] = useState<BoundaryPoint[] | undefined>(
+  const [siteBoundary, setSiteBoundary] = useState<BoundaryPoint[] | undefined>(
     initial?.boundary,
   );
+  const [restrictions, setRestrictions] = useState<BoundaryPoint[][]>([]);
+  const [buildableGeoJson, setBuildableGeoJson] = useState<GeoJSON.GeoJSON | null>(null);
+  const [buildableAreaHa, setBuildableAreaHa] = useState<number | null>(null);
+  const [drawMode, setDrawMode] = useState<"site" | "restriction">("site");
+  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
+  const [projectId, setProjectId] = useState("");
   const [coordPaste, setCoordPaste] = useState("");
   const [searchQ, setSearchQ] = useState("");
   const [searchResults, setSearchResults] = useState<
@@ -44,6 +59,149 @@ export function InputPage({ token, initial, onSubmit }: Props) {
   >([]);
   const [hint, setHint] = useState("");
   const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  function ringToGeoJson(ring?: BoundaryPoint[]): GeoJSON.GeoJSON | null {
+    if (!ring || ring.length < 3) return null;
+    const coords = ring.map((p) => [p.lon, p.lat]);
+    coords.push([ring[0].lon, ring[0].lat]);
+    return {
+      type: "Polygon",
+      coordinates: [coords],
+    };
+  }
+
+  function restrictionsToGeoJson(polys: BoundaryPoint[][]): GeoJSON.GeoJSON | null {
+    const rings = polys
+      .filter((r) => r.length >= 3)
+      .map((r) => {
+        const c = r.map((p) => [p.lon, p.lat]);
+        c.push([r[0].lon, r[0].lat]);
+        return c;
+      });
+    if (!rings.length) return null;
+    return {
+      type: "MultiPolygon",
+      coordinates: rings.map((r) => [r]),
+    };
+  }
+
+  function toProjectPayload() {
+    return {
+      name: projectName.trim() || "New project",
+      center: { lat, lon },
+      site_boundary_geojson: ringToGeoJson(siteBoundary),
+      restriction_polygons_geojson: restrictionsToGeoJson(restrictions),
+      buildable_area_geojson: buildableGeoJson,
+      land_use: landUse,
+      mount_type: mountType,
+      country: country.trim(),
+      workflow: {
+        area_ha: Number(areaHa),
+        run_layout: runLayout,
+        buildable_area_ha: buildableAreaHa,
+      },
+    };
+  }
+
+  function applyProjectRecord(row: any) {
+    const payload = row?.project_data || {};
+    const center = payload.center || {};
+    if (typeof center.lat === "number" && typeof center.lon === "number") {
+      applyPick(center.lat, center.lon);
+    }
+    setProjectName(payload.name || "New project");
+    setCountry(payload.country || "");
+    setLandUse((payload.land_use || "Standard") as LandUse);
+    setMountType(payload.mount_type || "Fixed Tilt");
+    if (payload.workflow?.area_ha) {
+      setAreaHa(Number(payload.workflow.area_ha));
+    }
+    setRunLayout(Boolean(payload.workflow?.run_layout));
+    const site = payload.site_boundary_geojson;
+    if (site?.type === "Polygon" && Array.isArray(site.coordinates?.[0])) {
+      setSiteBoundary(
+        site.coordinates[0]
+          .slice(0, -1)
+          .map((p: number[]) => ({ lon: Number(p[0]), lat: Number(p[1]) })),
+      );
+    } else {
+      setSiteBoundary(undefined);
+    }
+    const restr = payload.restriction_polygons_geojson;
+    if (restr?.type === "MultiPolygon" && Array.isArray(restr.coordinates)) {
+      setRestrictions(
+        restr.coordinates
+          .map((poly: number[][][]) =>
+            (poly?.[0] || []).slice(0, -1).map((p: number[]) => ({
+              lon: Number(p[0]),
+              lat: Number(p[1]),
+            })),
+          )
+          .filter((r: BoundaryPoint[]) => r.length >= 3),
+      );
+    } else {
+      setRestrictions([]);
+    }
+    setBuildableGeoJson(payload.buildable_area_geojson || null);
+    setBuildableAreaHa(
+      typeof payload.workflow?.buildable_area_ha === "number"
+        ? Number(payload.workflow.buildable_area_ha)
+        : null,
+    );
+  }
+
+  async function loadProjects(loadFirst = true) {
+    try {
+      const rows = await listProjects(token);
+      setProjects(
+        rows.map((r) => ({
+          id: r.id,
+          name: r.project_data?.name || `Project ${r.id.slice(0, 8)}`,
+        })),
+      );
+      if (loadFirst && rows.length) {
+        setProjectId(rows[0].id);
+        applyProjectRecord(rows[0]);
+      }
+    } catch {
+      // Keep input form usable even if projects endpoint is not available.
+    }
+  }
+
+  async function saveProjectDraft() {
+    setSaving(true);
+    try {
+      const payload = toProjectPayload();
+      const row = projectId
+        ? await updateProject(token, projectId, payload)
+        : await createProject(token, payload);
+      setProjectId(row.id);
+      setHint(projectId ? "Project updated." : "Project saved.");
+      await loadProjects(false);
+      return row.id;
+    } catch (err) {
+      setHint(err instanceof Error ? err.message : "Project save failed");
+      return null;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function loadSelectedProject(id: string) {
+    if (!id) return;
+    setBusy(true);
+    try {
+      const row = await getProject(token, id);
+      setProjectId(row.id);
+      applyProjectRecord(row);
+      setHint("Project loaded.");
+    } catch (err) {
+      setHint(err instanceof Error ? err.message : "Project load failed");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   function applyPick(newLat: number, newLon: number) {
     setLat(Number(newLat.toFixed(6)));
@@ -93,7 +251,7 @@ export function InputPage({ token, initial, onSubmit }: Props) {
     try {
       const parsed = await parseBoundaryFile(token, file);
       applyPick(parsed.lat, parsed.lon);
-      setBoundary(parsed.boundary);
+      setSiteBoundary(parsed.boundary);
       if (parsed.area_ha > 0) setAreaHa(parsed.area_ha);
       if (!projectName || projectName === DEFAULTS.project_name) {
         setProjectName(parsed.name);
@@ -109,12 +267,43 @@ export function InputPage({ token, initial, onSubmit }: Props) {
   }
 
   function clearBoundary() {
-    setBoundary(undefined);
+    setSiteBoundary(undefined);
+    setRestrictions([]);
+    setBuildableGeoJson(null);
+    setBuildableAreaHa(null);
     setHint("Boundary cleared — using pin location only.");
   }
 
-  function handleSubmit(e: FormEvent) {
+  useEffect(() => {
+    void loadProjects(!initial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!siteBoundary || siteBoundary.length < 3) {
+      setBuildableGeoJson(null);
+      setBuildableAreaHa(null);
+      return;
+    }
+    const timer = window.setTimeout(async () => {
+      try {
+        const preview = await computeBuildableArea(token, {
+          site_boundary_geojson: ringToGeoJson(siteBoundary)!,
+          restriction_polygons_geojson: restrictionsToGeoJson(restrictions),
+        });
+        setBuildableGeoJson(preview.buildable_area_geojson);
+        setBuildableAreaHa(preview.buildable_area_ha);
+      } catch {
+        setBuildableGeoJson(null);
+        setBuildableAreaHa(null);
+      }
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [siteBoundary, restrictions, token]);
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    await saveProjectDraft();
     onSubmit({
       project_name: projectName.trim() || "Site screening",
       lat,
@@ -123,7 +312,7 @@ export function InputPage({ token, initial, onSubmit }: Props) {
       land_use: landUse,
       mount_type: mountType,
       country: country.trim(),
-      boundary: boundary && boundary.length >= 3 ? boundary : undefined,
+      boundary: siteBoundary && siteBoundary.length >= 3 ? siteBoundary : undefined,
       run_layout: runLayout,
     });
   }
@@ -139,6 +328,28 @@ export function InputPage({ token, initial, onSubmit }: Props) {
       </div>
 
       <form className="card card-wide" onSubmit={handleSubmit}>
+        <section className="form-section">
+          <h2>Saved projects</h2>
+          <div className="paste-row">
+            <select value={projectId} onChange={(e) => void loadSelectedProject(e.target.value)}>
+              <option value="">New project</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            <button
+              className="btn btn-ghost"
+              type="button"
+              onClick={() => void saveProjectDraft()}
+              disabled={saving}
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </section>
+
         <section className="form-section">
           <h2>Project</h2>
           <div className="field">
@@ -200,8 +411,29 @@ export function InputPage({ token, initial, onSubmit }: Props) {
             </div>
           </div>
 
-          <SiteMap lat={lat} lon={lon} boundary={boundary} onPick={applyPick} />
+          <div className="paste-row">
+            <select value={drawMode} onChange={(e) => setDrawMode(e.target.value as "site" | "restriction")}>
+              <option value="site">Draw site boundary</option>
+              <option value="restriction">Draw restriction polygon</option>
+            </select>
+          </div>
+          <SiteMap
+            lat={lat}
+            lon={lon}
+            siteBoundary={siteBoundary}
+            restrictions={restrictions}
+            buildableAreaGeoJson={buildableGeoJson}
+            drawMode={drawMode}
+            onPick={applyPick}
+            onSiteBoundaryChange={setSiteBoundary}
+            onRestrictionsChange={setRestrictions}
+          />
           <p className="hint">Click map or drag pin to set site centre.</p>
+          {buildableAreaHa != null ? (
+            <p className="hint">
+              Buildable area: <strong>{buildableAreaHa} ha</strong> (site minus restrictions).
+            </p>
+          ) : null}
 
           <div className="grid-2">
             <div className="field">
@@ -236,7 +468,7 @@ export function InputPage({ token, initial, onSubmit }: Props) {
               accept=".kml,.kmz"
               onChange={(e) => void onKmlFile(e.target.files?.[0] ?? null)}
             />
-            {boundary && boundary.length >= 3 ? (
+            {siteBoundary && siteBoundary.length >= 3 ? (
               <button className="btn btn-ghost btn-sm" type="button" onClick={clearBoundary}>
                 Clear boundary
               </button>

@@ -1,3 +1,3 @@
-from api.routers import gate, health
+from api.routers import gate, health, projects
 
-__all__ = ["gate", "health"]
+__all__ = ["gate", "health", "projects"]

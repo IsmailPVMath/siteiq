@@ -1,4 +1,5 @@
 import type { GateAnalyzeRequest, GateAnalyzeResponse, MeResponse } from "../types/gate";
+import type * as GeoJSON from "geojson";
 
 const API_URL = (import.meta.env.VITE_API_URL || "https://api.pvmath.com").replace(
   /\/$/,
@@ -77,12 +78,72 @@ export interface BoundaryParseResult {
   point_count: number;
 }
 
+export interface ProjectPayload {
+  name: string;
+  center: { lat: number; lon: number };
+  site_boundary_geojson?: GeoJSON.GeoJSON | null;
+  restriction_polygons_geojson?: GeoJSON.GeoJSON | null;
+  buildable_area_geojson?: GeoJSON.GeoJSON | null;
+  land_use: string;
+  mount_type: string;
+  country: string;
+  workflow: Record<string, unknown>;
+}
+
+export interface ProjectRecord {
+  id: string;
+  user_id: string;
+  project_data: ProjectPayload;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface BuildableAreaResponse {
+  buildable_area_geojson: GeoJSON.GeoJSON | null;
+  buildable_area_ha: number;
+}
+
 export function parseBoundaryFile(token: string, file: File) {
   const form = new FormData();
   form.append("file", file);
   return apiFetch<BoundaryParseResult>("/api/v1/boundary/parse", token, {
     method: "POST",
     body: form,
+  });
+}
+
+export function listProjects(token: string) {
+  return apiFetch<ProjectRecord[]>("/api/v1/projects", token);
+}
+
+export function getProject(token: string, id: string) {
+  return apiFetch<ProjectRecord>(`/api/v1/projects/${id}`, token);
+}
+
+export function createProject(token: string, body: ProjectPayload) {
+  return apiFetch<ProjectRecord>("/api/v1/projects", token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function updateProject(token: string, id: string, body: ProjectPayload) {
+  return apiFetch<ProjectRecord>(`/api/v1/projects/${id}`, token, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+export function computeBuildableArea(
+  token: string,
+  body: {
+    site_boundary_geojson: GeoJSON.GeoJSON;
+    restriction_polygons_geojson?: GeoJSON.GeoJSON | null;
+  },
+) {
+  return apiFetch<BuildableAreaResponse>("/api/v1/projects/buildable-area", token, {
+    method: "POST",
+    body: JSON.stringify(body),
   });
 }
 

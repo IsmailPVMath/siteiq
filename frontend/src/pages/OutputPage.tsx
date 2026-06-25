@@ -83,7 +83,11 @@ export function OutputPage({ token, result, onNewScreening, onEditInput }: Props
           "Terrain",
           String(result.terrain.rating ?? "—"),
           String(result.terrain.detail ?? ""),
-          result.terrain.boundary_sampled ? "Boundary sample" : "Pin sample",
+          `${result.terrain.boundary_sampled ? "Boundary sample" : "Pin sample"}${
+            result.terrain.terrain_source_used
+              ? ` · ${String(result.terrain.terrain_source_used)}`
+              : ""
+          }`,
         )}
         {metric(
           "Flood",
@@ -135,7 +139,8 @@ export function OutputPage({ token, result, onNewScreening, onEditInput }: Props
       </details>
 
       <p className="disclaimer footer-note">
-        Screening-grade only — not bankable. Data: PVGIS (JRC), OpenTopoData, OpenStreetMap.
+        Screening-grade only — not bankable. Data: PVGIS (JRC), routed public DEM source,
+        OpenStreetMap.
       </p>
     </div>
   );

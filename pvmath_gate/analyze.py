@@ -168,6 +168,8 @@ def run_gate_analysis(req: GateRequest) -> GateResponse:
             "center_elev_m": terrain.get("center_elev"),
             "sample_points": terrain.get("sample_points"),
             "boundary_sampled": terrain.get("boundary_sampled"),
+            "terrain_source": terrain.get("terrain_source"),
+            "terrain_source_used": terrain.get("terrain_source_used"),
             "rating": slope_label,
             "detail": slope_detail,
         },

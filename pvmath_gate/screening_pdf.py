@@ -68,10 +68,21 @@ def build_screening_pdf(result: dict) -> bytes:
     regulatory = result.get("regulatory") or {}
     capacity = result.get("capacity") or {}
 
+    terrain_src = terrain.get("terrain_source") or {}
+    terrain_src_used = terrain.get("terrain_source_used") or terrain_src.get("source") or "unknown"
+    terrain_src_note = terrain_src.get("disclaimer") or ""
+
     rows = [
         ["Metric", "Rating", "Detail"],
         ["Solar", solar.get("rating", "—"), solar.get("detail", "—")],
-        ["Terrain", terrain.get("rating", "—"), terrain.get("detail", "—")],
+        [
+            "Terrain",
+            terrain.get("rating", "—"),
+            (
+                f"{terrain.get('detail', '—')} "
+                f"(source: {terrain_src_used}; {terrain_src_note})"
+            ).strip(),
+        ],
         ["Flood", flood.get("risk", "—"), flood.get("detail", "—")],
         ["Regulatory", regulatory.get("status", "—"), regulatory.get("note", "—")],
         [
