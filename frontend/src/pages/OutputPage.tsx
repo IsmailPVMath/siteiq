@@ -598,10 +598,11 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
                     )}
                     {terrain3D ? (
                       <>
-                        <Terrain3DView mesh={terrain3D} />
+                        <Terrain3DView mesh={terrain3D} layoutGeoJson={layoutDetail?.geojson ?? null} />
                         <p className="module-note">
                           3D terrain uses a coarse TopoIQ DEM mesh from {terrain3D.terrain_source_used}.
-                          PV row draping and shading-object ray tracing are the next graphics layer.
+                          PV rows are draped above sampled terrain elevation; the sun slider is the
+                          first visual layer before full shading-loss simulation.
                         </p>
                       </>
                     ) : null}

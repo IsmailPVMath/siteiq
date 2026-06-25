@@ -515,6 +515,28 @@ a {
   margin-top: 1rem;
 }
 
+.terrain-sun-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.terrain-sun-controls label {
+  min-width: 130px;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.terrain-sun-controls input {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
 .terrain-3d-view {
   width: 100%;
   min-height: 480px;
