@@ -302,12 +302,14 @@ def pitch_sweep_values(
     custom_gcr: float | None = None,
     custom_pitch_m: float | None = None,
     extra_pitches: Optional[List[float]] = None,
-    step_m: float = 0.5,
+    gcr_step: float = 0.03,
 ) -> Tuple[List[float], Dict[str, Any]]:
     """
     Build ordered pitch list for a configuration sweep.
 
-    Returns (pitches, guidance_dict).
+    The sweep is GCR-driven: we step across the realistic GCR band and convert
+    to pitch via the chord, so displayed GCRs stay in industry range for any
+    chord (1P vs 2P, fixed vs tracker). Returns (pitches, guidance_dict).
     """
     spec = _CONFIG_TABLE[config_key]
     guidance = config_guidance(
@@ -322,9 +324,6 @@ def pitch_sweep_values(
         custom_pitch_m=custom_pitch_m,
     )
     rec_pitch = guidance["recommended_pitch_m"]
-    pitch_lo, pitch_hi = spec["pitch_m"]
-    pitch_lo = max(float(pitch_lo), row_ns_m + 0.3)
-    pitch_hi = max(float(pitch_hi), pitch_lo + step_m)
 
     candidates: List[float] = []
 
@@ -337,10 +336,12 @@ def pitch_sweep_values(
         for scale in (0.92, 0.96, 1.0, 1.04, 1.08):
             candidates.append(round(base * scale, 2))
     else:
-        p = pitch_lo
-        while p <= pitch_hi + 0.01:
-            candidates.append(round(p, 2))
-            p += step_m
+        gcr_lo = min(spec["gcr_typical"][0], spec["gcr_cheap"][0])
+        gcr_hi = max(spec["gcr_typical"][1], spec["gcr_expensive"][1])
+        g = gcr_lo
+        while g <= gcr_hi + 1e-9:
+            candidates.append(pitch_from_gcr(row_ns_m, round(g, 3)))
+            g += gcr_step
 
     candidates.append(rec_pitch)
     if extra_pitches:
@@ -349,10 +350,11 @@ def pitch_sweep_values(
     seen = set()
     out: List[float] = []
     for val in sorted(candidates):
-        if val <= row_ns_m or val in seen:
+        v = round(float(val), 2)
+        if v <= row_ns_m or v in seen:
             continue
-        seen.add(val)
-        out.append(val)
+        seen.add(v)
+        out.append(v)
     if not out:
         out = [max(rec_pitch, row_ns_m + 0.5)]
     return out, guidance

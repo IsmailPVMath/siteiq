@@ -20,7 +20,9 @@ LandCost = str
 
 
 def _row_ns_m(module_h: float, module_w: float, n_portrait: int, tracker: bool) -> float:
-    return module_w * n_portrait if tracker else module_h * n_portrait
+    # Chord (cross-row) dimension uses the module long edge for both fixed tilt
+    # and SAT portrait mounting; n_portrait stacks modules across the chord.
+    return module_h * n_portrait
 
 
 def _config_specs() -> List[Tuple[str, str, int, bool]]:

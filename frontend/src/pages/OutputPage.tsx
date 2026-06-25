@@ -79,9 +79,6 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
   const [layoutCustomGcr, setLayoutCustomGcr] = useState("");
   const [layoutCustomPitch, setLayoutCustomPitch] = useState("");
 
-  const cap = result.capacity as Record<string, unknown>;
-  const mwp = cap?.mwp_range as string | undefined;
-  const mwh = cap?.mwh_range as string | undefined;
   const grid = result.grid as Record<string, unknown>;
   const nearest = grid?.nearest as Record<string, unknown> | undefined;
   const boundaries = useMemo<{ lat: number; lon: number }[][]>(() => {
@@ -315,17 +312,185 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
   const overallReady = overallScore != null;
 
   return (
-    <div className="workflow-page">
-      <div className="page-intro page-intro-row">
-        <div>
-          <h1>Project results</h1>
-          <p>{result.project_name}</p>
+    <div className="workflow-page results-shell">
+      <aside className="results-sidebar">
+        <div className="sidebar-project">
+          <h1>{result.project_name}</h1>
+          <div className="coord-pill">
+            {result.coordinates.lat.toFixed(4)}°, {result.coordinates.lon.toFixed(4)}°
+          </div>
         </div>
-        <div className="coord-pill">
-          {result.coordinates.lat.toFixed(4)}°, {result.coordinates.lon.toFixed(4)}°
-        </div>
-      </div>
 
+        <div className="sidebar-group">
+          <h3>TopoIQ terrain</h3>
+          {!hasBoundary ? (
+            <p className="hint sidebar-hint">
+              Add a site boundary on Project input to enable terrain analysis.
+            </p>
+          ) : (
+            <>
+              <button
+                className="btn btn-primary btn-block"
+                type="button"
+                onClick={() => void handleRunTopo()}
+                disabled={topoBusy}
+              >
+                {topoBusy ? "Running TopoIQ…" : topoResult ? "Re-run TopoIQ" : "Run TopoIQ"}
+              </button>
+              <div className="sidebar-btn-row">
+                <button
+                  className="btn btn-ghost btn-sm"
+                  type="button"
+                  onClick={() => void handleTopoPdf()}
+                  disabled={topoPdfBusy || !topoResult}
+                >
+                  {topoPdfBusy ? "Generating…" : "Terrain PDF"}
+                </button>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  type="button"
+                  onClick={() => void handleTopoZip()}
+                  disabled={topoZipBusy || !topoResult}
+                >
+                  {topoZipBusy ? "Preparing…" : "CAD ZIP"}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="sidebar-group">
+          <h3>LayoutIQ strategy</h3>
+          {!hasBoundary ? (
+            <p className="hint sidebar-hint">Boundary required for layout generation.</p>
+          ) : (
+            <>
+              <div className="field">
+                <label htmlFor="layout-opt-mode">Optimization mode</label>
+                <select
+                  id="layout-opt-mode"
+                  value={layoutOptimization}
+                  onChange={(e) => setLayoutOptimization(e.target.value as LayoutOptimizationMode)}
+                >
+                  <option value="balanced">Balanced (industry default)</option>
+                  <option value="high_energy">High energy — wider spacing</option>
+                  <option value="land_optimized">Land optimized — tighter</option>
+                  <option value="custom">Custom GCR or pitch</option>
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="layout-land-cost">Land cost</label>
+                <select
+                  id="layout-land-cost"
+                  value={layoutLandCost}
+                  onChange={(e) => setLayoutLandCost(e.target.value as LayoutLandCost)}
+                >
+                  <option value="auto">Auto (from country)</option>
+                  <option value="cheap">Cheap (TX, AU, SA, IN…)</option>
+                  <option value="balanced">Moderate</option>
+                  <option value="expensive">Expensive (DE, NL, JP, KR…)</option>
+                </select>
+              </div>
+              <label className="checkbox-field layout-bifacial">
+                <input
+                  type="checkbox"
+                  checked={layoutBifacial}
+                  onChange={(e) => setLayoutBifacial(e.target.checked)}
+                />
+                Bifacial (wider spacing bias)
+              </label>
+              {layoutOptimization === "custom" ? (
+                <div className="grid-2 layout-custom-row">
+                  <div className="field">
+                    <label htmlFor="layout-custom-gcr">Custom GCR</label>
+                    <input
+                      id="layout-custom-gcr"
+                      type="number"
+                      step="0.01"
+                      min="0.15"
+                      max="0.75"
+                      placeholder="0.45"
+                      value={layoutCustomGcr}
+                      onChange={(e) => setLayoutCustomGcr(e.target.value)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="layout-custom-pitch">Custom pitch m</label>
+                    <input
+                      id="layout-custom-pitch"
+                      type="number"
+                      step="0.1"
+                      min="3"
+                      max="20"
+                      placeholder="6.5"
+                      value={layoutCustomPitch}
+                      onChange={(e) => setLayoutCustomPitch(e.target.value)}
+                    />
+                  </div>
+                </div>
+              ) : null}
+              <button
+                className="btn btn-primary btn-block"
+                type="button"
+                onClick={() => void handleLayoutSweep()}
+                disabled={layoutBusy}
+              >
+                {layoutBusy ? "Running layout sweep…" : "Run layout sweep"}
+              </button>
+            </>
+          )}
+        </div>
+
+        <div className="sidebar-group">
+          <h3>YieldIQ</h3>
+          {selectedLayoutRow ? (
+            <p className="hint sidebar-hint">
+              {selectedLayoutRow.label} · {selectedLayoutRow.pitch_m} m · GCR{" "}
+              {selectedLayoutRow.gcr.toFixed(2)}
+            </p>
+          ) : (
+            <p className="hint sidebar-hint">Select a layout row to enable yield.</p>
+          )}
+          <button
+            className="btn btn-primary btn-block"
+            type="button"
+            onClick={() => void handleRunYield()}
+            disabled={yieldBusy || !selectedLayoutRow}
+          >
+            {yieldBusy ? "Running YieldIQ…" : "Run YieldIQ"}
+          </button>
+        </div>
+
+        <div className="sidebar-group sidebar-score">
+          <h3>Overall PVMath score</h3>
+          {overallReady ? (
+            <div className="overall-score-body">
+              <span className="score-pill score-pill-lg">{overallScore}</span>
+              <div>
+                <strong>{finalScore?.verdict}</strong>
+                <p>{finalScore?.verdict_detail}</p>
+              </div>
+            </div>
+          ) : (
+            <p className="hint sidebar-hint">
+              {hasBoundary
+                ? "Run TopoIQ to compute the overall score (screening + authoritative terrain)."
+                : "Add a boundary and run TopoIQ for the overall score."}
+            </p>
+          )}
+        </div>
+
+        <div className="sidebar-actions">
+          <button className="btn btn-ghost btn-block" type="button" onClick={onEditInput}>
+            ← Edit input
+          </button>
+          <button className="btn btn-primary btn-block" type="button" onClick={onNewScreening}>
+            New project
+          </button>
+        </div>
+      </aside>
+
+      <div className="results-main">
       <section className="module-card module-screen">
         <div className="module-head">
           <h2>Site screening</h2>
@@ -361,8 +526,11 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
             String(result.regulatory.status ?? "—"),
             String(result.regulatory.note ?? ""),
           )}
-          {metric("Capacity", mwp || "—", mwh ? `${mwh} MWh/yr (screening band)` : undefined)}
         </div>
+        <p className="module-note">
+          Capacity is computed precisely in LayoutIQ below (per mount type, portrait, and GCR) —
+          not estimated here.
+        </p>
         {grid.disclaimer ? <p className="module-note">{String(grid.disclaimer)}</p> : null}
       </section>
 
@@ -386,16 +554,9 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
           <>
             {topoBusy && !topoResult ? (
               <p className="hint">Running TopoIQ on your boundary grid…</p>
-            ) : (
-              <button
-                className="btn btn-primary"
-                type="button"
-                onClick={() => void handleRunTopo()}
-                disabled={topoBusy}
-              >
-                {topoBusy ? "Running TopoIQ…" : "Re-run TopoIQ"}
-              </button>
-            )}
+            ) : !topoResult ? (
+              <p className="hint">Use “Run TopoIQ” in the sidebar to analyse terrain.</p>
+            ) : null}
             {topoResult ? (
               <>
                 <div className="metrics module-metrics">
@@ -416,24 +577,6 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
                 </div>
               </>
             ) : null}
-            <div className="output-actions module-actions">
-              <button
-                className="btn btn-ghost"
-                type="button"
-                onClick={() => void handleTopoPdf()}
-                disabled={topoPdfBusy || !topoResult}
-              >
-                {topoPdfBusy ? "Generating…" : "Terrain PDF"}
-              </button>
-              <button
-                className="btn btn-ghost"
-                type="button"
-                onClick={() => void handleTopoZip()}
-                disabled={topoZipBusy || !topoResult}
-              >
-                {topoZipBusy ? "Preparing…" : "CAD ZIP"}
-              </button>
-            </div>
           </>
         )}
         {topoError ? <div className="error-banner">{topoError}</div> : null}
@@ -450,85 +593,15 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
           <>
             <p className="hint">
               Sweeps Fixed Tilt 1P–4P and Single-Axis Tracker 1P–2P across industry pitch/GCR
-              bands. Recommended rows follow utility-scale defaults; pick a row before YieldIQ.
+              bands. Set the strategy in the sidebar, then run the sweep.
             </p>
             {!topoResult ? (
               <p className="module-note">TopoIQ should finish first — layout uses your boundary polygon.</p>
             ) : null}
-            <div className="layout-strategy-controls">
-              <div className="field">
-                <label htmlFor="layout-opt-mode">Optimization mode</label>
-                <select
-                  id="layout-opt-mode"
-                  value={layoutOptimization}
-                  onChange={(e) => setLayoutOptimization(e.target.value as LayoutOptimizationMode)}
-                >
-                  <option value="balanced">Balanced (industry default GCR)</option>
-                  <option value="high_energy">High energy — wider spacing, lower GCR</option>
-                  <option value="land_optimized">Land optimized — tighter spacing, higher GCR</option>
-                  <option value="custom">Custom GCR or pitch</option>
-                </select>
-              </div>
-              <div className="field">
-                <label htmlFor="layout-land-cost">Land cost</label>
-                <select
-                  id="layout-land-cost"
-                  value={layoutLandCost}
-                  onChange={(e) => setLayoutLandCost(e.target.value as LayoutLandCost)}
-                >
-                  <option value="auto">Auto (from country)</option>
-                  <option value="cheap">Cheap land (TX, AU, SA, IN…)</option>
-                  <option value="balanced">Moderate</option>
-                  <option value="expensive">Expensive land (DE, NL, JP, KR…)</option>
-                </select>
-              </div>
-              <label className="checkbox-field layout-bifacial">
-                <input
-                  type="checkbox"
-                  checked={layoutBifacial}
-                  onChange={(e) => setLayoutBifacial(e.target.checked)}
-                />
-                Bifacial modules (wider spacing bias)
-              </label>
-            </div>
-            {layoutOptimization === "custom" ? (
-              <div className="grid-2 layout-custom-row">
-                <div className="field">
-                  <label htmlFor="layout-custom-gcr">Custom GCR (optional)</label>
-                  <input
-                    id="layout-custom-gcr"
-                    type="number"
-                    step="0.01"
-                    min="0.15"
-                    max="0.75"
-                    placeholder="e.g. 0.45"
-                    value={layoutCustomGcr}
-                    onChange={(e) => setLayoutCustomGcr(e.target.value)}
-                  />
-                </div>
-                <div className="field">
-                  <label htmlFor="layout-custom-pitch">Custom pitch m (optional)</label>
-                  <input
-                    id="layout-custom-pitch"
-                    type="number"
-                    step="0.1"
-                    min="3"
-                    max="20"
-                    placeholder="e.g. 6.5"
-                    value={layoutCustomPitch}
-                    onChange={(e) => setLayoutCustomPitch(e.target.value)}
-                  />
-                </div>
-              </div>
+            {!layoutSweep && !layoutBusy ? (
+              <p className="module-note">Run the layout sweep from the sidebar to see the capacity table.</p>
             ) : null}
-            <button
-              className="btn btn-primary"
-              type="button"
-              onClick={() => void handleLayoutSweep()}
-              disabled={layoutBusy}
-            >
-              {layoutBusy ? "Running layout sweep…" : "Run layout sweep"}
-            </button>
+            {layoutBusy ? <p className="hint">Running layout sweep…</p> : null}
             {layoutSweep && layoutConfigKeys.length > 0 ? (
               <div className="layout-matrix">
                 {layoutSweep.strategy?.mode_label ? (
@@ -728,19 +801,11 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
           <p className="hint">
             Using {selectedLayoutRow.label}, {selectedLayoutRow.pitch_m} m pitch, GCR{" "}
             {selectedLayoutRow.gcr.toFixed(2)}, and {selectedLayoutRow.dc_kwp?.toLocaleString()} kWp
-            DC from LayoutIQ.
+            DC from LayoutIQ. Run YieldIQ from the sidebar.
           </p>
         ) : (
-          <p className="hint">Select a LayoutIQ row first to run YieldIQ with the chosen pitch and GCR.</p>
+          <p className="hint">Select a LayoutIQ row, then run YieldIQ from the sidebar.</p>
         )}
-        <button
-          className="btn btn-primary"
-          type="button"
-          onClick={() => void handleRunYield()}
-          disabled={yieldBusy || !selectedLayoutRow}
-        >
-          {yieldBusy ? "Running YieldIQ…" : "Run YieldIQ for selected layout"}
-        </button>
         {yieldResult ? (
           <div className="yield-table-wrap">
             {selectedYieldConfig && selectedAnnualMwh != null ? (
@@ -779,37 +844,6 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
         {yieldError ? <div className="error-banner">{yieldError}</div> : null}
       </section>
 
-      <section className="module-card module-score overall-score-card">
-        <div className="module-head">
-          <h2>Overall PVMath score</h2>
-          <span className="module-tag">Final assessment</span>
-        </div>
-        {overallReady ? (
-          <div className="overall-score-body">
-            <span className="score-pill score-pill-lg">{overallScore}</span>
-            <div>
-              <strong>{finalScore?.verdict}</strong>
-              <p>{finalScore?.verdict_detail}</p>
-            </div>
-          </div>
-        ) : (
-          <p className="hint">
-            {hasBoundary
-              ? "Run TopoIQ on your boundary to compute the overall PVMath score (combines screening with authoritative terrain)."
-              : "Add a site boundary and run TopoIQ to compute the overall PVMath score. Screening alone does not produce a score."}
-          </p>
-        )}
-      </section>
-
-      <div className="output-actions">
-        <button className="btn btn-ghost" type="button" onClick={onEditInput}>
-          ← Edit input
-        </button>
-        <button className="btn btn-primary" type="button" onClick={onNewScreening}>
-          New project
-        </button>
-      </div>
-
       <details className="raw-json">
         <summary>Technical JSON</summary>
         <pre>
@@ -825,6 +859,7 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
         Screening-grade only — not bankable. Terrain from TopoIQ grid only. Data: PVGIS (JRC),
         routed public DEM, OpenStreetMap.
       </p>
+      </div>
     </div>
   );
 }

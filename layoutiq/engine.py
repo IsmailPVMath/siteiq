@@ -53,8 +53,10 @@ def run_layout(
 
     if is_tracker:
         rot_angle = 90.0
-        row_ns = module_w * n_portrait
-        mod_ew = module_h + inter_gap
+        # SAT torque tube runs N-S; modules in portrait give a chord of the
+        # module long edge (module_h). Modules along the tube step by module_w.
+        row_ns = module_h * n_portrait
+        mod_ew = module_w + inter_gap
     else:
         rot_angle = -(azimuth - 180.0)
         row_ns = module_h * n_portrait

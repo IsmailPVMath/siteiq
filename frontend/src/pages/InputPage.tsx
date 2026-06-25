@@ -18,6 +18,7 @@ export type ScreeningFormValues = GateAnalyzeRequest;
 interface Parcel {
   id: string;
   name: string;
+  layer_group: string;
   area_ha: number;
   coords: BoundaryPoint[];
   enabled: boolean;
@@ -69,11 +70,31 @@ export function InputPage({ token, initial, onSubmit }: Props) {
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showBoundaryModal, setShowBoundaryModal] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
   const enabledParcels = useMemo(
     () => parcels.filter((p) => p.enabled && p.coords.length >= 3),
     [parcels],
   );
+
+  const parcelGroups = useMemo(() => {
+    const order: string[] = [];
+    const buckets = new Map<string, Parcel[]>();
+    for (const p of parcels) {
+      const g = p.layer_group || "Other";
+      if (!buckets.has(g)) {
+        buckets.set(g, []);
+        order.push(g);
+      }
+      buckets.get(g)!.push(p);
+    }
+    return order.map((g) => {
+      const items = buckets.get(g)!;
+      const enabled = items.filter((p) => p.enabled).length;
+      const area = items.reduce((sum, p) => sum + (p.area_ha || 0), 0);
+      return { group: g, items, enabled, total: items.length, area };
+    });
+  }, [parcels]);
 
   // Effective rings used for analysis: enabled KML parcels, else the drawn boundary.
   const effectiveRings: BoundaryPoint[][] = useMemo(() => {
@@ -171,6 +192,7 @@ export function InputPage({ token, initial, onSubmit }: Props) {
           rings.map((coords, i) => ({
             id: `saved_${i}`,
             name: `Parcel ${i + 1}`,
+            layer_group: "Parcels",
             area_ha: 0,
             coords,
             enabled: true,
@@ -309,6 +331,7 @@ export function InputPage({ token, initial, onSubmit }: Props) {
           ? parsed.parcels.map((p) => ({
               id: p.id,
               name: p.name,
+              layer_group: p.layer_group || "Other",
               area_ha: p.area_ha,
               coords: p.boundary,
               enabled: p.is_primary,
@@ -317,6 +340,7 @@ export function InputPage({ token, initial, onSubmit }: Props) {
               {
                 id: "kml_0",
                 name: parsed.name,
+                layer_group: "Parcels",
                 area_ha: parsed.area_ha,
                 coords: parsed.boundary,
                 enabled: true,
@@ -351,6 +375,20 @@ export function InputPage({ token, initial, onSubmit }: Props) {
 
   function removeParcel(id: string) {
     setParcels((prev) => prev.filter((p) => p.id !== id));
+  }
+
+  function setGroupEnabled(group: string, enabled: boolean) {
+    setParcels((prev) =>
+      prev.map((p) => ((p.layer_group || "Other") === group ? { ...p, enabled } : p)),
+    );
+  }
+
+  function removeGroup(group: string) {
+    setParcels((prev) => prev.filter((p) => (p.layer_group || "Other") !== group));
+  }
+
+  function toggleGroupCollapsed(group: string) {
+    setCollapsedGroups((prev) => ({ ...prev, [group]: !prev[group] }));
   }
 
   function clearBoundary() {
@@ -504,31 +542,77 @@ export function InputPage({ token, initial, onSubmit }: Props) {
                   Clear all
                 </button>
               </div>
-              <ul className="parcel-list">
-                {parcels.map((p) => (
-                  <li key={p.id} className={p.enabled ? "parcel-on" : "parcel-off"}>
-                    <label className="parcel-check">
-                      <input
-                        type="checkbox"
-                        checked={p.enabled}
-                        onChange={() => toggleParcel(p.id)}
-                      />
-                      <span className="parcel-name">{p.name}</span>
-                      <span className="parcel-area">
-                        {p.area_ha > 0 ? `${p.area_ha} ha` : `${p.coords.length} pts`}
-                      </span>
-                    </label>
-                    <button
-                      className="parcel-remove"
-                      type="button"
-                      aria-label={`Remove ${p.name}`}
-                      onClick={() => removeParcel(p.id)}
+              <div className="parcel-groups">
+                {parcelGroups.map((grp) => {
+                  const collapsed = !!collapsedGroups[grp.group];
+                  const allOn = grp.enabled === grp.total;
+                  return (
+                    <div
+                      key={grp.group}
+                      className={`parcel-group${grp.enabled === 0 ? " group-off" : ""}`}
                     >
-                      ✕
-                    </button>
-                  </li>
-                ))}
-              </ul>
+                      <div className="parcel-group-head">
+                        <input
+                          type="checkbox"
+                          checked={allOn}
+                          ref={(el) => {
+                            if (el) el.indeterminate = grp.enabled > 0 && !allOn;
+                          }}
+                          onChange={() => setGroupEnabled(grp.group, !allOn)}
+                          aria-label={`Toggle ${grp.group}`}
+                        />
+                        <button
+                          type="button"
+                          className="parcel-group-toggle"
+                          onClick={() => toggleGroupCollapsed(grp.group)}
+                          aria-expanded={!collapsed}
+                        >
+                          <span className="parcel-caret">{collapsed ? "▸" : "▾"}</span>
+                          <span className="parcel-group-name">{grp.group}</span>
+                          <span className="parcel-group-meta">
+                            {grp.enabled}/{grp.total} · {grp.area.toFixed(1)} ha
+                          </span>
+                        </button>
+                        <button
+                          className="parcel-remove"
+                          type="button"
+                          aria-label={`Remove group ${grp.group}`}
+                          onClick={() => removeGroup(grp.group)}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      {!collapsed ? (
+                        <ul className="parcel-list">
+                          {grp.items.map((p) => (
+                            <li key={p.id} className={p.enabled ? "parcel-on" : "parcel-off"}>
+                              <label className="parcel-check">
+                                <input
+                                  type="checkbox"
+                                  checked={p.enabled}
+                                  onChange={() => toggleParcel(p.id)}
+                                />
+                                <span className="parcel-name">{p.name}</span>
+                                <span className="parcel-area">
+                                  {p.area_ha > 0 ? `${p.area_ha} ha` : `${p.coords.length} pts`}
+                                </span>
+                              </label>
+                              <button
+                                className="parcel-remove"
+                                type="button"
+                                aria-label={`Remove ${p.name}`}
+                                onClick={() => removeParcel(p.id)}
+                              >
+                                ✕
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           ) : null}
 
