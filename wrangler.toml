@@ -1,0 +1,8 @@
+name = "pvmath-react"
+compatibility_date = "2026-06-25"
+pages_build_output_dir = "frontend/dist"
+
+# For Cloudflare Pages Git integration:
+# Build command: cd frontend && npm ci && npm run build
+# Build output directory: frontend/dist
+# Production environment variable: VITE_API_URL=https://api.pvmath.com

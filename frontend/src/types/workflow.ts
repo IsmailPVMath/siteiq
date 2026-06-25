@@ -1,3 +1,5 @@
+import type * as GeoJSON from "geojson";
+
 export type WorkflowStep = "input" | "processing" | "output";
 
 export const WORKFLOW_STEPS: { id: WorkflowStep; label: string }[] = [
@@ -65,4 +67,76 @@ export interface LayoutMatrixConfig {
 
 export interface WorkflowLayoutMatrixResponse {
   configs: LayoutMatrixConfig[];
+}
+
+export interface WorkflowLayoutSweepResponse {
+  rows: LayoutSweepRow[];
+  best_by_config: Record<string, LayoutSweepRow>;
+  config_count: number;
+  row_count: number;
+}
+
+export interface LayoutSweepRow {
+  config_key: string;
+  label: string;
+  mount_type: string;
+  n_portrait: number;
+  pitch_m: number;
+  gcr: number;
+  success: boolean;
+  error?: string;
+  total_modules?: number;
+  total_rows?: number;
+  area_ha?: number;
+  dc_kwp?: number;
+  mw_per_ha?: number | null;
+  bom?: Record<string, string>;
+}
+
+export interface WorkflowLayoutDetailRequest {
+  project_name?: string;
+  boundary: { lat: number; lon: number }[];
+  config_key: string;
+  pitch_m: number;
+  module_h?: number;
+  module_w?: number;
+  module_wp?: number;
+  setback_m?: number;
+  azimuth?: number;
+}
+
+export interface WorkflowLayoutDetailResponse {
+  config_key: string;
+  label: string;
+  mount_type: string;
+  n_portrait: number;
+  pitch_m: number;
+  gcr: number;
+  total_modules: number;
+  total_rows: number;
+  area_ha: number;
+  dc_kwp: number;
+  ref_lat: number;
+  ref_lon: number;
+  geojson: GeoJSON.GeoJSON;
+}
+
+export interface WorkflowTerrainMeshRequest {
+  boundary: { lat: number; lon: number }[];
+  grid_m?: number;
+  max_vertices?: number;
+}
+
+export interface WorkflowTerrainMeshResponse {
+  vertices: number[][];
+  faces: number[][];
+  elevations: number[];
+  slopes: number[];
+  origin: { lat: number; lon: number; elevation_m: number };
+  bbox: Record<string, number>;
+  grid_m_used: number;
+  terrain_source_used: string;
+  z_min: number;
+  z_max: number;
+  slope_mean: number;
 }

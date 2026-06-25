@@ -6,10 +6,15 @@ import type {
   YieldIQAnalyzeResponse,
 } from "../types/topoiq";
 import type {
+  WorkflowLayoutDetailRequest,
+  WorkflowLayoutDetailResponse,
   WorkflowLayoutMatrixResponse,
+  WorkflowLayoutSweepResponse,
   WorkflowScoreResponse,
   WorkflowScreenRequest,
   WorkflowScreenResponse,
+  WorkflowTerrainMeshRequest,
+  WorkflowTerrainMeshResponse,
 } from "../types/workflow";
 import type * as GeoJSON from "geojson";
 
@@ -72,6 +77,45 @@ export function workflowScore(
   body: { score_components: Record<string, number>; terrain_score: number },
 ) {
   return apiFetch<WorkflowScoreResponse>("/api/v1/workflow/score", token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function workflowLayoutSweep(
+  token: string,
+  body: {
+    boundary: { lat: number; lon: number }[];
+    module_h?: number;
+    module_w?: number;
+    module_wp?: number;
+    setback_m?: number;
+    include_bom?: boolean;
+  },
+) {
+  return apiFetch<WorkflowLayoutSweepResponse>(
+    "/api/v1/workflow/layout-sweep",
+    token,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export function workflowLayoutDetail(token: string, body: WorkflowLayoutDetailRequest) {
+  return apiFetch<WorkflowLayoutDetailResponse>("/api/v1/workflow/layout-detail", token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function workflowLayoutDxf(token: string, body: WorkflowLayoutDetailRequest) {
+  return downloadBlob("/api/v1/workflow/layout-dxf", token, body, "application/dxf");
+}
+
+export function workflowTerrainMesh(token: string, body: WorkflowTerrainMeshRequest) {
+  return apiFetch<WorkflowTerrainMeshResponse>("/api/v1/workflow/terrain-mesh", token, {
     method: "POST",
     body: JSON.stringify(body),
   });

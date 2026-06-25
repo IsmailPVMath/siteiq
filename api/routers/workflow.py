@@ -3,24 +3,35 @@
 from __future__ import annotations
 
 import asyncio
+import io
 import os
 from functools import partial
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 
 from api.deps import get_current_user
 from api.schemas.workflow import (
+    WorkflowLayoutDetailRequest,
+    WorkflowLayoutDetailResponse,
     WorkflowLayoutMatrixRequest,
     WorkflowLayoutMatrixResponse,
+    WorkflowLayoutSweepRequest,
+    WorkflowLayoutSweepResponse,
     WorkflowScoreRequest,
     WorkflowScoreResponse,
     WorkflowScreenRequest,
     WorkflowScreenResponse,
+    WorkflowTerrainMeshRequest,
+    WorkflowTerrainMeshResponse,
 )
 from pvmath_supabase import AuthUser, increment_usage, is_over_limit
+from pvmath_workflow.layout_detail import build_layout_detail, export_layout_dxf
 from pvmath_workflow.layout_matrix import run_fixed_tilt_layout_matrix
+from pvmath_workflow.layout_sweep import run_layout_sweep
 from pvmath_workflow.scoring import unified_pvmath_score
 from pvmath_workflow.screen import WorkflowScreenRequest as ScreenReq, run_workflow_screen
+from pvmath_workflow.terrain_mesh import build_terrain_mesh
 
 router = APIRouter(tags=["workflow"])
 
@@ -153,3 +164,158 @@ async def workflow_layout_matrix(
         raise HTTPException(status_code=500, detail=f"Layout matrix failed: {exc}") from exc
 
     return WorkflowLayoutMatrixResponse(configs=configs)
+
+
+@router.post("/workflow/layout-sweep", response_model=WorkflowLayoutSweepResponse)
+async def workflow_layout_sweep(
+    body: WorkflowLayoutSweepRequest,
+    user: AuthUser = Depends(get_current_user),
+):
+    """
+    LayoutIQ sweep — Fixed Tilt 1P–4P and Tracker 1P–2P across increasing pitch/GCR.
+
+    Returns a comparison table (capacity vs pitch) plus best DC per configuration.
+    """
+    boundary = [[p.lat, p.lon] for p in body.boundary]
+    loop = asyncio.get_running_loop()
+    try:
+        data = await asyncio.wait_for(
+            loop.run_in_executor(
+                None,
+                partial(
+                    run_layout_sweep,
+                    boundary,
+                    module_h=body.module_h,
+                    module_w=body.module_w,
+                    module_wp=body.module_wp,
+                    setback_m=body.setback_m,
+                    azimuth=body.azimuth,
+                    pitch_steps_m=body.pitch_steps_m,
+                    include_bom=body.include_bom,
+                ),
+            ),
+            timeout=LAYOUT_TIMEOUT_SEC,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=f"Layout sweep timed out after {LAYOUT_TIMEOUT_SEC}s.",
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Layout sweep failed: {exc}") from exc
+
+    return WorkflowLayoutSweepResponse(
+        rows=data.get("rows") or [],
+        best_by_config=data.get("best_by_config") or {},
+        config_count=int(data.get("config_count") or 0),
+        row_count=int(data.get("row_count") or 0),
+    )
+
+
+def _layout_detail_payload(body: WorkflowLayoutDetailRequest):
+    boundary = [[p.lat, p.lon] for p in body.boundary]
+    return partial(
+        build_layout_detail,
+        boundary,
+        config_key=body.config_key,
+        pitch_m=body.pitch_m,
+        module_h=body.module_h,
+        module_w=body.module_w,
+        module_wp=body.module_wp,
+        setback_m=body.setback_m,
+        azimuth=body.azimuth,
+    )
+
+
+@router.post("/workflow/layout-detail", response_model=WorkflowLayoutDetailResponse)
+async def workflow_layout_detail(
+    body: WorkflowLayoutDetailRequest,
+    _user: AuthUser = Depends(get_current_user),
+):
+    """Detailed LayoutIQ row geometry for the browser map overlay."""
+    loop = asyncio.get_running_loop()
+    try:
+        data = await asyncio.wait_for(
+            loop.run_in_executor(None, _layout_detail_payload(body)),
+            timeout=LAYOUT_TIMEOUT_SEC,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=f"Layout detail timed out after {LAYOUT_TIMEOUT_SEC}s.",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Layout detail failed: {exc}") from exc
+
+    data.pop("layout", None)
+    return WorkflowLayoutDetailResponse(**data)
+
+
+@router.post("/workflow/layout-dxf")
+async def workflow_layout_dxf(
+    body: WorkflowLayoutDetailRequest,
+    _user: AuthUser = Depends(get_current_user),
+):
+    """Download selected LayoutIQ row geometry as a metric local-coordinate DXF."""
+    loop = asyncio.get_running_loop()
+    try:
+        detail = await asyncio.wait_for(
+            loop.run_in_executor(None, _layout_detail_payload(body)),
+            timeout=LAYOUT_TIMEOUT_SEC,
+        )
+        dxf_bytes = await asyncio.wait_for(
+            loop.run_in_executor(None, partial(export_layout_dxf, detail, body.project_name)),
+            timeout=LAYOUT_TIMEOUT_SEC,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=f"Layout DXF timed out after {LAYOUT_TIMEOUT_SEC}s.",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Layout DXF failed: {exc}") from exc
+
+    safe_name = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in body.project_name)[:60]
+    filename = f"{safe_name or 'LayoutIQ'}_{body.config_key}_{body.pitch_m:g}m.dxf"
+    return StreamingResponse(
+        io.BytesIO(dxf_bytes),
+        media_type="application/dxf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/workflow/terrain-mesh", response_model=WorkflowTerrainMeshResponse)
+async def workflow_terrain_mesh(
+    body: WorkflowTerrainMeshRequest,
+    _user: AuthUser = Depends(get_current_user),
+):
+    """Coarse TopoIQ terrain mesh for browser-side 3D rendering."""
+    polygons = [[(p.lon, p.lat) for p in body.boundary]]
+    loop = asyncio.get_running_loop()
+    try:
+        data = await asyncio.wait_for(
+            loop.run_in_executor(
+                None,
+                partial(
+                    build_terrain_mesh,
+                    polygons,
+                    grid_m=body.grid_m,
+                    max_vertices=body.max_vertices,
+                ),
+            ),
+            timeout=LAYOUT_TIMEOUT_SEC,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=f"Terrain mesh timed out after {LAYOUT_TIMEOUT_SEC}s.",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Terrain mesh failed: {exc}") from exc
+    return WorkflowTerrainMeshResponse(**data)

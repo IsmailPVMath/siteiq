@@ -68,3 +68,72 @@ class WorkflowLayoutMatrixRequest(BaseModel):
 
 class WorkflowLayoutMatrixResponse(BaseModel):
     configs: List[Dict[str, Any]]
+
+
+class WorkflowLayoutSweepRequest(BaseModel):
+    boundary: List[BoundaryPoint] = Field(..., min_length=3)
+    module_h: float = Field(default=2.094, gt=0)
+    module_w: float = Field(default=1.038, gt=0)
+    module_wp: int = Field(default=550, ge=200, le=1000)
+    setback_m: float = Field(default=5.0, ge=0)
+    azimuth: float = Field(default=180.0, ge=90, le=270)
+    pitch_steps_m: Optional[List[float]] = Field(
+        default=None,
+        description="Optional pitch list (m). Defaults to standard sweep from min pitch upward.",
+    )
+    include_bom: bool = False
+
+
+class WorkflowLayoutSweepResponse(BaseModel):
+    rows: List[Dict[str, Any]]
+    best_by_config: Dict[str, Any]
+    config_count: int
+    row_count: int
+
+
+class WorkflowLayoutDetailRequest(BaseModel):
+    project_name: str = Field(default="LayoutIQ", max_length=200)
+    boundary: List[BoundaryPoint] = Field(..., min_length=3)
+    config_key: str = Field(..., max_length=16)
+    pitch_m: float = Field(..., gt=0)
+    module_h: float = Field(default=2.094, gt=0)
+    module_w: float = Field(default=1.038, gt=0)
+    module_wp: int = Field(default=550, ge=200, le=1000)
+    setback_m: float = Field(default=5.0, ge=0)
+    azimuth: float = Field(default=180.0, ge=90, le=270)
+
+
+class WorkflowLayoutDetailResponse(BaseModel):
+    config_key: str
+    label: str
+    mount_type: str
+    n_portrait: int
+    pitch_m: float
+    gcr: float
+    total_modules: int
+    total_rows: int
+    area_ha: float
+    dc_kwp: float
+    ref_lat: float
+    ref_lon: float
+    geojson: Dict[str, Any]
+
+
+class WorkflowTerrainMeshRequest(BaseModel):
+    boundary: List[BoundaryPoint] = Field(..., min_length=3)
+    grid_m: float = Field(default=20.0, ge=5.0, le=100.0)
+    max_vertices: int = Field(default=12_000, ge=1_000, le=40_000)
+
+
+class WorkflowTerrainMeshResponse(BaseModel):
+    vertices: List[List[float]]
+    faces: List[List[int]]
+    elevations: List[float]
+    slopes: List[float]
+    origin: Dict[str, float]
+    bbox: Dict[str, float]
+    grid_m_used: float
+    terrain_source_used: str
+    z_min: float
+    z_max: float
+    slope_mean: float
