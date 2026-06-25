@@ -1,3 +1,5 @@
+import type { LayoutElectricalConfig } from "./layoutConfig";
+
 export type LandUse = "Standard" | "Agri-PV";
 
 export interface BoundaryPoint {
@@ -5,7 +7,7 @@ export interface BoundaryPoint {
   lon: number;
 }
 
-export interface GateAnalyzeRequest {
+export interface GateAnalyzeRequest extends LayoutElectricalConfig {
   project_name: string;
   lat: number;
   lon: number;
@@ -15,6 +17,7 @@ export interface GateAnalyzeRequest {
   country: string;
   boundary?: BoundaryPoint[];
   boundaries?: BoundaryPoint[][];
+  restriction_polygons?: BoundaryPoint[][];
   run_layout: boolean;
 }
 

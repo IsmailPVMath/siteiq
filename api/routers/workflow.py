@@ -34,6 +34,7 @@ from pvmath_workflow.layout_sweep import run_layout_sweep
 from pvmath_workflow.project_report import build_pvmath_report_pdf, build_project_package_zip
 from pvmath_workflow.scoring import unified_pvmath_score
 from pvmath_workflow.screen import WorkflowScreenRequest as ScreenReq, run_workflow_screen
+from pvmath_workflow.slope_restrictions import build_slope_restriction_polygons
 from pvmath_workflow.terrain_mesh import build_terrain_mesh
 
 router = APIRouter(tags=["workflow"])
@@ -55,6 +56,29 @@ def _latlon_polys(boundary, boundaries):
         if len(pts) >= 3:
             polys.append(pts)
     return polys
+
+
+def _merge_latlon_polys(*groups):
+    merged = []
+    for group in groups:
+        for ring in group or []:
+            if ring and len(ring) >= 3:
+                merged.append(ring)
+    return merged
+
+
+def _tracker_slope_restrictions(body) -> list:
+    if not getattr(body, "exclude_tracker_slope", False):
+        return []
+    polygons = _lonlat_polys(body.boundary, body.boundaries)
+    if not polygons:
+        return []
+    data = build_slope_restriction_polygons(
+        polygons,
+        slope_limit_pct=body.tracker_slope_limit_pct,
+        grid_m=body.slope_restriction_grid_m,
+    )
+    return data.get("restriction_polygons") or []
 
 
 def _lonlat_polys(boundary, boundaries):
@@ -210,14 +234,21 @@ async def workflow_layout_sweep(
     polys = _latlon_polys(body.boundary, body.boundaries)
     if not polys:
         raise HTTPException(status_code=400, detail="A site boundary is required for LayoutIQ.")
+    manual_restrictions = _latlon_polys(None, body.restriction_polygons)
     loop = asyncio.get_running_loop()
     try:
+        tracker_restrictions = await asyncio.wait_for(
+            loop.run_in_executor(None, partial(_tracker_slope_restrictions, body)),
+            timeout=LAYOUT_TIMEOUT_SEC,
+        )
         data = await asyncio.wait_for(
             loop.run_in_executor(
                 None,
                 partial(
                     run_layout_sweep,
                     boundaries=polys,
+                    restriction_polygons=manual_restrictions,
+                    tracker_restriction_polygons=tracker_restrictions,
                     module_h=body.module_h,
                     module_w=body.module_w,
                     module_wp=body.module_wp,
@@ -232,6 +263,14 @@ async def workflow_layout_sweep(
                     custom_gcr=body.custom_gcr,
                     custom_pitch_m=body.custom_pitch_m,
                     include_bom=body.include_bom,
+                    modules_per_string=body.modules_per_string,
+                    inter_string_gap_m=body.inter_string_gap_m,
+                    tracker_string_options=body.tracker_string_options,
+                    max_tracker_length_m=body.max_tracker_length_m,
+                    rows_per_block=body.rows_per_block,
+                    block_gap_m=body.block_gap_m,
+                    road_mode=body.road_mode,
+                    road_preset=body.road_preset,
                 ),
             ),
             timeout=LAYOUT_TIMEOUT_SEC,
@@ -250,6 +289,7 @@ async def workflow_layout_sweep(
         recommended_by_config=data.get("recommended_by_config") or {},
         gcr_guidance=data.get("gcr_guidance") or {},
         strategy=data.get("strategy") or {},
+        layout_params=data.get("layout_params") or {},
         config_count=int(data.get("config_count") or 0),
         row_count=int(data.get("row_count") or 0),
     )
@@ -259,9 +299,15 @@ def _layout_detail_payload(body: WorkflowLayoutDetailRequest):
     polys = _latlon_polys(body.boundary, body.boundaries)
     if not polys:
         raise ValueError("A site boundary is required")
+    manual_restrictions = _latlon_polys(None, body.restriction_polygons)
+    tracker_restrictions = _tracker_slope_restrictions(body)
+    restrictions = manual_restrictions
+    if (body.config_key or "").upper().startswith("SAT"):
+        restrictions = _merge_latlon_polys(manual_restrictions, tracker_restrictions)
     return partial(
         build_layout_detail,
         boundaries=polys,
+        restriction_polygons=restrictions,
         config_key=body.config_key,
         pitch_m=body.pitch_m,
         module_h=body.module_h,
@@ -269,6 +315,14 @@ def _layout_detail_payload(body: WorkflowLayoutDetailRequest):
         module_wp=body.module_wp,
         setback_m=body.setback_m,
         azimuth=body.azimuth,
+        modules_per_string=body.modules_per_string,
+        inter_string_gap_m=body.inter_string_gap_m,
+        tracker_string_options=body.tracker_string_options,
+        max_tracker_length_m=body.max_tracker_length_m,
+        rows_per_block=body.rows_per_block,
+        block_gap_m=body.block_gap_m,
+        road_mode=body.road_mode,
+        road_preset=body.road_preset,
     )
 
 
@@ -419,8 +473,16 @@ async def workflow_project_package(
     polys = _latlon_polys(body.boundary, body.boundaries)
     if not polys:
         raise HTTPException(status_code=400, detail="A site boundary is required for the project package.")
+    manual_restrictions = _latlon_polys(None, body.restriction_polygons)
     loop = asyncio.get_running_loop()
     try:
+        tracker_restrictions = await asyncio.wait_for(
+            loop.run_in_executor(None, partial(_tracker_slope_restrictions, body)),
+            timeout=LAYOUT_TIMEOUT_SEC,
+        )
+        restrictions = manual_restrictions
+        if (body.config_key or "").upper().startswith("SAT"):
+            restrictions = _merge_latlon_polys(manual_restrictions, tracker_restrictions)
         zip_bytes = await asyncio.wait_for(
             loop.run_in_executor(
                 None,
@@ -432,6 +494,7 @@ async def workflow_project_package(
                     lon=body.lon,
                     land_use=body.land_use,
                     boundaries=polys,
+                    restriction_polygons=restrictions,
                     config_key=body.config_key,
                     pitch_m=body.pitch_m,
                     module_h=body.module_h,
@@ -439,6 +502,14 @@ async def workflow_project_package(
                     module_wp=body.module_wp,
                     setback_m=body.setback_m,
                     azimuth=body.azimuth,
+                    modules_per_string=body.modules_per_string,
+                    inter_string_gap_m=body.inter_string_gap_m,
+                    tracker_string_options=body.tracker_string_options,
+                    max_tracker_length_m=body.max_tracker_length_m,
+                    rows_per_block=body.rows_per_block,
+                    block_gap_m=body.block_gap_m,
+                    road_mode=body.road_mode,
+                    road_preset=body.road_preset,
                     screening=body.screening,
                     topo=body.topo,
                     score=body.score,

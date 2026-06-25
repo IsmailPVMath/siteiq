@@ -7,6 +7,7 @@ import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from layoutiq.coords import xy_to_latlon
+from layoutiq.defaults import layout_params
 from layoutiq.engine import run_layout
 
 try:
@@ -63,6 +64,7 @@ def build_layout_detail(
     boundary: Optional[List[List[float]]] = None,
     *,
     boundaries: Optional[List[List[List[float]]]] = None,
+    restriction_polygons: Optional[List[List[List[float]]]] = None,
     config_key: str,
     pitch_m: float,
     module_h: float = 2.094,
@@ -70,9 +72,18 @@ def build_layout_detail(
     module_wp: int = 550,
     setback_m: float = 5.0,
     azimuth: float = 180.0,
+    modules_per_string: int = 28,
+    inter_string_gap_m: float = 0.5,
+    tracker_string_options: Optional[List[int]] = None,
+    max_tracker_length_m: float = 260.0,
+    rows_per_block: int = 2,
+    block_gap_m: float = 5.0,
+    road_mode: str = "auto",
+    road_preset: str = "sat_auto",
 ) -> Dict[str, Any]:
     n_portrait, tracker, label = _config_from_key(config_key)
     polys = _normalize_polys(boundary, boundaries)
+    restrictions = _normalize_polys(None, restriction_polygons)
     if not polys:
         raise ValueError("A site boundary is required")
 
@@ -80,17 +91,38 @@ def build_layout_detail(
     ref_lat = sum(p[0] for p in all_pts) / len(all_pts)
     ref_lon = sum(p[1] for p in all_pts) / len(all_pts)
 
+    lp = layout_params(
+        module_h=module_h,
+        module_w=module_w,
+        module_wp=module_wp,
+        modules_per_string=modules_per_string,
+        inter_string_gap_m=inter_string_gap_m,
+        tracker_string_options=tracker_string_options,
+        max_tracker_length_m=max_tracker_length_m,
+        rows_per_block=rows_per_block,
+        block_gap_m=block_gap_m,
+        road_mode=road_mode,  # type: ignore[arg-type]
+        road_preset=road_preset,
+    )
+
     layouts = []
     for poly in polys:
         layout = run_layout(
             poly,
-            module_h=module_h,
-            module_w=module_w,
+            module_h=lp["module_h"],
+            module_w=lp["module_w"],
             n_portrait=n_portrait,
             pitch=pitch_m,
             setback=setback_m,
             azimuth=azimuth,
             mounting_type="sat" if tracker else "fixed_tilt",
+            modules_per_string=lp["modules_per_string"],
+            inter_string_gap_m=lp["inter_string_gap_m"],
+            tracker_string_options=lp["tracker_string_options"],
+            max_tracker_length_m=lp["max_tracker_length_m"],
+            rows_per_block=lp["rows_per_block"],
+            block_gap_m=lp["block_gap_m"],
+            restriction_latlons=restrictions,
             ref_lat=ref_lat,
             ref_lon=ref_lon,
         )
@@ -103,6 +135,8 @@ def build_layout_detail(
     row_index = 0
     total_modules = 0
     total_rows = 0
+    total_strings = 0
+    total_tracker_units = 0
     total_area_ha = 0.0
     for layout in layouts:
         features.append(
@@ -123,15 +157,20 @@ def build_layout_detail(
                         "kind": "pv_row",
                         "row_index": row_index,
                         "n_modules": row_data["n_modules"],
+                        "n_strings": row_data.get("n_strings", 0),
+                        "tracker_units": row_data.get("tracker_units") or [],
                         "length_m": row_data["length_m"],
                     },
                 )
             )
         total_modules += layout["total_modules"]
         total_rows += layout["total_rows"]
+        total_strings += layout.get("total_strings", 0)
+        total_tracker_units += layout.get("total_tracker_units", 0)
         total_area_ha += layout["area_ha"]
 
     dc_kwp = round(total_modules * module_wp / 1000, 1)
+    dc_mwp = round(dc_kwp / 1000, 3)
     row_ns = layouts[0]["row_ns"]
 
     return {
@@ -142,9 +181,14 @@ def build_layout_detail(
         "pitch_m": pitch_m,
         "gcr": round(row_ns / pitch_m, 3),
         "total_modules": total_modules,
+        "total_strings": total_strings,
+        "total_tracker_units": total_tracker_units,
         "total_rows": total_rows,
         "area_ha": round(total_area_ha, 3),
         "dc_kwp": dc_kwp,
+        "dc_mwp": dc_mwp,
+        "mw_per_ha": round(dc_mwp / total_area_ha, 3) if total_area_ha else None,
+        "layout_params": lp,
         "ref_lat": ref_lat,
         "ref_lon": ref_lon,
         "layouts": layouts,

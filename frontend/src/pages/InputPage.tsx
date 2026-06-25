@@ -12,6 +12,11 @@ import {
   updateProject,
 } from "../lib/api";
 import type { BoundaryPoint, GateAnalyzeRequest, LandUse } from "../types/gate";
+import {
+  DEFAULT_LAYOUT_CONFIG,
+  ROAD_PRESETS,
+  type RoadMode,
+} from "../types/layoutConfig";
 
 export type ScreeningFormValues = GateAnalyzeRequest;
 
@@ -51,6 +56,39 @@ export function InputPage({ token, initial, onSubmit }: Props) {
   const [country, setCountry] = useState(initial?.country ?? DEFAULTS.country);
   const [landUse, setLandUse] = useState<LandUse>(initial?.land_use ?? DEFAULTS.land_use);
   const [mountType, setMountType] = useState(initial?.mount_type ?? DEFAULTS.mount_type);
+  const [moduleH, setModuleH] = useState(initial?.module_h ?? DEFAULT_LAYOUT_CONFIG.module_h);
+  const [moduleW, setModuleW] = useState(initial?.module_w ?? DEFAULT_LAYOUT_CONFIG.module_w);
+  const [moduleWp, setModuleWp] = useState(initial?.module_wp ?? DEFAULT_LAYOUT_CONFIG.module_wp);
+  const [modulesPerString, setModulesPerString] = useState(
+    initial?.modules_per_string ?? DEFAULT_LAYOUT_CONFIG.modules_per_string,
+  );
+  const [interStringGap, setInterStringGap] = useState(
+    initial?.inter_string_gap_m ?? DEFAULT_LAYOUT_CONFIG.inter_string_gap_m,
+  );
+  const [trackerStringOptions, setTrackerStringOptions] = useState(
+    (initial?.tracker_string_options ?? DEFAULT_LAYOUT_CONFIG.tracker_string_options).join(","),
+  );
+  const [maxTrackerLength, setMaxTrackerLength] = useState(
+    initial?.max_tracker_length_m ?? DEFAULT_LAYOUT_CONFIG.max_tracker_length_m,
+  );
+  const [excludeTrackerSlope, setExcludeTrackerSlope] = useState(
+    initial?.exclude_tracker_slope ?? DEFAULT_LAYOUT_CONFIG.exclude_tracker_slope,
+  );
+  const [trackerSlopeLimit, setTrackerSlopeLimit] = useState(
+    initial?.tracker_slope_limit_pct ?? DEFAULT_LAYOUT_CONFIG.tracker_slope_limit_pct,
+  );
+  const [roadMode, setRoadMode] = useState<RoadMode>(
+    initial?.road_mode ?? DEFAULT_LAYOUT_CONFIG.road_mode,
+  );
+  const [roadPreset, setRoadPreset] = useState(
+    initial?.road_preset ?? DEFAULT_LAYOUT_CONFIG.road_preset,
+  );
+  const [rowsPerBlock, setRowsPerBlock] = useState(
+    initial?.rows_per_block ?? DEFAULT_LAYOUT_CONFIG.rows_per_block,
+  );
+  const [blockGapM, setBlockGapM] = useState(
+    initial?.block_gap_m ?? DEFAULT_LAYOUT_CONFIG.block_gap_m,
+  );
   const [siteBoundary, setSiteBoundary] = useState<BoundaryPoint[] | undefined>(
     initial?.boundary,
   );
@@ -105,6 +143,14 @@ export function InputPage({ token, initial, onSubmit }: Props) {
 
   const hasBoundary = effectiveRings.length > 0;
 
+  function parseTrackerStringOptions() {
+    const parsed = trackerStringOptions
+      .split(/[,\s]+/)
+      .map((v) => Number(v.trim()))
+      .filter((v) => Number.isFinite(v) && v > 0);
+    return parsed.length ? parsed : DEFAULT_LAYOUT_CONFIG.tracker_string_options;
+  }
+
   const overlayParcels: OverlayParcel[] = useMemo(
     () => parcels.map((p) => ({ coords: p.coords, enabled: p.enabled })),
     [parcels],
@@ -152,6 +198,19 @@ export function InputPage({ token, initial, onSubmit }: Props) {
         area_ha: Number(areaHa),
         run_layout: false,
         buildable_area_ha: buildableAreaHa,
+        module_h: moduleH,
+        module_w: moduleW,
+        module_wp: moduleWp,
+        modules_per_string: modulesPerString,
+        inter_string_gap_m: interStringGap,
+        tracker_string_options: parseTrackerStringOptions(),
+        max_tracker_length_m: maxTrackerLength,
+        exclude_tracker_slope: excludeTrackerSlope,
+        tracker_slope_limit_pct: trackerSlopeLimit,
+        road_mode: roadMode,
+        road_preset: roadPreset,
+        rows_per_block: rowsPerBlock,
+        block_gap_m: blockGapM,
       },
     };
   }
@@ -169,6 +228,32 @@ export function InputPage({ token, initial, onSubmit }: Props) {
     if (payload.workflow?.area_ha) {
       setAreaHa(Number(payload.workflow.area_ha));
     }
+    const wf = payload.workflow || {};
+    if (typeof wf.module_h === "number") setModuleH(Number(wf.module_h));
+    if (typeof wf.module_w === "number") setModuleW(Number(wf.module_w));
+    if (typeof wf.module_wp === "number") setModuleWp(Number(wf.module_wp));
+    if (typeof wf.modules_per_string === "number") {
+      setModulesPerString(Number(wf.modules_per_string));
+    }
+    if (typeof wf.inter_string_gap_m === "number") {
+      setInterStringGap(Number(wf.inter_string_gap_m));
+    }
+    if (Array.isArray(wf.tracker_string_options)) {
+      setTrackerStringOptions(wf.tracker_string_options.join(","));
+    }
+    if (typeof wf.max_tracker_length_m === "number") {
+      setMaxTrackerLength(Number(wf.max_tracker_length_m));
+    }
+    if (typeof wf.exclude_tracker_slope === "boolean") {
+      setExcludeTrackerSlope(Boolean(wf.exclude_tracker_slope));
+    }
+    if (typeof wf.tracker_slope_limit_pct === "number") {
+      setTrackerSlopeLimit(Number(wf.tracker_slope_limit_pct));
+    }
+    if (typeof wf.road_mode === "string") setRoadMode(wf.road_mode as RoadMode);
+    if (typeof wf.road_preset === "string") setRoadPreset(wf.road_preset);
+    if (typeof wf.rows_per_block === "number") setRowsPerBlock(Number(wf.rows_per_block));
+    if (typeof wf.block_gap_m === "number") setBlockGapM(Number(wf.block_gap_m));
     setParcels([]);
     const site = payload.site_boundary_geojson;
     if (site?.type === "Polygon" && Array.isArray(site.coordinates?.[0])) {
@@ -454,7 +539,21 @@ export function InputPage({ token, initial, onSubmit }: Props) {
       country: country.trim(),
       boundary: primary,
       boundaries: rings.length ? rings : undefined,
+      restriction_polygons: restrictions.length ? restrictions : undefined,
       run_layout: false,
+      module_h: moduleH,
+      module_w: moduleW,
+      module_wp: moduleWp,
+      modules_per_string: modulesPerString,
+      inter_string_gap_m: interStringGap,
+      tracker_string_options: parseTrackerStringOptions(),
+      max_tracker_length_m: maxTrackerLength,
+      exclude_tracker_slope: excludeTrackerSlope,
+      tracker_slope_limit_pct: trackerSlopeLimit,
+      road_mode: roadMode,
+      road_preset: roadPreset,
+      rows_per_block: roadMode === "manual" && roadPreset === "custom" ? rowsPerBlock : undefined,
+      block_gap_m: roadMode === "manual" && roadPreset === "custom" ? blockGapM : undefined,
     });
   }
 
@@ -763,6 +862,198 @@ export function InputPage({ token, initial, onSubmit }: Props) {
             </div>
           </div>
         </section>
+
+        <details className="form-section layout-advanced">
+          <summary>
+            <h2>Module &amp; electrical (LayoutIQ)</h2>
+          </summary>
+          <p className="hint">
+            Defaults: 550 Wp module, 28 modules/string, 500 mm between strings. Access roads:
+            5 m N-S gap after every 2 tracker rows (no E-W roads).
+          </p>
+          <div className="grid-3">
+            <div className="field">
+              <label htmlFor="module-h">Module height (m)</label>
+              <input
+                id="module-h"
+                type="number"
+                step="0.001"
+                min="1"
+                value={moduleH}
+                onChange={(e) => setModuleH(Number(e.target.value))}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="module-w">Module width (m)</label>
+              <input
+                id="module-w"
+                type="number"
+                step="0.001"
+                min="0.5"
+                value={moduleW}
+                onChange={(e) => setModuleW(Number(e.target.value))}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="module-wp">Module power (Wp)</label>
+              <input
+                id="module-wp"
+                type="number"
+                step="5"
+                min="200"
+                max="1000"
+                value={moduleWp}
+                onChange={(e) => setModuleWp(Number(e.target.value))}
+              />
+            </div>
+          </div>
+          <div className="grid-2">
+            <div className="field">
+              <label htmlFor="mps">Modules per string</label>
+              <input
+                id="mps"
+                type="number"
+                min="8"
+                max="50"
+                value={modulesPerString}
+                onChange={(e) => setModulesPerString(Number(e.target.value))}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="string-gap">Gap between strings (m)</label>
+              <input
+                id="string-gap"
+                type="number"
+                step="0.05"
+                min="0"
+                max="2"
+                value={interStringGap}
+                onChange={(e) => setInterStringGap(Number(e.target.value))}
+              />
+            </div>
+          </div>
+          <div className="grid-2">
+            <div className="field">
+              <label htmlFor="tracker-strings">Tracker string options</label>
+              <input
+                id="tracker-strings"
+                value={trackerStringOptions}
+                onChange={(e) => setTrackerStringOptions(e.target.value)}
+                placeholder="8,7,6,5"
+              />
+              <p className="hint">Allowed tracker units, e.g. 8S, 7S, 6S, 5S.</p>
+            </div>
+            <div className="field">
+              <label htmlFor="max-tracker-length">Max tracker length (m)</label>
+              <input
+                id="max-tracker-length"
+                type="number"
+                step="1"
+                min="20"
+                max="500"
+                value={maxTrackerLength}
+                onChange={(e) => setMaxTrackerLength(Number(e.target.value))}
+              />
+              <p className="hint">Example: 260 m for 1P, 180 m for Agri-PV products.</p>
+            </div>
+          </div>
+          <label className="checkbox-field layout-bifacial">
+            <input
+              type="checkbox"
+              checked={excludeTrackerSlope}
+              onChange={(e) => setExcludeTrackerSlope(e.target.checked)}
+            />
+            Exclude tracker placement where TopoIQ slope is above
+          </label>
+          <div className="field">
+            <label htmlFor="tracker-slope-limit">Tracker slope limit (%)</label>
+            <input
+              id="tracker-slope-limit"
+              type="number"
+              step="0.5"
+              min="0.5"
+              max="30"
+              value={trackerSlopeLimit}
+              onChange={(e) => setTrackerSlopeLimit(Number(e.target.value))}
+              disabled={!excludeTrackerSlope}
+            />
+          </div>
+          <div className="layout-road-tabs">
+            <div className="layout-road-tab-row">
+              <button
+                type="button"
+                className={`btn btn-ghost btn-sm${roadMode === "auto" ? " active" : ""}`}
+                onClick={() => {
+                  setRoadMode("auto");
+                  setRoadPreset("sat_auto");
+                }}
+              >
+                Auto
+              </button>
+              <button
+                type="button"
+                className={`btn btn-ghost btn-sm${roadMode === "manual" || roadMode === "off" ? " active" : ""}`}
+                onClick={() => setRoadMode("manual")}
+              >
+                Presets
+              </button>
+            </div>
+            {roadMode === "auto" ? (
+              <p className="hint sidebar-hint">
+                Two tracker rows, then 5 m N-S access gap (no E-W roads).
+              </p>
+            ) : (
+              <div className="field">
+                <label htmlFor="road-preset">Access road preset</label>
+                <select
+                  id="road-preset"
+                  value={roadPreset}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setRoadPreset(id);
+                    if (id === "no_roads") setRoadMode("off");
+                    else if (id !== "custom") setRoadMode("manual");
+                    else setRoadMode("manual");
+                  }}
+                >
+                  {ROAD_PRESETS.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.label}
+                    </option>
+                  ))}
+                  <option value="custom">Custom rows + gap</option>
+                </select>
+              </div>
+            )}
+            {(roadMode === "manual" || roadMode === "off") && roadPreset === "custom" ? (
+              <div className="grid-2">
+                <div className="field">
+                  <label htmlFor="rows-block">Rows per block</label>
+                  <input
+                    id="rows-block"
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={rowsPerBlock}
+                    onChange={(e) => setRowsPerBlock(Number(e.target.value))}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="block-gap">N-S block gap (m)</label>
+                  <input
+                    id="block-gap"
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    max="20"
+                    value={blockGapM}
+                    onChange={(e) => setBlockGapM(Number(e.target.value))}
+                  />
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </details>
 
         {hint ? <p className="hint hint-banner">{hint}</p> : null}
 

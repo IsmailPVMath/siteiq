@@ -99,7 +99,7 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell app-shell-wide">
+    <div className={`app-shell ${step === "output" ? "app-shell-results" : "app-shell-wide"}`}>
       <Header
         email={session.email || profile?.email || ""}
         profile={profile}

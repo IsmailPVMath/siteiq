@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple
 
 from layoutiq.bom import compute_bom
+from layoutiq.defaults import layout_params
 from layoutiq.engine import run_layout
 from pvmath_workflow.gcr_strategy import (
     FT_PORTRAITS,
@@ -73,6 +74,8 @@ def run_layout_sweep(
     boundary: Optional[List[List[float]]] = None,
     *,
     boundaries: Optional[List[List[List[float]]]] = None,
+    restriction_polygons: Optional[List[List[List[float]]]] = None,
+    tracker_restriction_polygons: Optional[List[List[List[float]]]] = None,
     module_h: float = 2.094,
     module_w: float = 1.038,
     module_wp: int = 550,
@@ -87,6 +90,13 @@ def run_layout_sweep(
     custom_gcr: Optional[float] = None,
     custom_pitch_m: Optional[float] = None,
     modules_per_string: int = 28,
+    inter_string_gap_m: float = 0.5,
+    tracker_string_options: Optional[List[int]] = None,
+    max_tracker_length_m: float = 260.0,
+    rows_per_block: int = 2,
+    block_gap_m: float = 5.0,
+    road_mode: str = "auto",
+    road_preset: str = "sat_auto",
     strings_per_inv: int = 4,
     inv_ac_kw: float = 100.0,
     include_bom: bool = False,
@@ -99,6 +109,8 @@ def run_layout_sweep(
     strategy-recommended pitch per config.
     """
     polys = _normalize_polys(boundary, boundaries)
+    restrictions = _normalize_polys(None, restriction_polygons)
+    tracker_restrictions = _normalize_polys(None, tracker_restriction_polygons)
     if not polys:
         return {
             "rows": [],
@@ -118,6 +130,20 @@ def run_layout_sweep(
 
     ref_lat, ref_lon = _shared_ref(polys)
     site_lat = lat if lat is not None else ref_lat
+
+    lp = layout_params(
+        module_h=module_h,
+        module_w=module_w,
+        module_wp=module_wp,
+        modules_per_string=modules_per_string,
+        inter_string_gap_m=inter_string_gap_m,
+        tracker_string_options=tracker_string_options,
+        max_tracker_length_m=max_tracker_length_m,
+        rows_per_block=rows_per_block,
+        block_gap_m=block_gap_m,
+        road_mode=road_mode,  # type: ignore[arg-type]
+        road_preset=road_preset,
+    )
 
     table_rows: List[Dict[str, Any]] = []
     best_by_config: Dict[str, Dict[str, Any]] = {}
@@ -148,6 +174,7 @@ def run_layout_sweep(
         for pitch in pitches:
             gcr = gcr_from_pitch(row_ns, pitch)
             is_recommended = abs(pitch - rec_pitch) < 0.26
+            active_restrictions = restrictions + (tracker_restrictions if tracker else [])
 
             total_modules = 0
             total_rows = 0
@@ -155,13 +182,20 @@ def run_layout_sweep(
             for poly in polys:
                 layout = run_layout(
                     poly,
-                    module_h=module_h,
-                    module_w=module_w,
+                    module_h=lp["module_h"],
+                    module_w=lp["module_w"],
                     n_portrait=n_portrait,
                     pitch=pitch,
                     setback=setback_m,
                     azimuth=azimuth,
                     mounting_type=mount_type,
+                    modules_per_string=lp["modules_per_string"],
+                    inter_string_gap_m=lp["inter_string_gap_m"],
+                    tracker_string_options=lp["tracker_string_options"],
+                    max_tracker_length_m=lp["max_tracker_length_m"],
+                    rows_per_block=lp["rows_per_block"],
+                    block_gap_m=lp["block_gap_m"],
+                    restriction_latlons=active_restrictions,
                     ref_lat=ref_lat,
                     ref_lon=ref_lon,
                 )
@@ -187,6 +221,7 @@ def run_layout_sweep(
                 continue
 
             dc_kwp = round(total_modules * module_wp / 1000, 1)
+            dc_mwp = round(dc_kwp / 1000, 3)
             total_area_ha = round(total_area_ha, 3)
             entry = {
                 "config_key": config_key,
@@ -201,18 +236,26 @@ def run_layout_sweep(
                 "total_rows": total_rows,
                 "area_ha": total_area_ha,
                 "dc_kwp": dc_kwp,
-                "mw_per_ha": round(dc_kwp / total_area_ha, 3) if total_area_ha else None,
+                "dc_mwp": dc_mwp,
+                "mw_per_ha": round(dc_mwp / total_area_ha, 3) if total_area_ha else None,
             }
             if include_bom and len(polys) == 1:
                 single = run_layout(
                     polys[0],
-                    module_h=module_h,
-                    module_w=module_w,
+                    module_h=lp["module_h"],
+                    module_w=lp["module_w"],
                     n_portrait=n_portrait,
                     pitch=pitch,
                     setback=setback_m,
                     azimuth=azimuth,
                     mounting_type=mount_type,
+                    modules_per_string=lp["modules_per_string"],
+                    inter_string_gap_m=lp["inter_string_gap_m"],
+                    tracker_string_options=lp["tracker_string_options"],
+                    max_tracker_length_m=lp["max_tracker_length_m"],
+                    rows_per_block=lp["rows_per_block"],
+                    block_gap_m=lp["block_gap_m"],
+                    restriction_latlons=active_restrictions,
                     ref_lat=ref_lat,
                     ref_lon=ref_lon,
                 )
@@ -221,7 +264,7 @@ def run_layout_sweep(
                         single,
                         module_wp,
                         n_portrait,
-                        modules_per_string,
+                        lp["modules_per_string"],
                         strings_per_inv,
                         inv_ac_kw,
                     )
@@ -260,6 +303,7 @@ def run_layout_sweep(
             lat=site_lat,
             bifacial=bifacial,
         ),
+        "layout_params": lp,
         "config_count": len(_config_specs()),
         "row_count": len(table_rows),
     }

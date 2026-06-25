@@ -15,6 +15,12 @@ import {
 import { LayoutPreviewMap } from "../components/LayoutPreviewMap";
 import { Terrain3DView } from "../components/Terrain3DView";
 import type { GateAnalyzeRequest } from "../types/gate";
+import {
+  DEFAULT_LAYOUT_CONFIG,
+  ROAD_PRESETS,
+  layoutPayloadFrom,
+  type RoadMode,
+} from "../types/layoutConfig";
 import type { TopoIQAnalyzeRequest, TopoIQAnalyzeResponse, YieldIQAnalyzeResponse } from "../types/topoiq";
 import type {
   LayoutOptimizationMode,
@@ -46,6 +52,12 @@ function metric(label: string, rating?: string, detail?: string, extra?: string)
   );
 }
 
+function formatLayoutMwp(row: LayoutSweepRow) {
+  if (row.dc_mwp != null) return row.dc_mwp.toFixed(1);
+  if (row.dc_kwp != null) return (row.dc_kwp / 1000).toFixed(1);
+  return "—";
+}
+
 function saveBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -55,7 +67,10 @@ function saveBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+type Stage = "screen" | "topo" | "layout" | "yield";
+
 export function OutputPage({ token, result, input, onNewScreening, onEditInput }: Props) {
+  const [activeStage, setActiveStage] = useState<Stage>("screen");
   const [topoBusy, setTopoBusy] = useState(false);
   const [topoError, setTopoError] = useState("");
   const [topoResult, setTopoResult] = useState<TopoIQAnalyzeResponse | null>(null);
@@ -80,6 +95,39 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
   const [layoutBifacial, setLayoutBifacial] = useState(false);
   const [layoutCustomGcr, setLayoutCustomGcr] = useState("");
   const [layoutCustomPitch, setLayoutCustomPitch] = useState("");
+  const [moduleH, setModuleH] = useState(input?.module_h ?? DEFAULT_LAYOUT_CONFIG.module_h);
+  const [moduleW, setModuleW] = useState(input?.module_w ?? DEFAULT_LAYOUT_CONFIG.module_w);
+  const [moduleWp, setModuleWp] = useState(input?.module_wp ?? DEFAULT_LAYOUT_CONFIG.module_wp);
+  const [modulesPerString, setModulesPerString] = useState(
+    input?.modules_per_string ?? DEFAULT_LAYOUT_CONFIG.modules_per_string,
+  );
+  const [interStringGap, setInterStringGap] = useState(
+    input?.inter_string_gap_m ?? DEFAULT_LAYOUT_CONFIG.inter_string_gap_m,
+  );
+  const [trackerStringOptions, setTrackerStringOptions] = useState(
+    (input?.tracker_string_options ?? DEFAULT_LAYOUT_CONFIG.tracker_string_options).join(","),
+  );
+  const [maxTrackerLength, setMaxTrackerLength] = useState(
+    input?.max_tracker_length_m ?? DEFAULT_LAYOUT_CONFIG.max_tracker_length_m,
+  );
+  const [excludeTrackerSlope, setExcludeTrackerSlope] = useState(
+    input?.exclude_tracker_slope ?? DEFAULT_LAYOUT_CONFIG.exclude_tracker_slope,
+  );
+  const [trackerSlopeLimit, setTrackerSlopeLimit] = useState(
+    input?.tracker_slope_limit_pct ?? DEFAULT_LAYOUT_CONFIG.tracker_slope_limit_pct,
+  );
+  const [roadMode, setRoadMode] = useState<RoadMode>(
+    input?.road_mode ?? DEFAULT_LAYOUT_CONFIG.road_mode,
+  );
+  const [roadPreset, setRoadPreset] = useState(
+    input?.road_preset ?? DEFAULT_LAYOUT_CONFIG.road_preset,
+  );
+  const [rowsPerBlock, setRowsPerBlock] = useState(
+    input?.rows_per_block ?? DEFAULT_LAYOUT_CONFIG.rows_per_block,
+  );
+  const [blockGapM, setBlockGapM] = useState(
+    input?.block_gap_m ?? DEFAULT_LAYOUT_CONFIG.block_gap_m,
+  );
   const [reportBusy, setReportBusy] = useState(false);
   const [packageBusy, setPackageBusy] = useState(false);
   const [exportError, setExportError] = useState("");
@@ -92,7 +140,47 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
     if (input?.boundary && input.boundary.length >= 3) return [input.boundary];
     return [];
   }, [input?.boundaries, input?.boundary]);
+  const restrictionPolygons = useMemo<{ lat: number; lon: number }[][]>(
+    () => (input?.restriction_polygons || []).filter((r) => r && r.length >= 3),
+    [input?.restriction_polygons],
+  );
   const hasBoundary = boundaries.length > 0;
+
+  function parseTrackerStringOptions() {
+    const parsed = trackerStringOptions
+      .split(/[,\s]+/)
+      .map((v) => Number(v.trim()))
+      .filter((v) => Number.isFinite(v) && v > 0);
+    return parsed.length ? parsed : DEFAULT_LAYOUT_CONFIG.tracker_string_options;
+  }
+
+  function layoutApiParams() {
+    const base = layoutPayloadFrom({
+      module_h: moduleH,
+      module_w: moduleW,
+      module_wp: moduleWp,
+      modules_per_string: modulesPerString,
+      inter_string_gap_m: interStringGap,
+      tracker_string_options: parseTrackerStringOptions(),
+      max_tracker_length_m: maxTrackerLength,
+      road_mode: roadMode,
+      road_preset: roadPreset,
+      rows_per_block: rowsPerBlock,
+      block_gap_m: blockGapM,
+      exclude_tracker_slope: excludeTrackerSlope,
+      tracker_slope_limit_pct: trackerSlopeLimit,
+    });
+    if (roadPreset === "custom") {
+      return {
+        ...base,
+        road_mode: "manual" as RoadMode,
+        road_preset: "custom",
+        rows_per_block: rowsPerBlock,
+        block_gap_m: blockGapM,
+      };
+    }
+    return base;
+  }
 
   const topoPayload: TopoIQAnalyzeRequest | null = useMemo(() => {
     if (!hasBoundary) return null;
@@ -204,6 +292,7 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
   }
 
   async function handleRunYield() {
+    setActiveStage("yield");
     setYieldBusy(true);
     setYieldError("");
     try {
@@ -217,17 +306,20 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
 
   async function handleLayoutSweep() {
     if (!hasBoundary) return;
+    setActiveStage("layout");
     setLayoutBusy(true);
     setLayoutError("");
     try {
       const body: Parameters<typeof workflowLayoutSweep>[1] = {
         boundaries,
+        restriction_polygons: restrictionPolygons,
         include_bom: false,
         optimization_mode: layoutOptimization,
         land_cost: layoutLandCost,
         country: input?.country || "",
         lat: result.coordinates.lat,
         bifacial: layoutBifacial,
+        ...layoutApiParams(),
       };
       if (layoutOptimization === "custom") {
         const gcr = Number(layoutCustomGcr);
@@ -254,8 +346,10 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
     return {
       project_name: result.project_name || "LayoutIQ",
       boundaries,
+      restriction_polygons: restrictionPolygons,
       config_key: row.config_key,
       pitch_m: row.pitch_m,
+      ...layoutApiParams(),
     };
   }
 
@@ -340,8 +434,10 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
       const blob = await workflowProjectPackage(token, {
         ...reportPayload(),
         boundaries,
+        restriction_polygons: restrictionPolygons,
         config_key: selectedLayoutRow.config_key,
         pitch_m: selectedLayoutRow.pitch_m,
+        ...layoutApiParams(),
       });
       const safe = (result.project_name || "PVMath").replace(/\s+/g, "_");
       saveBlob(blob, `${safe}_Project_Package.zip`);
@@ -366,6 +462,13 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
   const overallScore = finalScore?.pvmath_score;
   const overallReady = overallScore != null;
 
+  const stages: { id: Stage; label: string; num: number; available: boolean; done: boolean }[] = [
+    { id: "screen", label: "Site screening", num: 1, available: true, done: true },
+    { id: "topo", label: "TopoIQ terrain", num: 2, available: hasBoundary, done: !!topoResult },
+    { id: "layout", label: "LayoutIQ", num: 3, available: hasBoundary, done: !!layoutSweep },
+    { id: "yield", label: "YieldIQ", num: 4, available: !!selectedLayoutRow, done: !!yieldResult },
+  ];
+
   return (
     <div className="workflow-page results-shell">
       <aside className="results-sidebar">
@@ -387,7 +490,10 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
               <button
                 className="btn btn-primary btn-block"
                 type="button"
-                onClick={() => void handleRunTopo()}
+                onClick={() => {
+                  setActiveStage("topo");
+                  void handleRunTopo();
+                }}
                 disabled={topoBusy}
               >
                 {topoBusy ? "Running TopoIQ…" : topoResult ? "Re-run TopoIQ" : "Run TopoIQ"}
@@ -454,6 +560,182 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
                 />
                 Bifacial (wider spacing bias)
               </label>
+              <details className="sidebar-advanced">
+                <summary>Module &amp; access roads</summary>
+                <div className="grid-2 layout-custom-row">
+                  <div className="field">
+                    <label htmlFor="out-module-wp">Module Wp</label>
+                    <input
+                      id="out-module-wp"
+                      type="number"
+                      min="200"
+                      max="1000"
+                      value={moduleWp}
+                      onChange={(e) => setModuleWp(Number(e.target.value))}
+                    />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="out-mps">Modules / string</label>
+                    <input
+                      id="out-mps"
+                      type="number"
+                      min="8"
+                      max="50"
+                      value={modulesPerString}
+                      onChange={(e) => setModulesPerString(Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+                <div className="grid-2 layout-custom-row">
+                  <div className="field">
+                    <label htmlFor="out-mod-h">Height (m)</label>
+                    <input
+                      id="out-mod-h"
+                      type="number"
+                      step="0.001"
+                      value={moduleH}
+                      onChange={(e) => setModuleH(Number(e.target.value))}
+                    />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="out-mod-w">Width (m)</label>
+                    <input
+                      id="out-mod-w"
+                      type="number"
+                      step="0.001"
+                      value={moduleW}
+                      onChange={(e) => setModuleW(Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+                <div className="field">
+                  <label htmlFor="out-string-gap">String gap (m)</label>
+                  <input
+                    id="out-string-gap"
+                    type="number"
+                    step="0.05"
+                    min="0"
+                    value={interStringGap}
+                    onChange={(e) => setInterStringGap(Number(e.target.value))}
+                  />
+                </div>
+                <div className="grid-2 layout-custom-row">
+                  <div className="field">
+                    <label htmlFor="out-tracker-strings">Tracker strings</label>
+                    <input
+                      id="out-tracker-strings"
+                      value={trackerStringOptions}
+                      onChange={(e) => setTrackerStringOptions(e.target.value)}
+                      placeholder="8,7,6,5"
+                    />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="out-max-tracker">Max tracker m</label>
+                    <input
+                      id="out-max-tracker"
+                      type="number"
+                      min="20"
+                      max="500"
+                      value={maxTrackerLength}
+                      onChange={(e) => setMaxTrackerLength(Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+                <label className="checkbox-field layout-bifacial">
+                  <input
+                    type="checkbox"
+                    checked={excludeTrackerSlope}
+                    onChange={(e) => setExcludeTrackerSlope(e.target.checked)}
+                  />
+                  Exclude SAT zones above slope limit
+                </label>
+                <div className="field">
+                  <label htmlFor="out-slope-limit">SAT slope limit (%)</label>
+                  <input
+                    id="out-slope-limit"
+                    type="number"
+                    step="0.5"
+                    min="0.5"
+                    max="30"
+                    value={trackerSlopeLimit}
+                    onChange={(e) => setTrackerSlopeLimit(Number(e.target.value))}
+                    disabled={!excludeTrackerSlope}
+                  />
+                </div>
+                {restrictionPolygons.length ? (
+                  <p className="hint sidebar-hint">
+                    {restrictionPolygons.length} manual no-build zone
+                    {restrictionPolygons.length === 1 ? "" : "s"} will be excluded.
+                  </p>
+                ) : null}
+                <div className="layout-road-tab-row">
+                  <button
+                    type="button"
+                    className={`btn btn-ghost btn-sm${roadMode === "auto" ? " active" : ""}`}
+                    onClick={() => {
+                      setRoadMode("auto");
+                      setRoadPreset("sat_auto");
+                    }}
+                  >
+                    Auto roads
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-ghost btn-sm${roadMode !== "auto" ? " active" : ""}`}
+                    onClick={() => setRoadMode("manual")}
+                  >
+                    Presets
+                  </button>
+                </div>
+                {roadMode === "auto" ? (
+                  <p className="hint sidebar-hint">2 tracker rows + 5 m N-S gap</p>
+                ) : (
+                  <div className="field">
+                    <label htmlFor="out-road-preset">Road preset</label>
+                    <select
+                      id="out-road-preset"
+                      value={roadPreset}
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        setRoadPreset(id);
+                        setRoadMode(id === "no_roads" ? "off" : "manual");
+                      }}
+                    >
+                      {ROAD_PRESETS.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.label}
+                        </option>
+                      ))}
+                      <option value="custom">Custom</option>
+                    </select>
+                  </div>
+                )}
+                {roadPreset === "custom" ? (
+                  <div className="grid-2 layout-custom-row">
+                    <div className="field">
+                      <label htmlFor="out-rows-block">Rows / block</label>
+                      <input
+                        id="out-rows-block"
+                        type="number"
+                        min="1"
+                        value={rowsPerBlock}
+                        onChange={(e) => setRowsPerBlock(Number(e.target.value))}
+                      />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="out-block-gap">N-S gap (m)</label>
+                      <input
+                        id="out-block-gap"
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        value={blockGapM}
+                        onChange={(e) => setBlockGapM(Number(e.target.value))}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+              </details>
               {layoutOptimization === "custom" ? (
                 <div className="grid-2 layout-custom-row">
                   <div className="field">
@@ -572,6 +854,24 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
       </aside>
 
       <div className="results-main">
+      <nav className="stage-nav">
+        {stages.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            className={`stage-tab${activeStage === s.id ? " active" : ""}${
+              s.available ? "" : " disabled"
+            }`}
+            disabled={!s.available}
+            onClick={() => setActiveStage(s.id)}
+          >
+            <span className={`stage-num${s.done ? " done" : ""}`}>{s.done ? "✓" : s.num}</span>
+            {s.label}
+          </button>
+        ))}
+      </nav>
+
+      {activeStage === "screen" ? (
       <section className="module-card module-screen">
         <div className="module-head">
           <h2>Site screening</h2>
@@ -613,14 +913,15 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
           not estimated here.
         </p>
         {grid.disclaimer ? <p className="module-note">{String(grid.disclaimer)}</p> : null}
+        {result.errors.length > 0 ? (
+          <div className="error-banner" style={{ marginTop: "1rem" }}>
+            {result.errors.join(" · ")}
+          </div>
+        ) : null}
       </section>
-
-      {result.errors.length > 0 ? (
-        <div className="error-banner" style={{ marginTop: "1rem" }}>
-          {result.errors.join(" · ")}
-        </div>
       ) : null}
 
+      {activeStage === "topo" ? (
       <section className="module-card module-topoiq">
         <div className="module-head">
           <h2>TopoIQ terrain</h2>
@@ -663,11 +964,13 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
         {topoError ? <div className="error-banner">{topoError}</div> : null}
         {exportError ? <div className="error-banner">{exportError}</div> : null}
       </section>
+      ) : null}
 
+      {activeStage === "layout" ? (
       <section className="module-card module-layout">
         <div className="module-head">
           <h2>LayoutIQ — capacity vs pitch</h2>
-          <span className="module-tag">Step 4</span>
+          <span className="module-tag">Step 3</span>
         </div>
         {!hasBoundary ? (
           <p className="hint">Draw a site boundary to run the layout sweep.</p>
@@ -724,7 +1027,7 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
                     {layoutSweep.recommended_by_config[layoutFilter].success ? (
                       <>
                         {" "}
-                        → {layoutSweep.recommended_by_config[layoutFilter].dc_kwp?.toLocaleString()} kWp
+                        → {formatLayoutMwp(layoutSweep.recommended_by_config[layoutFilter])} MWp
                       </>
                     ) : (
                       " (did not fit boundary at recommended pitch)"
@@ -732,8 +1035,8 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
                     {layoutSweep.best_by_config[layoutFilter] ? (
                       <>
                         {" "}
-                        · Max capacity: {layoutSweep.best_by_config[layoutFilter].dc_kwp?.toLocaleString()}{" "}
-                        kWp at GCR {layoutSweep.best_by_config[layoutFilter].gcr?.toFixed(2)}
+                        · Max capacity: {formatLayoutMwp(layoutSweep.best_by_config[layoutFilter])}{" "}
+                        MWp at GCR {layoutSweep.best_by_config[layoutFilter].gcr?.toFixed(2)}
                       </>
                     ) : null}
                   </p>
@@ -772,7 +1075,7 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
                         <td>{row.pitch_m}</td>
                         <td>{row.gcr.toFixed(2)}</td>
                         <td>{row.total_modules?.toLocaleString() ?? "—"}</td>
-                        <td>{row.dc_kwp?.toLocaleString() ?? "—"}</td>
+                        <td>{formatLayoutMwp(row)}</td>
                         <td>{row.mw_per_ha != null ? row.mw_per_ha.toFixed(2) : "—"}</td>
                         <td>
                           <button
@@ -797,9 +1100,9 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
                   </tbody>
                 </table>
                 <p className="module-note">
-                  {layoutSweep.row_count} pitch steps across {layoutSweep.config_count} mount/portrait
-                  combinations. <strong>Rec.</strong> marks the industry-recommended GCR/pitch for your
-                  optimization mode. Select one row, then run YieldIQ for its GCR and mount type.
+                  {layoutSweep.row_count} pitch steps · whole strings only ({modulesPerString} modules
+                  / string, {interStringGap} m gap) · N-S access per road preset.{" "}
+                  <strong>Rec.</strong> marks industry-recommended GCR/pitch.
                 </p>
                 {selectedLayoutRow ? (
                   <div className="layout-preview-panel">
@@ -873,11 +1176,13 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
         )}
         {layoutError ? <div className="error-banner">{layoutError}</div> : null}
       </section>
+      ) : null}
 
+      {activeStage === "yield" ? (
       <section className="module-card module-yieldiq">
         <div className="module-head">
           <h2>YieldIQ — selected layout yield</h2>
-          <span className="module-tag">Step 5</span>
+          <span className="module-tag">Step 4</span>
         </div>
         {selectedLayoutRow ? (
           <p className="hint">
@@ -925,6 +1230,7 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
         ) : null}
         {yieldError ? <div className="error-banner">{yieldError}</div> : null}
       </section>
+      ) : null}
 
       <details className="raw-json">
         <summary>Technical JSON</summary>

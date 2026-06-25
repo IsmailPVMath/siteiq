@@ -393,11 +393,20 @@ def build_project_package_zip(
     boundaries: List[List[List[float]]],
     config_key: str,
     pitch_m: float,
+    restriction_polygons: Optional[List[List[List[float]]]] = None,
     module_h: float = 2.094,
     module_w: float = 1.038,
     module_wp: int = 550,
     setback_m: float = 5.0,
     azimuth: float = 180.0,
+    modules_per_string: int = 28,
+    inter_string_gap_m: float = 0.5,
+    tracker_string_options: Optional[List[int]] = None,
+    max_tracker_length_m: float = 260.0,
+    rows_per_block: int = 2,
+    block_gap_m: float = 5.0,
+    road_mode: str = "auto",
+    road_preset: str = "sat_auto",
     screening: Optional[Dict[str, Any]] = None,
     topo: Optional[Dict[str, Any]] = None,
     score: Optional[Dict[str, Any]] = None,
@@ -408,6 +417,7 @@ def build_project_package_zip(
     """ZIP: PVMath report PDF, A3 layout+BOM PDF, BOM CSV, layout DXF."""
     detail = build_layout_detail(
         boundaries=boundaries,
+        restriction_polygons=restriction_polygons,
         config_key=config_key,
         pitch_m=pitch_m,
         module_h=module_h,
@@ -415,13 +425,23 @@ def build_project_package_zip(
         module_wp=module_wp,
         setback_m=setback_m,
         azimuth=azimuth,
+        modules_per_string=modules_per_string,
+        inter_string_gap_m=inter_string_gap_m,
+        tracker_string_options=tracker_string_options,
+        max_tracker_length_m=max_tracker_length_m,
+        rows_per_block=rows_per_block,
+        block_gap_m=block_gap_m,
+        road_mode=road_mode,
+        road_preset=road_preset,
     )
     layouts = detail.get("layouts") or []
     bom_layout = layouts[0] if layouts else None
     if not bom_layout:
         raise ValueError("Layout geometry missing for BOM")
     merged = _merged_layout_for_drawing(detail)
-    bom = compute_bom(bom_layout, module_wp, detail["n_portrait"], 28, 4, 100.0)
+    lp = detail.get("layout_params") or {}
+    mps = int(lp.get("modules_per_string") or modules_per_string)
+    bom = compute_bom(bom_layout, module_wp, detail["n_portrait"], mps, 4, 100.0)
     # Scale BOM totals if multi-parcel (module count differs from single-parcel BOM)
     if len(layouts) > 1 and merged:
         ratio = detail["total_modules"] / max(bom_layout["total_modules"], 1)
@@ -452,7 +472,8 @@ def build_project_package_zip(
             "dc_kwp": detail.get("dc_kwp"),
             "total_modules": detail.get("total_modules"),
             "total_rows": detail.get("total_rows"),
-            "mw_per_ha": round(detail["dc_kwp"] / detail["area_ha"], 3) if detail.get("area_ha") else None,
+            "mw_per_ha": detail.get("mw_per_ha"),
+            "dc_mwp": detail.get("dc_mwp"),
         },
         yield_result=yield_result,
         selected_yield_mwh=selected_yield_mwh,

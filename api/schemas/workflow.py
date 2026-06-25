@@ -76,6 +76,10 @@ class WorkflowLayoutSweepRequest(BaseModel):
         default=None,
         description="Multiple enabled parcels; analysed in one shared metric frame.",
     )
+    restriction_polygons: Optional[List[List[BoundaryPoint]]] = Field(
+        default=None,
+        description="Manual no-build polygons subtracted from buildable area.",
+    )
     module_h: float = Field(default=2.094, gt=0)
     module_w: float = Field(default=1.038, gt=0)
     module_wp: int = Field(default=550, ge=200, le=1000)
@@ -99,6 +103,17 @@ class WorkflowLayoutSweepRequest(BaseModel):
     custom_gcr: Optional[float] = Field(default=None, gt=0, le=0.85)
     custom_pitch_m: Optional[float] = Field(default=None, gt=0, le=30)
     include_bom: bool = False
+    modules_per_string: int = Field(default=28, ge=8, le=50)
+    inter_string_gap_m: float = Field(default=0.5, ge=0, le=2.0)
+    tracker_string_options: List[int] = Field(default_factory=lambda: [8, 7, 6, 5])
+    max_tracker_length_m: float = Field(default=260.0, gt=0, le=500.0)
+    rows_per_block: int = Field(default=2, ge=0, le=10)
+    block_gap_m: float = Field(default=5.0, ge=0, le=20.0)
+    road_mode: Literal["auto", "manual", "off"] = Field(default="auto")
+    road_preset: str = Field(default="sat_auto", max_length=32)
+    exclude_tracker_slope: bool = Field(default=False)
+    tracker_slope_limit_pct: float = Field(default=6.0, ge=0.5, le=30.0)
+    slope_restriction_grid_m: float = Field(default=20.0, ge=5.0, le=100.0)
 
 
 class WorkflowLayoutSweepResponse(BaseModel):
@@ -107,6 +122,7 @@ class WorkflowLayoutSweepResponse(BaseModel):
     recommended_by_config: Dict[str, Any] = Field(default_factory=dict)
     gcr_guidance: Dict[str, Any] = Field(default_factory=dict)
     strategy: Dict[str, Any] = Field(default_factory=dict)
+    layout_params: Dict[str, Any] = Field(default_factory=dict)
     config_count: int
     row_count: int
 
@@ -115,6 +131,7 @@ class WorkflowLayoutDetailRequest(BaseModel):
     project_name: str = Field(default="LayoutIQ", max_length=200)
     boundary: Optional[List[BoundaryPoint]] = None
     boundaries: Optional[List[List[BoundaryPoint]]] = None
+    restriction_polygons: Optional[List[List[BoundaryPoint]]] = None
     config_key: str = Field(..., max_length=16)
     pitch_m: float = Field(..., gt=0)
     module_h: float = Field(default=2.094, gt=0)
@@ -122,6 +139,17 @@ class WorkflowLayoutDetailRequest(BaseModel):
     module_wp: int = Field(default=550, ge=200, le=1000)
     setback_m: float = Field(default=5.0, ge=0)
     azimuth: float = Field(default=180.0, ge=90, le=270)
+    modules_per_string: int = Field(default=28, ge=8, le=50)
+    inter_string_gap_m: float = Field(default=0.5, ge=0, le=2.0)
+    tracker_string_options: List[int] = Field(default_factory=lambda: [8, 7, 6, 5])
+    max_tracker_length_m: float = Field(default=260.0, gt=0, le=500.0)
+    rows_per_block: int = Field(default=2, ge=0, le=10)
+    block_gap_m: float = Field(default=5.0, ge=0, le=20.0)
+    road_mode: Literal["auto", "manual", "off"] = Field(default="auto")
+    road_preset: str = Field(default="sat_auto", max_length=32)
+    exclude_tracker_slope: bool = Field(default=False)
+    tracker_slope_limit_pct: float = Field(default=6.0, ge=0.5, le=30.0)
+    slope_restriction_grid_m: float = Field(default=20.0, ge=5.0, le=100.0)
 
 
 class WorkflowLayoutDetailResponse(BaseModel):
@@ -135,6 +163,8 @@ class WorkflowLayoutDetailResponse(BaseModel):
     total_rows: int
     area_ha: float
     dc_kwp: float
+    dc_mwp: Optional[float] = None
+    mw_per_ha: Optional[float] = None
     ref_lat: float
     ref_lon: float
     geojson: Dict[str, Any]
@@ -178,6 +208,7 @@ class WorkflowPvmathReportRequest(BaseModel):
 class WorkflowProjectPackageRequest(WorkflowPvmathReportRequest):
     boundary: Optional[List[BoundaryPoint]] = None
     boundaries: Optional[List[List[BoundaryPoint]]] = None
+    restriction_polygons: Optional[List[List[BoundaryPoint]]] = None
     config_key: str = Field(..., max_length=16)
     pitch_m: float = Field(..., gt=0)
     module_h: float = Field(default=2.094, gt=0)
@@ -185,3 +216,14 @@ class WorkflowProjectPackageRequest(WorkflowPvmathReportRequest):
     module_wp: int = Field(default=550, ge=200, le=1000)
     setback_m: float = Field(default=5.0, ge=0)
     azimuth: float = Field(default=180.0, ge=90, le=270)
+    modules_per_string: int = Field(default=28, ge=8, le=50)
+    inter_string_gap_m: float = Field(default=0.5, ge=0, le=2.0)
+    tracker_string_options: List[int] = Field(default_factory=lambda: [8, 7, 6, 5])
+    max_tracker_length_m: float = Field(default=260.0, gt=0, le=500.0)
+    rows_per_block: int = Field(default=2, ge=0, le=10)
+    block_gap_m: float = Field(default=5.0, ge=0, le=20.0)
+    road_mode: Literal["auto", "manual", "off"] = Field(default="auto")
+    road_preset: str = Field(default="sat_auto", max_length=32)
+    exclude_tracker_slope: bool = Field(default=False)
+    tracker_slope_limit_pct: float = Field(default=6.0, ge=0.5, le=30.0)
+    slope_restriction_grid_m: float = Field(default=20.0, ge=5.0, le=100.0)

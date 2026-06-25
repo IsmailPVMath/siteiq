@@ -1,4 +1,5 @@
 import type * as GeoJSON from "geojson";
+import type { LayoutElectricalConfig } from "./layoutConfig";
 
 export type WorkflowStep = "input" | "processing" | "output";
 
@@ -72,9 +73,10 @@ export interface WorkflowLayoutMatrixResponse {
 export type LayoutOptimizationMode = "high_energy" | "balanced" | "land_optimized" | "custom";
 export type LayoutLandCost = "auto" | "cheap" | "balanced" | "expensive";
 
-export interface WorkflowLayoutSweepRequest {
+export interface WorkflowLayoutSweepRequest extends LayoutElectricalConfig {
   boundary?: { lat: number; lon: number }[];
   boundaries?: { lat: number; lon: number }[][];
+  restriction_polygons?: { lat: number; lon: number }[][];
   include_bom?: boolean;
   optimization_mode?: LayoutOptimizationMode;
   land_cost?: LayoutLandCost;
@@ -115,6 +117,7 @@ export interface WorkflowLayoutSweepResponse {
   recommended_by_config: Record<string, LayoutSweepRow>;
   gcr_guidance: Record<string, GcrGuidanceEntry>;
   strategy: LayoutSweepStrategy;
+  layout_params?: Record<string, unknown>;
   config_count: number;
   row_count: number;
 }
@@ -132,20 +135,19 @@ export interface LayoutSweepRow {
   total_rows?: number;
   area_ha?: number;
   dc_kwp?: number;
+  dc_mwp?: number;
   mw_per_ha?: number | null;
   is_recommended?: boolean;
   bom?: Record<string, string>;
 }
 
-export interface WorkflowLayoutDetailRequest {
+export interface WorkflowLayoutDetailRequest extends LayoutElectricalConfig {
   project_name?: string;
   boundary?: { lat: number; lon: number }[];
   boundaries?: { lat: number; lon: number }[][];
+  restriction_polygons?: { lat: number; lon: number }[][];
   config_key: string;
   pitch_m: number;
-  module_h?: number;
-  module_w?: number;
-  module_wp?: number;
   setback_m?: number;
   azimuth?: number;
 }
@@ -161,6 +163,8 @@ export interface WorkflowLayoutDetailResponse {
   total_rows: number;
   area_ha: number;
   dc_kwp: number;
+  dc_mwp?: number;
+  mw_per_ha?: number | null;
   ref_lat: number;
   ref_lon: number;
   geojson: GeoJSON.GeoJSON;
@@ -201,9 +205,10 @@ export interface WorkflowPvmathReportRequest {
   selected_yield_mwh?: number | null;
 }
 
-export interface WorkflowProjectPackageRequest extends WorkflowPvmathReportRequest {
+export interface WorkflowProjectPackageRequest extends WorkflowPvmathReportRequest, LayoutElectricalConfig {
   boundaries?: { lat: number; lon: number }[][];
   boundary?: { lat: number; lon: number }[];
+  restriction_polygons?: { lat: number; lon: number }[][];
   config_key: string;
   pitch_m: number;
 }
