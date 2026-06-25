@@ -1,6 +1,6 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import type * as GeoJSON from "geojson";
-import { SiteMap } from "../components/SiteMap";
+import { SiteMap, type OverlayParcel } from "../components/SiteMap";
 import { parseCoordinates } from "../lib/coords";
 import {
   computeBuildableArea,
@@ -14,6 +14,14 @@ import {
 import type { BoundaryPoint, GateAnalyzeRequest, LandUse } from "../types/gate";
 
 export type ScreeningFormValues = GateAnalyzeRequest;
+
+interface Parcel {
+  id: string;
+  name: string;
+  area_ha: number;
+  coords: BoundaryPoint[];
+  enabled: boolean;
+}
 
 interface Props {
   token: string;
@@ -45,6 +53,7 @@ export function InputPage({ token, initial, onSubmit }: Props) {
   const [siteBoundary, setSiteBoundary] = useState<BoundaryPoint[] | undefined>(
     initial?.boundary,
   );
+  const [parcels, setParcels] = useState<Parcel[]>([]);
   const [restrictions, setRestrictions] = useState<BoundaryPoint[][]>([]);
   const [buildableGeoJson, setBuildableGeoJson] = useState<GeoJSON.GeoJSON | null>(null);
   const [buildableAreaHa, setBuildableAreaHa] = useState<number | null>(null);
@@ -59,15 +68,38 @@ export function InputPage({ token, initial, onSubmit }: Props) {
   const [hint, setHint] = useState("");
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showBoundaryModal, setShowBoundaryModal] = useState(false);
 
-  function ringToGeoJson(ring?: BoundaryPoint[]): GeoJSON.GeoJSON | null {
-    if (!ring || ring.length < 3) return null;
-    const coords = ring.map((p) => [p.lon, p.lat]);
-    coords.push([ring[0].lon, ring[0].lat]);
-    return {
-      type: "Polygon",
-      coordinates: [coords],
-    };
+  const enabledParcels = useMemo(
+    () => parcels.filter((p) => p.enabled && p.coords.length >= 3),
+    [parcels],
+  );
+
+  // Effective rings used for analysis: enabled KML parcels, else the drawn boundary.
+  const effectiveRings: BoundaryPoint[][] = useMemo(() => {
+    if (enabledParcels.length) return enabledParcels.map((p) => p.coords);
+    if (siteBoundary && siteBoundary.length >= 3) return [siteBoundary];
+    return [];
+  }, [enabledParcels, siteBoundary]);
+
+  const hasBoundary = effectiveRings.length > 0;
+
+  const overlayParcels: OverlayParcel[] = useMemo(
+    () => parcels.map((p) => ({ coords: p.coords, enabled: p.enabled })),
+    [parcels],
+  );
+
+  function ringsToGeoJson(rings: BoundaryPoint[][]): GeoJSON.GeoJSON | null {
+    const polys = rings
+      .filter((r) => r.length >= 3)
+      .map((r) => {
+        const c = r.map((p) => [p.lon, p.lat]);
+        c.push([r[0].lon, r[0].lat]);
+        return [c];
+      });
+    if (!polys.length) return null;
+    if (polys.length === 1) return { type: "Polygon", coordinates: polys[0] };
+    return { type: "MultiPolygon", coordinates: polys };
   }
 
   function restrictionsToGeoJson(polys: BoundaryPoint[][]): GeoJSON.GeoJSON | null {
@@ -89,7 +121,7 @@ export function InputPage({ token, initial, onSubmit }: Props) {
     return {
       name: projectName.trim() || "New project",
       center: { lat, lon },
-      site_boundary_geojson: ringToGeoJson(siteBoundary),
+      site_boundary_geojson: ringsToGeoJson(effectiveRings),
       restriction_polygons_geojson: restrictionsToGeoJson(restrictions),
       buildable_area_geojson: buildableGeoJson,
       land_use: landUse,
@@ -116,6 +148,7 @@ export function InputPage({ token, initial, onSubmit }: Props) {
     if (payload.workflow?.area_ha) {
       setAreaHa(Number(payload.workflow.area_ha));
     }
+    setParcels([]);
     const site = payload.site_boundary_geojson;
     if (site?.type === "Polygon" && Array.isArray(site.coordinates?.[0])) {
       setSiteBoundary(
@@ -123,6 +156,29 @@ export function InputPage({ token, initial, onSubmit }: Props) {
           .slice(0, -1)
           .map((p: number[]) => ({ lon: Number(p[0]), lat: Number(p[1]) })),
       );
+    } else if (site?.type === "MultiPolygon" && Array.isArray(site.coordinates)) {
+      const rings: BoundaryPoint[][] = site.coordinates
+        .map((poly: number[][][]) =>
+          (poly?.[0] || []).slice(0, -1).map((p: number[]) => ({
+            lon: Number(p[0]),
+            lat: Number(p[1]),
+          })),
+        )
+        .filter((r: BoundaryPoint[]) => r.length >= 3);
+      if (rings.length > 1) {
+        setSiteBoundary(undefined);
+        setParcels(
+          rings.map((coords, i) => ({
+            id: `saved_${i}`,
+            name: `Parcel ${i + 1}`,
+            area_ha: 0,
+            coords,
+            enabled: true,
+          })),
+        );
+      } else {
+        setSiteBoundary(rings[0]);
+      }
     } else {
       setSiteBoundary(undefined);
     }
@@ -248,14 +304,39 @@ export function InputPage({ token, initial, onSubmit }: Props) {
     setHint("");
     try {
       const parsed = await parseBoundaryFile(token, file);
+      const incoming: Parcel[] =
+        parsed.parcels && parsed.parcels.length
+          ? parsed.parcels.map((p) => ({
+              id: p.id,
+              name: p.name,
+              area_ha: p.area_ha,
+              coords: p.boundary,
+              enabled: p.is_primary,
+            }))
+          : [
+              {
+                id: "kml_0",
+                name: parsed.name,
+                area_ha: parsed.area_ha,
+                coords: parsed.boundary,
+                enabled: true,
+              },
+            ];
+      // Fall back to enabling the largest parcel if the heuristic disabled all.
+      if (!incoming.some((p) => p.enabled) && incoming.length) {
+        const largest = incoming.reduce((a, b) => (b.area_ha > a.area_ha ? b : a));
+        largest.enabled = true;
+      }
+      setParcels(incoming);
+      setSiteBoundary(undefined);
       applyPick(parsed.lat, parsed.lon);
-      setSiteBoundary(parsed.boundary);
-      if (parsed.area_ha > 0) setAreaHa(parsed.area_ha);
       if (!projectName || projectName === DEFAULTS.project_name) {
         setProjectName(parsed.name);
       }
+      const enabledCount = incoming.filter((p) => p.enabled).length;
       setHint(
-        `Loaded boundary: ${parsed.point_count} points, ${parsed.area_ha} ha (from KML/KMZ).`,
+        `Loaded ${incoming.length} parcel${incoming.length === 1 ? "" : "s"} from KML/KMZ — ` +
+          `${enabledCount} selected. Tick/untick parcels to include them in the analysis.`,
       );
     } catch (err) {
       setHint(err instanceof Error ? err.message : "KML upload failed");
@@ -264,8 +345,17 @@ export function InputPage({ token, initial, onSubmit }: Props) {
     }
   }
 
+  function toggleParcel(id: string) {
+    setParcels((prev) => prev.map((p) => (p.id === id ? { ...p, enabled: !p.enabled } : p)));
+  }
+
+  function removeParcel(id: string) {
+    setParcels((prev) => prev.filter((p) => p.id !== id));
+  }
+
   function clearBoundary() {
     setSiteBoundary(undefined);
+    setParcels([]);
     setRestrictions([]);
     setBuildableGeoJson(null);
     setBuildableAreaHa(null);
@@ -277,16 +367,26 @@ export function InputPage({ token, initial, onSubmit }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Keep gross area in sync with the enabled KML parcels.
   useEffect(() => {
-    if (!siteBoundary || siteBoundary.length < 3) {
+    if (!enabledParcels.length) return;
+    const total = enabledParcels.reduce((sum, p) => sum + (p.area_ha || 0), 0);
+    if (total > 0) setAreaHa(Number(total.toFixed(2)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabledParcels]);
+
+  useEffect(() => {
+    if (!hasBoundary) {
       setBuildableGeoJson(null);
       setBuildableAreaHa(null);
       return;
     }
+    const siteGeoJson = ringsToGeoJson(effectiveRings);
+    if (!siteGeoJson) return;
     const timer = window.setTimeout(async () => {
       try {
         const preview = await computeBuildableArea(token, {
-          site_boundary_geojson: ringToGeoJson(siteBoundary)!,
+          site_boundary_geojson: siteGeoJson,
           restriction_polygons_geojson: restrictionsToGeoJson(restrictions),
         });
         setBuildableGeoJson(preview.buildable_area_geojson);
@@ -297,11 +397,15 @@ export function InputPage({ token, initial, onSubmit }: Props) {
       }
     }, 250);
     return () => window.clearTimeout(timer);
-  }, [siteBoundary, restrictions, token]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveRings, restrictions, token]);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    await saveProjectDraft();
+  function submitNow() {
+    void saveProjectDraft();
+    const rings = effectiveRings;
+    const primary = rings.length
+      ? rings.reduce((a, b) => (b.length > a.length ? b : a))
+      : undefined;
     onSubmit({
       project_name: projectName.trim() || "Site screening",
       lat,
@@ -310,9 +414,19 @@ export function InputPage({ token, initial, onSubmit }: Props) {
       land_use: landUse,
       mount_type: mountType,
       country: country.trim(),
-      boundary: siteBoundary && siteBoundary.length >= 3 ? siteBoundary : undefined,
+      boundary: primary,
+      boundaries: rings.length ? rings : undefined,
       run_layout: false,
     });
+  }
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!hasBoundary) {
+      setShowBoundaryModal(true);
+      return;
+    }
+    submitNow();
   }
 
   return (
@@ -320,8 +434,8 @@ export function InputPage({ token, initial, onSubmit }: Props) {
       <div className="page-intro">
         <h1>Project input</h1>
         <p>
-          Search, click the map, paste coordinates, or upload KML — then run the unified
-          workflow (screening → TopoIQ terrain → YieldIQ → layout matrix).
+          Upload a KML/KMZ or draw the site boundary, then run the unified workflow
+          (screening → TopoIQ terrain → LayoutIQ → YieldIQ).
         </p>
       </div>
 
@@ -361,7 +475,63 @@ export function InputPage({ token, initial, onSubmit }: Props) {
         </section>
 
         <section className="form-section">
-          <h2>Site location</h2>
+          <h2>Site boundary</h2>
+
+          <div className="field kml-upload-field">
+            <label htmlFor="kml">Upload KML / KMZ boundary</label>
+            <input
+              id="kml"
+              type="file"
+              accept=".kml,.kmz"
+              onChange={(e) => void onKmlFile(e.target.files?.[0] ?? null)}
+            />
+            <p className="hint">
+              Upload a KML/KMZ to load all site parcels, or draw a boundary on the map below.
+            </p>
+          </div>
+
+          {parcels.length > 0 ? (
+            <div className="parcel-manager">
+              <div className="parcel-manager-head">
+                <strong>
+                  Site parcels — {enabledParcels.length}/{parcels.length} selected
+                </strong>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  type="button"
+                  onClick={clearBoundary}
+                >
+                  Clear all
+                </button>
+              </div>
+              <ul className="parcel-list">
+                {parcels.map((p) => (
+                  <li key={p.id} className={p.enabled ? "parcel-on" : "parcel-off"}>
+                    <label className="parcel-check">
+                      <input
+                        type="checkbox"
+                        checked={p.enabled}
+                        onChange={() => toggleParcel(p.id)}
+                      />
+                      <span className="parcel-name">{p.name}</span>
+                      <span className="parcel-area">
+                        {p.area_ha > 0 ? `${p.area_ha} ha` : `${p.coords.length} pts`}
+                      </span>
+                    </label>
+                    <button
+                      className="parcel-remove"
+                      type="button"
+                      aria-label={`Remove ${p.name}`}
+                      onClick={() => removeParcel(p.id)}
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
           <div className="field">
             <label htmlFor="search">Search location</label>
             <div className="paste-row">
@@ -420,6 +590,7 @@ export function InputPage({ token, initial, onSubmit }: Props) {
             lon={lon}
             siteBoundary={siteBoundary}
             restrictions={restrictions}
+            overlayParcels={overlayParcels}
             buildableAreaGeoJson={buildableGeoJson}
             drawMode={drawMode}
             onPick={applyPick}
@@ -456,21 +627,6 @@ export function InputPage({ token, initial, onSubmit }: Props) {
                 required
               />
             </div>
-          </div>
-
-          <div className="field">
-            <label htmlFor="kml">Upload KML / KMZ boundary</label>
-            <input
-              id="kml"
-              type="file"
-              accept=".kml,.kmz"
-              onChange={(e) => void onKmlFile(e.target.files?.[0] ?? null)}
-            />
-            {siteBoundary && siteBoundary.length >= 3 ? (
-              <button className="btn btn-ghost btn-sm" type="button" onClick={clearBoundary}>
-                Clear boundary
-              </button>
-            ) : null}
           </div>
         </section>
 
@@ -532,6 +688,38 @@ export function InputPage({ token, initial, onSubmit }: Props) {
           </button>
         </div>
       </form>
+
+      {showBoundaryModal ? (
+        <div className="modal-overlay" role="dialog" aria-modal="true">
+          <div className="modal-card">
+            <h2>No site boundary yet</h2>
+            <p>
+              Without a site boundary you can run <strong>screening only</strong>. TopoIQ
+              terrain analysis and LayoutIQ both need a drawn or uploaded boundary.
+            </p>
+            <p>Draw a polygon on the map, upload a KML/KMZ, or continue with screening only.</p>
+            <div className="modal-actions">
+              <button
+                className="btn btn-ghost"
+                type="button"
+                onClick={() => setShowBoundaryModal(false)}
+              >
+                Draw / upload boundary
+              </button>
+              <button
+                className="btn btn-primary"
+                type="button"
+                onClick={() => {
+                  setShowBoundaryModal(false);
+                  submitNow();
+                }}
+              >
+                Continue with screening only
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

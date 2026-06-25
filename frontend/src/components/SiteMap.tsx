@@ -12,11 +12,17 @@ export interface MapBoundary {
 
 type DrawMode = "site" | "restriction";
 
+export interface OverlayParcel {
+  coords: MapBoundary[];
+  enabled: boolean;
+}
+
 interface Props {
   lat: number;
   lon: number;
   siteBoundary?: MapBoundary[];
   restrictions?: MapBoundary[][];
+  overlayParcels?: OverlayParcel[];
   buildableAreaGeoJson?: GeoJSON.GeoJSON | null;
   drawMode?: DrawMode;
   onPick: (lat: number, lon: number) => void;
@@ -37,6 +43,7 @@ export function SiteMap({
   lon,
   siteBoundary,
   restrictions,
+  overlayParcels,
   buildableAreaGeoJson,
   drawMode = "site",
   onPick,
@@ -47,6 +54,7 @@ export function SiteMap({
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
   const drawLayerRef = useRef<L.FeatureGroup | null>(null);
+  const parcelLayerRef = useRef<L.FeatureGroup | null>(null);
   const buildableLayerRef = useRef<L.GeoJSON | null>(null);
   const onPickRef = useRef(onPick);
   const drawModeRef = useRef<DrawMode>(drawMode);
@@ -123,6 +131,7 @@ export function SiteMap({
       onPickRef.current(e.latlng.lat, e.latlng.lng);
     });
 
+    parcelLayerRef.current = new L.FeatureGroup().addTo(map);
     const drawnItems = new L.FeatureGroup().addTo(map);
     drawLayerRef.current = drawnItems;
     const drawControl = new L.Control.Draw({
@@ -177,6 +186,7 @@ export function SiteMap({
       map.remove();
       mapRef.current = null;
       drawLayerRef.current = null;
+      parcelLayerRef.current = null;
       buildableLayerRef.current = null;
     };
   }, []);
@@ -202,6 +212,35 @@ export function SiteMap({
       map.fitBounds(groupBounds, { padding: [24, 24] });
     }
   }, [siteBoundary, restrictions]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const layer = parcelLayerRef.current;
+    if (!map || !layer) return;
+    layer.clearLayers();
+    (overlayParcels || []).forEach((parcel) => {
+      if (parcel.coords.length < 3) return;
+      const color = parcel.enabled ? "#1d9e52" : "#94a3b8";
+      L.polygon(
+        parcel.coords.map((p) => [p.lat, p.lon] as [number, number]),
+        {
+          color,
+          fillColor: color,
+          fillOpacity: parcel.enabled ? 0.22 : 0.06,
+          weight: parcel.enabled ? 2 : 1,
+          dashArray: parcel.enabled ? undefined : "5 4",
+          interactive: false,
+        },
+      ).addTo(layer);
+    });
+    const enabled = (overlayParcels || []).filter((p) => p.enabled && p.coords.length >= 3);
+    if (enabled.length) {
+      const bounds = L.latLngBounds(
+        enabled.flatMap((p) => p.coords.map((c) => [c.lat, c.lon] as [number, number])),
+      );
+      if (bounds.isValid()) map.fitBounds(bounds, { padding: [24, 24] });
+    }
+  }, [overlayParcels]);
 
   useEffect(() => {
     const map = mapRef.current;

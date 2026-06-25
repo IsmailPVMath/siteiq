@@ -20,19 +20,26 @@ def run_layout(
     azimuth: float,
     mounting_type: str = "fixed_tilt",
     inter_gap: float = 0.01,
+    ref_lat: float = None,
+    ref_lon: float = None,
 ):
     """
     Sweep horizontal bands across a rotated boundary polygon.
 
     fixed_tilt: rows E-W, pitch N-S, azimuth applies.
     sat: rows N-S, pitch E-W, azimuth ignored.
+
+    ref_lat/ref_lon override the local projection origin so several parcels can
+    be combined into one shared metric frame (multi-parcel layouts).
     """
     is_tracker = mounting_type == "sat"
 
     lats = [p[0] for p in latlons]
     lons = [p[1] for p in latlons]
-    ref_lat = sum(lats) / len(lats)
-    ref_lon = sum(lons) / len(lons)
+    if ref_lat is None:
+        ref_lat = sum(lats) / len(lats)
+    if ref_lon is None:
+        ref_lon = sum(lons) / len(lons)
 
     xy = latlon_to_xy(latlons, ref_lat, ref_lon)
     poly_m = Polygon(xy)

@@ -14,6 +14,7 @@ export interface GateAnalyzeRequest {
   mount_type: string;
   country: string;
   boundary?: BoundaryPoint[];
+  boundaries?: BoundaryPoint[][];
   run_layout: boolean;
 }
 

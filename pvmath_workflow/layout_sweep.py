@@ -44,9 +44,27 @@ def _config_specs() -> List[Tuple[str, str, int, bool]]:
     return specs
 
 
+def _shared_ref(polys: List[List[List[float]]]) -> tuple:
+    pts = [pt for poly in polys for pt in poly]
+    ref_lat = sum(p[0] for p in pts) / len(pts)
+    ref_lon = sum(p[1] for p in pts) / len(pts)
+    return ref_lat, ref_lon
+
+
+def _normalize_polys(
+    boundary: Optional[List[List[float]]],
+    boundaries: Optional[List[List[List[float]]]],
+) -> List[List[List[float]]]:
+    polys = [p for p in (boundaries or []) if p and len(p) >= 3]
+    if not polys and boundary and len(boundary) >= 3:
+        polys = [boundary]
+    return polys
+
+
 def run_layout_sweep(
-    boundary: List[List[float]],
+    boundary: Optional[List[List[float]]] = None,
     *,
+    boundaries: Optional[List[List[List[float]]]] = None,
     module_h: float = 2.094,
     module_w: float = 1.038,
     module_wp: int = 550,
@@ -59,69 +77,99 @@ def run_layout_sweep(
     include_bom: bool = False,
 ) -> Dict[str, Any]:
     """
-    Iterate mount/portrait × pitch for one site boundary.
+    Iterate mount/portrait × pitch across one or more site parcels.
 
-    Returns a flat comparison table plus best row per config_key (max DC).
+    Multiple parcels share a metric origin and their module counts/areas are
+    summed per configuration. Returns a comparison table plus best row per config.
     """
-    if not boundary or len(boundary) < 3:
-        return {"rows": [], "best_by_config": {}, "config_count": 0}
+    polys = _normalize_polys(boundary, boundaries)
+    if not polys:
+        return {"rows": [], "best_by_config": {}, "config_count": 0, "row_count": 0}
 
+    ref_lat, ref_lon = _shared_ref(polys)
     table_rows: List[Dict[str, Any]] = []
     best_by_config: Dict[str, Dict[str, Any]] = {}
 
     for config_key, label, n_portrait, tracker in _config_specs():
         row_ns = _row_ns_m(module_h, module_w, n_portrait, tracker)
         mount_type = "sat" if tracker else "fixed_tilt"
+        mount_label = "Single-Axis Tracker" if tracker else "Fixed Tilt"
         for pitch in _pitch_candidates(row_ns, pitch_steps_m):
-            layout = run_layout(
-                boundary,
-                module_h=module_h,
-                module_w=module_w,
-                n_portrait=n_portrait,
-                pitch=pitch,
-                setback=setback_m,
-                azimuth=azimuth,
-                mounting_type=mount_type,
-            )
             gcr = _gcr(row_ns, pitch)
-            if not layout:
-                row = {
-                    "config_key": config_key,
-                    "label": label,
-                    "mount_type": "Single-Axis Tracker" if tracker else "Fixed Tilt",
-                    "n_portrait": n_portrait,
-                    "pitch_m": pitch,
-                    "gcr": gcr,
-                    "success": False,
-                    "error": "No rows fit at this pitch",
-                }
-                table_rows.append(row)
+            total_modules = 0
+            total_rows = 0
+            total_area_ha = 0.0
+            for poly in polys:
+                layout = run_layout(
+                    poly,
+                    module_h=module_h,
+                    module_w=module_w,
+                    n_portrait=n_portrait,
+                    pitch=pitch,
+                    setback=setback_m,
+                    azimuth=azimuth,
+                    mounting_type=mount_type,
+                    ref_lat=ref_lat,
+                    ref_lon=ref_lon,
+                )
+                if layout:
+                    total_modules += layout["total_modules"]
+                    total_rows += layout["total_rows"]
+                    total_area_ha += layout["area_ha"]
+
+            if total_modules == 0:
+                table_rows.append(
+                    {
+                        "config_key": config_key,
+                        "label": label,
+                        "mount_type": mount_label,
+                        "n_portrait": n_portrait,
+                        "pitch_m": pitch,
+                        "gcr": gcr,
+                        "success": False,
+                        "error": "No rows fit at this pitch",
+                    }
+                )
                 continue
 
-            dc_kwp = round(layout["total_modules"] * module_wp / 1000, 1)
+            dc_kwp = round(total_modules * module_wp / 1000, 1)
+            total_area_ha = round(total_area_ha, 3)
             entry = {
                 "config_key": config_key,
                 "label": label,
-                "mount_type": "Single-Axis Tracker" if tracker else "Fixed Tilt",
+                "mount_type": mount_label,
                 "n_portrait": n_portrait,
                 "pitch_m": pitch,
                 "gcr": gcr,
                 "success": True,
-                "total_modules": layout["total_modules"],
-                "total_rows": layout["total_rows"],
-                "area_ha": layout["area_ha"],
+                "total_modules": total_modules,
+                "total_rows": total_rows,
+                "area_ha": total_area_ha,
                 "dc_kwp": dc_kwp,
-                "mw_per_ha": round(dc_kwp / layout["area_ha"], 3) if layout["area_ha"] else None,
+                "mw_per_ha": round(dc_kwp / total_area_ha, 3) if total_area_ha else None,
             }
-            if include_bom:
-                entry["bom"] = compute_bom(
-                    layout,
-                    module_wp,
-                    n_portrait,
-                    modules_per_string,
-                    strings_per_inv,
-                    inv_ac_kw,
+            if include_bom and len(polys) == 1:
+                single = run_layout(
+                    polys[0],
+                    module_h=module_h,
+                    module_w=module_w,
+                    n_portrait=n_portrait,
+                    pitch=pitch,
+                    setback=setback_m,
+                    azimuth=azimuth,
+                    mounting_type=mount_type,
+                    ref_lat=ref_lat,
+                    ref_lon=ref_lon,
                 )
+                if single:
+                    entry["bom"] = compute_bom(
+                        single,
+                        module_wp,
+                        n_portrait,
+                        modules_per_string,
+                        strings_per_inv,
+                        inv_ac_kw,
+                    )
             table_rows.append(entry)
 
             prev = best_by_config.get(config_key)

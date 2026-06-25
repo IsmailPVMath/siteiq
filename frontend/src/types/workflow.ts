@@ -69,6 +69,12 @@ export interface WorkflowLayoutMatrixResponse {
   configs: LayoutMatrixConfig[];
 }
 
+export interface WorkflowLayoutSweepRequest {
+  boundary?: { lat: number; lon: number }[];
+  boundaries?: { lat: number; lon: number }[][];
+  include_bom?: boolean;
+}
+
 export interface WorkflowLayoutSweepResponse {
   rows: LayoutSweepRow[];
   best_by_config: Record<string, LayoutSweepRow>;
@@ -95,7 +101,8 @@ export interface LayoutSweepRow {
 
 export interface WorkflowLayoutDetailRequest {
   project_name?: string;
-  boundary: { lat: number; lon: number }[];
+  boundary?: { lat: number; lon: number }[];
+  boundaries?: { lat: number; lon: number }[][];
   config_key: string;
   pitch_m: number;
   module_h?: number;
@@ -122,7 +129,8 @@ export interface WorkflowLayoutDetailResponse {
 }
 
 export interface WorkflowTerrainMeshRequest {
-  boundary: { lat: number; lon: number }[];
+  boundary?: { lat: number; lon: number }[];
+  boundaries?: { lat: number; lon: number }[][];
   grid_m?: number;
   max_vertices?: number;
 }

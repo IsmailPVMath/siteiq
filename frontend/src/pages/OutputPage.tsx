@@ -77,22 +77,27 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
   const mwh = cap?.mwh_range as string | undefined;
   const grid = result.grid as Record<string, unknown>;
   const nearest = grid?.nearest as Record<string, unknown> | undefined;
-  const boundary = input?.boundary;
-  const hasBoundary = Boolean(boundary && boundary.length >= 3);
+  const boundaries = useMemo<{ lat: number; lon: number }[][]>(() => {
+    const rings = (input?.boundaries || []).filter((r) => r && r.length >= 3);
+    if (rings.length) return rings;
+    if (input?.boundary && input.boundary.length >= 3) return [input.boundary];
+    return [];
+  }, [input?.boundaries, input?.boundary]);
+  const hasBoundary = boundaries.length > 0;
 
   const topoPayload: TopoIQAnalyzeRequest | null = useMemo(() => {
-    if (!hasBoundary || !boundary) return null;
+    if (!hasBoundary) return null;
     return {
       project_name: input?.project_name || result.project_name || "TopoIQ run",
       country: input?.country || "",
       land_use: input?.land_use || "Standard",
-      polygons: [boundary.map((p) => ({ lat: p.lat, lon: p.lon }))],
+      polygons: boundaries.map((ring) => ring.map((p) => ({ lat: p.lat, lon: p.lon }))),
       grid_m: 5,
       allow_coarsen: false,
       contour_minor: 0.5,
       contour_major: 1.0,
     };
-  }, [boundary, hasBoundary, input, result.project_name]);
+  }, [boundaries, hasBoundary, input, result.project_name]);
 
   const selectedYieldConfigKey = useMemo(() => {
     if (!selectedLayoutRow) return null;
@@ -202,11 +207,11 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
   }
 
   async function handleLayoutSweep() {
-    if (!boundary || boundary.length < 3) return;
+    if (!hasBoundary) return;
     setLayoutBusy(true);
     setLayoutError("");
     try {
-      const res = await workflowLayoutSweep(token, { boundary, include_bom: false });
+      const res = await workflowLayoutSweep(token, { boundaries, include_bom: false });
       setLayoutSweep(res);
       setLayoutFilter("all");
       setSelectedLayoutRow(null);
@@ -221,10 +226,10 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
   }
 
   function selectedLayoutPayload(row = selectedLayoutRow) {
-    if (!boundary || !row) return null;
+    if (!hasBoundary || !row) return null;
     return {
       project_name: result.project_name || "LayoutIQ",
-      boundary,
+      boundaries,
       config_key: row.config_key,
       pitch_m: row.pitch_m,
     };
@@ -261,11 +266,11 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
   }
 
   async function handleTerrain3D() {
-    if (!boundary || boundary.length < 3) return;
+    if (!hasBoundary) return;
     setTerrain3DBusy(true);
     setLayoutError("");
     try {
-      setTerrain3D(await workflowTerrainMesh(token, { boundary, grid_m: 20, max_vertices: 12000 }));
+      setTerrain3D(await workflowTerrainMesh(token, { boundaries, grid_m: 20, max_vertices: 12000 }));
     } catch (err) {
       setLayoutError(err instanceof Error ? err.message : "3D terrain failed");
     } finally {
@@ -284,32 +289,15 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
     return Object.keys(layoutSweep.best_by_config).sort();
   }, [layoutSweep]);
 
-  const scorePill = finalScore?.pvmath_score;
-  const verdictLabel = finalScore?.verdict ?? (hasBoundary ? "PENDING TOPOIQ" : "SCREENING ONLY");
-  const verdictDetail =
-    finalScore?.verdict_detail ??
-    (hasBoundary
-      ? "Run TopoIQ on your boundary to compute the PVMath score (terrain from grid, not pin sample)."
-      : result.terrain_note);
+  const overallScore = finalScore?.pvmath_score;
+  const overallReady = overallScore != null;
 
   return (
     <div className="workflow-page">
-      <div className="page-intro">
-        <h1>Project results</h1>
-        <p>{result.project_name}</p>
-      </div>
-
-      <div className="verdict-hero">
-        <div className="verdict-score">
-          {scorePill != null ? (
-            <span className="score-pill">{scorePill}</span>
-          ) : (
-            <span className="score-pill score-pill-pending">—</span>
-          )}
-          <div>
-            <strong>{verdictLabel}</strong>
-            <p>{verdictDetail}</p>
-          </div>
+      <div className="page-intro page-intro-row">
+        <div>
+          <h1>Project results</h1>
+          <p>{result.project_name}</p>
         </div>
         <div className="coord-pill">
           {result.coordinates.lat.toFixed(4)}°, {result.coordinates.lon.toFixed(4)}°
@@ -394,11 +382,6 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
                   {metric("Max Slope", `${topoResult.slope.max.toFixed(1)}%`)}
                   {metric(">5% Area", `${topoResult.slope.pct_over5.toFixed(1)}%`)}
                   {metric(">10% Area", `${topoResult.slope.pct_over10.toFixed(1)}%`)}
-                  {metric(
-                    "Terrain Score",
-                    String(topoResult.terrain_drivers.terrain_score ?? "—"),
-                    String(topoResult.terrain_drivers.terrain_score_label ?? ""),
-                  )}
                 </div>
                 <div className="module-note">
                   <strong>Fixed Tilt:</strong> {topoResult.verdict_fixed.label} —{" "}
@@ -673,6 +656,28 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
           </div>
         ) : null}
         {yieldError ? <div className="error-banner">{yieldError}</div> : null}
+      </section>
+
+      <section className="module-card module-score overall-score-card">
+        <div className="module-head">
+          <h2>Overall PVMath score</h2>
+          <span className="module-tag">Final assessment</span>
+        </div>
+        {overallReady ? (
+          <div className="overall-score-body">
+            <span className="score-pill score-pill-lg">{overallScore}</span>
+            <div>
+              <strong>{finalScore?.verdict}</strong>
+              <p>{finalScore?.verdict_detail}</p>
+            </div>
+          </div>
+        ) : (
+          <p className="hint">
+            {hasBoundary
+              ? "Run TopoIQ on your boundary to compute the overall PVMath score (combines screening with authoritative terrain)."
+              : "Add a site boundary and run TopoIQ to compute the overall PVMath score. Screening alone does not produce a score."}
+          </p>
+        )}
       </section>
 
       <div className="output-actions">

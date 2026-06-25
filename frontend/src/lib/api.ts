@@ -9,6 +9,7 @@ import type {
   WorkflowLayoutDetailRequest,
   WorkflowLayoutDetailResponse,
   WorkflowLayoutMatrixResponse,
+  WorkflowLayoutSweepRequest,
   WorkflowLayoutSweepResponse,
   WorkflowScoreResponse,
   WorkflowScreenRequest,
@@ -82,17 +83,7 @@ export function workflowScore(
   });
 }
 
-export function workflowLayoutSweep(
-  token: string,
-  body: {
-    boundary: { lat: number; lon: number }[];
-    module_h?: number;
-    module_w?: number;
-    module_wp?: number;
-    setback_m?: number;
-    include_bom?: boolean;
-  },
-) {
+export function workflowLayoutSweep(token: string, body: WorkflowLayoutSweepRequest) {
   return apiFetch<WorkflowLayoutSweepResponse>(
     "/api/v1/workflow/layout-sweep",
     token,
@@ -173,6 +164,17 @@ export function searchLocation(token: string, q: string) {
   );
 }
 
+export interface BoundaryParcel {
+  id: string;
+  name: string;
+  full_name?: string;
+  layer_group?: string;
+  area_ha: number;
+  boundary: { lat: number; lon: number }[];
+  point_count: number;
+  is_primary: boolean;
+}
+
 export interface BoundaryParseResult {
   name: string;
   area_ha: number;
@@ -180,6 +182,7 @@ export interface BoundaryParseResult {
   lon: number;
   boundary: { lat: number; lon: number }[];
   point_count: number;
+  parcels?: BoundaryParcel[];
 }
 
 export interface ProjectPayload {

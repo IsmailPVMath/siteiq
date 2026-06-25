@@ -71,7 +71,11 @@ class WorkflowLayoutMatrixResponse(BaseModel):
 
 
 class WorkflowLayoutSweepRequest(BaseModel):
-    boundary: List[BoundaryPoint] = Field(..., min_length=3)
+    boundary: Optional[List[BoundaryPoint]] = None
+    boundaries: Optional[List[List[BoundaryPoint]]] = Field(
+        default=None,
+        description="Multiple enabled parcels; analysed in one shared metric frame.",
+    )
     module_h: float = Field(default=2.094, gt=0)
     module_w: float = Field(default=1.038, gt=0)
     module_wp: int = Field(default=550, ge=200, le=1000)
@@ -93,7 +97,8 @@ class WorkflowLayoutSweepResponse(BaseModel):
 
 class WorkflowLayoutDetailRequest(BaseModel):
     project_name: str = Field(default="LayoutIQ", max_length=200)
-    boundary: List[BoundaryPoint] = Field(..., min_length=3)
+    boundary: Optional[List[BoundaryPoint]] = None
+    boundaries: Optional[List[List[BoundaryPoint]]] = None
     config_key: str = Field(..., max_length=16)
     pitch_m: float = Field(..., gt=0)
     module_h: float = Field(default=2.094, gt=0)
@@ -120,7 +125,8 @@ class WorkflowLayoutDetailResponse(BaseModel):
 
 
 class WorkflowTerrainMeshRequest(BaseModel):
-    boundary: List[BoundaryPoint] = Field(..., min_length=3)
+    boundary: Optional[List[BoundaryPoint]] = None
+    boundaries: Optional[List[List[BoundaryPoint]]] = None
     grid_m: float = Field(default=20.0, ge=5.0, le=100.0)
     max_vertices: int = Field(default=12_000, ge=1_000, le=40_000)
 

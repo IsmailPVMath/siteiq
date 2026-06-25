@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import io
 import re
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from layoutiq.coords import xy_to_latlon
 from layoutiq.engine import run_layout
@@ -49,9 +49,20 @@ def _polygon_feature(poly: Any, ref_lat: float, ref_lon: float, props: Dict[str,
     }
 
 
+def _normalize_polys(
+    boundary: Optional[List[List[float]]],
+    boundaries: Optional[List[List[List[float]]]],
+) -> List[List[List[float]]]:
+    polys = [p for p in (boundaries or []) if p and len(p) >= 3]
+    if not polys and boundary and len(boundary) >= 3:
+        polys = [boundary]
+    return polys
+
+
 def build_layout_detail(
-    boundary: List[List[float]],
+    boundary: Optional[List[List[float]]] = None,
     *,
+    boundaries: Optional[List[List[List[float]]]] = None,
     config_key: str,
     pitch_m: float,
     module_h: float = 2.094,
@@ -61,41 +72,67 @@ def build_layout_detail(
     azimuth: float = 180.0,
 ) -> Dict[str, Any]:
     n_portrait, tracker, label = _config_from_key(config_key)
-    layout = run_layout(
-        boundary,
-        module_h=module_h,
-        module_w=module_w,
-        n_portrait=n_portrait,
-        pitch=pitch_m,
-        setback=setback_m,
-        azimuth=azimuth,
-        mounting_type="sat" if tracker else "fixed_tilt",
-    )
-    if not layout:
+    polys = _normalize_polys(boundary, boundaries)
+    if not polys:
+        raise ValueError("A site boundary is required")
+
+    all_pts = [pt for poly in polys for pt in poly]
+    ref_lat = sum(p[0] for p in all_pts) / len(all_pts)
+    ref_lon = sum(p[1] for p in all_pts) / len(all_pts)
+
+    layouts = []
+    for poly in polys:
+        layout = run_layout(
+            poly,
+            module_h=module_h,
+            module_w=module_w,
+            n_portrait=n_portrait,
+            pitch=pitch_m,
+            setback=setback_m,
+            azimuth=azimuth,
+            mounting_type="sat" if tracker else "fixed_tilt",
+            ref_lat=ref_lat,
+            ref_lon=ref_lon,
+        )
+        if layout:
+            layouts.append(layout)
+    if not layouts:
         raise ValueError("No layout rows fit for this configuration and pitch")
 
-    dc_kwp = round(layout["total_modules"] * module_wp / 1000, 1)
-    ref_lat = layout["ref_lat"]
-    ref_lon = layout["ref_lon"]
-    features: List[Dict[str, Any]] = [
-        _polygon_feature(layout["poly_m"], ref_lat, ref_lon, {"kind": "site_boundary"}),
-        _polygon_feature(layout["poly_inset"], ref_lat, ref_lon, {"kind": "setback_inset"}),
-    ]
-    for idx, poly in enumerate(layout["rows_polys"], start=1):
-        row_data = layout["rows_data"][idx - 1]
+    features: List[Dict[str, Any]] = []
+    row_index = 0
+    total_modules = 0
+    total_rows = 0
+    total_area_ha = 0.0
+    for layout in layouts:
         features.append(
-            _polygon_feature(
-                poly,
-                ref_lat,
-                ref_lon,
-                {
-                    "kind": "pv_row",
-                    "row_index": idx,
-                    "n_modules": row_data["n_modules"],
-                    "length_m": row_data["length_m"],
-                },
-            )
+            _polygon_feature(layout["poly_m"], ref_lat, ref_lon, {"kind": "site_boundary"})
         )
+        features.append(
+            _polygon_feature(layout["poly_inset"], ref_lat, ref_lon, {"kind": "setback_inset"})
+        )
+        for local_idx, poly in enumerate(layout["rows_polys"]):
+            row_index += 1
+            row_data = layout["rows_data"][local_idx]
+            features.append(
+                _polygon_feature(
+                    poly,
+                    ref_lat,
+                    ref_lon,
+                    {
+                        "kind": "pv_row",
+                        "row_index": row_index,
+                        "n_modules": row_data["n_modules"],
+                        "length_m": row_data["length_m"],
+                    },
+                )
+            )
+        total_modules += layout["total_modules"]
+        total_rows += layout["total_rows"]
+        total_area_ha += layout["area_ha"]
+
+    dc_kwp = round(total_modules * module_wp / 1000, 1)
+    row_ns = layouts[0]["row_ns"]
 
     return {
         "config_key": config_key,
@@ -103,14 +140,14 @@ def build_layout_detail(
         "mount_type": "Single-Axis Tracker" if tracker else "Fixed Tilt",
         "n_portrait": n_portrait,
         "pitch_m": pitch_m,
-        "gcr": round(layout["row_ns"] / pitch_m, 3),
-        "total_modules": layout["total_modules"],
-        "total_rows": layout["total_rows"],
-        "area_ha": layout["area_ha"],
+        "gcr": round(row_ns / pitch_m, 3),
+        "total_modules": total_modules,
+        "total_rows": total_rows,
+        "area_ha": round(total_area_ha, 3),
         "dc_kwp": dc_kwp,
         "ref_lat": ref_lat,
         "ref_lon": ref_lon,
-        "layout": layout,
+        "layouts": layouts,
         "geojson": {
             "type": "FeatureCollection",
             "features": features,
@@ -133,7 +170,9 @@ def export_layout_dxf(detail: Dict[str, Any], project_name: str = "LayoutIQ") ->
     if not HAS_EZDXF:
         raise RuntimeError("ezdxf is not installed")
 
-    layout = detail["layout"]
+    layouts = detail.get("layouts") or ([detail["layout"]] if detail.get("layout") else [])
+    if not layouts:
+        raise ValueError("No layout geometry to export")
     doc = ezdxf.new("R2010")
     doc.header["$INSUNITS"] = 6  # meters
     msp = doc.modelspace()
@@ -142,16 +181,17 @@ def export_layout_dxf(detail: Dict[str, Any], project_name: str = "LayoutIQ") ->
     doc.layers.add("PV_ROWS", color=3)
     doc.layers.add("LABELS", color=7)
 
-    _add_polyline(msp, layout["poly_m"], "SITE_BOUNDARY")
-    _add_polyline(msp, layout["poly_inset"], "SETBACK_INSET")
-    for poly in layout["rows_polys"]:
-        _add_polyline(msp, poly, "PV_ROWS")
+    for layout in layouts:
+        _add_polyline(msp, layout["poly_m"], "SITE_BOUNDARY")
+        _add_polyline(msp, layout["poly_inset"], "SETBACK_INSET")
+        for poly in layout["rows_polys"]:
+            _add_polyline(msp, poly, "PV_ROWS")
 
     summary = (
         f"{project_name} | {detail['label']} | Pitch {detail['pitch_m']} m | "
         f"GCR {detail['gcr']} | {detail['total_modules']} modules | {detail['dc_kwp']} kWp"
     )
-    minx, miny, _maxx, maxy = layout["poly_m"].bounds
+    minx, miny, _maxx, maxy = layouts[0]["poly_m"].bounds
     msp.add_text(summary, height=2.5, dxfattribs={"layer": "LABELS"}).set_placement((minx, maxy + 5))
     msp.add_text(
         f"Local metric coordinates. Reference WGS84 centroid: {detail['ref_lat']:.8f}, {detail['ref_lon']:.8f}",

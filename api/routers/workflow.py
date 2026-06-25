@@ -40,6 +40,34 @@ SCREEN_TIMEOUT_SEC = int(os.environ.get("PVMATH_GATE_TIMEOUT", "150"))
 LAYOUT_TIMEOUT_SEC = int(os.environ.get("PVMATH_LAYOUT_TIMEOUT", "120"))
 
 
+def _latlon_polys(boundary, boundaries):
+    """Normalize request points into a list of [lat, lon] rings."""
+    polys = []
+    for ring in boundaries or []:
+        pts = [[p.lat, p.lon] for p in ring]
+        if len(pts) >= 3:
+            polys.append(pts)
+    if not polys and boundary:
+        pts = [[p.lat, p.lon] for p in boundary]
+        if len(pts) >= 3:
+            polys.append(pts)
+    return polys
+
+
+def _lonlat_polys(boundary, boundaries):
+    """Normalize request points into a list of (lon, lat) rings for TopoIQ."""
+    polys = []
+    for ring in boundaries or []:
+        pts = [(p.lon, p.lat) for p in ring]
+        if len(pts) >= 3:
+            polys.append(pts)
+    if not polys and boundary:
+        pts = [(p.lon, p.lat) for p in boundary]
+        if len(pts) >= 3:
+            polys.append(pts)
+    return polys
+
+
 def _limit_detail() -> str:
     return (
         "Monthly analysis limit reached. Free plan: 5 SiteIQ analyses per month. "
@@ -176,7 +204,9 @@ async def workflow_layout_sweep(
 
     Returns a comparison table (capacity vs pitch) plus best DC per configuration.
     """
-    boundary = [[p.lat, p.lon] for p in body.boundary]
+    polys = _latlon_polys(body.boundary, body.boundaries)
+    if not polys:
+        raise HTTPException(status_code=400, detail="A site boundary is required for LayoutIQ.")
     loop = asyncio.get_running_loop()
     try:
         data = await asyncio.wait_for(
@@ -184,7 +214,7 @@ async def workflow_layout_sweep(
                 None,
                 partial(
                     run_layout_sweep,
-                    boundary,
+                    boundaries=polys,
                     module_h=body.module_h,
                     module_w=body.module_w,
                     module_wp=body.module_wp,
@@ -213,10 +243,12 @@ async def workflow_layout_sweep(
 
 
 def _layout_detail_payload(body: WorkflowLayoutDetailRequest):
-    boundary = [[p.lat, p.lon] for p in body.boundary]
+    polys = _latlon_polys(body.boundary, body.boundaries)
+    if not polys:
+        raise ValueError("A site boundary is required")
     return partial(
         build_layout_detail,
-        boundary,
+        boundaries=polys,
         config_key=body.config_key,
         pitch_m=body.pitch_m,
         module_h=body.module_h,
@@ -250,6 +282,7 @@ async def workflow_layout_detail(
         raise HTTPException(status_code=500, detail=f"Layout detail failed: {exc}") from exc
 
     data.pop("layout", None)
+    data.pop("layouts", None)
     return WorkflowLayoutDetailResponse(**data)
 
 
@@ -294,7 +327,9 @@ async def workflow_terrain_mesh(
     _user: AuthUser = Depends(get_current_user),
 ):
     """Coarse TopoIQ terrain mesh for browser-side 3D rendering."""
-    polygons = [[(p.lon, p.lat) for p in body.boundary]]
+    polygons = _lonlat_polys(body.boundary, body.boundaries)
+    if not polygons:
+        raise HTTPException(status_code=400, detail="A site boundary is required for terrain mesh.")
     loop = asyncio.get_running_loop()
     try:
         data = await asyncio.wait_for(
