@@ -119,8 +119,8 @@ def run_layout(
     inter_string_gap_m: float = 0.5,
     tracker_string_options: list[int] | None = None,
     max_tracker_length_m: float = 260.0,
-    rows_per_block: int = 2,
-    block_gap_m: float = 5.0,
+    rows_per_block: int = 0,
+    block_gap_m: float = 0.0,
     restriction_latlons=None,
     ref_lat: float = None,
     ref_lon: float = None,
@@ -236,8 +236,15 @@ def run_layout(
                 if n_strings < 1:
                     continue
                 n_mod = n_strings * modules_per_string
-                x0 = seg.bounds[0]
-                row_rect = box(x0, y, x0 + actual_len, y + row_ns)
+                if is_tracker:
+                    # Rotated +x = South for trackers. Anchor each tracker at the
+                    # segment's south edge so all south ends follow the boundary
+                    # (aligned baseline); drop the partial at the north end.
+                    x1 = seg.bounds[2]
+                    row_rect = box(x1 - actual_len, y, x1, y + row_ns)
+                else:
+                    x0 = seg.bounds[0]
+                    row_rect = box(x0, y, x0 + actual_len, y + row_ns)
                 row_orig = shp_rotate(row_rect, -rot_angle, origin=(ctr.x, ctr.y))
                 rows_polys.append(row_orig)
                 rows_data.append(

@@ -15,9 +15,10 @@ DEFAULT_INTER_STRING_GAP_M = 0.5
 DEFAULT_TRACKER_STRING_OPTIONS = [8, 7, 6, 5]
 DEFAULT_MAX_TRACKER_LENGTH_M = 260.0
 
-# Auto SAT access: two tracker rows, then 5 m N-S gap (no E-W roads)
-DEFAULT_ROWS_PER_BLOCK = 2
-DEFAULT_BLOCK_GAP_M = 5.0
+# Default = equal pitch (no access-road gaps). Access roads are opt-in via presets;
+# N-S road gaps intentionally widen pitch periodically when enabled.
+DEFAULT_ROWS_PER_BLOCK = 0
+DEFAULT_BLOCK_GAP_M = 0.0
 
 ROAD_PRESETS: Dict[str, Dict[str, Any]] = {
     "sat_auto": {
@@ -58,8 +59,8 @@ def layout_params(
     max_tracker_length_m: float = DEFAULT_MAX_TRACKER_LENGTH_M,
     rows_per_block: int = DEFAULT_ROWS_PER_BLOCK,
     block_gap_m: float = DEFAULT_BLOCK_GAP_M,
-    road_mode: RoadMode = "auto",
-    road_preset: str = "sat_auto",
+    road_mode: RoadMode = "off",
+    road_preset: str = "no_roads",
 ) -> Dict[str, Any]:
     """Resolve road preset + mode into concrete engine parameters."""
     if road_mode == "auto":
