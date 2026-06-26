@@ -1,11 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "./components/AppShell";
 import { LoginPanel } from "./components/LoginPanel";
+import { MyProjectsPage } from "./pages/MyProjectsPage";
 import { ProjectSetupPage } from "./pages/ProjectSetupPage";
 import { OutputPage } from "./pages/OutputPage";
 import { ProcessingPage } from "./pages/ProcessingPage";
-import { fetchMe, runWorkflowScreen } from "./lib/api";
-import { loadSession, signOut, type AuthSession } from "./lib/auth";
+import { fetchMe, runWorkflowScreen, setTokenRefresher } from "./lib/api";
+import {
+  isAccessTokenStale,
+  loadSession,
+  refreshSession,
+  signOut,
+  type AuthSession,
+} from "./lib/auth";
 import type { GateAnalyzeRequest, MeResponse } from "./types/gate";
 import type {
   OutputModuleStage,
@@ -24,9 +31,13 @@ export default function App() {
   const [booting, setBooting] = useState(true);
   const [step, setStep] = useState<WorkflowStep>("input");
   const [lastInput, setLastInput] = useState<GateAnalyzeRequest | null>(null);
+  const [editingProjectId, setEditingProjectId] = useState("");
   const [error, setError] = useState("");
   const [result, setResult] = useState<WorkflowScreenResponse | null>(null);
   const [outputModule, setOutputModule] = useState<OutputModuleStage>("screen");
+  const sessionRef = useRef<AuthSession | null>(null);
+
+  sessionRef.current = session;
 
   const loadProfile = useCallback(async (accessToken: string) => {
     try {
@@ -36,15 +47,75 @@ export default function App() {
     }
   }, []);
 
-  useEffect(() => {
-    const saved = loadSession();
-    setSession(saved);
-    setBooting(false);
-    if (saved?.access_token) void loadProfile(saved.access_token);
+  const refreshCurrentSession = useCallback(async (): Promise<AuthSession | null> => {
+    const current = sessionRef.current;
+    if (!current) return null;
+    if (!isAccessTokenStale(current)) return current;
+    if (!current.refresh_token) {
+      signOut();
+      setSession(null);
+      setProfile(null);
+      return null;
+    }
+    try {
+      const next = await refreshSession(current);
+      setSession(next);
+      sessionRef.current = next;
+      await loadProfile(next.access_token);
+      return next;
+    } catch {
+      signOut();
+      setSession(null);
+      setProfile(null);
+      return null;
+    }
   }, [loadProfile]);
+
+  useEffect(() => {
+    setTokenRefresher(async () => {
+      const next = await refreshCurrentSession();
+      return next?.access_token ?? null;
+    });
+    return () => setTokenRefresher(null);
+  }, [refreshCurrentSession]);
+
+  useEffect(() => {
+    async function boot() {
+      const saved = loadSession();
+      if (!saved) {
+        setBooting(false);
+        return;
+      }
+      try {
+        let active = saved;
+        if (isAccessTokenStale(saved) && saved.refresh_token) {
+          active = await refreshSession(saved);
+        }
+        setSession(active);
+        sessionRef.current = active;
+        await loadProfile(active.access_token);
+      } catch {
+        signOut();
+        setSession(null);
+        setProfile(null);
+      } finally {
+        setBooting(false);
+      }
+    }
+    void boot();
+  }, [loadProfile]);
+
+  useEffect(() => {
+    if (!session) return;
+    const timer = window.setInterval(() => {
+      void refreshCurrentSession();
+    }, 4 * 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, [session, refreshCurrentSession]);
 
   function handleSignedIn(next: AuthSession) {
     setSession(next);
+    sessionRef.current = next;
     void loadProfile(next.access_token);
   }
 
@@ -54,6 +125,7 @@ export default function App() {
     setProfile(null);
     setResult(null);
     setLastInput(null);
+    setEditingProjectId("");
     setStep("input");
     setOutputModule("screen");
     setError("");
@@ -62,25 +134,45 @@ export default function App() {
   function resetWorkflow() {
     setResult(null);
     setLastInput(null);
+    setEditingProjectId("");
     setOutputModule("screen");
     setError("");
     setStep("input");
   }
 
+  function openProjects() {
+    setError("");
+    setStep("projects");
+  }
+
+  function openProject(id: string) {
+    setEditingProjectId(id);
+    setError("");
+    setStep("input");
+  }
+
+  function startNewProject() {
+    setEditingProjectId("");
+    setLastInput(null);
+    setResult(null);
+    setError("");
+    setStep("input");
+  }
+
   const pipelineStage: PipelineStage = useMemo(() => {
-    if (step === "input") return "setup";
+    if (step === "projects" || step === "input") return "setup";
     if (step === "processing") return "siteiq";
     return pipelineFromOutputModule(outputModule);
   }, [step, outputModule]);
 
   const pipelineUnlocked = useMemo((): PipelineStage[] => {
-    if (step === "input") return ["setup"];
+    if (step === "projects" || step === "input") return ["setup"];
     if (step === "processing") return ["setup", "siteiq"];
     return ["setup", "siteiq", "topoiq", "layoutiq", "yieldiq"];
   }, [step]);
 
   const pipelineCompleted = useMemo((): Partial<Record<PipelineStage, boolean>> => {
-    if (step === "input") return {};
+    if (step === "projects" || step === "input") return {};
     if (step === "processing") return { setup: true };
     return {
       setup: true,
@@ -102,7 +194,8 @@ export default function App() {
   }
 
   async function handleStartScreening(body: GateAnalyzeRequest) {
-    const token = session?.access_token;
+    const active = await refreshCurrentSession();
+    const token = active?.access_token;
     if (!token) return;
     setLastInput(body);
     setError("");
@@ -155,14 +248,26 @@ export default function App() {
       pipelineCompleted={pipelineCompleted}
       onPipelineNavigate={handlePipelineNavigate}
       onLogout={handleLogout}
-      wide={step === "output" || step === "input"}
+      onOpenProjects={openProjects}
+      wide={step === "output" || step === "input" || step === "projects"}
     >
       {error ? <div className="error-banner">{error}</div> : null}
 
+      {step === "projects" ? (
+        <MyProjectsPage
+          token={session.access_token}
+          onOpenProject={openProject}
+          onNewProject={startNewProject}
+        />
+      ) : null}
+
       {step === "input" ? (
         <ProjectSetupPage
+          key={editingProjectId || "new"}
           token={session.access_token}
           initial={lastInput ?? undefined}
+          initialProjectId={editingProjectId || undefined}
+          onOpenProjects={openProjects}
           onSubmit={handleStartScreening}
         />
       ) : null}

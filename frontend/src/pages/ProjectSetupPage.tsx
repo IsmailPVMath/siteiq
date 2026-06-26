@@ -39,10 +39,12 @@ export type ScreeningFormValues = GateAnalyzeRequest;
 interface Props {
   token: string;
   initial?: Partial<ScreeningFormValues>;
+  initialProjectId?: string;
+  onOpenProjects?: () => void;
   onSubmit: (body: ScreeningFormValues) => void;
 }
 
-export function ProjectSetupPage({ token, initial, onSubmit }: Props) {
+export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProjects, onSubmit }: Props) {
   const [draft, dispatch] = useReducer(
     draftReducer,
     initial ? gateRequestToDraft(initial) : gateRequestToDraft({}),
@@ -59,6 +61,7 @@ export function ProjectSetupPage({ token, initial, onSubmit }: Props) {
     { lat: number; lon: number; label: string }[]
   >([]);
   const [hint, setHint] = useState("");
+  const [hintIsError, setHintIsError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showBoundaryModal, setShowBoundaryModal] = useState(false);
@@ -113,6 +116,7 @@ export function ProjectSetupPage({ token, initial, onSubmit }: Props) {
 
   async function saveProjectDraft() {
     setSaving(true);
+    setHintIsError(false);
     try {
       const payload = draftToProjectPayload(draft);
       const row = projectId
@@ -123,7 +127,9 @@ export function ProjectSetupPage({ token, initial, onSubmit }: Props) {
       await loadProjects(false);
       return row.id;
     } catch (err) {
-      setHint(err instanceof Error ? err.message : "Project save failed");
+      const msg = err instanceof Error ? err.message : "Project save failed";
+      setHint(msg);
+      setHintIsError(true);
       return null;
     } finally {
       setSaving(false);
@@ -282,9 +288,12 @@ export function ProjectSetupPage({ token, initial, onSubmit }: Props) {
   }
 
   useEffect(() => {
-    void loadProjects(!initial);
+    void loadProjects(false);
+    if (initialProjectId) {
+      void loadSelectedProject(initialProjectId);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialProjectId]);
 
   // Auto reverse-geocode whenever the location changes — fill country/state/city
   // so the user never has to type administrative details manually.
@@ -358,6 +367,11 @@ export function ProjectSetupPage({ token, initial, onSubmit }: Props) {
           </p>
         </div>
         <div className="project-setup-save">
+          {onOpenProjects ? (
+            <button className="btn btn-ghost btn-sm" type="button" onClick={onOpenProjects}>
+              My projects
+            </button>
+          ) : null}
           <select value={projectId} onChange={(e) => void loadSelectedProject(e.target.value)}>
             <option value="">New project</option>
             {projects.map((p) => (
@@ -478,7 +492,13 @@ export function ProjectSetupPage({ token, initial, onSubmit }: Props) {
           </aside>
         </div>
 
-        {hint ? <p className="hint hint-banner">{hint}</p> : null}
+        {hint ? (
+          hintIsError ? (
+            <div className="error-banner">{hint}</div>
+          ) : (
+            <p className="hint hint-banner">{hint}</p>
+          )
+        ) : null}
 
         <div className="project-setup-footer">
           <p className="hint">

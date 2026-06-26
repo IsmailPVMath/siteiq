@@ -1,7 +1,7 @@
 import type * as GeoJSON from "geojson";
 import type { LayoutElectricalConfig } from "./layoutConfig";
 
-export type WorkflowStep = "input" | "processing" | "output";
+export type WorkflowStep = "input" | "processing" | "output" | "projects";
 
 /** Connected pipeline visible across the preliminary study workflow. */
 export type PipelineStage = "setup" | "siteiq" | "topoiq" | "layoutiq" | "yieldiq";

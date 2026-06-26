@@ -13,16 +13,18 @@ export interface AuthSession {
   expires_at: number;
 }
 
+/** True when access token is expired or within 5 minutes of expiry. */
+export function isAccessTokenStale(session: AuthSession): boolean {
+  if (!session.expires_at) return false;
+  return session.expires_at * 1000 < Date.now() + 5 * 60 * 1000;
+}
+
 export function loadSession(): AuthSession | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const session = JSON.parse(raw) as AuthSession;
     if (!session.access_token) return null;
-    if (session.expires_at && session.expires_at * 1000 < Date.now()) {
-      localStorage.removeItem(STORAGE_KEY);
-      return null;
-    }
     return session;
   } catch {
     return null;
@@ -69,6 +71,39 @@ export async function signInWithPassword(
   };
   saveSession(session);
   return session;
+}
+
+export async function refreshSession(session: AuthSession): Promise<AuthSession> {
+  if (!session.refresh_token) {
+    throw new Error("Session expired — please sign in again.");
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/v1/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ refresh_token: session.refresh_token }),
+    });
+  } catch {
+    throw new Error("Could not reach auth service.");
+  }
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.access_token) {
+    const msg = data.detail || data.message || "Session expired — please sign in again.";
+    throw new Error(String(msg));
+  }
+
+  const next: AuthSession = {
+    access_token: data.access_token,
+    refresh_token: data.refresh_token ?? session.refresh_token,
+    email: data.user?.email ?? session.email,
+    user_id: data.user?.id ?? session.user_id,
+    expires_at: data.expires_at ?? 0,
+  };
+  saveSession(next);
+  return next;
 }
 
 export function signOut(): void {

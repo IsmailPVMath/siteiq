@@ -29,10 +29,17 @@ const API_URL = (import.meta.env.VITE_API_URL || "https://api.pvmath.com").repla
   "",
 );
 
+let tokenRefresher: (() => Promise<string | null>) | null = null;
+
+export function setTokenRefresher(fn: (() => Promise<string | null>) | null) {
+  tokenRefresher = fn;
+}
+
 async function apiFetch<T>(
   path: string,
   token: string,
   init?: RequestInit,
+  retried = false,
 ): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
@@ -54,6 +61,11 @@ async function apiFetch<T>(
     } catch {
       data = { detail: text };
     }
+  }
+
+  if (res.status === 401 && !retried && tokenRefresher) {
+    const fresh = await tokenRefresher();
+    if (fresh) return apiFetch<T>(path, fresh, init, true);
   }
 
   if (!res.ok) {
@@ -289,6 +301,12 @@ export function updateProject(token: string, id: string, body: ProjectPayload) {
   return apiFetch<ProjectRecord>(`/api/v1/projects/${id}`, token, {
     method: "PATCH",
     body: JSON.stringify(body),
+  });
+}
+
+export function deleteProject(token: string, id: string) {
+  return apiFetch<{ success: boolean }>(`/api/v1/projects/${id}`, token, {
+    method: "DELETE",
   });
 }
 

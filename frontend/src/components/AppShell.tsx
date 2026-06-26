@@ -16,6 +16,7 @@ interface Props {
   pipelineCompleted?: Partial<Record<PipelineStage, boolean>>;
   onPipelineNavigate?: (stage: PipelineStage) => void;
   onLogout: () => void;
+  onOpenProjects?: () => void;
   wide?: boolean;
   children: ReactNode;
 }
@@ -38,6 +39,7 @@ export function AppShell({
   pipelineCompleted,
   onPipelineNavigate,
   onLogout,
+  onOpenProjects,
   wide = false,
   children,
 }: Props) {
@@ -107,6 +109,7 @@ export function AppShell({
             token={token}
             onLogout={onLogout}
             onCollapse={() => setCollapsed(true)}
+            onOpenProjects={onOpenProjects}
           />
           <div
             className="sidebar-resizer"

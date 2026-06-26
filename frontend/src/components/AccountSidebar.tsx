@@ -28,11 +28,12 @@ interface Props {
   token: string;
   onLogout: () => void;
   onCollapse?: () => void;
+  onOpenProjects?: () => void;
 }
 
 type Panel = "none" | "settings" | "membership";
 
-export function AccountSidebar({ email, profile, token, onLogout, onCollapse }: Props) {
+export function AccountSidebar({ email, profile, token, onLogout, onCollapse, onOpenProjects }: Props) {
   const [accountOpen, setAccountOpen] = useState(false);
   const [panel, setPanel] = useState<Panel>("none");
   const [currentPass, setCurrentPass] = useState("");
@@ -118,6 +119,11 @@ export function AccountSidebar({ email, profile, token, onLogout, onCollapse }: 
           {usageLine ? <p className="account-usage">{usageLine}</p> : null}
 
           <nav className="account-nav">
+            {onOpenProjects ? (
+              <button type="button" className="account-nav-item" onClick={onOpenProjects}>
+                My projects
+              </button>
+            ) : null}
             <button
               type="button"
               className={`account-nav-item${panel === "membership" ? " active" : ""}`}
