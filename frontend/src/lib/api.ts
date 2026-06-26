@@ -357,16 +357,37 @@ export async function downloadScreeningPdf(
   return res.blob();
 }
 
-async function downloadBlob(path: string, token: string, body: unknown, accept: string): Promise<Blob> {
-  const res = await fetch(`${API_URL}${path}`, {
-    method: "POST",
-    headers: {
-      Accept: accept,
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+async function downloadBlob(
+  path: string,
+  token: string,
+  body: unknown,
+  accept: string,
+  retried = false,
+): Promise<Blob> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      method: "POST",
+      headers: {
+        Accept: accept,
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    if (!retried && tokenRefresher) {
+      const fresh = await tokenRefresher();
+      if (fresh) return downloadBlob(path, fresh, body, accept, true);
+    }
+    throw new Error(
+      "Network error — could not reach the PVMath server. Check your connection and try again.",
+    );
+  }
+  if (res.status === 401 && !retried && tokenRefresher) {
+    const fresh = await tokenRefresher();
+    if (fresh) return downloadBlob(path, fresh, body, accept, true);
+  }
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || `HTTP ${res.status}`);

@@ -9,13 +9,14 @@ Two explicit profiles (Option B):
 from __future__ import annotations
 
 import concurrent.futures
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import requests
 
 from pvmath_capacity import GCR_SCREEN_LO
 
 PVGIS_URL = "https://re.jrc.ec.europa.eu/api/v5_2/PVcalc"
+PVGIS_MRCALC_URL = "https://re.jrc.ec.europa.eu/api/v5_2/MRcalc"
 USER_AGENT = "PVMath/1.0 (pvmath.com; contact@pvmath.com)"
 
 PROFILE_SCREENING = "screening"
@@ -314,6 +315,107 @@ def fetch_screening_yields(
         for f in futs:
             f.result()
     return out
+
+
+def fetch_solar_resource(
+    lat: float,
+    lon: float,
+    raddatabase: str | None = None,
+) -> dict[str, float | None]:
+    """Annual GHI / DNI / DHI (kWh/m²/yr) for YieldIQ results panels."""
+    ghi = None
+    params = {
+        "lat": round(lat, 5),
+        "lon": round(lon, 5),
+        "peakpower": 1,
+        "loss": 14,
+        "pvtechchoice": "crystSi",
+        "mountingplace": "free",
+        "outputformat": "json",
+        "browser": 0,
+        "fixed": 1,
+        "angle": 0,
+        "aspect": 0,
+        "optimalinclination": 0,
+        "optimalangles": 0,
+    }
+    if raddatabase:
+        params["raddatabase"] = raddatabase
+    try:
+        resp = requests.get(
+            PVGIS_URL,
+            params=params,
+            timeout=30,
+            headers={"User-Agent": USER_AGENT},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        totals_d = data["outputs"].get("totals", {})
+        key = "fixed" if "fixed" in totals_d else next(iter(totals_d), None)
+        if key:
+            ghi = round(float(totals_d[key].get("H(i)_y", 0)), 1)
+    except Exception:
+        ghi = None
+
+    dni = dhi = None
+    mr_params = {
+        "lat": round(lat, 5),
+        "lon": round(lon, 5),
+        "horirrad": 1,
+        "mr_dni": 1,
+        "d2g": 1,
+        "outputformat": "json",
+    }
+    if raddatabase:
+        mr_params["raddatabase"] = raddatabase
+    try:
+        from collections import defaultdict
+
+        resp = requests.get(
+            PVGIS_MRCALC_URL,
+            params=mr_params,
+            timeout=30,
+            headers={"User-Agent": USER_AGENT},
+        )
+        resp.raise_for_status()
+        monthly = resp.json()["outputs"].get("monthly", [])
+        by_month: dict[int, dict[str, list[float]]] = defaultdict(
+            lambda: {"h": [], "hb": [], "kd": []},
+        )
+        for row in monthly:
+            mo = row.get("month")
+            if not mo:
+                continue
+            if "H(h)_m" in row:
+                by_month[mo]["h"].append(float(row["H(h)_m"]))
+            if "Hb(n)_m" in row:
+                by_month[mo]["hb"].append(float(row["Hb(n)_m"]))
+            for k in ("Kd", "d2g"):
+                if k in row:
+                    by_month[mo]["kd"].append(float(row[k]))
+        if by_month:
+            dni_val = dhi_val = 0.0
+            dni_ok = dhi_ok = False
+            for mo in sorted(by_month):
+                bucket = by_month[mo]
+                if bucket["hb"]:
+                    dni_val += sum(bucket["hb"]) / len(bucket["hb"])
+                    dni_ok = True
+                if bucket["h"] and bucket["kd"]:
+                    ghi_m = sum(bucket["h"]) / len(bucket["h"])
+                    kd_m = sum(bucket["kd"]) / len(bucket["kd"])
+                    dhi_val += ghi_m * kd_m
+                    dhi_ok = True
+            dni = round(dni_val, 1) if dni_ok else None
+            dhi = round(dhi_val, 1) if dhi_ok else None
+            if ghi and dhi is not None and dhi > ghi * 1.02:
+                dhi = None
+            if dni is not None and dni > 4000:
+                dni = None
+    except Exception:
+        dni = dhi = None
+
+    return {"ghi": ghi, "dni": dni, "dhi": dhi}
 
 
 def fetch_yield_cross_ref_bundle(lat: float, lon: float) -> dict:

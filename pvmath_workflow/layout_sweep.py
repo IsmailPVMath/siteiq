@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from layoutiq.bom import compute_bom
 from layoutiq.defaults import layout_params
-from layoutiq.engine import run_layout
+from layoutiq.engine import run_layout, site_layout_grid
 from pvmath_workflow.gcr_strategy import (
     FT_PORTRAITS,
     SAT_PORTRAITS,
@@ -181,6 +181,25 @@ def run_layout_sweep(
             is_recommended = abs(pitch - rec_pitch) < 0.26
             active_restrictions = restrictions + (tracker_restrictions if tracker else [])
 
+            site_grid = site_layout_grid(
+                polys,
+                setback=setback_m,
+                restriction_latlons=active_restrictions,
+                ref_lat=ref_lat,
+                ref_lon=ref_lon,
+                pitch=pitch,
+                azimuth=azimuth,
+                is_tracker=tracker,
+            )
+            grid_kwargs: Dict[str, Any] = {}
+            if site_grid:
+                grid_kwargs = {
+                    "grid_y_origin": site_grid["grid_y_origin"],
+                    "south_fence_x": site_grid["south_fence_x"],
+                    "west_fence_x": site_grid["west_fence_x"],
+                    "rotate_origin": site_grid["rotate_origin"],
+                }
+
             total_modules = 0
             total_rows = 0
             total_area_ha = 0.0
@@ -203,6 +222,7 @@ def run_layout_sweep(
                     restriction_latlons=active_restrictions,
                     ref_lat=ref_lat,
                     ref_lon=ref_lon,
+                    **grid_kwargs,
                 )
                 if layout:
                     total_modules += layout["total_modules"]
@@ -263,6 +283,7 @@ def run_layout_sweep(
                     restriction_latlons=active_restrictions,
                     ref_lat=ref_lat,
                     ref_lon=ref_lon,
+                    **grid_kwargs,
                 )
                 if single:
                     entry["bom"] = compute_bom(

@@ -26,4 +26,5 @@ class YieldIQAnalyzeResponse(BaseModel):
     raddatabase: Optional[str] = None
     configs: Dict[str, Dict[str, Any]]
     cross_ref_bundle: Dict[str, Optional[float]]
+    solar_resource: Dict[str, Optional[float]] = Field(default_factory=dict)
     disclosure: str

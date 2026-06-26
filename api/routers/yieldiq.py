@@ -15,6 +15,7 @@ from pvmath_supabase import AuthUser, increment_usage, is_over_limit
 from pvmath_yield import (
     PROFILE_ANALYSIS,
     config_display_name,
+    fetch_solar_resource,
     fetch_yield_cross_ref_bundle,
     profile_description,
     run_all_configs,
@@ -43,6 +44,7 @@ def _run_yield(body: YieldIQAnalyzeRequest) -> Dict[str, Any]:
         body.other_loss,
     )
     cross_ref = fetch_yield_cross_ref_bundle(body.lat, body.lon)
+    solar_resource = fetch_solar_resource(body.lat, body.lon, raddatabase)
     configs: Dict[str, Dict[str, Any]] = {}
     for key, payload in results.items():
         item = dict(payload)
@@ -52,6 +54,7 @@ def _run_yield(body: YieldIQAnalyzeRequest) -> Dict[str, Any]:
         "raddatabase": raddatabase,
         "configs": configs,
         "cross_ref": cross_ref,
+        "solar_resource": solar_resource,
     }
 
 
@@ -94,5 +97,6 @@ async def analyze_yieldiq(
         raddatabase=data["raddatabase"],
         configs=data["configs"],
         cross_ref_bundle=data["cross_ref"],
+        solar_resource=data["solar_resource"],
         disclosure=disclosure,
     )

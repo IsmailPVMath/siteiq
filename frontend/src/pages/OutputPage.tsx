@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import {
   analyzeTopo,
   analyzeYield,
@@ -18,6 +19,7 @@ import {
 import { buildWorkflowSavePayload } from "../lib/workflowSave";
 import { ConstraintAnalysisMap } from "../components/ConstraintAnalysisMap";
 import { LayoutPreviewMap } from "../components/LayoutPreviewMap";
+import { YieldResultsPanel } from "../components/YieldResultsPanel";
 import { SlopeTopMap } from "../components/SlopeTopMap";
 import { Terrain3DView } from "../components/Terrain3DView";
 import type { GateAnalyzeRequest } from "../types/gate";
@@ -224,6 +226,11 @@ export function OutputPage({
   const [roadPreset, setRoadPreset] = useState(
     input?.road_preset ?? DEFAULT_LAYOUT_CONFIG.road_preset,
   );
+  const [azimuthDeg, setAzimuthDeg] = useState<number>(
+    typeof (input as { azimuth?: number } | null)?.azimuth === "number"
+      ? (input as { azimuth?: number }).azimuth!
+      : 180,
+  );
   const [rowsPerBlock, setRowsPerBlock] = useState(
     input?.rows_per_block ?? DEFAULT_LAYOUT_CONFIG.rows_per_block,
   );
@@ -292,13 +299,14 @@ export function OutputPage({
     if (roadPreset === "custom") {
       return {
         ...base,
+        azimuth: azimuthDeg,
         road_mode: "manual" as RoadMode,
         road_preset: "custom",
         rows_per_block: rowsPerBlock,
         block_gap_m: blockGapM,
       };
     }
-    return base;
+    return { ...base, azimuth: azimuthDeg };
   }
 
   const buildableMask = gisResult?.success
@@ -524,6 +532,36 @@ export function OutputPage({
           ? "← Back to LayoutIQ"
           : "← Edit input";
 
+  function renderStageBar(proceed: ReactNode, leftHint?: ReactNode) {
+    const saveError =
+      saveMsg.includes("failed") ||
+      saveMsg.includes("expired") ||
+      saveMsg.includes("Network");
+    return (
+      <div className="stage-proceed-bar stage-proceed-bar-split">
+        <button className="btn btn-ghost" type="button" onClick={goBackStage}>
+          {backLabel}
+        </button>
+        {leftHint ?? null}
+        <div className="stage-proceed-right">
+          <button
+            className="btn btn-ghost"
+            type="button"
+            onClick={() => void handleSaveProject()}
+            disabled={saveBusy || !input}
+            title="Save progress and resume later from My projects"
+          >
+            {saveBusy ? "Saving…" : "Save project"}
+          </button>
+          {proceed}
+        </div>
+        {saveMsg ? (
+          <p className={`stage-save-msg${saveError ? " save-error" : ""}`}>{saveMsg}</p>
+        ) : null}
+      </div>
+    );
+  }
+
   async function handleTopoPdf() {
     if (!topoPayload) return;
     setTopoPdfBusy(true);
@@ -652,7 +690,14 @@ export function OutputPage({
     setTerrain3DBusy(true);
     setLayoutError("");
     try {
-      setTerrain3D(await workflowTerrainMesh(token, { boundaries, grid_m: 20, max_vertices: 12000 }));
+      setTerrain3D(
+        await workflowTerrainMesh(token, {
+          boundaries,
+          grid_m: 10,
+          max_vertices: 24000,
+          mask_geojson: buildableMask,
+        }),
+      );
     } catch (err) {
       setLayoutError(err instanceof Error ? err.message : "3D terrain failed");
     } finally {
@@ -730,17 +775,19 @@ export function OutputPage({
         ? "fixed"
         : "all";
 
-  const yieldConfigEntries = useMemo(() => {
-    if (!yieldResult?.configs) return [];
-    const entries = Object.entries(yieldResult.configs);
-    if (mountFilter === "sat") return entries.filter(([key]) => /tracker/i.test(key));
-    if (mountFilter === "fixed") return entries.filter(([key]) => /fixed/i.test(key));
-    return entries;
-  }, [yieldResult, mountFilter]);
-
   const overallScore = finalScore?.pvmath_score;
   const overallReady = overallScore != null;
   const topoGridTooLarge = topoError ? isTopoGridTooLarge(topoError) : false;
+
+  function renderModuleRunning(title: string, detail: string) {
+    return (
+      <div className="module-running">
+        <div className="processing-spinner" aria-hidden />
+        <strong>{title}</strong>
+        <span>{detail}</span>
+      </div>
+    );
+  }
 
   function renderTopoRecovery(compact = false) {
     if (!topoGridTooLarge) return null;
@@ -945,7 +992,7 @@ export function OutputPage({
     return (
       <div className="slope-section">
         <div className="slope-section-head">
-          <span className="terrain-drivers-tag">Slope map · interactive top view</span>
+          <span className="terrain-drivers-tag">Slope map · top view</span>
           <span className="slope-map-legend">
             {topoResult.grid_m_used.toFixed(0)} m grid · {terrainSrc}
             {topoMesh ? ` · ${topoMesh.vertices.length.toLocaleString()} points` : ""}
@@ -954,7 +1001,12 @@ export function OutputPage({
         <div className="slope-section-grid">
           <div className="slope-section-map">
             {topoMesh ? (
-              <SlopeTopMap mesh={topoMesh} boundaries={boundaries} height={420} />
+              <SlopeTopMap
+                mesh={topoMesh}
+                boundaries={boundaries}
+                excludedGeoJson={gisResult?.excluded_area_geojson ?? null}
+                height={420}
+              />
             ) : topoMeshBusy ? (
               <p className="hint">Rendering high-resolution slope terrain…</p>
             ) : (
@@ -1057,21 +1109,6 @@ export function OutputPage({
                   {topoZipBusy ? "Preparing…" : "CAD ZIP"}
                 </button>
               </div>
-              {topoResult ? (
-                <button
-                  className="btn btn-primary btn-block"
-                  type="button"
-                  onClick={() => void handleSaveProject()}
-                  disabled={saveBusy}
-                >
-                  {saveBusy ? "Saving…" : "Save project"}
-                </button>
-              ) : null}
-              {saveMsg ? (
-                <p className={`hint sidebar-hint${saveMsg.includes("failed") || saveMsg.includes("expired") ? " save-error" : ""}`}>
-                  {saveMsg}
-                </p>
-              ) : null}
             </>
           )}
           {renderTopoRecovery(true)}
@@ -1119,6 +1156,29 @@ export function OutputPage({
                 />
                 Bifacial (wider spacing bias)
               </label>
+              <div className="field">
+                <label htmlFor="layout-azimuth">
+                  {mountFilter === "sat" ? "Tracker axis azimuth" : "Array azimuth"}
+                </label>
+                <select
+                  id="layout-azimuth"
+                  value={azimuthDeg}
+                  onChange={(e) => setAzimuthDeg(Number(e.target.value))}
+                >
+                  <option value={180}>
+                    {mountFilter === "sat" ? "180° — N–S axis (default)" : "180° — due south (optimal)"}
+                  </option>
+                  <option value={90}>90° — east</option>
+                  <option value={135}>135° — south-east</option>
+                  <option value={225}>225° — south-west</option>
+                  <option value={270}>270° — west</option>
+                </select>
+                <p className="hint sidebar-hint">
+                  {mountFilter === "sat"
+                    ? "Trackers default to a North–South axis (rotating E→W). Change only if the parcel forces a skewed axis."
+                    : "Fixed tilt defaults to due-south facing at PVGIS optimal tilt. Adjust azimuth for skewed parcels."}
+                </p>
+              </div>
               <details className="sidebar-advanced" open>
                 <summary>Module, strings, trackers &amp; roads</summary>
                 <div className="grid-2 layout-custom-row">
@@ -1576,14 +1636,11 @@ export function OutputPage({
             buildable-area calculation.
           </p>
         )}
-        <div className="stage-proceed-bar stage-proceed-bar-split">
-          <button className="btn btn-ghost" type="button" onClick={goBackStage}>
-            {backLabel}
-          </button>
+        {renderStageBar(
           <button className="btn btn-primary" type="button" onClick={proceedToTopo}>
             Proceed to TopoIQ →
-          </button>
-        </div>
+          </button>,
+        )}
       </section>
       ) : null}
 
@@ -1601,7 +1658,10 @@ export function OutputPage({
         ) : (
           <>
             {topoBusy && !topoResult ? (
-              <p className="hint">Running TopoIQ on your boundary grid…</p>
+              renderModuleRunning(
+                "Running TopoIQ terrain analysis",
+                "Fetching the public DEM, building the grid, and computing slope across your buildable area.",
+              )
             ) : !topoResult ? (
               <p className="hint">TopoIQ runs automatically when you open this step.</p>
             ) : null}
@@ -1639,16 +1699,7 @@ export function OutputPage({
         {topoError ? <div className="error-banner">{topoError}</div> : null}
         {renderTopoRecovery()}
         {exportError ? <div className="error-banner">{exportError}</div> : null}
-        <div className="stage-proceed-bar stage-proceed-bar-split">
-          <button className="btn btn-ghost" type="button" onClick={goBackStage}>
-            {backLabel}
-          </button>
-          {topoError && !topoResult ? (
-            <p className="hint stage-proceed-hint">
-              You can continue to LayoutIQ without terrain — the PVMath score will be incomplete until
-              TopoIQ succeeds.
-            </p>
-          ) : null}
+        {renderStageBar(
           <button
             className="btn btn-primary"
             type="button"
@@ -1656,8 +1707,14 @@ export function OutputPage({
             disabled={!hasBoundary}
           >
             {topoResult ? "Proceed to LayoutIQ →" : "Continue without terrain →"}
-          </button>
-        </div>
+          </button>,
+          topoError && !topoResult ? (
+            <p className="hint stage-proceed-hint">
+              You can continue to LayoutIQ without terrain — the PVMath score will be incomplete until
+              TopoIQ succeeds.
+            </p>
+          ) : null,
+        )}
       </section>
       ) : null}
 
@@ -1672,16 +1729,38 @@ export function OutputPage({
         ) : (
           <>
             <p className="hint">
-              Sweeps Fixed Tilt 1P–4P and Single-Axis Tracker 1P–2P across industry pitch/GCR
-              bands. Configure options in the sidebar, then run the sweep.
+              {mountFilter === "sat"
+                ? "Showing the layout sweep for Single-Axis Tracker (1P and 2P) — the mount you chose in Project setup. To compare Fixed Tilt, change Mounting in Project setup."
+                : mountFilter === "fixed"
+                  ? "Showing the layout sweep for Fixed Tilt (1P–4P) — the mount you chose in Project setup. To compare Single-Axis Tracker, change Mounting in Project setup."
+                  : "Sweeps Fixed Tilt 1P–4P and Single-Axis Tracker 1P–2P across industry pitch/GCR bands."}
             </p>
             {!topoResult ? (
               <p className="module-note">TopoIQ should finish first — layout uses your boundary polygon.</p>
             ) : null}
             {!layoutSweep && !layoutBusy ? (
-              <p className="module-note">Run the layout sweep from the LayoutIQ sidebar.</p>
+              <div className="layout-cta">
+                <strong>Next step:</strong> open the <em>LayoutIQ</em> panel on the left and press{" "}
+                <strong>“Run layout sweep”</strong>. PVMath will pack {input?.mount_type || "your"} rows
+                across the buildable area and compare capacity at each row pitch.
+                <div className="layout-cta-actions">
+                  <button
+                    className="btn btn-primary btn-sm"
+                    type="button"
+                    onClick={() => void handleLayoutSweep()}
+                    disabled={layoutBusy}
+                  >
+                    Run layout sweep
+                  </button>
+                </div>
+              </div>
             ) : null}
-            {layoutBusy ? <p className="hint">Running layout sweep…</p> : null}
+            {layoutBusy
+              ? renderModuleRunning(
+                  "Running LayoutIQ sweep",
+                  "Packing strings and tracker rows across the buildable area at each pitch/GCR step.",
+                )
+              : null}
             {layoutSweep && layoutConfigKeys.length > 0 ? (
               <div className="layout-matrix">
                 {layoutSweep.strategy?.mode_label ? (
@@ -1734,6 +1813,15 @@ export function OutputPage({
                         MWp at GCR {layoutSweep.best_by_config[layoutFilter].gcr?.toFixed(2)}
                       </>
                     ) : null}
+                  </p>
+                ) : null}
+                {layoutFilter !== "all" ? (
+                  <p className="module-note layout-rec-explain">
+                    <strong>Rec.</strong> = PVMath's techno-economic pick — the row spacing that
+                    balances energy yield (less row-to-row shading), O&amp;M access, and capacity.
+                    It is <em>not</em> the maximum MWp: tighter pitch packs more MWp but increases
+                    shading losses and narrows the maintenance corridor. Pick a higher-GCR row if you
+                    want maximum capacity, or the Rec. row for the best yield/access balance.
                   </p>
                 ) : null}
                 <table className="yield-table">
@@ -1843,14 +1931,14 @@ export function OutputPage({
                           layoutGeoJson={layoutDetail.geojson}
                         />
                         <p className="module-note">
-                          Preview contains {layoutDetail.total_rows.toLocaleString()} PV rows and{" "}
-                          {layoutDetail.total_modules.toLocaleString()} modules. DXF uses the same
-                          row polygons in local metric coordinates.
+                          Preview: {layoutDetail.total_rows.toLocaleString()} rows ·{" "}
+                          {layoutDetail.total_modules.toLocaleString()} modules (blue strings on
+                          buildable parcel outline).
                         </p>
                       </>
                     ) : (
                       <p className="module-note">
-                        {layoutDetailBusy ? "Generating row polygons…" : "Select or refresh to load row polygons."}
+                        {layoutDetailBusy ? "Generating layout preview…" : "Select a row or press Refresh preview."}
                       </p>
                     )}
                     {terrain3D ? (
@@ -1870,10 +1958,7 @@ export function OutputPage({
           </>
         )}
         {layoutError ? <div className="error-banner">{layoutError}</div> : null}
-        <div className="stage-proceed-bar stage-proceed-bar-split">
-          <button className="btn btn-ghost" type="button" onClick={goBackStage}>
-            {backLabel}
-          </button>
+        {renderStageBar(
           <button
             className="btn btn-primary"
             type="button"
@@ -1881,8 +1966,8 @@ export function OutputPage({
             disabled={!selectedLayoutRow}
           >
             Proceed to YieldIQ →
-          </button>
-        </div>
+          </button>,
+        )}
       </section>
       ) : null}
 
@@ -1902,47 +1987,20 @@ export function OutputPage({
           <p className="hint">Select a LayoutIQ row, then run YieldIQ from the YieldIQ sidebar.</p>
         )}
         {yieldResult ? (
-          <div className="yield-table-wrap">
-            {selectedYieldConfig && selectedAnnualMwh != null ? (
-              <div className="selected-yield-summary">
-                <strong>Selected layout estimate:</strong>{" "}
-                {selectedAnnualMwh.toFixed(0)} MWh/yr at{" "}
-                {Number(selectedYieldConfig.spec_y).toFixed(0)} kWh/kWp/yr.
-              </div>
-            ) : null}
-            <table className="yield-table">
-              <thead>
-                <tr>
-                  <th>Configuration</th>
-                  <th>Specific Yield</th>
-                  <th>PR</th>
-                  <th>GCR</th>
-                </tr>
-              </thead>
-              <tbody>
-                {yieldConfigEntries.map(([cfg, payload]) => (
-                  <tr key={cfg}>
-                    <td>{payload.display_name}</td>
-                    <td>{Number(payload.spec_y).toFixed(0)} kWh/kWp/yr</td>
-                    <td>{payload.pr != null ? `${Number(payload.pr).toFixed(1)}%` : "—"}</td>
-                    <td>{Number(payload.gcr).toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="module-note">
-              {yieldResult.disclosure} For FT 3P/4P, YieldIQ uses the selected GCR through the
-              fixed-tilt PVGIS profile while LayoutIQ keeps the exact portrait count for capacity.
-            </p>
-          </div>
+          <YieldResultsPanel
+            result={yieldResult}
+            selectedConfigKey={selectedYieldConfigKey}
+            selectedDcKwp={selectedLayoutRow?.dc_kwp ?? null}
+            mountFilter={mountFilter}
+          />
+        ) : yieldBusy ? (
+          renderModuleRunning(
+            "Running YieldIQ",
+            "Querying PVGIS for plane-of-array irradiance and computing specific yield for your configuration.",
+          )
         ) : null}
         {yieldError ? <div className="error-banner">{yieldError}</div> : null}
-        <div className="stage-proceed-bar stage-proceed-bar-split">
-          <button className="btn btn-ghost" type="button" onClick={goBackStage}>
-            {backLabel}
-          </button>
-          <span />
-        </div>
+        {renderStageBar(<span />)}
       </section>
       ) : null}
 

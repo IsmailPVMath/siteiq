@@ -69,10 +69,18 @@ export interface YieldConfig {
   display_name: string;
   spec_y: number;
   pr?: number | null;
+  cf?: number | null;
   gcr: number;
   shading: number;
   total_loss: number;
   monthly: number[];
+  h_y?: number;
+  annual_ghi?: number;
+  l_tg?: number | null;
+  l_total?: number | null;
+  soiling_loss?: number | null;
+  other_loss?: number | null;
+  optimal_tilt?: number | null;
   [key: string]: unknown;
 }
 
@@ -83,5 +91,10 @@ export interface YieldIQAnalyzeResponse {
   raddatabase?: string | null;
   configs: Record<string, YieldConfig>;
   cross_ref_bundle: Record<string, number | null>;
+  solar_resource?: {
+    ghi?: number | null;
+    dni?: number | null;
+    dhi?: number | null;
+  };
   disclosure: string;
 }

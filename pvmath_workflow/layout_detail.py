@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from layoutiq.coords import xy_to_latlon
 from layoutiq.defaults import layout_params
-from layoutiq.engine import run_layout
+from layoutiq.engine import run_layout, site_layout_grid
 
 try:
     import ezdxf
@@ -138,6 +138,25 @@ def build_layout_detail(
     )
 
     layouts = []
+    site_grid = site_layout_grid(
+        polys,
+        setback=setback_m,
+        restriction_latlons=restrictions,
+        ref_lat=ref_lat,
+        ref_lon=ref_lon,
+        pitch=pitch_m,
+        azimuth=azimuth,
+        is_tracker=tracker,
+    )
+    grid_kwargs: Dict[str, Any] = {}
+    if site_grid:
+        grid_kwargs = {
+            "grid_y_origin": site_grid["grid_y_origin"],
+            "south_fence_x": site_grid["south_fence_x"],
+            "west_fence_x": site_grid["west_fence_x"],
+            "rotate_origin": site_grid["rotate_origin"],
+        }
+
     for poly in polys:
         layout = run_layout(
             poly,
@@ -157,6 +176,7 @@ def build_layout_detail(
             restriction_latlons=restrictions,
             ref_lat=ref_lat,
             ref_lon=ref_lon,
+            **grid_kwargs,
         )
         if layout:
             layouts.append(layout)
@@ -165,6 +185,7 @@ def build_layout_detail(
 
     features: List[Dict[str, Any]] = []
     row_index = 0
+    string_index = 0
     total_modules = 0
     total_rows = 0
     total_strings = 0
@@ -175,8 +196,27 @@ def build_layout_detail(
             _polygon_feature(layout["poly_m"], ref_lat, ref_lon, {"kind": "site_boundary"})
         )
         features.append(
-            _polygon_feature(layout["poly_inset"], ref_lat, ref_lon, {"kind": "setback_inset"})
+            _polygon_feature(
+                layout["poly_inset"],
+                ref_lat,
+                ref_lon,
+                {"kind": "buildable_parcel"},
+            )
         )
+        for s_idx, spoly in enumerate(layout.get("string_polys") or []):
+            string_index += 1
+            features.append(
+                _polygon_feature(
+                    spoly,
+                    ref_lat,
+                    ref_lon,
+                    {
+                        "kind": "pv_module",
+                        "string_index": string_index,
+                        "modules_per_string": layout["modules_per_string"],
+                    },
+                )
+            )
         for local_idx, poly in enumerate(layout["rows_polys"]):
             row_index += 1
             row_data = layout["rows_data"][local_idx]

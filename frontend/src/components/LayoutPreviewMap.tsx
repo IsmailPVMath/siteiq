@@ -52,27 +52,49 @@ export function LayoutPreviewMap({ center, layoutGeoJson }: Props) {
     }
     if (!layoutGeoJson) return;
 
+    const hasModules =
+      layoutGeoJson.type === "FeatureCollection" &&
+      layoutGeoJson.features.some((f) => f.properties?.kind === "pv_module");
+
     layoutLayerRef.current = L.geoJSON(layoutGeoJson as GeoJSON.GeoJsonObject, {
       style: (feature) => {
         const kind = feature?.properties?.kind;
-        if (kind === "pv_row") {
-          return { color: "#14532d", fillColor: "#22c55e", fillOpacity: 0.72, weight: 0.6 };
-        }
-        if (kind === "setback_inset") {
+        if (kind === "pv_module") {
           return {
-            color: "#64748b",
-            fillOpacity: 0,
-            weight: 1,
-            dashArray: "4 4",
+            color: "#1d4ed8",
+            fillColor: "#3b82f6",
+            fillOpacity: 0.88,
+            weight: 0.35,
           };
         }
-        return { color: "#7c3aed", fillOpacity: 0.03, weight: 2 };
+        if (kind === "pv_row") {
+          if (hasModules) {
+            return { opacity: 0, fillOpacity: 0, weight: 0 };
+          }
+          return { color: "#1d4ed8", fillColor: "#3b82f6", fillOpacity: 0.75, weight: 0.5 };
+        }
+        if (kind === "buildable_parcel" || kind === "setback_inset") {
+          return {
+            color: "#0ea5e9",
+            fillOpacity: 0,
+            weight: 2,
+            dashArray: "6 4",
+          };
+        }
+        return { color: "#7c3aed", fillOpacity: 0.02, weight: 2 };
       },
       onEachFeature: (feature, layer) => {
-        if (feature.properties?.kind === "pv_row") {
+        const kind = feature.properties?.kind;
+        if (kind === "pv_module") {
+          const idx = feature.properties.string_index;
+          const mps = feature.properties.modules_per_string;
+          layer.bindTooltip(`String ${idx} · ${mps} modules`, { sticky: true });
+        } else if (kind === "pv_row" && !hasModules) {
           const row = feature.properties.row_index;
           const modules = feature.properties.n_modules;
           layer.bindTooltip(`Row ${row}: ${modules} modules`, { sticky: true });
+        } else if (kind === "buildable_parcel") {
+          layer.bindTooltip("Buildable parcel", { sticky: true });
         }
       },
     }).addTo(map);

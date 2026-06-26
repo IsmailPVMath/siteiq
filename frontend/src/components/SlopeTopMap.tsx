@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import type * as GeoJSON from "geojson";
 import type { WorkflowTerrainMeshResponse } from "../types/workflow";
 import { googleSatelliteLayer } from "../lib/mapTiles";
 
 interface Props {
   mesh: WorkflowTerrainMeshResponse;
   boundaries?: { lat: number; lon: number }[][];
+  /** SiteIQ excluded/red zones — drawn so users see why the mesh has gaps. */
+  excludedGeoJson?: GeoJSON.GeoJSON | null;
   height?: number;
 }
 
@@ -24,7 +27,7 @@ function slopeColor(slope: number): string {
   return SLOPE_STOPS[SLOPE_STOPS.length - 1].color;
 }
 
-export function SlopeTopMap({ mesh, boundaries, height = 440 }: Props) {
+export function SlopeTopMap({ mesh, boundaries, excludedGeoJson, height = 440 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -47,10 +50,19 @@ export function SlopeTopMap({ mesh, boundaries, height = 440 }: Props) {
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-    const map = L.map(containerRef.current, { zoomControl: true, attributionControl: false }).setView(
-      [mesh.origin.lat, mesh.origin.lon],
-      15,
-    );
+    // Frozen background: disable all pan/zoom so the imagery + slope overlay
+    // stay aligned and stable (the earlier interactive map redraw was laggy).
+    const map = L.map(containerRef.current, {
+      zoomControl: false,
+      attributionControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      boxZoom: false,
+      keyboard: false,
+      touchZoom: false,
+      zoomSnap: 0,
+    }).setView([mesh.origin.lat, mesh.origin.lon], 15);
     googleSatelliteLayer().addTo(map);
     mapRef.current = map;
 
@@ -101,6 +113,20 @@ export function SlopeTopMap({ mesh, boundaries, height = 440 }: Props) {
 
     redraw();
     map.on("move zoom moveend zoomend resize viewreset", redraw);
+
+    // Excluded / red zones (buildings, roads, water setbacks) so the user sees
+    // why the slope mesh has gaps.
+    if (excludedGeoJson) {
+      L.geoJSON(excludedGeoJson as GeoJSON.GeoJsonObject, {
+        style: {
+          color: "#d0021b",
+          weight: 1,
+          fillColor: "#d0021b",
+          fillOpacity: 0.35,
+          dashArray: "3 3",
+        },
+      }).addTo(map);
+    }
 
     // Boundary outline.
     const rings = boundaries && boundaries.length ? boundaries : [];
@@ -160,7 +186,7 @@ export function SlopeTopMap({ mesh, boundaries, height = 440 }: Props) {
       mapRef.current = null;
       canvasRef.current = null;
     };
-  }, [mesh, boundaries]);
+  }, [mesh, boundaries, excludedGeoJson]);
 
   // Redraw when opacity slider changes.
   useEffect(() => {
