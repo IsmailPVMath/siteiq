@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useReducer, useState } from "react";
+import { FormEvent, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type * as GeoJSON from "geojson";
 import { AdvancedProjectOptions } from "../components/project-setup/AdvancedProjectOptions";
 import { BoundaryWorkspace } from "../components/project-setup/BoundaryWorkspace";
@@ -13,6 +13,7 @@ import {
   getProject,
   listProjects,
   parseBoundaryFile,
+  reverseGeocode,
   searchLocation,
   updateProject,
 } from "../lib/api";
@@ -62,6 +63,7 @@ export function ProjectSetupPage({ token, initial, onSubmit }: Props) {
   const [saving, setSaving] = useState(false);
   const [showBoundaryModal, setShowBoundaryModal] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const lastGeocodedRef = useRef<string>("");
 
   const validation = useMemo(() => validateDraft(draft), [draft]);
   const rings = useMemo(() => effectiveRings(draft), [draft]);
@@ -286,6 +288,33 @@ export function ProjectSetupPage({ token, initial, onSubmit }: Props) {
     void loadProjects(!initial);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto reverse-geocode whenever the location changes — fill country/state/city
+  // so the user never has to type administrative details manually.
+  useEffect(() => {
+    const { lat, lon } = draft.location;
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+    const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
+    if (key === lastGeocodedRef.current) return;
+    const timer = window.setTimeout(async () => {
+      try {
+        const parts = await reverseGeocode(token, lat, lon);
+        lastGeocodedRef.current = key;
+        dispatch({
+          type: "set_location",
+          location: {
+            country: parts.country || draft.location.country,
+            state: parts.state || draft.location.state,
+            city: parts.city || draft.location.city,
+          },
+        });
+      } catch {
+        // Non-fatal — user can still type details manually.
+      }
+    }, 600);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.location.lat, draft.location.lon, token]);
 
   useEffect(() => {
     const enabled = draft.geometry.parcels.filter((p) => p.enabled);

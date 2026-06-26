@@ -30,34 +30,6 @@ export function ProjectDetailsCard({
           placeholder="e.g. Bavaria Solar Park"
         />
       </div>
-      <div className="grid-2">
-        <div className="field">
-          <label htmlFor="country">Country</label>
-          <input
-            id="country"
-            value={location.country}
-            onChange={(e) => onLocationChange({ country: e.target.value })}
-          />
-        </div>
-        <div className="field">
-          <label htmlFor="state">State / region</label>
-          <input
-            id="state"
-            value={location.state}
-            onChange={(e) => onLocationChange({ state: e.target.value })}
-            placeholder="Optional"
-          />
-        </div>
-      </div>
-      <div className="field">
-        <label htmlFor="city">Nearest city</label>
-        <input
-          id="city"
-          value={location.city}
-          onChange={(e) => onLocationChange({ city: e.target.value })}
-          placeholder="Auto-filled from search"
-        />
-      </div>
       <div className="field">
         <label htmlFor="client">Client</label>
         <input
@@ -66,6 +38,41 @@ export function ProjectDetailsCard({
           onChange={(e) => onChange({ client: e.target.value })}
           placeholder="Optional"
         />
+      </div>
+      <div className="setup-location-group">
+        <div className="setup-location-head">
+          <span>Location</span>
+          <span className="hint">Auto-filled from map / coordinates — optional</span>
+        </div>
+        <div className="grid-3">
+          <div className="field">
+            <label htmlFor="country">Country</label>
+            <input
+              id="country"
+              value={location.country}
+              onChange={(e) => onLocationChange({ country: e.target.value })}
+              placeholder="Auto"
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="state">State / region</label>
+            <input
+              id="state"
+              value={location.state}
+              onChange={(e) => onLocationChange({ state: e.target.value })}
+              placeholder="Auto"
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="city">Nearest city</label>
+            <input
+              id="city"
+              value={location.city}
+              onChange={(e) => onLocationChange({ city: e.target.value })}
+              placeholder="Auto"
+            />
+          </div>
+        </div>
       </div>
       <div className="grid-2">
         <div className="field">

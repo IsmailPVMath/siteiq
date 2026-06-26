@@ -6,7 +6,7 @@ import requests
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from api.deps import get_current_user
-from pvmath_geocode import reverse_geocode
+from pvmath_geocode import reverse_geocode, reverse_geocode_parts
 from pvmath_supabase import AuthUser
 
 router = APIRouter(tags=["geocode"])
@@ -49,5 +49,12 @@ def geocode_reverse(
     lon: float = Query(..., ge=-180, le=180),
     _user: AuthUser = Depends(get_current_user),
 ):
-    label = reverse_geocode(lat, lon) or ""
-    return {"lat": lat, "lon": lon, "label": label}
+    parts = reverse_geocode_parts(lat, lon)
+    return {
+        "lat": lat,
+        "lon": lon,
+        "label": parts.get("label") or "",
+        "country": parts.get("country") or "",
+        "state": parts.get("state") or "",
+        "city": parts.get("city") or "",
+    }

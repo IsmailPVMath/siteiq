@@ -860,10 +860,21 @@ a {
 }
 
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
   border: none;
   border-radius: 8px;
   padding: 0.65rem 1rem;
   font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  line-height: 1.2;
+}
+
+.btn:hover {
+  text-decoration: none;
 }
 
 .btn-primary {
@@ -1533,8 +1544,93 @@ a {
 }
 
 .account-sidebar-foot {
-  margin-top: auto;
-  padding-top: 1rem;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border);
+}
+
+.setup-location-group {
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 0.6rem 0.7rem;
+  background: #fafcfb;
+  margin-bottom: 0.5rem;
+}
+
+.setup-location-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.setup-location-head > span:first-child {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.setup-location-group .grid-3 {
+  gap: 0.6rem;
+}
+
+.account-head-btn {
+  width: 100%;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 10px;
+  padding: 0.4rem;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+.account-head-btn:hover {
+  background: #f6faf7;
+  border-color: var(--border);
+}
+
+.account-caret {
+  font-size: 0.75rem;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.account-collapsible {
+  display: flex;
+  flex-direction: column;
+}
+
+.account-panel-sm {
+  margin-top: 0.5rem;
+  padding: 0.7rem;
+}
+
+.account-panel-sm h3 {
+  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.account-panel-sm .field {
+  margin-bottom: 0.5rem;
+}
+
+.account-panel-sm .field label {
+  font-size: 0.72rem;
+}
+
+.account-panel-sm .field input {
+  padding: 0.4rem 0.55rem;
+  font-size: 0.8rem;
+}
+
+.account-panel-sm .hint {
+  font-size: 0.74rem;
+}
+
+.btn-sm {
+  padding: 0.45rem 0.7rem;
+  font-size: 0.82rem;
 }
 
 .topbar-meta {

@@ -177,6 +177,20 @@ export interface GeocodeResult {
   label: string;
 }
 
+export interface ReverseGeocodeResult {
+  lat: number;
+  lon: number;
+  label: string;
+  country: string;
+  state: string;
+  city: string;
+}
+
+export function reverseGeocode(token: string, lat: number, lon: number) {
+  const params = new URLSearchParams({ lat: String(lat), lon: String(lon) });
+  return apiFetch<ReverseGeocodeResult>(`/api/v1/geocode/reverse?${params}`, token);
+}
+
 export function searchLocation(token: string, q: string) {
   const params = new URLSearchParams({ q });
   return apiFetch<{ results: GeocodeResult[] }>(

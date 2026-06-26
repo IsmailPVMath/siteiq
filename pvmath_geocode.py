@@ -139,6 +139,46 @@ def reverse_geocode(lat: float, lon: float) -> Optional[str]:
     return None
 
 
+def reverse_geocode_parts(lat: float, lon: float) -> dict:
+    """Structured admin parts (country/state/city) plus a human label.
+
+    Used to auto-fill Project Setup so the user does not type them manually.
+    """
+    out = {"country": "", "state": "", "city": "", "label": ""}
+    try:
+        r = requests.get(
+            "https://nominatim.openstreetmap.org/reverse",
+            params={"lat": lat, "lon": lon, "format": "json", "zoom": 18, "addressdetails": 1},
+            headers=_NOMINATIM_HEADERS,
+            timeout=10,
+        )
+        if r.status_code != 200:
+            return out
+        data = r.json()
+        addr = data.get("address") or {}
+        out["country"] = addr.get("country") or ""
+        out["state"] = (
+            addr.get("state")
+            or addr.get("region")
+            or addr.get("province")
+            or addr.get("state_district")
+            or ""
+        )
+        out["city"] = (
+            addr.get("city")
+            or addr.get("town")
+            or addr.get("village")
+            or addr.get("municipality")
+            or addr.get("county")
+            or addr.get("suburb")
+            or ""
+        )
+        out["label"] = _label_from_address(addr) or data.get("display_name", "")
+    except Exception:
+        pass
+    return out
+
+
 def format_coords(lat: float, lon: float) -> str:
     """Signed hemisphere labels — never append °E to a negative longitude."""
     ns = "N" if lat >= 0 else "S"
