@@ -21,23 +21,25 @@ export function ProjectDetailsCard({
   return (
     <section className="setup-card">
       <h2>Project details</h2>
-      <div className="field">
-        <label htmlFor="project-name">Project name</label>
-        <input
-          id="project-name"
-          value={project_info.name}
-          onChange={(e) => onChange({ name: e.target.value })}
-          placeholder="e.g. Bavaria Solar Park"
-        />
-      </div>
-      <div className="field">
-        <label htmlFor="client">Client</label>
-        <input
-          id="client"
-          value={project_info.client}
-          onChange={(e) => onChange({ client: e.target.value })}
-          placeholder="Optional"
-        />
+      <div className="grid-2">
+        <div className="field">
+          <label htmlFor="project-name">Project name</label>
+          <input
+            id="project-name"
+            value={project_info.name}
+            onChange={(e) => onChange({ name: e.target.value })}
+            placeholder="e.g. Bavaria Solar Park"
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="client">Client</label>
+          <input
+            id="client"
+            value={project_info.client}
+            onChange={(e) => onChange({ client: e.target.value })}
+            placeholder="Optional"
+          />
+        </div>
       </div>
       <div className="setup-location-group">
         <div className="setup-location-head">
@@ -74,7 +76,7 @@ export function ProjectDetailsCard({
           </div>
         </div>
       </div>
-      <div className="grid-2">
+      <div className="grid-4">
         <div className="field">
           <label htmlFor="land">Project type</label>
           <select
@@ -97,8 +99,6 @@ export function ProjectDetailsCard({
             <option value="Single-Axis Tracker">Single-Axis Tracker</option>
           </select>
         </div>
-      </div>
-      <div className="grid-2">
         <div className="field">
           <label htmlFor="area">Gross area (ha)</label>
           <input
