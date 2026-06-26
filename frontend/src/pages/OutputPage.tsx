@@ -15,6 +15,7 @@ import {
 } from "../lib/api";
 import { ConstraintAnalysisMap } from "../components/ConstraintAnalysisMap";
 import { LayoutPreviewMap } from "../components/LayoutPreviewMap";
+import { SlopeTopMap } from "../components/SlopeTopMap";
 import { Terrain3DView } from "../components/Terrain3DView";
 import type { GateAnalyzeRequest } from "../types/gate";
 import {
@@ -161,6 +162,8 @@ export function OutputPage({
   const topoAutoRan = useRef(false);
   const [topoPdfBusy, setTopoPdfBusy] = useState(false);
   const [topoZipBusy, setTopoZipBusy] = useState(false);
+  const [topoMesh, setTopoMesh] = useState<WorkflowTerrainMeshResponse | null>(null);
+  const [topoMeshBusy, setTopoMeshBusy] = useState(false);
   const [yieldBusy, setYieldBusy] = useState(false);
   const [yieldError, setYieldError] = useState("");
   const [yieldResult, setYieldResult] = useState<YieldIQAnalyzeResponse | null>(null);
@@ -387,10 +390,28 @@ export function OutputPage({
       if (overrides?.grid_m != null) setTopoGridM(overrides.grid_m);
       if (overrides?.allow_coarsen != null) setTopoAllowCoarsen(overrides.allow_coarsen);
       await refreshFinalScore(topo);
+      void fetchTopoMesh();
     } catch (err) {
       setTopoError(err instanceof Error ? err.message : "TopoIQ analysis failed");
     } finally {
       setTopoBusy(false);
+    }
+  }
+
+  async function fetchTopoMesh() {
+    if (!boundaries.length) return;
+    setTopoMeshBusy(true);
+    try {
+      const mesh = await workflowTerrainMesh(token, {
+        boundaries,
+        grid_m: 10,
+        max_vertices: 40000,
+      });
+      setTopoMesh(mesh);
+    } catch {
+      setTopoMesh(null);
+    } finally {
+      setTopoMeshBusy(false);
     }
   }
 
@@ -735,17 +756,118 @@ export function OutputPage({
     );
   }
 
-  function renderSlopeMap() {
-    const slopeMapUrl = topoResult?.slope_map_png_data_url;
-    if (!slopeMapUrl) return null;
+  function renderSlopeAnalysisTable(topo: TopoIQAnalyzeResponse) {
+    const bins = Array.isArray(topo.slope.bins) ? topo.slope.bins : null;
+    const ex = (topo.extras ?? {}) as Record<string, unknown>;
+    const crMean = typeof ex.cross_row_mean === "number" ? ex.cross_row_mean : null;
+    const crP95 = typeof ex.cross_row_p95 === "number" ? ex.cross_row_p95 : null;
+    const classes: { label: string; color: string; pct: number | null }[] = [
+      { label: "0 – 2.5% (excellent)", color: "#1b8a3a", pct: bins?.[0] ?? null },
+      { label: "2.5 – 5% (very good)", color: "#5fae3a", pct: bins?.[1] ?? null },
+      { label: "5 – 7.5% (acceptable)", color: "#8bc34a", pct: bins?.[2] ?? null },
+      { label: "7.5 – 10% (challenging)", color: "#f5a623", pct: bins?.[3] ?? null },
+      { label: "> 10% (critical)", color: "#d0021b", pct: bins?.[4] ?? null },
+    ];
     return (
-      <div className="slope-map">
-        <div className="slope-map-head">
-          <span className="terrain-drivers-tag">Slope map · top view</span>
-          <span className="slope-map-legend">green &lt;3% · red &gt;10%</span>
+      <div className="slope-analysis-table">
+        <div className="terrain-drivers-head">
+          <span className="terrain-drivers-tag">Slope distribution</span>
         </div>
-        <div className="slope-map-canvas">
-          <img src={slopeMapUrl} alt="Slope map: top view with satellite basemap and north arrow" />
+        <table className="slope-dist-table">
+          <thead>
+            <tr>
+              <th>Slope class</th>
+              <th>Area</th>
+            </tr>
+          </thead>
+          <tbody>
+            {classes.map((c) => (
+              <tr key={c.label}>
+                <td>
+                  <span className="slope-dist-swatch" style={{ background: c.color }} />
+                  {c.label}
+                </td>
+                <td className="slope-dist-pct">
+                  {c.pct != null ? `${c.pct.toFixed(1)}%` : "—"}
+                  {c.pct != null ? (
+                    <span className="slope-dist-bar">
+                      <span
+                        className="slope-dist-bar-fill"
+                        style={{ width: `${Math.min(100, c.pct)}%`, background: c.color }}
+                      />
+                    </span>
+                  ) : null}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <table className="slope-summary-table">
+          <tbody>
+            <tr>
+              <th>Mean slope</th>
+              <td>{topo.slope.mean.toFixed(1)}%</td>
+            </tr>
+            <tr>
+              <th>Max slope</th>
+              <td>{topo.slope.max.toFixed(1)}%</td>
+            </tr>
+            <tr>
+              <th>Area &gt; 5%</th>
+              <td>{topo.slope.pct_over5.toFixed(1)}%</td>
+            </tr>
+            <tr>
+              <th>Area &gt; 10%</th>
+              <td>{topo.slope.pct_over10.toFixed(1)}%</td>
+            </tr>
+            {crMean !== null ? (
+              <tr>
+                <th>Cross-row mean</th>
+                <td>{crMean.toFixed(1)}%</td>
+              </tr>
+            ) : null}
+            {crP95 !== null ? (
+              <tr>
+                <th>Cross-row 95th pctile</th>
+                <td>{crP95.toFixed(1)}%</td>
+              </tr>
+            ) : null}
+            <tr>
+              <th>Elevation range</th>
+              <td>
+                {topo.elevation.z_min.toFixed(0)}–{topo.elevation.z_max.toFixed(0)} m (
+                {topo.elevation.z_range.toFixed(0)} m)
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  function renderSlopeMap() {
+    if (!topoResult) return null;
+    return (
+      <div className="slope-section">
+        <div className="slope-section-head">
+          <span className="terrain-drivers-tag">Slope map · interactive top view</span>
+          <span className="slope-map-legend">
+            {topoMesh
+              ? `${topoMesh.grid_m_used.toFixed(0)} m grid · hover to read slope`
+              : "high-resolution terrain"}
+          </span>
+        </div>
+        <div className="slope-section-grid">
+          <div className="slope-section-map">
+            {topoMesh ? (
+              <SlopeTopMap mesh={topoMesh} boundaries={boundaries} height={420} />
+            ) : topoMeshBusy ? (
+              <p className="hint">Rendering high-resolution slope terrain…</p>
+            ) : (
+              <p className="hint">Slope terrain unavailable for this boundary.</p>
+            )}
+          </div>
+          {renderSlopeAnalysisTable(topoResult)}
         </div>
       </div>
     );

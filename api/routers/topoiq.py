@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import base64
 import io
 import os
 from functools import partial
@@ -124,14 +123,6 @@ def _analysis_response(body: TopoIQAnalyzeRequest, analysis: Dict[str, Any]) -> 
     elevation = _to_builtin(analysis["elevation"])
     extras = _to_builtin(analysis["extras"])
     terrain_drivers = _to_builtin(analysis["terrain_drivers"])
-    slope_map_png_data_url = None
-    try:
-        png_bytes = _render_slope_png(analysis)
-        encoded = base64.b64encode(png_bytes).decode("ascii")
-        slope_map_png_data_url = f"data:image/png;base64,{encoded}"
-    except Exception:
-        # Keep analysis usable even if the optional map renderer is unavailable.
-        slope_map_png_data_url = None
     return TopoIQAnalyzeResponse(
         project_name=body.project_name,
         country=body.country,
@@ -155,7 +146,6 @@ def _analysis_response(body: TopoIQAnalyzeRequest, analysis: Dict[str, Any]) -> 
         disclaimer=str(terrain_source.get("disclaimer", "Public DEM routing by region.")),
         bbox=_to_builtin(analysis["bbox"]),
         route_note=str(terrain_source.get("notes", "")) or None,
-        slope_map_png_data_url=slope_map_png_data_url,
     )
 
 

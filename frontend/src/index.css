@@ -1199,8 +1199,8 @@ a {
   font-size: 0.8rem;
 }
 
-/* Slope map (2D top view, satellite + slope overlay + N arrow) */
-.slope-map {
+/* Slope section: interactive top-view map + distribution table */
+.slope-section {
   margin-top: 1rem;
   border: 1px solid var(--border, #e2e6e2);
   border-radius: 10px;
@@ -1208,13 +1208,13 @@ a {
   background: #fbfdfb;
 }
 
-.slope-map-head {
+.slope-section-head {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.7rem;
 }
 
 .slope-map-legend {
@@ -1222,16 +1222,173 @@ a {
   color: #5b6b5e;
 }
 
-.slope-map-canvas {
-  width: 100%;
+.slope-section-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(260px, 1fr);
+  gap: 1rem;
+  align-items: start;
 }
 
-.slope-map-canvas img {
+@media (max-width: 900px) {
+  .slope-section-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.slope-section-map {
+  min-width: 0;
+}
+
+/* Interactive canvas slope map */
+.slope-top-map {
+  position: relative;
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #d7ddd7;
+  overflow: hidden;
+  background: #eef1ee;
+}
+
+.slope-top-canvas {
   display: block;
   width: 100%;
-  height: auto;
-  border-radius: 8px;
-  border: 1px solid #e2e6e2;
+  cursor: crosshair;
+}
+
+.slope-top-north {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
+  line-height: 1;
+}
+
+.slope-top-north-arrow {
+  font-size: 1.2rem;
+}
+
+.slope-top-legend {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.6rem;
+  padding: 0.35rem 0.55rem;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 6px;
+  font-size: 0.7rem;
+  color: #2a382c;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.slope-top-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.slope-top-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.slope-top-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: #1a2e1a;
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  z-index: 5;
+}
+
+/* Slope distribution + summary tables */
+.slope-analysis-table {
+  min-width: 0;
+}
+
+.slope-dist-table,
+.slope-summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.slope-dist-table th {
+  text-align: left;
+  background: #1d9e52;
+  color: #fff;
+  font-weight: 600;
+  padding: 0.35rem 0.55rem;
+}
+
+.slope-dist-table td {
+  padding: 0.34rem 0.55rem;
+  border-bottom: 1px solid #eef1ee;
+  vertical-align: middle;
+}
+
+.slope-dist-swatch {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  margin-right: 0.45rem;
+  vertical-align: -1px;
+}
+
+.slope-dist-pct {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.slope-dist-bar {
+  display: block;
+  margin-top: 0.2rem;
+  height: 5px;
+  width: 100%;
+  background: #edf1ed;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.slope-dist-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+
+.slope-summary-table {
+  margin-top: 0.7rem;
+}
+
+.slope-summary-table th {
+  text-align: left;
+  font-weight: 600;
+  color: #5b6b5e;
+  padding: 0.28rem 0.55rem;
+  border-bottom: 1px solid #f0f3f0;
+  white-space: nowrap;
+}
+
+.slope-summary-table td {
+  text-align: right;
+  padding: 0.28rem 0.55rem;
+  border-bottom: 1px solid #f0f3f0;
+  font-variant-numeric: tabular-nums;
+  color: #1a2e1a;
 }
 
 /* Stage nav: one module in focus at a time */

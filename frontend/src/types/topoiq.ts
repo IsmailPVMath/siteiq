@@ -52,7 +52,6 @@ export interface TopoIQAnalyzeResponse {
   disclaimer: string;
   bbox: { lat_c: number; lon_c: number };
   route_note?: string | null;
-  slope_map_png_data_url?: string | null;
 }
 
 export interface YieldIQAnalyzeRequest {

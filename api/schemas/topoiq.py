@@ -49,4 +49,3 @@ class TopoIQAnalyzeResponse(BaseModel):
     disclaimer: str
     bbox: Dict[str, float]
     route_note: Optional[str] = None
-    slope_map_png_data_url: Optional[str] = None
