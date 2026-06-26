@@ -53,6 +53,7 @@ export function SiteMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
+  const isDrawingRef = useRef(false);
   const drawLayerRef = useRef<L.FeatureGroup | null>(null);
   const parcelLayerRef = useRef<L.FeatureGroup | null>(null);
   const buildableLayerRef = useRef<L.GeoJSON | null>(null);
@@ -128,7 +129,17 @@ export function SiteMap({
     });
 
     map.on("click", (e: L.LeafletMouseEvent) => {
+      // Ignore clicks while a polygon is being drawn — those clicks add
+      // vertices and must not move the pin or pan the map.
+      if (isDrawingRef.current) return;
       onPickRef.current(e.latlng.lat, e.latlng.lng);
+    });
+
+    map.on("draw:drawstart", () => {
+      isDrawingRef.current = true;
+    });
+    map.on("draw:drawstop", () => {
+      isDrawingRef.current = false;
     });
 
     parcelLayerRef.current = new L.FeatureGroup().addTo(map);
@@ -204,9 +215,16 @@ export function SiteMap({
   }, []);
 
   useEffect(() => {
-    if (!mapRef.current || !markerRef.current) return;
+    const map = mapRef.current;
+    if (!map || !markerRef.current) return;
     markerRef.current.setLatLng([lat, lon]);
-    mapRef.current.panTo([lat, lon], { animate: true });
+    // Don't pan while drawing, and only re-center when the new point is
+    // outside the current view (e.g. a search/geocode jump) — this stops
+    // the map from drifting on every vertex click near the edges.
+    if (isDrawingRef.current) return;
+    if (!map.getBounds().contains([lat, lon])) {
+      map.panTo([lat, lon], { animate: true });
+    }
   }, [lat, lon]);
 
   useEffect(() => {
