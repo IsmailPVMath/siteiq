@@ -252,3 +252,41 @@ export interface WorkflowProjectPackageRequest extends WorkflowPvmathReportReque
   config_key: string;
   pitch_m: number;
 }
+
+export interface ConstraintSummaryItem {
+  category: string;
+  label: string;
+  feature_count: number;
+  setback_m: number;
+  excluded_ha: number;
+  style: Record<string, string>;
+}
+
+export interface WorkflowGisAnalysisRequest {
+  boundary?: { lat: number; lon: number }[];
+  boundaries?: { lat: number; lon: number }[][];
+  restriction_polygons_geojson?: GeoJSON.GeoJSON | null;
+  setbacks_m?: Record<string, number>;
+  include_grid?: boolean;
+}
+
+export interface WorkflowGisAnalysisResponse {
+  success: boolean;
+  error?: string;
+  coordinates?: { lat: number; lon: number };
+  site_area_ha: number;
+  buildable_area_ha: number;
+  buildable_pct: number;
+  site_boundary_geojson?: GeoJSON.GeoJSON | null;
+  buildable_area_geojson?: GeoJSON.GeoJSON | null;
+  excluded_area_geojson?: GeoJSON.GeoJSON | null;
+  constraint_layers: Record<string, GeoJSON.FeatureCollection>;
+  layer_styles: Record<string, { color: string; fillColor: string }>;
+  constraint_summary: ConstraintSummaryItem[];
+  feature_counts: Record<string, number>;
+  setbacks_m: Record<string, number>;
+  grid?: Record<string, unknown> | null;
+  sources: string[];
+  disclaimer: string;
+  note: string;
+}

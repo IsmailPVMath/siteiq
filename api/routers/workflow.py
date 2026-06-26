@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 from api.deps import get_current_user
+from api.schemas.gis import WorkflowGisAnalysisRequest, WorkflowGisAnalysisResponse
 from api.schemas.workflow import (
     WorkflowLayoutDetailRequest,
     WorkflowLayoutDetailResponse,
@@ -28,6 +29,7 @@ from api.schemas.workflow import (
     WorkflowTerrainMeshResponse,
 )
 from pvmath_supabase import AuthUser, increment_usage, is_over_limit
+from pvmath_workflow.gis_analysis import GisAnalysisRequest, run_gis_analysis
 from pvmath_workflow.layout_detail import build_layout_detail, export_layout_dxf
 from pvmath_workflow.layout_matrix import run_fixed_tilt_layout_matrix
 from pvmath_workflow.layout_sweep import run_layout_sweep
@@ -100,6 +102,55 @@ def _limit_detail() -> str:
         "Monthly analysis limit reached. Free plan: 5 SiteIQ analyses per month. "
         "Upgrade at contact@pvmath.com"
     )
+
+
+GIS_TIMEOUT_SEC = int(os.environ.get("PVMATH_GIS_TIMEOUT", "120"))
+
+
+@router.post("/workflow/gis-analysis", response_model=WorkflowGisAnalysisResponse)
+async def workflow_gis_analysis(
+    body: WorkflowGisAnalysisRequest,
+    user: AuthUser = Depends(get_current_user),
+):
+    """
+    SiteIQ intelligent GIS — detect OSM constraints, apply setbacks, compute buildable area.
+
+  Automatically queries roads, railways, buildings, water, forests, and transmission
+  lines inside the site boundary. No user input required beyond the boundary polygon.
+    """
+    if user.access_token and is_over_limit(user.user_id, SCREEN_APP, user.access_token):
+        raise HTTPException(status_code=429, detail=_limit_detail())
+
+    rings = []
+    for ring in body.boundaries or []:
+        rings.append([(p.lat, p.lon) for p in ring])
+    boundary_pts = [(p.lat, p.lon) for p in body.boundary] if body.boundary else []
+
+    req = GisAnalysisRequest(
+        boundary=boundary_pts,
+        boundaries=rings,
+        restriction_polygons_geojson=body.restriction_polygons_geojson,
+        setbacks_m=body.setbacks_m,
+        include_grid=body.include_grid,
+    )
+    loop = asyncio.get_running_loop()
+    try:
+        result = await asyncio.wait_for(
+            loop.run_in_executor(None, partial(run_gis_analysis, req)),
+            timeout=GIS_TIMEOUT_SEC,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=f"GIS analysis timed out after {GIS_TIMEOUT_SEC}s.",
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"GIS analysis failed: {exc}") from exc
+
+    if not result.get("success"):
+        return WorkflowGisAnalysisResponse(success=False, error=result.get("error", "GIS failed"))
+
+    return WorkflowGisAnalysisResponse(**result)
 
 
 @router.post("/workflow/screen", response_model=WorkflowScreenResponse)

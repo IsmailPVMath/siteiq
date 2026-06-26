@@ -4,6 +4,7 @@ import {
   analyzeYield,
   topoExportsZip,
   topoReportPdf,
+  workflowGisAnalysis,
   workflowLayoutDetail,
   workflowLayoutDxf,
   workflowLayoutSweep,
@@ -12,6 +13,7 @@ import {
   workflowScore,
   workflowTerrainMesh,
 } from "../lib/api";
+import { ConstraintAnalysisMap } from "../components/ConstraintAnalysisMap";
 import { LayoutPreviewMap } from "../components/LayoutPreviewMap";
 import { Terrain3DView } from "../components/Terrain3DView";
 import type { GateAnalyzeRequest } from "../types/gate";
@@ -27,6 +29,7 @@ import type {
   LayoutLandCost,
   LayoutSweepRow,
   OutputModuleStage,
+  WorkflowGisAnalysisResponse,
   WorkflowLayoutDetailResponse,
   WorkflowLayoutSweepResponse,
   WorkflowScoreResponse,
@@ -141,6 +144,9 @@ export function OutputPage({
   const [reportBusy, setReportBusy] = useState(false);
   const [packageBusy, setPackageBusy] = useState(false);
   const [exportError, setExportError] = useState("");
+  const [gisBusy, setGisBusy] = useState(false);
+  const [gisError, setGisError] = useState("");
+  const [gisResult, setGisResult] = useState<WorkflowGisAnalysisResponse | null>(null);
 
   const grid = result.grid as Record<string, unknown>;
   const nearest = grid?.nearest as Record<string, unknown> | undefined;
@@ -205,6 +211,33 @@ export function OutputPage({
       contour_major: 1.0,
     };
   }, [boundaries, hasBoundary, input, result.project_name]);
+
+  useEffect(() => {
+    if (!hasBoundary || activeStage !== "screen") return;
+    let cancelled = false;
+    async function runGis() {
+      setGisBusy(true);
+      setGisError("");
+      try {
+        const data = await workflowGisAnalysis(token, {
+          boundaries,
+          include_grid: false,
+        });
+        if (!cancelled) setGisResult(data);
+      } catch (err) {
+        if (!cancelled) {
+          setGisError(err instanceof Error ? err.message : "GIS analysis failed");
+          setGisResult(null);
+        }
+      } finally {
+        if (!cancelled) setGisBusy(false);
+      }
+    }
+    void runGis();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, boundaries, hasBoundary, activeStage]);
 
   const selectedYieldConfigKey = useMemo(() => {
     if (!selectedLayoutRow) return null;
@@ -904,6 +937,80 @@ export function OutputPage({
             {result.errors.join(" · ")}
           </div>
         ) : null}
+
+        {hasBoundary ? (
+          <div className="gis-analysis-block">
+            <h3 className="setup-subhead">Intelligent GIS analysis</h3>
+            <p className="hint">
+              Automatic constraint detection from OpenStreetMap — roads, railways, buildings,
+              water, forests, and transmission lines — with engineering setbacks applied to
+              compute buildable area. No extra input required.
+            </p>
+            {gisBusy && !gisResult ? (
+              <p className="hint">Detecting site constraints and computing buildable area…</p>
+            ) : null}
+            {gisError ? <div className="error-banner">{gisError}</div> : null}
+            {gisResult?.success ? (
+              <>
+                <div className="gis-stats">
+                  <div className="gis-stat">
+                    <span className="gis-stat-label">Total site</span>
+                    <strong>{gisResult.site_area_ha} ha</strong>
+                  </div>
+                  <div className="gis-stat">
+                    <span className="gis-stat-label">Buildable</span>
+                    <strong>{gisResult.buildable_area_ha} ha</strong>
+                  </div>
+                  <div className="gis-stat gis-stat-accent">
+                    <span className="gis-stat-label">Buildable %</span>
+                    <strong>{gisResult.buildable_pct}%</strong>
+                  </div>
+                </div>
+                {gisResult.constraint_summary.length > 0 ? (
+                  <table className="gis-summary-table">
+                    <thead>
+                      <tr>
+                        <th>Constraint</th>
+                        <th>Features</th>
+                        <th>Setback</th>
+                        <th>Excluded</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {gisResult.constraint_summary.map((row) => (
+                        <tr key={row.category}>
+                          <td>{row.label}</td>
+                          <td>{row.feature_count}</td>
+                          <td>{row.setback_m} m</td>
+                          <td>{row.excluded_ha} ha</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="hint">No mapped constraints detected inside the boundary.</p>
+                )}
+                <ConstraintAnalysisMap
+                  lat={gisResult.coordinates?.lat ?? input?.lat ?? 0}
+                  lon={gisResult.coordinates?.lon ?? input?.lon ?? 0}
+                  siteBoundary={gisResult.site_boundary_geojson ?? undefined}
+                  constraintLayers={gisResult.constraint_layers}
+                  layerStyles={gisResult.layer_styles}
+                  buildableArea={gisResult.buildable_area_geojson ?? undefined}
+                  excludedArea={gisResult.excluded_area_geojson ?? undefined}
+                />
+                {gisResult.disclaimer ? (
+                  <p className="module-note">{gisResult.disclaimer}</p>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+        ) : (
+          <p className="hint">
+            Draw or upload a site boundary to run automatic GIS constraint analysis and
+            buildable-area calculation.
+          </p>
+        )}
       </section>
       ) : null}
 

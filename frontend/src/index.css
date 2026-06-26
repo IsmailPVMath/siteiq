@@ -2159,6 +2159,89 @@ textarea {
   margin: 0.5rem 0 0;
 }
 
+.gis-analysis-block {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.gis-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.gis-stat {
+  flex: 1;
+  min-width: 120px;
+  padding: 0.65rem 0.85rem;
+  background: #f8fbf9;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.gis-stat-accent {
+  background: #f0faf3;
+  border-color: #86efac;
+}
+
+.gis-stat-label {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.2rem;
+}
+
+.gis-summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  margin-bottom: 0.85rem;
+}
+
+.gis-summary-table th,
+.gis-summary-table td {
+  text-align: left;
+  padding: 0.45rem 0.55rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.constraint-map-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.constraint-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  font-size: 0.78rem;
+}
+
+.constraint-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+}
+
+.constraint-legend-item .swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.constraint-map {
+  min-height: 420px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
 .input-method-tabs {
   display: flex;
   gap: 0.4rem;

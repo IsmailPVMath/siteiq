@@ -7,6 +7,8 @@ import type {
   YieldIQAnalyzeResponse,
 } from "../types/topoiq";
 import type {
+  WorkflowGisAnalysisRequest,
+  WorkflowGisAnalysisResponse,
   WorkflowLayoutDetailRequest,
   WorkflowLayoutDetailResponse,
   WorkflowLayoutMatrixResponse,
@@ -81,6 +83,13 @@ export function changePassword(token: string, currentPassword: string, newPasswo
 
 export function runWorkflowScreen(token: string, body: WorkflowScreenRequest) {
   return apiFetch<WorkflowScreenResponse>("/api/v1/workflow/screen", token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function workflowGisAnalysis(token: string, body: WorkflowGisAnalysisRequest) {
+  return apiFetch<WorkflowGisAnalysisResponse>("/api/v1/workflow/gis-analysis", token, {
     method: "POST",
     body: JSON.stringify(body),
   });
