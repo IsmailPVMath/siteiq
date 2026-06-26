@@ -50,7 +50,7 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
     initial ? gateRequestToDraft(initial) : gateRequestToDraft({}),
   );
   const [trackerStringOptions, setTrackerStringOptions] = useState(
-    (draft.assumptions.tracker_string_options ?? [8, 7, 6, 5]).join(","),
+    (draft.assumptions.tracker_string_options ?? [8, 7, 6, 5, 4, 3, 2, 1]).join(","),
   );
   const [drawMode, setDrawMode] = useState<"site" | "restriction">("site");
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);

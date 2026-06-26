@@ -130,7 +130,7 @@ export function AdvancedProjectOptions({
           id="tracker-strings"
           value={trackerStringOptions}
           onChange={(e) => onTrackerStringOptionsChange(e.target.value)}
-          placeholder="8,7,6,5"
+          placeholder="8,7,6,5,4,3,2,1"
         />
       </div>
       <div className="grid-2">

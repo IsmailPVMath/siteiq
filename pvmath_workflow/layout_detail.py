@@ -217,9 +217,17 @@ def build_layout_detail(
                     },
                 )
             )
+        rows_data = layout["rows_data"]
         for local_idx, poly in enumerate(layout["rows_polys"]):
             row_index += 1
-            row_data = layout["rows_data"][local_idx]
+            # A single row band can clip into a MultiPolygon on concave parcels,
+            # so rows_polys may be longer than rows_data — clamp to stay aligned.
+            if local_idx < len(rows_data):
+                row_data = rows_data[local_idx]
+            elif rows_data:
+                row_data = rows_data[-1]
+            else:
+                row_data = {"n_modules": 0, "n_strings": 0, "tracker_units": [], "length_m": 0.0}
             features.append(
                 _polygon_feature(
                     poly,

@@ -1,11 +1,11 @@
 :root {
-  --bg: #f5f7f5;
-  --card: #ffffff;
+  --bg: #dcebe0;
+  --card: #f6fbf7;
   --text: #16241a;
-  --muted: #5a6b5f;
+  --muted: #51695a;
   --accent: #1d9e52;
   --accent-dark: #157a40;
-  --border: #dce5de;
+  --border: #c2d8c8;
   --warn: #b45309;
   --danger: #b91c1c;
   --radius: 12px;
@@ -1158,6 +1158,49 @@ a {
 
 .gis-fullboundary-toggle {
   margin: 0.5rem 0 0.25rem;
+}
+
+.results-location-label {
+  margin: 0.15rem 0 0.4rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.yield-month-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.35rem;
+  height: 140px;
+  padding: 0.5rem 0 0;
+}
+
+.yield-month-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  height: 100%;
+}
+
+.yield-month-bar-track {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.yield-month-bar {
+  width: 70%;
+  min-height: 2px;
+  background: linear-gradient(to top, var(--accent-dark), var(--accent));
+  border-radius: 3px 3px 0 0;
+}
+
+.yield-month-label {
+  font-size: 0.72rem;
+  color: var(--muted);
 }
 
 .map-preview {

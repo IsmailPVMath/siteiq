@@ -243,7 +243,12 @@ export function YieldResultsPanel({
         </div>
       ) : null}
 
-      {fixed1p?.optimal_tilt != null || fixed2p?.optimal_tilt != null ? (
+      {mountFilter === "sat" ? (
+        <p className="yield-optimal-tilt">
+          Single-Axis Tracker: modules follow the sun on a horizontal N–S axis (0° axis tilt) —
+          fixed optimal tilt does not apply. PVGIS two-axis irradiance is used for the tracker yield.
+        </p>
+      ) : fixed1p?.optimal_tilt != null || fixed2p?.optimal_tilt != null ? (
         <p className="yield-optimal-tilt">
           Optimal tilt (PVGIS):{" "}
           {fixed1p?.optimal_tilt != null ? `1P Fixed: ${fixed1p.optimal_tilt}°` : ""}
@@ -251,6 +256,43 @@ export function YieldResultsPanel({
           {fixed2p?.optimal_tilt != null ? `2P Fixed: ${fixed2p.optimal_tilt}°` : ""}
         </p>
       ) : null}
+
+      {(() => {
+        const chartCfg = selectedCfg ?? bestCfg;
+        const monthly = chartCfg?.monthly;
+        if (!Array.isArray(monthly) || monthly.length !== 12) return null;
+        const max = Math.max(...monthly.map((v) => Number(v) || 0), 1);
+        const months = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+        return (
+          <div className="yield-section">
+            <h3>
+              Monthly specific yield
+              {chartCfg?.display_name ? ` — ${chartCfg.display_name}` : ""}
+            </h3>
+            <div className="yield-month-chart" role="img" aria-label="Monthly specific yield">
+              {monthly.map((v, i) => {
+                const val = Number(v) || 0;
+                return (
+                  <div className="yield-month-col" key={i}>
+                    <div className="yield-month-bar-track">
+                      <div
+                        className="yield-month-bar"
+                        style={{ height: `${(val / max) * 100}%` }}
+                        title={`${months[i]}: ${val.toFixed(0)} kWh/kWp`}
+                      />
+                    </div>
+                    <span className="yield-month-label">{months[i]}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="hint">
+              Specific yield (kWh/kWp) per month for the selected configuration. Full PVsyst-style
+              loss waterfall and shading scene come in detailed YieldIQ.
+            </p>
+          </div>
+        );
+      })()}
 
       <p className="module-note">{result.disclosure}</p>
       {result.raddatabase ? (

@@ -23,7 +23,7 @@ export const DEFAULT_LAYOUT_CONFIG: Required<LayoutElectricalConfig> = {
   module_wp: 550,
   modules_per_string: 28,
   inter_string_gap_m: 0.5,
-  tracker_string_options: [8, 7, 6, 5],
+  tracker_string_options: [8, 7, 6, 5, 4, 3, 2, 1],
   max_tracker_length_m: 260,
   rows_per_block: 0,
   block_gap_m: 0.0,

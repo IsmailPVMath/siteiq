@@ -4,6 +4,7 @@ import {
   analyzeTopo,
   analyzeYield,
   createProject,
+  reverseGeocode,
   topoExportsZip,
   topoReportPdf,
   updateProject,
@@ -71,8 +72,8 @@ function metric(label: string, rating?: string, detail?: string, extra?: string)
 }
 
 function formatLayoutMwp(row: LayoutSweepRow) {
-  if (row.dc_mwp != null) return row.dc_mwp.toFixed(1);
-  if (row.dc_kwp != null) return (row.dc_kwp / 1000).toFixed(1);
+  if (row.dc_mwp != null) return row.dc_mwp.toFixed(3);
+  if (row.dc_kwp != null) return (row.dc_kwp / 1000).toFixed(3);
   return "—";
 }
 
@@ -247,6 +248,7 @@ export function OutputPage({
   const [reportBusy, setReportBusy] = useState(false);
   const [packageBusy, setPackageBusy] = useState(false);
   const [exportError, setExportError] = useState("");
+  const [locationLabel, setLocationLabel] = useState("");
   const [gisBusy, setGisBusy] = useState(false);
   const [gisRecomputeBusy, setGisRecomputeBusy] = useState(false);
   const [gisError, setGisError] = useState("");
@@ -544,6 +546,24 @@ export function OutputPage({
   useEffect(() => {
     if (projectIdProp) setProjectId(projectIdProp);
   }, [projectIdProp]);
+
+  useEffect(() => {
+    const lat = result.coordinates?.lat;
+    const lon = result.coordinates?.lon;
+    if (lat == null || lon == null) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const geo = await reverseGeocode(token, lat, lon);
+        if (!cancelled) setLocationLabel(geo.label || "");
+      } catch {
+        if (!cancelled) setLocationLabel("");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, result.coordinates?.lat, result.coordinates?.lon]);
 
   useEffect(() => {
     if (initialTopo && boundaries.length && !topoMesh) {
@@ -1320,7 +1340,7 @@ export function OutputPage({
                           id="out-tracker-strings"
                           value={trackerStringOptions}
                           onChange={(e) => setTrackerStringOptions(e.target.value)}
-                          placeholder="8,7,6,5"
+                          placeholder="8,7,6,5,4,3,2,1"
                         />
                       </div>
                       <div className="field">
@@ -1575,6 +1595,7 @@ export function OutputPage({
       <div className="results-stage-header">
         <div>
           <h1>{result.project_name}</h1>
+          {locationLabel ? <p className="results-location-label">{locationLabel}</p> : null}
           <div className="coord-pill">
             {result.coordinates.lat.toFixed(4)}°, {result.coordinates.lon.toFixed(4)}°
           </div>
