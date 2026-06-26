@@ -133,14 +133,34 @@ export function AdvancedProjectOptions({
           placeholder="8,7,6,5"
         />
       </div>
-      <label className="checkbox-field">
-        <input
-          type="checkbox"
-          checked={!!a.exclude_tracker_slope}
-          onChange={(e) => onAssumptionsChange({ exclude_tracker_slope: e.target.checked })}
-        />
-        Exclude trackers where slope exceeds limit
-      </label>
+      <div className="grid-2">
+        <label className="checkbox-field">
+          <input
+            type="checkbox"
+            checked={!!a.exclude_tracker_slope}
+            onChange={(e) => onAssumptionsChange({ exclude_tracker_slope: e.target.checked })}
+          />
+          Exclude trackers where slope exceeds limit
+        </label>
+        {a.exclude_tracker_slope ? (
+          <div className="field">
+            <label htmlFor="slope-limit">Slope limit (%)</label>
+            <input
+              id="slope-limit"
+              type="number"
+              step="0.5"
+              min="0"
+              value={a.tracker_slope_limit_pct ?? ""}
+              onChange={(e) =>
+                onAssumptionsChange({
+                  tracker_slope_limit_pct: e.target.value ? Number(e.target.value) : undefined,
+                })
+              }
+              placeholder="6"
+            />
+          </div>
+        ) : null}
+      </div>
       <div className="field">
         <label htmlFor="road-preset">Access roads</label>
         <select
@@ -160,6 +180,42 @@ export function AdvancedProjectOptions({
           ))}
         </select>
       </div>
+      {a.road_preset === "custom" ? (
+        <div className="grid-2">
+          <div className="field">
+            <label htmlFor="rows-per-block">Rows per block</label>
+            <input
+              id="rows-per-block"
+              type="number"
+              step="1"
+              min="1"
+              value={a.rows_per_block ?? ""}
+              onChange={(e) =>
+                onAssumptionsChange({
+                  rows_per_block: e.target.value ? Number(e.target.value) : undefined,
+                })
+              }
+              placeholder="2"
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="block-gap">N-S access gap (m)</label>
+            <input
+              id="block-gap"
+              type="number"
+              step="0.5"
+              min="0"
+              value={a.block_gap_m ?? ""}
+              onChange={(e) =>
+                onAssumptionsChange({
+                  block_gap_m: e.target.value ? Number(e.target.value) : undefined,
+                })
+              }
+              placeholder="5"
+            />
+          </div>
+        </div>
+      ) : null}
     </details>
   );
 }

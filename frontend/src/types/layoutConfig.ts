@@ -39,6 +39,7 @@ export const ROAD_PRESETS: { id: string; label: string; mode: RoadMode }[] = [
   { id: "sat_wide", label: "Wide access — 2 rows + 8 m N-S gap", mode: "manual" },
   { id: "sat_single", label: "Single-row blocks — 1 row + 5 m gap", mode: "manual" },
   { id: "no_roads", label: "No access roads (strings only)", mode: "off" },
+  { id: "custom", label: "Custom — set rows + N-S gap", mode: "manual" },
 ];
 
 export function layoutPayloadFrom(

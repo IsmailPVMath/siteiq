@@ -182,7 +182,19 @@ export function SiteMap({
     map.on(L.Draw.Event.DELETED, () => syncBoundaryFromMap());
 
     mapRef.current = map;
+
+    // Recompute tiles/size whenever the container resizes (e.g. the account
+    // sidebar is collapsed or resized) so the map never shows a grey gap.
+    let raf = 0;
+    const ro = new ResizeObserver(() => {
+      window.cancelAnimationFrame(raf);
+      raf = window.requestAnimationFrame(() => map.invalidateSize());
+    });
+    ro.observe(containerRef.current);
+
     return () => {
+      window.cancelAnimationFrame(raf);
+      ro.disconnect();
       map.remove();
       mapRef.current = null;
       drawLayerRef.current = null;

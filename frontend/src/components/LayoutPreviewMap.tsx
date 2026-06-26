@@ -24,7 +24,15 @@ export function LayoutPreviewMap({ center, layoutGeoJson }: Props) {
       maxZoom: 21,
     }).addTo(map);
     mapRef.current = map;
+    let raf = 0;
+    const ro = new ResizeObserver(() => {
+      window.cancelAnimationFrame(raf);
+      raf = window.requestAnimationFrame(() => map.invalidateSize());
+    });
+    ro.observe(containerRef.current);
     return () => {
+      window.cancelAnimationFrame(raf);
+      ro.disconnect();
       map.remove();
       mapRef.current = null;
       layoutLayerRef.current = null;
