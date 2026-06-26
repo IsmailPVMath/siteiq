@@ -14,6 +14,7 @@ interface Props {
   mesh: WorkflowTerrainMeshResponse;
   layoutGeoJson?: GeoJSON.GeoJSON | null;
   projectName?: string;
+  mountType?: "fixed" | "tracker";
 }
 
 function saveBlob(blob: Blob, filename: string) {
@@ -21,11 +22,16 @@ function saveBlob(blob: Blob, filename: string) {
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+  a.rel = "noopener";
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 1500);
 }
 
-export function Terrain3DView({ mesh, layoutGeoJson, projectName = "SiteIQ" }: Props) {
+export function Terrain3DView({ mesh, layoutGeoJson, projectName = "SiteIQ", mountType = "tracker" }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [sunHour, setSunHour] = useState(12);
   const [showWireframe, setShowWireframe] = useState(false);
@@ -39,6 +45,7 @@ export function Terrain3DView({ mesh, layoutGeoJson, projectName = "SiteIQ" }: P
 
     const built = buildTerrain3DScene(mesh, layoutGeoJson ?? null, sunHour, {
       showWireframe,
+      mountType,
     });
     const { scene, terrainSize, dispose } = built;
 
@@ -91,13 +98,14 @@ export function Terrain3DView({ mesh, layoutGeoJson, projectName = "SiteIQ" }: P
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [layoutGeoJson, mesh, showWireframe, sunHour]);
+  }, [layoutGeoJson, mesh, showWireframe, sunHour, mountType]);
 
   const handleExportGlb = useCallback(async () => {
     setExportBusy(true);
     try {
       const built = buildTerrain3DScene(mesh, layoutGeoJson ?? null, sunHour, {
         showWireframe,
+        mountType,
       });
       const blob = await exportSceneGlb(built.scene);
       built.dispose();
@@ -106,7 +114,7 @@ export function Terrain3DView({ mesh, layoutGeoJson, projectName = "SiteIQ" }: P
     } finally {
       setExportBusy(false);
     }
-  }, [layoutGeoJson, mesh, projectName, showWireframe, sunHour]);
+  }, [layoutGeoJson, mesh, projectName, showWireframe, sunHour, mountType]);
 
   return (
     <div className="terrain-3d-wrap">
@@ -147,7 +155,7 @@ export function Terrain3DView({ mesh, layoutGeoJson, projectName = "SiteIQ" }: P
         <span>{mesh.vertices.length.toLocaleString()} vertices</span>
         <span>{mesh.faces.length.toLocaleString()} triangles</span>
         <span>
-          {rowCount.toLocaleString()} tracker rows
+          {rowCount.toLocaleString()} {mountType === "fixed" ? "fixed-tilt" : "tracker"} rows
           {rowCount >= MAX_3D_ROWS ? " (capped)" : ""}
         </span>
         <span>
@@ -157,8 +165,10 @@ export function Terrain3DView({ mesh, layoutGeoJson, projectName = "SiteIQ" }: P
         <span>{mesh.grid_m_used?.toFixed(0) ?? "—"} m mesh</span>
       </div>
       <p className="hint terrain-3d-note">
-        Phase 1 3D: blue module tables, galvanized posts, torque tubes, soft shadows. Export GLB
-        for Blender / SketchUp / web viewers. Detailed tracker mechanics come in Detailed Engineering.
+        {mountType === "fixed"
+          ? "3D: south-tilted fixed-tilt tables on front/back legs, soft shadows, XYZ gizmo (red=E, green=up, blue=N) + north arrow. Drag to orbit, scroll to zoom."
+          : "3D: blue module tables, galvanized posts, torque tubes, soft shadows, XYZ gizmo (red=E, green=up, blue=N) + north arrow. Drag to orbit, scroll to zoom."}{" "}
+        Export GLB for Blender / SketchUp / web viewers.
       </p>
     </div>
   );

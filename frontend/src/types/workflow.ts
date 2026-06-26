@@ -55,7 +55,6 @@ export const PROCESSING_STAGES = [
   "Grid proximity (OSM)",
   "Flood screening",
   "Regulatory guidance",
-  "Capacity estimate",
 ] as const;
 
 export interface WorkflowScreenRequest {

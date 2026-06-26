@@ -124,6 +124,25 @@ def login(body: LoginRequest):
     }
 
 
+class PasswordResetRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=200)
+
+
+@router.post("/auth/reset-password")
+def reset_password(body: PasswordResetRequest):
+    """Send a Supabase password-recovery email (always returns success — no account enumeration)."""
+    try:
+        requests.post(
+            f"{sb_url()}/auth/v1/recover",
+            json={"email": body.email.strip()},
+            headers=auth_hdr(),
+            timeout=15,
+        )
+    except requests.RequestException:
+        pass
+    return {"success": True}
+
+
 @router.post("/auth/refresh")
 def refresh_session(body: RefreshRequest):
     """Exchange a stored refresh token for a new Supabase session."""

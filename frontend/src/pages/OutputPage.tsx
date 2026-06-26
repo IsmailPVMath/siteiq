@@ -81,8 +81,13 @@ function saveBlob(blob: Blob, filename: string) {
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+  a.rel = "noopener";
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 1500);
 }
 
 type LatLonRing = { lat: number; lon: number }[];
@@ -263,16 +268,24 @@ export function OutputPage({
     [input?.restriction_polygons],
   );
   const hasBoundary = boundaries.length > 0;
+  const [useFullBoundary, setUseFullBoundary] = useState(false);
   const gisExcludedRings = useMemo(
     () => geoJsonToLatLonRings(gisResult?.excluded_area_geojson ?? null),
     [gisResult?.excluded_area_geojson],
   );
   const layoutRestrictionPolygons = useMemo(
-    () => (gisResult?.success && gisExcludedRings.length ? gisExcludedRings : restrictionPolygons),
-    [gisExcludedRings, gisResult?.success, restrictionPolygons],
+    () =>
+      useFullBoundary
+        ? restrictionPolygons
+        : gisResult?.success && gisExcludedRings.length
+          ? gisExcludedRings
+          : restrictionPolygons,
+    [useFullBoundary, gisExcludedRings, gisResult?.success, restrictionPolygons],
   );
-  const layoutUsesGisBuildable = !!(gisResult?.success && gisExcludedRings.length);
-  const landScoreFromGis = scoreLandFromBuildablePct(gisResult?.buildable_pct);
+  const layoutUsesGisBuildable = !useFullBoundary && !!(gisResult?.success && gisExcludedRings.length);
+  const landScoreFromGis = useFullBoundary
+    ? scoreLandFromBuildablePct(100)
+    : scoreLandFromBuildablePct(gisResult?.buildable_pct);
   const scoreComponents = useMemo(() => {
     if (landScoreFromGis == null) return result.score_components;
     return { ...result.score_components, land: landScoreFromGis };
@@ -315,9 +328,11 @@ export function OutputPage({
     return { ...base, azimuth: azimuthDeg };
   }
 
-  const buildableMask = gisResult?.success
-    ? (gisResult.buildable_area_geojson ?? null)
-    : null;
+  const buildableMask = useFullBoundary
+    ? null
+    : gisResult?.success
+      ? (gisResult.buildable_area_geojson ?? null)
+      : null;
 
   const topoPayload: TopoIQAnalyzeRequest | null = useMemo(() => {
     if (!hasBoundary) return null;
@@ -1296,49 +1311,53 @@ export function OutputPage({
                     onChange={(e) => setInterStringGap(Number(e.target.value))}
                   />
                 </div>
-                <div className="grid-2 layout-custom-row">
-                  <div className="field">
-                    <label htmlFor="out-tracker-strings">Tracker strings</label>
-                    <input
-                      id="out-tracker-strings"
-                      value={trackerStringOptions}
-                      onChange={(e) => setTrackerStringOptions(e.target.value)}
-                      placeholder="8,7,6,5"
-                    />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="out-max-tracker">Max tracker m</label>
-                    <input
-                      id="out-max-tracker"
-                      type="number"
-                      min="20"
-                      max="500"
-                      value={maxTrackerLength}
-                      onChange={(e) => setMaxTrackerLength(Number(e.target.value))}
-                    />
-                  </div>
-                </div>
-                <label className="checkbox-field layout-bifacial">
-                  <input
-                    type="checkbox"
-                    checked={excludeTrackerSlope}
-                    onChange={(e) => setExcludeTrackerSlope(e.target.checked)}
-                  />
-                  Exclude SAT zones above slope limit
-                </label>
-                <div className="field">
-                  <label htmlFor="out-slope-limit">SAT slope limit (%)</label>
-                  <input
-                    id="out-slope-limit"
-                    type="number"
-                    step="0.5"
-                    min="0.5"
-                    max="30"
-                    value={trackerSlopeLimit}
-                    onChange={(e) => setTrackerSlopeLimit(Number(e.target.value))}
-                    disabled={!excludeTrackerSlope}
-                  />
-                </div>
+                {mountFilter !== "fixed" ? (
+                  <>
+                    <div className="grid-2 layout-custom-row">
+                      <div className="field">
+                        <label htmlFor="out-tracker-strings">Tracker strings</label>
+                        <input
+                          id="out-tracker-strings"
+                          value={trackerStringOptions}
+                          onChange={(e) => setTrackerStringOptions(e.target.value)}
+                          placeholder="8,7,6,5"
+                        />
+                      </div>
+                      <div className="field">
+                        <label htmlFor="out-max-tracker">Max tracker m</label>
+                        <input
+                          id="out-max-tracker"
+                          type="number"
+                          min="20"
+                          max="500"
+                          value={maxTrackerLength}
+                          onChange={(e) => setMaxTrackerLength(Number(e.target.value))}
+                        />
+                      </div>
+                    </div>
+                    <label className="checkbox-field layout-bifacial">
+                      <input
+                        type="checkbox"
+                        checked={excludeTrackerSlope}
+                        onChange={(e) => setExcludeTrackerSlope(e.target.checked)}
+                      />
+                      Exclude SAT zones above slope limit
+                    </label>
+                    <div className="field">
+                      <label htmlFor="out-slope-limit">SAT slope limit (%)</label>
+                      <input
+                        id="out-slope-limit"
+                        type="number"
+                        step="0.5"
+                        min="0.5"
+                        max="30"
+                        value={trackerSlopeLimit}
+                        onChange={(e) => setTrackerSlopeLimit(Number(e.target.value))}
+                        disabled={!excludeTrackerSlope}
+                      />
+                    </div>
+                  </>
+                ) : null}
                 {restrictionPolygons.length ? (
                   <p className="hint sidebar-hint">
                     {restrictionPolygons.length} manual no-build zone
@@ -1516,6 +1535,7 @@ export function OutputPage({
           {!selectedLayoutRow || !hasBoundary ? (
             <p className="hint sidebar-hint">Select a layout row and boundary for the full package.</p>
           ) : null}
+          {exportError ? <div className="error-banner">{exportError}</div> : null}
         </div>
 
         <div className="sidebar-group sidebar-score">
@@ -1646,9 +1666,28 @@ export function OutputPage({
                   </div>
                   <div className="gis-stat">
                     <span className="gis-stat-label">Land score</span>
-                    <strong>{scoreLandFromBuildablePct(gisResult.buildable_pct) ?? "—"}/100</strong>
+                    <strong>
+                      {(useFullBoundary
+                        ? scoreLandFromBuildablePct(100)
+                        : scoreLandFromBuildablePct(gisResult.buildable_pct)) ?? "—"}/100
+                    </strong>
                   </div>
                 </div>
+                <label className="checkbox-field gis-fullboundary-toggle">
+                  <input
+                    type="checkbox"
+                    checked={useFullBoundary}
+                    onChange={(e) => setUseFullBoundary(e.target.checked)}
+                  />
+                  Use full site boundary — ignore buildable exclusions in TopoIQ & LayoutIQ
+                </label>
+                {useFullBoundary ? (
+                  <p className="hint sidebar-hint">
+                    Exclusions are shown below for reference but will <strong>not</strong> be
+                    removed — TopoIQ and LayoutIQ will use the entire {gisResult.site_area_ha} ha
+                    boundary.
+                  </p>
+                ) : null}
                 {gisResult.constraint_summary.length > 0 ? (
                   <>
                     <p className="hint gis-setback-hint">
@@ -2025,10 +2064,17 @@ export function OutputPage({
                           mesh={terrain3D}
                           layoutGeoJson={layoutDetail?.geojson ?? null}
                           projectName={result.project_name || input?.project_name || "SiteIQ"}
+                          mountType={
+                            (selectedLayoutRow?.mount_type || input?.mount_type) ===
+                            "Single-Axis Tracker"
+                              ? "tracker"
+                              : "fixed"
+                          }
                         />
                         <p className="module-note">
-                          3D preview: blue module tables, posts, and torque tubes on the TopoIQ DEM (
-                          {terrain3D.terrain_source_used}). Use Export GLB for external 3D tools.
+                          3D preview of the selected {mountFilter === "sat" ? "tracker" : "fixed-tilt"}{" "}
+                          layout on the TopoIQ DEM ({terrain3D.terrain_source_used}). Use Export GLB
+                          for external 3D tools.
                         </p>
                       </>
                     ) : null}

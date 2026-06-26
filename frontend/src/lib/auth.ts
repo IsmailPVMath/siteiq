@@ -118,6 +118,23 @@ export async function signInWithPassword(
   return session;
 }
 
+export async function requestPasswordReset(email: string): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/v1/auth/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ email: email.trim() }),
+    });
+  } catch {
+    throw new Error("Could not reach the password reset service.");
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(String(data.detail || "Could not send reset email"));
+  }
+}
+
 export async function refreshSession(session: AuthSession): Promise<AuthSession> {
   if (!session.refresh_token) {
     throw new Error("Session expired — please sign in again.");

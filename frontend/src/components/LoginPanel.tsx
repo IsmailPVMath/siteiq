@@ -1,5 +1,10 @@
 import { FormEvent, useState } from "react";
-import { signInWithPassword, signUp, type AuthSession } from "../lib/auth";
+import {
+  requestPasswordReset,
+  signInWithPassword,
+  signUp,
+  type AuthSession,
+} from "../lib/auth";
 
 interface Props {
   onSignedIn: (session: AuthSession) => void;
@@ -27,6 +32,24 @@ export function LoginPanel({ onSignedIn }: Props) {
       onSignedIn(session);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign in failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleForgotPassword() {
+    setError("");
+    setInfo("");
+    if (!email.trim()) {
+      setError("Enter your email above, then tap “Forgot password?”.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await requestPasswordReset(email);
+      setInfo(`If an account exists for ${email.trim()}, a reset link is on its way.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not send reset email");
     } finally {
       setLoading(false);
     }
@@ -134,6 +157,14 @@ export function LoginPanel({ onSignedIn }: Props) {
             ) : (
               "Sign in"
             )}
+          </button>
+          <button
+            type="button"
+            className="auth-link-btn"
+            onClick={() => void handleForgotPassword()}
+            disabled={loading}
+          >
+            Forgot password?
           </button>
         </form>
       ) : (

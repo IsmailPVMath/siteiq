@@ -216,12 +216,16 @@ export interface Terrain3DScene {
   dispose: () => void;
 }
 
+export type MountKind = "fixed" | "tracker";
+
 export function buildTerrain3DScene(
   mesh: WorkflowTerrainMeshResponse,
   layoutGeoJson: GeoJSON.GeoJSON | null | undefined,
   sunHour: number,
-  options?: { showWireframe?: boolean },
+  options?: { showWireframe?: boolean; mountType?: MountKind },
 ): Terrain3DScene {
+  const mountType: MountKind = options?.mountType ?? "tracker";
+  const FIXED_TILT_DEG = 22;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color("#c8e6c9");
   scene.fog = new THREE.Fog("#c8e6c9", 500, 3200);
@@ -328,6 +332,55 @@ export function buildTerrain3DScene(
     const cos = Math.cos(row.angle);
     const sin = Math.sin(row.angle);
 
+    if (mountType === "fixed") {
+      // Fixed tilt: tables tilted toward the sun on front (short) + back (tall) legs.
+      const tiltRad = (FIXED_TILT_DEG * Math.PI) / 180;
+      const backExtra = Math.sin(tiltRad) * row.width;
+      const frontH = TABLE_CLEARANCE_M * 0.55;
+      const backH = frontH + backExtra;
+      // legs are offset along the row's transverse (width) axis
+      const tcos = Math.cos(row.angle + Math.PI / 2);
+      const tsin = Math.sin(row.angle + Math.PI / 2);
+      const halfW = row.width / 2;
+
+      const tableTops: THREE.Vector3[] = [];
+      for (const px of postXs) {
+        const baseLx = row.cx + px * cos;
+        const baseNorth = row.cy + px * sin;
+        for (const [off, h] of [
+          [-halfW, frontH],
+          [halfW, backH],
+        ] as const) {
+          const lx = baseLx + off * tcos;
+          const north = baseNorth + off * tsin;
+          const postGeo = new THREE.CylinderGeometry(0.06, 0.08, h, 8);
+          const post = new THREE.Mesh(postGeo, postMat);
+          post.castShadow = true;
+          post.receiveShadow = true;
+          post.position.copy(toThreePosition(lx, north, sampler(lx, north) + h / 2, terrainCenter));
+          pvGroup.add(post);
+          postCount += 1;
+        }
+        // table-top centre reference for this support
+        const groundZ = sampler(baseLx, baseNorth);
+        tableTops.push(
+          toThreePosition(baseLx, baseNorth, groundZ + (frontH + backH) / 2, terrainCenter),
+        );
+      }
+
+      const avgTop =
+        tableTops.reduce((acc, v) => acc.add(v), new THREE.Vector3()).multiplyScalar(1 / tableTops.length);
+      const tableGeo = new THREE.BoxGeometry(row.length, TABLE_THICKNESS_M, row.width);
+      const table = new THREE.Mesh(tableGeo, rowTableMat);
+      table.castShadow = true;
+      table.receiveShadow = false;
+      table.position.copy(avgTop);
+      table.rotation.y = -row.angle;
+      table.rotateX(-tiltRad);
+      pvGroup.add(table);
+      continue;
+    }
+
     const postTops: THREE.Vector3[] = [];
     for (const px of postXs) {
       const lx = row.cx + px * cos;
@@ -372,6 +425,12 @@ export function buildTerrain3DScene(
   }
 
   scene.add(pvGroup);
+
+  // XYZ orientation gizmo (red=E/X, green=up/Y, blue=N/Z) in a corner of the site.
+  const axisLen = Math.max(terrainSize.x, terrainSize.z) * 0.08;
+  const axes = new THREE.AxesHelper(axisLen);
+  axes.position.set(-terrainSize.x * 0.46, terrainSize.y * 0.1, terrainSize.z * 0.46);
+  scene.add(axes);
 
   const northArrow = new THREE.ArrowHelper(
     new THREE.Vector3(0, 0, -1),
