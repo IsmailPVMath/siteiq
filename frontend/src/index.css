@@ -1011,6 +1011,41 @@ a {
   align-items: start;
 }
 
+.results-shell-full {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.results-stage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
+  background: linear-gradient(135deg, #e8f8ee, #ffffff);
+  border: 1px solid #b8e6c8;
+  border-radius: var(--radius);
+}
+
+.results-stage-header h1 {
+  margin: 0 0 0.35rem;
+  font-size: 1.25rem;
+}
+
+.results-stage-header-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.stage-proceed-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
 /* Stage nav: one module in focus at a time */
 .stage-nav {
   display: flex;

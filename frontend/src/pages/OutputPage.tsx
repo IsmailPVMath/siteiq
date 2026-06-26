@@ -384,11 +384,22 @@ export function OutputPage({
   }
 
   useEffect(() => {
-    if (topoPayload && !topoResult && !topoBusy) {
-      void handleRunTopo();
-    }
+    if (activeStage !== "topo" || !topoPayload || topoResult || topoBusy) return;
+    void handleRunTopo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [topoPayload]);
+  }, [activeStage, topoPayload]);
+
+  function proceedToTopo() {
+    setActiveStage("topo");
+  }
+
+  function proceedToLayout() {
+    setActiveStage("layout");
+  }
+
+  function proceedToYield() {
+    setActiveStage("yield");
+  }
 
   async function handleTopoPdf() {
     if (!topoPayload) return;
@@ -592,7 +603,12 @@ export function OutputPage({
   const overallReady = overallScore != null;
 
   return (
-    <div className="workflow-page results-shell">
+    <div
+      className={`workflow-page results-shell${
+        activeStage === "screen" ? " results-shell-full" : ""
+      }`}
+    >
+      {activeStage !== "screen" ? (
       <aside className="results-sidebar">
         <div className="sidebar-project">
           <h1>{result.project_name}</h1>
@@ -601,6 +617,7 @@ export function OutputPage({
           </div>
         </div>
 
+        {activeStage === "topo" ? (
         <div className="sidebar-group">
           <h3>TopoIQ terrain</h3>
           {!hasBoundary ? (
@@ -612,10 +629,7 @@ export function OutputPage({
               <button
                 className="btn btn-primary btn-block"
                 type="button"
-                onClick={() => {
-                  setActiveStage("topo");
-                  void handleRunTopo();
-                }}
+                onClick={() => void handleRunTopo()}
                 disabled={topoBusy}
               >
                 {topoBusy ? "Running TopoIQ…" : topoResult ? "Re-run TopoIQ" : "Run TopoIQ"}
@@ -641,7 +655,9 @@ export function OutputPage({
             </>
           )}
         </div>
+        ) : null}
 
+        {activeStage === "layout" ? (
         <div className="sidebar-group">
           <h3>LayoutIQ strategy</h3>
           {!hasBoundary ? (
@@ -911,7 +927,10 @@ export function OutputPage({
             </>
           )}
         </div>
+        ) : null}
 
+        {activeStage === "yield" ? (
+        <>
         <div className="sidebar-group">
           <h3>YieldIQ</h3>
           {selectedLayoutRow ? (
@@ -970,12 +989,25 @@ export function OutputPage({
             </div>
           ) : (
             <p className="hint sidebar-hint">
-              {hasBoundary
-                ? "Run TopoIQ to compute the overall score (screening + authoritative terrain)."
-                : "Add a boundary and run TopoIQ for the overall score."}
+              Complete TopoIQ to compute the overall PVMath score.
             </p>
           )}
         </div>
+        </>
+        ) : null}
+
+        {activeStage === "topo" && overallReady ? (
+        <div className="sidebar-group sidebar-score">
+          <h3>Overall PVMath score</h3>
+          <div className="overall-score-body">
+            <span className="score-pill score-pill-lg">{overallScore}</span>
+            <div>
+              <strong>{finalScore?.verdict}</strong>
+              <p>{finalScore?.verdict_detail}</p>
+            </div>
+          </div>
+        </div>
+        ) : null}
 
         <div className="sidebar-actions">
           <button className="btn btn-ghost btn-block" type="button" onClick={onEditInput}>
@@ -986,8 +1018,27 @@ export function OutputPage({
           </button>
         </div>
       </aside>
+      ) : null}
 
       <div className="results-main">
+      {activeStage === "screen" ? (
+      <div className="results-stage-header">
+        <div>
+          <h1>{result.project_name}</h1>
+          <div className="coord-pill">
+            {result.coordinates.lat.toFixed(4)}°, {result.coordinates.lon.toFixed(4)}°
+          </div>
+        </div>
+        <div className="results-stage-header-actions">
+          <button className="btn btn-ghost btn-sm" type="button" onClick={onEditInput}>
+            Edit input
+          </button>
+          <button className="btn btn-ghost btn-sm" type="button" onClick={onNewScreening}>
+            New project
+          </button>
+        </div>
+      </div>
+      ) : null}
       {activeStage === "screen" ? (
       <section className="module-card module-screen">
         <div className="module-head">
@@ -1113,6 +1164,11 @@ export function OutputPage({
             buildable-area calculation.
           </p>
         )}
+        <div className="stage-proceed-bar">
+          <button className="btn btn-primary" type="button" onClick={proceedToTopo}>
+            Proceed to TopoIQ →
+          </button>
+        </div>
       </section>
       ) : null}
 
@@ -1132,7 +1188,7 @@ export function OutputPage({
             {topoBusy && !topoResult ? (
               <p className="hint">Running TopoIQ on your boundary grid…</p>
             ) : !topoResult ? (
-              <p className="hint">Use “Run TopoIQ” in the sidebar to analyse terrain.</p>
+              <p className="hint">TopoIQ runs automatically when you open this step.</p>
             ) : null}
             {topoResult ? (
               <>
@@ -1158,6 +1214,16 @@ export function OutputPage({
         )}
         {topoError ? <div className="error-banner">{topoError}</div> : null}
         {exportError ? <div className="error-banner">{exportError}</div> : null}
+        <div className="stage-proceed-bar">
+          <button
+            className="btn btn-primary"
+            type="button"
+            onClick={proceedToLayout}
+            disabled={!hasBoundary}
+          >
+            Proceed to LayoutIQ →
+          </button>
+        </div>
       </section>
       ) : null}
 
@@ -1173,13 +1239,13 @@ export function OutputPage({
           <>
             <p className="hint">
               Sweeps Fixed Tilt 1P–4P and Single-Axis Tracker 1P–2P across industry pitch/GCR
-              bands. Set the strategy in the sidebar, then run the sweep.
+              bands. Configure options in the sidebar, then run the sweep.
             </p>
             {!topoResult ? (
               <p className="module-note">TopoIQ should finish first — layout uses your boundary polygon.</p>
             ) : null}
             {!layoutSweep && !layoutBusy ? (
-              <p className="module-note">Run the layout sweep from the sidebar to see the capacity table.</p>
+              <p className="module-note">Run the layout sweep from the LayoutIQ sidebar.</p>
             ) : null}
             {layoutBusy ? <p className="hint">Running layout sweep…</p> : null}
             {layoutSweep && layoutConfigKeys.length > 0 ? (
@@ -1370,6 +1436,16 @@ export function OutputPage({
           </>
         )}
         {layoutError ? <div className="error-banner">{layoutError}</div> : null}
+        <div className="stage-proceed-bar">
+          <button
+            className="btn btn-primary"
+            type="button"
+            onClick={proceedToYield}
+            disabled={!selectedLayoutRow}
+          >
+            Proceed to YieldIQ →
+          </button>
+        </div>
       </section>
       ) : null}
 
@@ -1383,10 +1459,10 @@ export function OutputPage({
           <p className="hint">
             Using {selectedLayoutRow.label}, {selectedLayoutRow.pitch_m} m pitch, GCR{" "}
             {selectedLayoutRow.gcr.toFixed(2)}, and {selectedLayoutRow.dc_kwp?.toLocaleString()} kWp
-            DC from LayoutIQ. Run YieldIQ from the sidebar.
+            DC from LayoutIQ. Run YieldIQ from the YieldIQ sidebar.
           </p>
         ) : (
-          <p className="hint">Select a LayoutIQ row, then run YieldIQ from the sidebar.</p>
+          <p className="hint">Select a LayoutIQ row, then run YieldIQ from the YieldIQ sidebar.</p>
         )}
         {yieldResult ? (
           <div className="yield-table-wrap">
@@ -1426,17 +1502,6 @@ export function OutputPage({
         {yieldError ? <div className="error-banner">{yieldError}</div> : null}
       </section>
       ) : null}
-
-      <details className="raw-json">
-        <summary>Technical JSON</summary>
-        <pre>
-          {JSON.stringify(
-            { screening: result, topo: topoResult, score: finalScore, layoutSweep, layoutDetail },
-            null,
-            2,
-          )}
-        </pre>
-      </details>
 
       <p className="disclaimer footer-note">
         Screening-grade only — not bankable. Terrain from TopoIQ grid only. Data: PVGIS (JRC),
