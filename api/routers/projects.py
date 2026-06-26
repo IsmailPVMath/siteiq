@@ -53,16 +53,26 @@ def _parse_geometry(geojson_obj: dict[str, Any] | None) -> BaseGeometry | None:
 
 
 def _buildable_area(site_geojson: dict[str, Any], restrictions_geojson: dict[str, Any] | None):
-    site = _parse_geometry(site_geojson)
-    restrictions = _parse_geometry(restrictions_geojson)
-    if site is None:
+    try:
+        site = _parse_geometry(site_geojson)
+        restrictions = _parse_geometry(restrictions_geojson)
+        if site is None:
+            return None, 0.0
+        if not site.is_valid:
+            site = site.buffer(0)
+        if restrictions is not None and not restrictions.is_valid:
+            restrictions = restrictions.buffer(0)
+        buildable = site if restrictions is None else site.difference(restrictions)
+        if buildable.is_empty:
+            return None, 0.0
+        centroid_lat = float(buildable.centroid.y)
+        area_ha = (
+            buildable.area * (111320.0**2) * abs(math.cos(math.radians(centroid_lat)))
+        ) / 10_000.0
+        return buildable.__geo_interface__, round(area_ha, 2)
+    except Exception:
+        # Never let a malformed boundary block project save/update.
         return None, 0.0
-    buildable = site if restrictions is None else site.difference(restrictions)
-    if buildable.is_empty:
-        return None, 0.0
-    centroid_lat = float(buildable.centroid.y)
-    area_ha = (buildable.area * (111320.0**2) * abs(math.cos(math.radians(centroid_lat)))) / 10_000.0
-    return buildable.__geo_interface__, round(area_ha, 2)
 
 
 @router.get("/projects", response_model=list[ProjectRecord])

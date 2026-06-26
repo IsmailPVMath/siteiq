@@ -28,12 +28,38 @@ except ImportError:
 
 try:
     from shapely.geometry import Polygon as ShapelyPolygon
+    from shapely.geometry import shape as shapely_shape
     from shapely.ops import unary_union
     from shapely.vectorized import contains as shp_contains
 
     HAS_SHAPELY = True
 except ImportError:
     HAS_SHAPELY = False
+
+
+def _geojson_to_shapely(geojson: Any):
+    """Best-effort GeoJSON (geometry / Feature / FeatureCollection) → shapely."""
+    if not geojson or not HAS_SHAPELY:
+        return None
+    try:
+        gtype = geojson.get("type")
+        if gtype == "FeatureCollection":
+            geoms = [
+                _geojson_to_shapely(f.get("geometry"))
+                for f in geojson.get("features", [])
+            ]
+            geoms = [g for g in geoms if g is not None and not g.is_empty]
+            return unary_union(geoms) if geoms else None
+        if gtype == "Feature":
+            return _geojson_to_shapely(geojson.get("geometry"))
+        geom = shapely_shape(geojson)
+        if geom.is_empty:
+            return None
+        if not geom.is_valid:
+            geom = geom.buffer(0)
+        return geom
+    except Exception:
+        return None
 
 
 MAX_SITE_AREA_HA = 10_000
@@ -343,6 +369,7 @@ def run_topo_analysis(
     contour_minor: float = 0.5,
     contour_major: float = 1.0,
     progress_cb: Optional[Callable[[float, str], None]] = None,
+    mask_geojson: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     enabled_polys = [list(poly) for poly in polygons if poly and len(poly) >= 3]
     if not enabled_polys:
@@ -383,6 +410,17 @@ def run_topo_analysis(
         grid_m=float(grid_m),
         allow_coarsen=allow_coarsen,
     )
+
+    # Restrict analysis to the SiteIQ buildable area when supplied: cells outside
+    # the buildable geometry (e.g. building/road setback "red zones") become NaN
+    # so slope stats and the slope map reflect only buildable land.
+    if mask_geojson is not None and HAS_SHAPELY:
+        buildable = _geojson_to_shapely(mask_geojson)
+        if buildable is not None and not buildable.is_empty:
+            inside = shp_contains(buildable, X, Y)
+            if inside.any():
+                Z = np.where(inside, Z, np.nan)
+
     slope = compute_slope(Z, grid_m_used)
 
     if X.shape[0] < 2 or X.shape[1] < 2:

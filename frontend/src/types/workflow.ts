@@ -125,6 +125,7 @@ export interface WorkflowLayoutSweepRequest extends LayoutElectricalConfig {
   bifacial?: boolean;
   custom_gcr?: number;
   custom_pitch_m?: number;
+  mount_filter?: "all" | "fixed" | "sat";
 }
 
 export interface GcrGuidanceEntry {
@@ -215,6 +216,7 @@ export interface WorkflowTerrainMeshRequest {
   boundaries?: { lat: number; lon: number }[][];
   grid_m?: number;
   max_vertices?: number;
+  mask_geojson?: GeoJSON.GeoJSON | null;
 }
 
 export interface WorkflowTerrainMeshResponse {

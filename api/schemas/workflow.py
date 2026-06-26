@@ -114,6 +114,10 @@ class WorkflowLayoutSweepRequest(BaseModel):
     exclude_tracker_slope: bool = Field(default=False)
     tracker_slope_limit_pct: float = Field(default=6.0, ge=0.5, le=30.0)
     slope_restriction_grid_m: float = Field(default=20.0, ge=5.0, le=100.0)
+    mount_filter: Literal["all", "fixed", "sat"] = Field(
+        default="all",
+        description="Limit sweep to the mount type chosen in project setup.",
+    )
 
 
 class WorkflowLayoutSweepResponse(BaseModel):
@@ -175,6 +179,10 @@ class WorkflowTerrainMeshRequest(BaseModel):
     boundaries: Optional[List[List[BoundaryPoint]]] = None
     grid_m: float = Field(default=20.0, ge=5.0, le=100.0)
     max_vertices: int = Field(default=12_000, ge=1_000, le=40_000)
+    mask_geojson: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Optional SiteIQ buildable-area GeoJSON to clip terrain to buildable land.",
+    )
 
 
 class WorkflowTerrainMeshResponse(BaseModel):

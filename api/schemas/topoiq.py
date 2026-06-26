@@ -19,6 +19,10 @@ class TopoIQAnalyzeRequest(BaseModel):
     allow_coarsen: bool = False
     contour_minor: float = Field(default=0.5, gt=0)
     contour_major: float = Field(default=1.0, gt=0)
+    mask_geojson: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Optional SiteIQ buildable-area GeoJSON to clip terrain to buildable land.",
+    )
 
 
 class TopoIQVerdict(BaseModel):

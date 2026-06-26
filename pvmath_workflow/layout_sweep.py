@@ -100,6 +100,7 @@ def run_layout_sweep(
     strings_per_inv: int = 4,
     inv_ac_kw: float = 100.0,
     include_bom: bool = False,
+    mount_filter: str = "all",
 ) -> Dict[str, Any]:
     """
     Iterate mount/portrait × pitch across one or more site parcels.
@@ -151,6 +152,10 @@ def run_layout_sweep(
     recommended_by_config: Dict[str, Dict[str, Any]] = {}
 
     for config_key, label, n_portrait, tracker in _config_specs():
+        if mount_filter == "sat" and not tracker:
+            continue
+        if mount_filter == "fixed" and tracker:
+            continue
         row_ns = _row_ns_m(module_h, module_w, n_portrait, tracker)
         mount_type = "sat" if tracker else "fixed_tilt"
         mount_label = "Single-Axis Tracker" if tracker else "Fixed Tilt"

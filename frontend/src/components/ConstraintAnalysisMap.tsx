@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type * as GeoJSON from "geojson";
+import { googleSatelliteLayer } from "../lib/mapTiles";
 
 export interface LayerStyle {
   color: string;
@@ -16,12 +17,9 @@ interface Props {
   layerStyles?: Record<string, LayerStyle>;
   buildableArea?: GeoJSON.GeoJSON | null;
   excludedArea?: GeoJSON.GeoJSON | null;
-  /** Default: satellite + OSM street */
+  /** Default: Google satellite imagery. "osm" switches to OpenStreetMap streets. */
   baseLayer?: "osm" | "satellite" | "both";
 }
-
-const SAT_URL =
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 
 export function ConstraintAnalysisMap({
   lat,
@@ -54,13 +52,12 @@ export function ConstraintAnalysisMap({
     const map = L.map(containerRef.current, { zoomControl: true }).setView([lat, lon], 14);
     const bases = L.layerGroup().addTo(map);
     if (baseLayer === "satellite" || baseLayer === "both") {
-      L.tileLayer(SAT_URL, { attribution: "Esri", maxZoom: 19 }).addTo(bases);
+      googleSatelliteLayer().addTo(bases);
     }
-    if (baseLayer === "osm" || baseLayer === "both") {
+    if (baseLayer === "osm") {
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "&copy; OpenStreetMap",
         maxZoom: 19,
-        opacity: baseLayer === "both" ? 0.35 : 1,
       }).addTo(bases);
     }
     const overlays = L.layerGroup().addTo(map);

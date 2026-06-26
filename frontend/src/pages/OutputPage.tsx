@@ -301,6 +301,10 @@ export function OutputPage({
     return base;
   }
 
+  const buildableMask = gisResult?.success
+    ? (gisResult.buildable_area_geojson ?? null)
+    : null;
+
   const topoPayload: TopoIQAnalyzeRequest | null = useMemo(() => {
     if (!hasBoundary) return null;
     return {
@@ -312,8 +316,9 @@ export function OutputPage({
       allow_coarsen: topoAllowCoarsen,
       contour_minor: 0.5,
       contour_major: 1.0,
+      mask_geojson: buildableMask,
     };
-  }, [boundaries, hasBoundary, input, result.project_name, topoAllowCoarsen, topoGridM]);
+  }, [boundaries, hasBoundary, input, result.project_name, topoAllowCoarsen, topoGridM, buildableMask]);
 
   useEffect(() => {
     if (!hasBoundary) return;
@@ -420,6 +425,7 @@ export function OutputPage({
         boundaries,
         grid_m: 10,
         max_vertices: 40000,
+        mask_geojson: buildableMask,
       });
       setTopoMesh(mesh);
     } catch {
@@ -483,10 +489,12 @@ export function OutputPage({
       return;
     }
     if (topoAutoRan.current || !topoPayload || topoResult || topoBusy) return;
+    // Wait for SiteIQ GIS so TopoIQ can clip to the buildable area (red zones omitted).
+    if (gisBusy) return;
     topoAutoRan.current = true;
     void handleRunTopo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeStage, topoPayload, topoResult, topoBusy]);
+  }, [activeStage, topoPayload, topoResult, topoBusy, gisBusy]);
 
   function proceedToTopo() {
     setActiveStage("topo");
@@ -499,6 +507,22 @@ export function OutputPage({
   function proceedToYield() {
     setActiveStage("yield");
   }
+
+  function goBackStage() {
+    if (activeStage === "topo") setActiveStage("screen");
+    else if (activeStage === "layout") setActiveStage("topo");
+    else if (activeStage === "yield") setActiveStage("layout");
+    else onEditInput();
+  }
+
+  const backLabel =
+    activeStage === "topo"
+      ? "← Back to SiteIQ"
+      : activeStage === "layout"
+        ? "← Back to TopoIQ"
+        : activeStage === "yield"
+          ? "← Back to LayoutIQ"
+          : "← Edit input";
 
   async function handleTopoPdf() {
     if (!topoPayload) return;
@@ -558,6 +582,7 @@ export function OutputPage({
         country: input?.country || "",
         lat: result.coordinates.lat,
         bifacial: layoutBifacial,
+        mount_filter: mountFilter,
         ...layoutApiParams(),
       };
       if (layoutOptimization === "custom") {
@@ -697,6 +722,21 @@ export function OutputPage({
     if (!layoutSweep?.best_by_config) return [];
     return Object.keys(layoutSweep.best_by_config).sort();
   }, [layoutSweep]);
+
+  const mountFilter: "all" | "fixed" | "sat" =
+    input?.mount_type === "Single-Axis Tracker"
+      ? "sat"
+      : input?.mount_type === "Fixed Tilt"
+        ? "fixed"
+        : "all";
+
+  const yieldConfigEntries = useMemo(() => {
+    if (!yieldResult?.configs) return [];
+    const entries = Object.entries(yieldResult.configs);
+    if (mountFilter === "sat") return entries.filter(([key]) => /tracker/i.test(key));
+    if (mountFilter === "fixed") return entries.filter(([key]) => /fixed/i.test(key));
+    return entries;
+  }, [yieldResult, mountFilter]);
 
   const overallScore = finalScore?.pvmath_score;
   const overallReady = overallScore != null;
@@ -924,6 +964,12 @@ export function OutputPage({
           {renderSlopeAnalysisTable(topoResult)}
         </div>
         {disclaimer ? <p className="module-note slope-source-note">{disclaimer}</p> : null}
+        {buildableMask ? (
+          <p className="module-note slope-source-note">
+            Slope analysis is clipped to the SiteIQ <strong>buildable area</strong> — building, road
+            and water setback zones (red on SiteIQ) are excluded.
+          </p>
+        ) : null}
         <p className="module-note slope-source-note">
           Data sources: {terrainSrc} · PVGIS (JRC) for solar · OpenStreetMap for GIS constraints.
           Output grid is resampled for layout screening — not LiDAR-grade survey data.
@@ -956,6 +1002,35 @@ export function OutputPage({
             </p>
           ) : (
             <>
+              <details className="sidebar-advanced" open>
+                <summary>Terrain settings</summary>
+                <div className="field">
+                  <label htmlFor="topo-grid-m">Grid resolution</label>
+                  <select
+                    id="topo-grid-m"
+                    value={topoGridM}
+                    onChange={(e) => setTopoGridM(Number(e.target.value))}
+                  >
+                    <option value={3}>3 m — highest detail (small sites)</option>
+                    <option value={5}>5 m — high detail (default)</option>
+                    <option value={10}>10 m — balanced</option>
+                    <option value={20}>20 m — fast (large sites)</option>
+                    <option value={30}>30 m — coarse overview</option>
+                  </select>
+                </div>
+                <label className="checkbox-field layout-bifacial">
+                  <input
+                    type="checkbox"
+                    checked={topoAllowCoarsen}
+                    onChange={(e) => setTopoAllowCoarsen(e.target.checked)}
+                  />
+                  Auto-coarsen if the grid is too large
+                </label>
+                <p className="hint sidebar-hint">
+                  Finer grids give more accurate slope but take longer. Change a setting, then
+                  re-run.
+                </p>
+              </details>
               <button
                 className="btn btn-primary btn-block"
                 type="button"
@@ -1501,7 +1576,10 @@ export function OutputPage({
             buildable-area calculation.
           </p>
         )}
-        <div className="stage-proceed-bar">
+        <div className="stage-proceed-bar stage-proceed-bar-split">
+          <button className="btn btn-ghost" type="button" onClick={goBackStage}>
+            {backLabel}
+          </button>
           <button className="btn btn-primary" type="button" onClick={proceedToTopo}>
             Proceed to TopoIQ →
           </button>
@@ -1552,8 +1630,8 @@ export function OutputPage({
                   <br />
                   <strong>Source:</strong> {topoResult.terrain_source_used}
                 </div>
-                {renderTerrainDrivers(topoResult)}
                 {renderSlopeMap()}
+                {renderTerrainDrivers(topoResult)}
               </>
             ) : null}
           </>
@@ -1562,14 +1640,15 @@ export function OutputPage({
         {renderTopoRecovery()}
         {exportError ? <div className="error-banner">{exportError}</div> : null}
         <div className="stage-proceed-bar stage-proceed-bar-split">
+          <button className="btn btn-ghost" type="button" onClick={goBackStage}>
+            {backLabel}
+          </button>
           {topoError && !topoResult ? (
             <p className="hint stage-proceed-hint">
               You can continue to LayoutIQ without terrain — the PVMath score will be incomplete until
               TopoIQ succeeds.
             </p>
-          ) : (
-            <span />
-          )}
+          ) : null}
           <button
             className="btn btn-primary"
             type="button"
@@ -1791,7 +1870,10 @@ export function OutputPage({
           </>
         )}
         {layoutError ? <div className="error-banner">{layoutError}</div> : null}
-        <div className="stage-proceed-bar">
+        <div className="stage-proceed-bar stage-proceed-bar-split">
+          <button className="btn btn-ghost" type="button" onClick={goBackStage}>
+            {backLabel}
+          </button>
           <button
             className="btn btn-primary"
             type="button"
@@ -1838,7 +1920,7 @@ export function OutputPage({
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(yieldResult.configs).map(([cfg, payload]) => (
+                {yieldConfigEntries.map(([cfg, payload]) => (
                   <tr key={cfg}>
                     <td>{payload.display_name}</td>
                     <td>{Number(payload.spec_y).toFixed(0)} kWh/kWp/yr</td>
@@ -1855,6 +1937,12 @@ export function OutputPage({
           </div>
         ) : null}
         {yieldError ? <div className="error-banner">{yieldError}</div> : null}
+        <div className="stage-proceed-bar stage-proceed-bar-split">
+          <button className="btn btn-ghost" type="button" onClick={goBackStage}>
+            {backLabel}
+          </button>
+          <span />
+        </div>
       </section>
       ) : null}
 

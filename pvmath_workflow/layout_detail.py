@@ -33,20 +33,52 @@ def _config_from_key(config_key: str) -> Tuple[int, bool, str]:
     return n_portrait, tracker, f"{label} — {n_portrait}P"
 
 
-def _ring_xy_to_lonlat(poly: Any, ref_lat: float, ref_lon: float) -> List[List[float]]:
-    coords = list(poly.exterior.coords)
+def _ring_xy_to_lonlat(ring: Any, ref_lat: float, ref_lon: float) -> List[List[float]]:
+    coords = list(ring.coords)
     latlons = xy_to_latlon(coords, ref_lat, ref_lon)
     return [[round(lon, 8), round(lat, 8)] for lat, lon in latlons]
+
+
+def _polygon_rings(poly: Any, ref_lat: float, ref_lon: float) -> List[List[List[float]]]:
+    rings = [_ring_xy_to_lonlat(poly.exterior, ref_lat, ref_lon)]
+    for interior in poly.interiors:
+        rings.append(_ring_xy_to_lonlat(interior, ref_lat, ref_lon))
+    return rings
+
+
+def _geom_to_geojson(geom: Any, ref_lat: float, ref_lon: float) -> Optional[Dict[str, Any]]:
+    """Convert a shapely polygonal geometry to a GeoJSON geometry.
+
+    Handles Polygon, MultiPolygon and GeometryCollection (which can appear once
+    setbacks/restrictions split the buildable area into several pieces).
+    """
+    if geom is None or getattr(geom, "is_empty", True):
+        return None
+    gtype = geom.geom_type
+    if gtype == "Polygon":
+        return {"type": "Polygon", "coordinates": _polygon_rings(geom, ref_lat, ref_lon)}
+    if gtype in ("MultiPolygon", "GeometryCollection"):
+        polys = [
+            g
+            for g in geom.geoms
+            if getattr(g, "geom_type", "") == "Polygon" and not g.is_empty
+        ]
+        if not polys:
+            return None
+        if len(polys) == 1:
+            return {"type": "Polygon", "coordinates": _polygon_rings(polys[0], ref_lat, ref_lon)}
+        return {
+            "type": "MultiPolygon",
+            "coordinates": [_polygon_rings(p, ref_lat, ref_lon) for p in polys],
+        }
+    return None
 
 
 def _polygon_feature(poly: Any, ref_lat: float, ref_lon: float, props: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "type": "Feature",
         "properties": props,
-        "geometry": {
-            "type": "Polygon",
-            "coordinates": [_ring_xy_to_lonlat(poly, ref_lat, ref_lon)],
-        },
+        "geometry": _geom_to_geojson(poly, ref_lat, ref_lon),
     }
 
 

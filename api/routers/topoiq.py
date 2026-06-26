@@ -114,6 +114,7 @@ def _run_topo(body: TopoIQAnalyzeRequest) -> Dict[str, Any]:
         allow_coarsen=body.allow_coarsen,
         contour_minor=float(body.contour_minor),
         contour_major=float(body.contour_major),
+        mask_geojson=body.mask_geojson,
     )
 
 

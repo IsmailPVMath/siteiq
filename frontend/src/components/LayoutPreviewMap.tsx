@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type * as GeoJSON from "geojson";
+import { googleHybridLayer } from "../lib/mapTiles";
 
 interface Props {
   center: { lat: number; lon: number };
@@ -19,10 +20,7 @@ export function LayoutPreviewMap({ center, layoutGeoJson }: Props) {
       [center.lat, center.lon],
       15,
     );
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap",
-      maxZoom: 21,
-    }).addTo(map);
+    googleHybridLayer().addTo(map);
     mapRef.current = map;
     let raf = 0;
     const ro = new ResizeObserver(() => {

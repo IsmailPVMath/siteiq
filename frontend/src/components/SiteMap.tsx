@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css";
 import "leaflet-draw";
 import "leaflet-draw/dist/leaflet.draw.css";
 import type * as GeoJSON from "geojson";
+import { googleHybridLayer } from "../lib/mapTiles";
 
 export interface MapBoundary {
   lat: number;
@@ -117,10 +118,7 @@ export function SiteMap({
     if (!containerRef.current || mapRef.current) return;
 
     const map = L.map(containerRef.current, { zoomControl: true }).setView([lat, lon], 11);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap",
-      maxZoom: 19,
-    }).addTo(map);
+    googleHybridLayer().addTo(map);
 
     markerRef.current = L.marker([lat, lon], { icon: pinIcon, draggable: true }).addTo(map);
     markerRef.current.on("dragend", () => {

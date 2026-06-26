@@ -41,17 +41,31 @@ async function apiFetch<T>(
   init?: RequestInit,
   retried = false,
 ): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${token}`,
-      ...(init?.body && !(init.body instanceof FormData)
-        ? { "Content-Type": "application/json" }
-        : {}),
-      ...init?.headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      ...init,
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+        ...(init?.body && !(init.body instanceof FormData)
+          ? { "Content-Type": "application/json" }
+          : {}),
+        ...init?.headers,
+      },
+    });
+  } catch (err) {
+    // Network-level failure (Safari: "Load failed", Chrome: "Failed to fetch").
+    // Retry once with a freshly refreshed token in case the session went stale
+    // mid-request, otherwise surface an actionable message.
+    if (!retried && tokenRefresher) {
+      const fresh = await tokenRefresher();
+      if (fresh) return apiFetch<T>(path, fresh, init, true);
+    }
+    throw new Error(
+      "Network error — could not reach the PVMath server. Check your connection and try again.",
+    );
+  }
 
   const text = await res.text();
   let data: unknown = null;

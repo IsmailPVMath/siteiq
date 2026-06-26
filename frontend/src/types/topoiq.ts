@@ -7,6 +7,7 @@ export interface TopoIQAnalyzeRequest {
   allow_coarsen?: boolean;
   contour_minor?: number;
   contour_major?: number;
+  mask_geojson?: unknown;
 }
 
 export type TerrainDriverKind = "positive" | "warn" | "neutral";

@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import type { WorkflowTerrainMeshResponse } from "../types/workflow";
+import { googleSatelliteLayer } from "../lib/mapTiles";
 
 interface Props {
   mesh: WorkflowTerrainMeshResponse;
@@ -21,168 +24,164 @@ function slopeColor(slope: number): string {
   return SLOPE_STOPS[SLOPE_STOPS.length - 1].color;
 }
 
-function localXY(lat: number, lon: number, originLat: number, originLon: number) {
-  const mPerDegLat = 111_320;
-  const mPerDegLon = 111_320 * Math.cos((originLat * Math.PI) / 180);
-  return { x: (lon - originLon) * mPerDegLon, y: (lat - originLat) * mPerDegLat };
-}
-
 export function SlopeTopMap({ mesh, boundaries, height = 440 }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [opacity, setOpacity] = useState(0.6);
+  const opacityRef = useRef(opacity);
   const [hover, setHover] = useState<{ x: number; y: number; slope: number } | null>(null);
 
+  opacityRef.current = opacity;
+
+  // Convert mesh local-metre vertices to lat/lon once.
+  const latLngsRef = useRef<{ lat: number; lon: number }[]>([]);
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const wrap = wrapRef.current;
-    if (!canvas || !wrap) return;
-    const cv = canvas;
-    const wrapEl = wrap;
+    const mPerDegLat = 111_320;
+    const mPerDegLon = 111_320 * Math.cos((mesh.origin.lat * Math.PI) / 180);
+    latLngsRef.current = mesh.vertices.map(([x, y]) => ({
+      lat: mesh.origin.lat + y / mPerDegLat,
+      lon: mesh.origin.lon + x / mPerDegLon,
+    }));
+  }, [mesh]);
 
-    const vertices = mesh.vertices;
-    if (!vertices.length) return;
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return;
+    const map = L.map(containerRef.current, { zoomControl: true, attributionControl: false }).setView(
+      [mesh.origin.lat, mesh.origin.lon],
+      15,
+    );
+    googleSatelliteLayer().addTo(map);
+    mapRef.current = map;
 
-    let xMin = Infinity;
-    let xMax = -Infinity;
-    let yMin = Infinity;
-    let yMax = -Infinity;
-    for (const [x, y] of vertices) {
-      if (x < xMin) xMin = x;
-      if (x > xMax) xMax = x;
-      if (y < yMin) yMin = y;
-      if (y > yMax) yMax = y;
-    }
-    const dataW = Math.max(1, xMax - xMin);
-    const dataH = Math.max(1, yMax - yMin);
+    // Canvas overlay for slope triangles.
+    const canvas = L.DomUtil.create("canvas", "slope-overlay-canvas") as HTMLCanvasElement;
+    canvas.style.position = "absolute";
+    canvas.style.top = "0";
+    canvas.style.left = "0";
+    canvas.style.pointerEvents = "none";
+    canvas.style.zIndex = "400";
+    map.getContainer().appendChild(canvas);
+    canvasRef.current = canvas;
 
-    function draw() {
-      const ctx = cv.getContext("2d");
+    const latLngs = latLngsRef.current;
+
+    function redraw() {
+      const ctx = canvas.getContext("2d");
       if (!ctx) return;
-      const cssW = wrapEl.clientWidth || 600;
-      const cssH = height;
+      const size = map.getSize();
       const dpr = window.devicePixelRatio || 1;
-      cv.width = Math.round(cssW * dpr);
-      cv.height = Math.round(cssH * dpr);
-      cv.style.width = `${cssW}px`;
-      cv.style.height = `${cssH}px`;
+      canvas.width = Math.round(size.x * dpr);
+      canvas.height = Math.round(size.y * dpr);
+      canvas.style.width = `${size.x}px`;
+      canvas.style.height = `${size.y}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, cssW, cssH);
+      ctx.clearRect(0, 0, size.x, size.y);
+      ctx.globalAlpha = opacityRef.current;
 
-      const pad = 8;
-      const availW = cssW - pad * 2;
-      const availH = cssH - pad * 2;
-      const scale = Math.min(availW / dataW, availH / dataH);
-      const drawW = dataW * scale;
-      const drawH = dataH * scale;
-      const offX = pad + (availW - drawW) / 2;
-      const offY = pad + (availH - drawH) / 2;
-
-      const toScreen = (x: number, y: number): [number, number] => [
-        offX + (x - xMin) * scale,
-        offY + (yMax - y) * scale,
-      ];
-
-      ctx.fillStyle = "#eef1ee";
-      ctx.fillRect(offX, offY, drawW, drawH);
-
+      const pts = latLngs.map((p) => map.latLngToContainerPoint([p.lat, p.lon]));
       for (const face of mesh.faces) {
         const [a, b, c] = face;
-        const va = vertices[a];
-        const vb = vertices[b];
-        const vc = vertices[c];
-        if (!va || !vb || !vc) continue;
+        const pa = pts[a];
+        const pb = pts[b];
+        const pc = pts[c];
+        if (!pa || !pb || !pc) continue;
         const meanSlope =
           ((mesh.slopes[a] ?? 0) + (mesh.slopes[b] ?? 0) + (mesh.slopes[c] ?? 0)) / 3;
-        const [ax, ay] = toScreen(va[0], va[1]);
-        const [bx, by] = toScreen(vb[0], vb[1]);
-        const [cx, cy] = toScreen(vc[0], vc[1]);
         ctx.beginPath();
-        ctx.moveTo(ax, ay);
-        ctx.lineTo(bx, by);
-        ctx.lineTo(cx, cy);
+        ctx.moveTo(pa.x, pa.y);
+        ctx.lineTo(pb.x, pb.y);
+        ctx.lineTo(pc.x, pc.y);
         ctx.closePath();
         ctx.fillStyle = slopeColor(meanSlope);
         ctx.fill();
       }
-
-      const rings = boundaries && boundaries.length ? boundaries : [];
-      if (rings.length) {
-        ctx.lineWidth = 1.5;
-        ctx.strokeStyle = "#ffffff";
-        ctx.shadowColor = "rgba(0,0,0,0.5)";
-        ctx.shadowBlur = 2;
-        for (const ring of rings) {
-          if (ring.length < 2) continue;
-          ctx.beginPath();
-          ring.forEach((pt, i) => {
-            const loc = localXY(pt.lat, pt.lon, mesh.origin.lat, mesh.origin.lon);
-            const [sx, sy] = toScreen(loc.x, loc.y);
-            if (i === 0) ctx.moveTo(sx, sy);
-            else ctx.lineTo(sx, sy);
-          });
-          ctx.closePath();
-          ctx.stroke();
-        }
-        ctx.shadowBlur = 0;
-      }
+      ctx.globalAlpha = 1;
     }
 
-    draw();
-    const ro = new ResizeObserver(() => draw());
-    ro.observe(wrapEl);
+    redraw();
+    map.on("move zoom moveend zoomend resize viewreset", redraw);
 
-    function onMove(e: PointerEvent) {
-      const rect = cv.getBoundingClientRect();
-      const cssW = rect.width;
-      const cssH = rect.height;
-      const pad = 8;
-      const availW = cssW - pad * 2;
-      const availH = cssH - pad * 2;
-      const scale = Math.min(availW / dataW, availH / dataH);
-      const drawW = dataW * scale;
-      const drawH = dataH * scale;
-      const offX = pad + (availW - drawW) / 2;
-      const offY = pad + (availH - drawH) / 2;
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-      const dataX = (mx - offX) / scale + xMin;
-      const dataY = yMax - (my - offY) / scale;
-      if (dataX < xMin || dataX > xMax || dataY < yMin || dataY > yMax) {
-        setHover(null);
-        return;
-      }
+    // Boundary outline.
+    const rings = boundaries && boundaries.length ? boundaries : [];
+    let boundaryLayer: L.Polyline | null = null;
+    if (rings.length) {
+      boundaryLayer = L.polyline(
+        rings.map((ring) => ring.map((p) => [p.lat, p.lon] as [number, number])),
+        { color: "#ffffff", weight: 2, opacity: 0.95 },
+      ).addTo(map);
+      const b = boundaryLayer.getBounds();
+      if (b.isValid()) map.fitBounds(b, { padding: [24, 24] });
+    } else {
+      const latArr = latLngs.map((p) => p.lat);
+      const lonArr = latLngs.map((p) => p.lon);
+      map.fitBounds(
+        [
+          [Math.min(...latArr), Math.min(...lonArr)],
+          [Math.max(...latArr), Math.max(...lonArr)],
+        ],
+        { padding: [24, 24] },
+      );
+    }
+
+    function onMouseMove(e: L.LeafletMouseEvent) {
       let bestD = Infinity;
       let bestSlope = 0;
-      for (let i = 0; i < vertices.length; i += 1) {
-        const dx = vertices[i][0] - dataX;
-        const dy = vertices[i][1] - dataY;
-        const d = dx * dx + dy * dy;
+      for (let i = 0; i < latLngs.length; i += 1) {
+        const dLat = latLngs[i].lat - e.latlng.lat;
+        const dLon = latLngs[i].lon - e.latlng.lng;
+        const d = dLat * dLat + dLon * dLon;
         if (d < bestD) {
           bestD = d;
           bestSlope = mesh.slopes[i] ?? 0;
         }
       }
-      setHover({ x: mx, y: my, slope: bestSlope });
+      setHover({ x: e.containerPoint.x, y: e.containerPoint.y, slope: bestSlope });
     }
-    function onLeave() {
-      setHover(null);
-    }
-    cv.addEventListener("pointermove", onMove);
-    cv.addEventListener("pointerleave", onLeave);
+    map.on("mousemove", onMouseMove);
+    map.on("mouseout", () => setHover(null));
+
+    let raf = 0;
+    const ro = new ResizeObserver(() => {
+      window.cancelAnimationFrame(raf);
+      raf = window.requestAnimationFrame(() => {
+        map.invalidateSize();
+        redraw();
+      });
+    });
+    ro.observe(containerRef.current);
 
     return () => {
+      window.cancelAnimationFrame(raf);
       ro.disconnect();
-      cv.removeEventListener("pointermove", onMove);
-      cv.removeEventListener("pointerleave", onLeave);
+      map.off();
+      map.remove();
+      canvas.remove();
+      mapRef.current = null;
+      canvasRef.current = null;
     };
-  }, [mesh, boundaries, height]);
+  }, [mesh, boundaries]);
+
+  // Redraw when opacity slider changes.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (map) map.fire("viewreset");
+  }, [opacity]);
 
   return (
-    <div className="slope-top-map" ref={wrapRef}>
-      <canvas ref={canvasRef} className="slope-top-canvas" />
-      <div className="slope-top-north" aria-hidden="true">
-        <span className="slope-top-north-arrow">↑</span>
-        <span>N</span>
+    <div className="slope-top-map" style={{ height }}>
+      <div ref={containerRef} className="slope-top-leaflet" />
+      <div className="slope-top-controls">
+        <label htmlFor="slope-opacity">Slope overlay</label>
+        <input
+          id="slope-opacity"
+          type="range"
+          min="0"
+          max="1"
+          step="0.05"
+          value={opacity}
+          onChange={(e) => setOpacity(Number(e.target.value))}
+        />
       </div>
       <div className="slope-top-legend" aria-hidden="true">
         {SLOPE_STOPS.map((s) => (
@@ -193,10 +192,7 @@ export function SlopeTopMap({ mesh, boundaries, height = 440 }: Props) {
         ))}
       </div>
       {hover ? (
-        <div
-          className="slope-top-tooltip"
-          style={{ left: hover.x + 12, top: hover.y + 12 }}
-        >
+        <div className="slope-top-tooltip" style={{ left: hover.x + 12, top: hover.y + 12 }}>
           {hover.slope.toFixed(1)}% slope
         </div>
       ) : null}
