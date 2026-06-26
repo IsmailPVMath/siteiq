@@ -16,31 +16,10 @@ export const INPUT_METHOD_OPTIONS: {
   },
   {
     id: "kml",
-    title: "Upload KML",
+    title: "Upload KML / KMZ",
     description: "Import parcel boundaries from Google Earth or CAD exports.",
     accuracy: "Survey-grade polygons",
-    accept: ".kml",
-  },
-  {
-    id: "kmz",
-    title: "Upload KMZ",
-    description: "Compressed KML archive with multiple parcels.",
-    accuracy: "Survey-grade polygons",
-    accept: ".kmz",
-  },
-  {
-    id: "geojson",
-    title: "Upload GeoJSON",
-    description: "Import vector boundaries from GIS workflows.",
-    accuracy: "GIS-compatible",
-    accept: ".geojson,.json",
-  },
-  {
-    id: "shapefile",
-    title: "Upload Shapefile",
-    description: "Import .shp geometry from survey deliverables.",
-    accuracy: "Coming soon",
-    disabled: true,
+    accept: ".kml,.kmz",
   },
   {
     id: "paste",

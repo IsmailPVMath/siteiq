@@ -236,10 +236,7 @@ export function ProjectSetupPage({ token, initial, onSubmit }: Props) {
         incoming.reduce((a, b) => (b.area_ha > a.area_ha ? b : a)).enabled = true;
       }
       dispatch({ type: "set_parcels", parcels: incoming });
-      dispatch({
-        type: "set_input_method",
-        input_method: name.endsWith(".kmz") ? "kmz" : "kml",
-      });
+      dispatch({ type: "set_input_method", input_method: "kml" });
       applyPick(parsed.lat, parsed.lon);
       if (!draft.project_info.name || draft.project_info.name === "New project") {
         dispatch({ type: "set_info", project_info: { name: parsed.name } });
