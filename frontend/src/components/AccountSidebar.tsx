@@ -27,11 +27,12 @@ interface Props {
   profile: MeResponse | null;
   token: string;
   onLogout: () => void;
+  onCollapse?: () => void;
 }
 
 type Panel = "none" | "settings" | "membership";
 
-export function AccountSidebar({ email, profile, token, onLogout }: Props) {
+export function AccountSidebar({ email, profile, token, onLogout, onCollapse }: Props) {
   const [accountOpen, setAccountOpen] = useState(false);
   const [panel, setPanel] = useState<Panel>("none");
   const [currentPass, setCurrentPass] = useState("");
@@ -78,26 +79,39 @@ export function AccountSidebar({ email, profile, token, onLogout }: Props) {
 
   return (
     <aside className="account-sidebar">
-      <button
-        type="button"
-        className="account-sidebar-head account-head-btn"
-        onClick={() => setAccountOpen((o) => !o)}
-        aria-expanded={accountOpen}
-      >
-        <div className="account-avatar" aria-hidden>
-          {initials(email)}
-        </div>
-        <div className="account-identity">
-          <div className="account-email">{email}</div>
-          {usage ? (
-            <div className="account-plan">
-              {planLabel(usage.plan)}
-              {profile?.is_admin ? " · Admin" : ""}
-            </div>
-          ) : null}
-        </div>
-        <span className="account-caret">{accountOpen ? "▾" : "▸"}</span>
-      </button>
+      <div className="account-sidebar-head">
+        <button
+          type="button"
+          className="account-head-btn"
+          onClick={() => setAccountOpen((o) => !o)}
+          aria-expanded={accountOpen}
+        >
+          <div className="account-avatar" aria-hidden>
+            {initials(email)}
+          </div>
+          <div className="account-identity">
+            <div className="account-email">{email}</div>
+            {usage ? (
+              <div className="account-plan">
+                {planLabel(usage.plan)}
+                {profile?.is_admin ? " · Admin" : ""}
+              </div>
+            ) : null}
+          </div>
+          <span className="account-caret">{accountOpen ? "▾" : "▸"}</span>
+        </button>
+        {onCollapse ? (
+          <button
+            type="button"
+            className="account-collapse-btn"
+            onClick={onCollapse}
+            title="Hide panel"
+            aria-label="Hide account panel"
+          >
+            «
+          </button>
+        ) : null}
+      </div>
 
       {accountOpen ? (
         <div className="account-collapsible">
