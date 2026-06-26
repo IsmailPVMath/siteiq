@@ -119,6 +119,12 @@ export default function App() {
     return () => window.clearInterval(timer);
   }, [session, refreshCurrentSession]);
 
+  useEffect(() => {
+    // OutputPage sets a project-specific title while a project is open.
+    if (step === "output") return;
+    document.title = "SiteIQ by PVMath";
+  }, [step]);
+
   function handleSignedIn(next: AuthSession) {
     setSession(next);
     sessionRef.current = next;

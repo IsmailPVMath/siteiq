@@ -566,6 +566,16 @@ export function OutputPage({
   }, [token, result.coordinates?.lat, result.coordinates?.lon]);
 
   useEffect(() => {
+    const name = result.project_name || input?.project_name || "Project";
+    const where =
+      locationLabel ||
+      (result.coordinates
+        ? `${result.coordinates.lat.toFixed(3)}°, ${result.coordinates.lon.toFixed(3)}°`
+        : "");
+    document.title = where ? `${name} · ${where} — SiteIQ` : `${name} — SiteIQ`;
+  }, [result.project_name, input?.project_name, locationLabel, result.coordinates]);
+
+  useEffect(() => {
     if (initialTopo && boundaries.length && !topoMesh) {
       void fetchTopoMesh();
     }
