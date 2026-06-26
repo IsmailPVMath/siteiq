@@ -1943,11 +1943,14 @@ export function OutputPage({
                     )}
                     {terrain3D ? (
                       <>
-                        <Terrain3DView mesh={terrain3D} layoutGeoJson={layoutDetail?.geojson ?? null} />
+        <Terrain3DView
+                          mesh={terrain3D}
+                          layoutGeoJson={layoutDetail?.geojson ?? null}
+                          projectName={result.project_name || input?.project_name || "SiteIQ"}
+                        />
                         <p className="module-note">
-                          3D terrain uses a coarse TopoIQ DEM mesh from {terrain3D.terrain_source_used}.
-                          PV rows are draped above sampled terrain elevation; the sun slider is the
-                          first visual layer before full shading-loss simulation.
+                          3D preview: blue module tables, posts, and torque tubes on the TopoIQ DEM (
+                          {terrain3D.terrain_source_used}). Use Export GLB for external 3D tools.
                         </p>
                       </>
                     ) : null}

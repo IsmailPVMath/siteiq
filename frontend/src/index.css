@@ -609,6 +609,30 @@ a {
   margin-top: 1rem;
 }
 
+.terrain-3d-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.65rem;
+}
+
+.terrain-3d-toolbar .terrain-sun-controls {
+  flex: 1;
+  min-width: 220px;
+  margin-bottom: 0;
+}
+
+.terrain-wire-toggle {
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
 .terrain-sun-controls {
   display: flex;
   align-items: center;
