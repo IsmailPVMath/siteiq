@@ -4,10 +4,10 @@ import {
   analyzeTopo,
   analyzeYield,
   createProject,
+  partialUpdateProject,
   reverseGeocode,
   topoExportsZip,
   topoReportPdf,
-  updateProject,
   workflowGisAnalysis,
   workflowLayoutDetail,
   workflowLayoutDxf,
@@ -184,6 +184,7 @@ export function OutputPage({
   const [topoGridM, setTopoGridM] = useState(5);
   const [topoAllowCoarsen, setTopoAllowCoarsen] = useState(true);
   const topoAutoRan = useRef(Boolean(initialTopo));
+  const yieldAutoRan = useRef(false);
   const [topoPdfBusy, setTopoPdfBusy] = useState(false);
   const [topoZipBusy, setTopoZipBusy] = useState(false);
   const [topoMesh, setTopoMesh] = useState<WorkflowTerrainMeshResponse | null>(null);
@@ -205,6 +206,9 @@ export function OutputPage({
   const [layoutOptimization, setLayoutOptimization] = useState<LayoutOptimizationMode>("balanced");
   const [layoutLandCost, setLayoutLandCost] = useState<LayoutLandCost>("auto");
   const [layoutBifacial, setLayoutBifacial] = useState(false);
+  const [layoutMountType, setLayoutMountType] = useState<"Fixed Tilt" | "Single-Axis Tracker">(
+    "Fixed Tilt",
+  );
   const [layoutCustomGcr, setLayoutCustomGcr] = useState("");
   const [layoutCustomPitch, setLayoutCustomPitch] = useState("");
   const [moduleH, setModuleH] = useState(input?.module_h ?? DEFAULT_LAYOUT_CONFIG.module_h);
@@ -443,7 +447,7 @@ export function OutputPage({
     return {
       lat: result.coordinates.lat,
       lon: result.coordinates.lon,
-      mount_type: selectedLayoutRow?.mount_type || input?.mount_type || "Fixed Tilt",
+      mount_type: selectedLayoutRow?.mount_type || layoutMountType,
       gcr_1p: selectedIs1P && selectedGcr ? selectedGcr : 0.35,
       gcr_2p: !selectedIs1P && selectedGcr ? selectedGcr : 0.42,
       soiling_loss: 2.0,
@@ -531,7 +535,10 @@ export function OutputPage({
         Object.keys(gisSetbacks).length ? gisSetbacks : null,
       );
       const row = projectId
-        ? await updateProject(token, projectId, payload)
+        ? await partialUpdateProject(token, projectId, {
+            name: payload.name,
+            workflow: payload.workflow,
+          })
         : await createProject(token, payload);
       setProjectId(row.id);
       onProjectIdChange?.(row.id);
@@ -695,8 +702,7 @@ export function OutputPage({
     }
   }
 
-  async function handleRunYield() {
-    setActiveStage("yield");
+  async function runYieldAnalysis() {
     setYieldBusy(true);
     setYieldError("");
     try {
@@ -707,6 +713,17 @@ export function OutputPage({
       setYieldBusy(false);
     }
   }
+
+  useEffect(() => {
+    if (activeStage !== "yield") {
+      yieldAutoRan.current = false;
+      return;
+    }
+    if (yieldAutoRan.current || yieldResult || yieldBusy || !selectedLayoutRow) return;
+    yieldAutoRan.current = true;
+    void runYieldAnalysis();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStage, selectedLayoutRow, yieldResult, yieldBusy]);
 
   async function handleLayoutSweep() {
     if (!hasBoundary) return;
@@ -872,11 +889,7 @@ export function OutputPage({
   }, [layoutSweep]);
 
   const mountFilter: "all" | "fixed" | "sat" =
-    input?.mount_type === "Single-Axis Tracker"
-      ? "sat"
-      : input?.mount_type === "Fixed Tilt"
-        ? "fixed"
-        : "all";
+    layoutMountType === "Single-Axis Tracker" ? "sat" : "fixed";
 
   const overallScore = finalScore?.pvmath_score;
   const overallReady = overallScore != null;
@@ -1226,6 +1239,23 @@ export function OutputPage({
           ) : (
             <>
               <div className="field">
+                <label htmlFor="layout-mount-type">Mounting system</label>
+                <select
+                  id="layout-mount-type"
+                  value={layoutMountType}
+                  onChange={(e) =>
+                    setLayoutMountType(e.target.value as "Fixed Tilt" | "Single-Axis Tracker")
+                  }
+                >
+                  <option value="Fixed Tilt">Fixed Tilt</option>
+                  <option value="Single-Axis Tracker">Single-Axis Tracker</option>
+                </select>
+                <p className="hint sidebar-hint">
+                  Choose here — SiteIQ and TopoIQ run mount-agnostic; layout and yield use this
+                  selection.
+                </p>
+              </div>
+              <div className="field">
                 <label htmlFor="layout-opt-mode">Optimization mode</label>
                 <select
                   id="layout-opt-mode"
@@ -1529,13 +1559,16 @@ export function OutputPage({
           ) : (
             <p className="hint sidebar-hint">Select a layout row to enable yield.</p>
           )}
+          {yieldBusy && !yieldResult ? (
+            <p className="hint sidebar-hint">Running YieldIQ automatically…</p>
+          ) : null}
           <button
             className="btn btn-primary btn-block"
             type="button"
-            onClick={() => void handleRunYield()}
+            onClick={() => void runYieldAnalysis()}
             disabled={yieldBusy || !selectedLayoutRow}
           >
-            {yieldBusy ? "Running YieldIQ…" : "Run YieldIQ"}
+            {yieldBusy ? "Running YieldIQ…" : yieldResult ? "Re-run YieldIQ" : "Run YieldIQ"}
           </button>
         </div>
 
@@ -2095,12 +2128,7 @@ export function OutputPage({
                           mesh={terrain3D}
                           layoutGeoJson={layoutDetail?.geojson ?? null}
                           projectName={result.project_name || input?.project_name || "SiteIQ"}
-                          mountType={
-                            (selectedLayoutRow?.mount_type || input?.mount_type) ===
-                            "Single-Axis Tracker"
-                              ? "tracker"
-                              : "fixed"
-                          }
+                          mountType={layoutMountType === "Single-Axis Tracker" ? "tracker" : "fixed"}
                         />
                         <p className="module-note">
                           3D preview of the selected {mountFilter === "sat" ? "tracker" : "fixed-tilt"}{" "}
@@ -2138,11 +2166,14 @@ export function OutputPage({
         {selectedLayoutRow ? (
           <p className="hint">
             Using {selectedLayoutRow.label}, {selectedLayoutRow.pitch_m} m pitch, GCR{" "}
-            {selectedLayoutRow.gcr.toFixed(2)}, and {selectedLayoutRow.dc_kwp?.toLocaleString()} kWp
-            DC from LayoutIQ. Run YieldIQ from the YieldIQ sidebar.
+            {selectedLayoutRow.gcr.toFixed(2)}, and {selectedLayoutRow.dc_kwp?.toLocaleString(undefined, {
+              maximumFractionDigits: 3,
+            })}{" "}
+            kWp DC from LayoutIQ.
+            {yieldBusy ? " Running YieldIQ…" : yieldResult ? "" : " YieldIQ runs automatically when you open this step."}
           </p>
         ) : (
-          <p className="hint">Select a LayoutIQ row, then run YieldIQ from the YieldIQ sidebar.</p>
+          <p className="hint">Select a LayoutIQ row to run yield for that configuration.</p>
         )}
         {yieldResult ? (
           <YieldResultsPanel

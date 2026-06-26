@@ -146,6 +146,66 @@ def _available_row_length(
     return _line_length(poly_rot.intersection(sweep))
 
 
+def _row_band_segments(poly_rot: Polygon, y: float, row_ns: float) -> list[tuple[float, float]]:
+    """X-intervals where the row band intersects the buildable polygon (handles concave sites)."""
+    minx, _, maxx, _ = poly_rot.bounds
+    band = box(minx, y - 1e-6, maxx, y + row_ns + 1e-6)
+    clipped = poly_rot.intersection(band)
+    if clipped.is_empty:
+        return []
+    pieces: list[Polygon] = []
+    if clipped.geom_type == "Polygon":
+        pieces = [clipped]
+    elif clipped.geom_type == "MultiPolygon":
+        pieces = [g for g in clipped.geoms if not g.is_empty]
+    elif clipped.geom_type == "GeometryCollection":
+        pieces = [g for g in clipped.geoms if g.geom_type == "Polygon" and not g.is_empty]
+    segments: list[tuple[float, float]] = []
+    for piece in pieces:
+        x0, _, x1, _ = piece.bounds
+        if x1 - x0 > 1e-3:
+            segments.append((x0, x1))
+    return sorted(segments, key=lambda s: s[0])
+
+
+def _string_rects_in_segment(
+    *,
+    x_seg_min: float,
+    x_seg_max: float,
+    y: float,
+    row_ns: float,
+    n_strings: int,
+    modules_per_string: int,
+    module_w: float,
+    inter_string_gap_m: float,
+    is_tracker: bool,
+) -> list[Polygon]:
+    if n_strings < 1:
+        return []
+    string_len = modules_per_string * module_w
+    gap = max(0.0, inter_string_gap_m)
+    rects: list[Polygon] = []
+    if is_tracker:
+        x_cursor = x_seg_max
+        for _ in range(n_strings):
+            x1 = x_cursor
+            x0 = x1 - string_len
+            if x0 < x_seg_min - 1e-6:
+                break
+            rects.append(box(x0, y, x1, y + row_ns))
+            x_cursor = x0 - gap
+    else:
+        x_cursor = x_seg_min
+        for _ in range(n_strings):
+            x0 = x_cursor
+            x1 = x0 + string_len
+            if x1 > x_seg_max + 1e-6:
+                break
+            rects.append(box(x0, y, x1, y + row_ns))
+            x_cursor = x1 + gap
+    return rects
+
+
 def _string_rects_rotated(
     *,
     south_fence_x: float | None,
@@ -158,27 +218,24 @@ def _string_rects_rotated(
     inter_string_gap_m: float,
     is_tracker: bool,
 ) -> list[Polygon]:
-    """Solid string blocks in rotated coordinates (gaps not drawn)."""
-    if n_strings < 1:
-        return []
-    string_len = modules_per_string * module_w
-    gap = max(0.0, inter_string_gap_m)
-    rects: list[Polygon] = []
+    """Solid string blocks anchored at site fence (legacy single-segment path)."""
     if is_tracker:
-        x_cursor = south_fence_x if south_fence_x is not None else 0.0
-        for _ in range(n_strings):
-            x1 = x_cursor
-            x0 = x1 - string_len
-            rects.append(box(x0, y, x1, y + row_ns))
-            x_cursor = x0 - gap
+        x_max = south_fence_x if south_fence_x is not None else 0.0
+        x_min = x_max - 5000.0
     else:
-        x_cursor = west_fence_x if west_fence_x is not None else 0.0
-        for _ in range(n_strings):
-            x0 = x_cursor
-            x1 = x0 + string_len
-            rects.append(box(x0, y, x1, y + row_ns))
-            x_cursor = x1 + gap
-    return rects
+        x_min = west_fence_x if west_fence_x is not None else 0.0
+        x_max = x_min + 5000.0
+    return _string_rects_in_segment(
+        x_seg_min=x_min,
+        x_seg_max=x_max,
+        y=y,
+        row_ns=row_ns,
+        n_strings=n_strings,
+        modules_per_string=modules_per_string,
+        module_w=module_w,
+        inter_string_gap_m=inter_string_gap_m,
+        is_tracker=is_tracker,
+    )
 
 
 def _prepare_poly_inset(
@@ -292,15 +349,8 @@ def run_layout(
     rows_in_block = 0
 
     while y + row_ns <= maxy + 1e-6:
-        cy = y + row_ns / 2
-        avail_len = _available_row_length(
-            poly_rot,
-            south_fence_x=parcel_south,
-            west_fence_x=parcel_west,
-            cy=cy,
-            is_tracker=is_tracker,
-        )
-        if avail_len < module_w * modules_per_string * 0.5:
+        segments = _row_band_segments(poly_rot, y, row_ns)
+        if not segments:
             y += pitch
             rows_in_block += 1
             if use_blocks and rows_in_block >= rows_per_block:
@@ -308,74 +358,83 @@ def run_layout(
                 rows_in_block = 0
             continue
 
-        tracker_units: list[int] = []
-        if is_tracker:
-            tracker_units, actual_len = pack_tracker_units(
-                avail_len,
-                tracker_string_options=tracker_string_options or [8, 7, 6, 5],
-                max_tracker_length_m=max_tracker_length_m,
-                modules_per_string=modules_per_string,
-                module_w=module_w,
-                inter_string_gap_m=inter_string_gap_m,
-            )
-            n_strings = sum(tracker_units)
-        else:
-            n_strings = count_strings_in_length(
-                avail_len,
-                modules_per_string=modules_per_string,
-                module_w=module_w,
-                inter_string_gap_m=inter_string_gap_m,
-            )
-            actual_len = string_packed_length(
-                n_strings,
-                modules_per_string=modules_per_string,
-                module_w=module_w,
-                inter_string_gap_m=inter_string_gap_m,
-            )
+        for seg_min, seg_max in segments:
+            avail_len = seg_max - seg_min
+            if avail_len < module_w * modules_per_string * 0.5:
+                continue
 
-        if n_strings >= 1:
+            tracker_units: list[int] = []
             if is_tracker:
-                row_rect = box(parcel_south - actual_len, y, parcel_south, y + row_ns)
-            else:
-                row_rect = box(parcel_west, y, parcel_west + actual_len, y + row_ns)
-            row_clipped = row_rect.intersection(poly_rot)
-            if not row_clipped.is_empty and row_clipped.area > row_ns * module_w * 0.5:
-                row_orig = shp_rotate(row_clipped, -rot_angle, origin=origin)
-                if row_orig.geom_type == "Polygon":
-                    rows_polys.append(row_orig)
-                elif row_orig.geom_type == "MultiPolygon":
-                    rows_polys.extend(row_orig.geoms)
-
-                for srect in _string_rects_rotated(
-                    south_fence_x=parcel_south,
-                    west_fence_x=parcel_west,
-                    y=y,
-                    row_ns=row_ns,
-                    n_strings=n_strings,
+                tracker_units, actual_len = pack_tracker_units(
+                    avail_len,
+                    tracker_string_options=tracker_string_options or [8, 7, 6, 5, 4, 3, 2, 1],
+                    max_tracker_length_m=max_tracker_length_m,
                     modules_per_string=modules_per_string,
                     module_w=module_w,
                     inter_string_gap_m=inter_string_gap_m,
-                    is_tracker=is_tracker,
-                ):
-                    s_clipped = srect.intersection(poly_rot)
-                    if s_clipped.is_empty:
-                        continue
-                    s_orig = shp_rotate(s_clipped, -rot_angle, origin=origin)
-                    if s_orig.geom_type == "Polygon":
-                        string_polys.append(s_orig)
-                    elif s_orig.geom_type == "MultiPolygon":
-                        string_polys.extend(g for g in s_orig.geoms if not g.is_empty)
-
-                n_mod = n_strings * modules_per_string
-                rows_data.append(
-                    {
-                        "n_modules": n_mod,
-                        "n_strings": n_strings,
-                        "tracker_units": tracker_units,
-                        "length_m": round(actual_len, 2),
-                        "y_rot_m": round(y, 1),
-                    }
                 )
+                n_strings = sum(tracker_units)
+            else:
+                n_strings = count_strings_in_length(
+                    avail_len,
+                    modules_per_string=modules_per_string,
+                    module_w=module_w,
+                    inter_string_gap_m=inter_string_gap_m,
+                )
+                actual_len = string_packed_length(
+                    n_strings,
+                    modules_per_string=modules_per_string,
+                    module_w=module_w,
+                    inter_string_gap_m=inter_string_gap_m,
+                )
+
+            if n_strings < 1:
+                continue
+
+            if is_tracker:
+                row_rect = box(seg_max - actual_len, y, seg_max, y + row_ns)
+            else:
+                row_rect = box(seg_min, y, seg_min + actual_len, y + row_ns)
+            row_clipped = row_rect.intersection(poly_rot)
+            if row_clipped.is_empty or row_clipped.area <= row_ns * module_w * 0.5:
+                continue
+
+            row_orig = shp_rotate(row_clipped, -rot_angle, origin=origin)
+            if row_orig.geom_type == "Polygon":
+                rows_polys.append(row_orig)
+            elif row_orig.geom_type == "MultiPolygon":
+                rows_polys.extend(row_orig.geoms)
+
+            for srect in _string_rects_in_segment(
+                x_seg_min=seg_min,
+                x_seg_max=seg_max,
+                y=y,
+                row_ns=row_ns,
+                n_strings=n_strings,
+                modules_per_string=modules_per_string,
+                module_w=module_w,
+                inter_string_gap_m=inter_string_gap_m,
+                is_tracker=is_tracker,
+            ):
+                s_clipped = srect.intersection(poly_rot)
+                if s_clipped.is_empty:
+                    continue
+                s_orig = shp_rotate(s_clipped, -rot_angle, origin=origin)
+                if s_orig.geom_type == "Polygon":
+                    string_polys.append(s_orig)
+                elif s_orig.geom_type == "MultiPolygon":
+                    string_polys.extend(g for g in s_orig.geoms if not g.is_empty)
+
+            n_mod = n_strings * modules_per_string
+            rows_data.append(
+                {
+                    "n_modules": n_mod,
+                    "n_strings": n_strings,
+                    "tracker_units": tracker_units,
+                    "length_m": round(actual_len, 2),
+                    "y_rot_m": round(y, 1),
+                }
+            )
 
         y += pitch
         rows_in_block += 1

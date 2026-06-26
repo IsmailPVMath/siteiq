@@ -116,7 +116,7 @@ def create_project(body: ProjectUpsertRequest, user: AuthUser = Depends(get_curr
         _project_base(),
         json={"user_id": user.user_id, "project_data": payload},
         headers={**db_hdr(user.access_token), "Prefer": "return=representation"},
-        timeout=15,
+        timeout=60,
     )
     if r.status_code not in (200, 201):
         raise HTTPException(
@@ -172,7 +172,7 @@ def partial_update_project(
         params={"id": f"eq.{project_id}", "user_id": f"eq.{user.user_id}", "select": "*"},
         json={"project_data": merged},
         headers={**db_hdr(user.access_token), "Prefer": "return=representation"},
-        timeout=15,
+        timeout=60,
     )
     if r.status_code not in (200, 204):
         raise HTTPException(
@@ -207,7 +207,7 @@ def update_project(
         params={"id": f"eq.{project_id}", "user_id": f"eq.{user.user_id}", "select": "*"},
         json={"project_data": merged},
         headers={**db_hdr(user.access_token), "Prefer": "return=representation"},
-        timeout=15,
+        timeout=60,
     )
     if r.status_code not in (200, 204):
         raise HTTPException(

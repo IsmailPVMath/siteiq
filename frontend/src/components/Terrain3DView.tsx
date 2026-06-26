@@ -1,14 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { WorkflowTerrainMeshResponse } from "../types/workflow";
 import type * as GeoJSON from "geojson";
-import {
-  MAX_3D_ROWS,
-  buildTerrain3DScene,
-  exportSceneGlb,
-  parseLayoutRows,
-} from "../lib/terrain3dScene";
+import { MAX_3D_ROWS, buildTerrain3DScene, parseLayoutRows } from "../lib/terrain3dScene";
 
 interface Props {
   mesh: WorkflowTerrainMeshResponse;
@@ -17,25 +12,10 @@ interface Props {
   mountType?: "fixed" | "tracker";
 }
 
-function saveBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.rel = "noopener";
-  document.body.appendChild(a);
-  a.click();
-  window.setTimeout(() => {
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, 1500);
-}
-
-export function Terrain3DView({ mesh, layoutGeoJson, projectName = "SiteIQ", mountType = "tracker" }: Props) {
+export function Terrain3DView({ mesh, layoutGeoJson, mountType = "tracker" }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [sunHour, setSunHour] = useState(12);
   const [showWireframe, setShowWireframe] = useState(false);
-  const [exportBusy, setExportBusy] = useState(false);
 
   const rowCount = parseLayoutRows(layoutGeoJson ?? null, mesh.origin).length;
 
@@ -100,22 +80,6 @@ export function Terrain3DView({ mesh, layoutGeoJson, projectName = "SiteIQ", mou
     };
   }, [layoutGeoJson, mesh, showWireframe, sunHour, mountType]);
 
-  const handleExportGlb = useCallback(async () => {
-    setExportBusy(true);
-    try {
-      const built = buildTerrain3DScene(mesh, layoutGeoJson ?? null, sunHour, {
-        showWireframe,
-        mountType,
-      });
-      const blob = await exportSceneGlb(built.scene);
-      built.dispose();
-      const safe = projectName.replace(/\s+/g, "_").slice(0, 48);
-      saveBlob(blob, `${safe}_3D_Layout.glb`);
-    } finally {
-      setExportBusy(false);
-    }
-  }, [layoutGeoJson, mesh, projectName, showWireframe, sunHour, mountType]);
-
   return (
     <div className="terrain-3d-wrap">
       <div className="terrain-3d-toolbar">
@@ -141,14 +105,6 @@ export function Terrain3DView({ mesh, layoutGeoJson, projectName = "SiteIQ", mou
           />
           Terrain mesh wireframe
         </label>
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          onClick={() => void handleExportGlb()}
-          disabled={exportBusy}
-        >
-          {exportBusy ? "Exporting…" : "Export GLB"}
-        </button>
       </div>
       <div ref={containerRef} className="terrain-3d-view" aria-label="3D terrain view" />
       <div className="terrain-3d-meta">
@@ -166,9 +122,8 @@ export function Terrain3DView({ mesh, layoutGeoJson, projectName = "SiteIQ", mou
       </div>
       <p className="hint terrain-3d-note">
         {mountType === "fixed"
-          ? "3D: south-tilted fixed-tilt tables on front/back legs, soft shadows, XYZ gizmo (red=E, green=up, blue=N) + north arrow. Drag to orbit, scroll to zoom."
-          : "3D: blue module tables, galvanized posts, torque tubes, soft shadows, XYZ gizmo (red=E, green=up, blue=N) + north arrow. Drag to orbit, scroll to zoom."}{" "}
-        Export GLB for Blender / SketchUp / web viewers.
+          ? "3D preview: south-tilted fixed-tilt tables on front/back legs. Drag to orbit, scroll to zoom. XYZ gizmo: red=E, green=up, blue=N."
+          : "3D preview: module tables, posts, and torque tubes on terrain. Drag to orbit, scroll to zoom. XYZ gizmo: red=E, green=up, blue=N."}
       </p>
     </div>
   );

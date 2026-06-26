@@ -76,7 +76,7 @@ export function ProjectDetailsCard({
           </div>
         </div>
       </div>
-      <div className="grid-4">
+      <div className="grid-3">
         <div className="field">
           <label htmlFor="land">Project type</label>
           <select
@@ -86,17 +86,6 @@ export function ProjectDetailsCard({
           >
             <option value="Standard">Standard Ground Mount</option>
             <option value="Agri-PV">Agri-PV (Dual Use)</option>
-          </select>
-        </div>
-        <div className="field">
-          <label htmlFor="mount">Mounting</label>
-          <select
-            id="mount"
-            value={design_basis.mount_type}
-            onChange={(e) => onDesignChange({ mount_type: e.target.value })}
-          >
-            <option value="Fixed Tilt">Fixed Tilt</option>
-            <option value="Single-Axis Tracker">Single-Axis Tracker</option>
           </select>
         </div>
         <div className="field">

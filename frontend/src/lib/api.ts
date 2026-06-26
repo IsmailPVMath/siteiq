@@ -318,6 +318,17 @@ export function updateProject(token: string, id: string, body: ProjectPayload) {
   });
 }
 
+export function partialUpdateProject(
+  token: string,
+  id: string,
+  patch: Partial<ProjectPayload>,
+) {
+  return apiFetch<ProjectRecord>(`/api/v1/projects/${id}/partial`, token, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+}
+
 export function deleteProject(token: string, id: string) {
   return apiFetch<{ success: boolean }>(`/api/v1/projects/${id}`, token, {
     method: "DELETE",

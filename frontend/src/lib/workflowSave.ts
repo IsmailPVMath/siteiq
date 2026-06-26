@@ -14,6 +14,15 @@ export interface WorkflowRestore {
   gisSetbacks?: Record<string, number> | null;
 }
 
+export function slimTopoSnapshot(topo: TopoIQAnalyzeResponse | null | undefined): Record<string, unknown> | null {
+  if (!topo) return null;
+  const { extras: _extras, terrain_source: _ts, ...rest } = topo as TopoIQAnalyzeResponse & {
+    extras?: unknown;
+    terrain_source?: unknown;
+  };
+  return rest as unknown as Record<string, unknown>;
+}
+
 export function buildWorkflowSavePayload(
   input: GateAnalyzeRequest,
   screening: WorkflowScreenResponse,
@@ -31,7 +40,7 @@ export function buildWorkflowSavePayload(
       ...base.workflow,
       last_stage: lastStage,
       screening_snapshot: screening as unknown as Record<string, unknown>,
-      topo_snapshot: (topo ?? null) as unknown as Record<string, unknown> | null,
+      topo_snapshot: slimTopoSnapshot(topo),
       final_score_snapshot: (finalScore ?? null) as unknown as Record<string, unknown> | null,
       gis_setbacks_m: gisSetbacks ?? null,
       saved_at: new Date().toISOString(),
