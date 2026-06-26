@@ -83,10 +83,10 @@ Uses existing `pvmath_workflow/slope_restrictions.py` + `pvmath_topo_engine.py`.
 
 | Item | Status |
 |------|--------|
-| `land` score from buildable % (not hardcoded 72/80) | Planned |
+| `land` score from buildable % (not hardcoded 72/80) | Done |
 | Constraint summary in PVMath PDF report | Planned |
 | A3 layout sheet with constraint + buildable layers | Planned |
-| Pass buildable polygon to LayoutIQ as default build envelope | Planned |
+| Pass GIS exclusions to LayoutIQ as default build envelope | Done |
 
 ---
 

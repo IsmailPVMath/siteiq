@@ -36,6 +36,7 @@ import type {
   WorkflowScreenResponse,
   WorkflowTerrainMeshResponse,
 } from "../types/workflow";
+import type * as GeoJSON from "geojson";
 
 interface Props {
   token: string;
@@ -71,6 +72,69 @@ function saveBlob(blob: Blob, filename: string) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+type LatLonRing = { lat: number; lon: number }[];
+
+function scoreLandFromBuildablePct(pct?: number | null) {
+  if (pct == null || !Number.isFinite(pct)) return undefined;
+  if (pct >= 80) return 95;
+  if (pct >= 65) return 85;
+  if (pct >= 50) return 72;
+  if (pct >= 35) return 58;
+  if (pct >= 20) return 42;
+  return 25;
+}
+
+function ringFromLonLat(coords: GeoJSON.Position[]): LatLonRing | null {
+  const ring = coords
+    .map((p) => ({ lon: Number(p[0]), lat: Number(p[1]) }))
+    .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon));
+  if (ring.length < 3) return null;
+  return ring;
+}
+
+function geoJsonToLatLonRings(geo?: GeoJSON.GeoJSON | null): LatLonRing[] {
+  if (!geo) return [];
+  if (geo.type === "Feature") {
+    return geoJsonToLatLonRings(geo.geometry);
+  }
+  if (geo.type === "FeatureCollection") {
+    return geo.features.flatMap((feature) => geoJsonToLatLonRings(feature));
+  }
+  if (geo.type === "GeometryCollection") {
+    return geo.geometries.flatMap((geometry) => geoJsonToLatLonRings(geometry));
+  }
+  if (geo.type === "Polygon") {
+    return geo.coordinates
+      .map((ring) => ringFromLonLat(ring))
+      .filter((ring): ring is LatLonRing => !!ring);
+  }
+  if (geo.type === "MultiPolygon") {
+    return geo.coordinates.flatMap((poly) =>
+      poly
+        .map((ring) => ringFromLonLat(ring))
+        .filter((ring): ring is LatLonRing => !!ring),
+    );
+  }
+  return [];
+}
+
+function ringsToFeatureCollection(rings: LatLonRing[]): GeoJSON.FeatureCollection | null {
+  const features = rings
+    .filter((ring) => ring.length >= 3)
+    .map((ring, i) => {
+      const closed = ring[0] === ring[ring.length - 1] ? ring : [...ring, ring[0]];
+      return {
+        type: "Feature" as const,
+        properties: { id: `manual_${i}` },
+        geometry: {
+          type: "Polygon" as const,
+          coordinates: [closed.map((p) => [p.lon, p.lat])],
+        },
+      };
+    });
+  return features.length ? { type: "FeatureCollection", features } : null;
 }
 
 export function OutputPage({
@@ -161,6 +225,20 @@ export function OutputPage({
     [input?.restriction_polygons],
   );
   const hasBoundary = boundaries.length > 0;
+  const gisExcludedRings = useMemo(
+    () => geoJsonToLatLonRings(gisResult?.excluded_area_geojson ?? null),
+    [gisResult?.excluded_area_geojson],
+  );
+  const layoutRestrictionPolygons = useMemo(
+    () => (gisResult?.success && gisExcludedRings.length ? gisExcludedRings : restrictionPolygons),
+    [gisExcludedRings, gisResult?.success, restrictionPolygons],
+  );
+  const layoutUsesGisBuildable = !!(gisResult?.success && gisExcludedRings.length);
+  const landScoreFromGis = scoreLandFromBuildablePct(gisResult?.buildable_pct);
+  const scoreComponents = useMemo(() => {
+    if (landScoreFromGis == null) return result.score_components;
+    return { ...result.score_components, land: landScoreFromGis };
+  }, [landScoreFromGis, result.score_components]);
 
   function parseTrackerStringOptions() {
     const parsed = trackerStringOptions
@@ -213,7 +291,7 @@ export function OutputPage({
   }, [boundaries, hasBoundary, input, result.project_name]);
 
   useEffect(() => {
-    if (!hasBoundary || activeStage !== "screen") return;
+    if (!hasBoundary) return;
     let cancelled = false;
     async function runGis() {
       setGisBusy(true);
@@ -221,6 +299,7 @@ export function OutputPage({
       try {
         const data = await workflowGisAnalysis(token, {
           boundaries,
+          restriction_polygons_geojson: ringsToFeatureCollection(restrictionPolygons),
           include_grid: false,
         });
         if (!cancelled) setGisResult(data);
@@ -237,7 +316,7 @@ export function OutputPage({
     return () => {
       cancelled = true;
     };
-  }, [token, boundaries, hasBoundary, activeStage]);
+  }, [token, boundaries, hasBoundary, restrictionPolygons]);
 
   const selectedYieldConfigKey = useMemo(() => {
     if (!selectedLayoutRow) return null;
@@ -273,7 +352,7 @@ export function OutputPage({
     if (terrainScore == null) return;
     try {
       const scored = await workflowScore(token, {
-        score_components: result.score_components,
+        score_components: scoreComponents,
         terrain_score: terrainScore,
       });
       setFinalScore(scored);
@@ -281,6 +360,13 @@ export function OutputPage({
       setFinalScore(null);
     }
   }
+
+  useEffect(() => {
+    if (topoResult) {
+      void refreshFinalScore(topoResult);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scoreComponents, topoResult]);
 
   async function handleRunTopo() {
     if (!topoPayload) return;
@@ -355,7 +441,7 @@ export function OutputPage({
     try {
       const body: Parameters<typeof workflowLayoutSweep>[1] = {
         boundaries,
-        restriction_polygons: restrictionPolygons,
+        restriction_polygons: layoutRestrictionPolygons,
         include_bom: false,
         optimization_mode: layoutOptimization,
         land_cost: layoutLandCost,
@@ -389,7 +475,7 @@ export function OutputPage({
     return {
       project_name: result.project_name || "LayoutIQ",
       boundaries,
-      restriction_polygons: restrictionPolygons,
+      restriction_polygons: layoutRestrictionPolygons,
       config_key: row.config_key,
       pitch_m: row.pitch_m,
       ...layoutApiParams(),
@@ -477,7 +563,7 @@ export function OutputPage({
       const blob = await workflowProjectPackage(token, {
         ...reportPayload(),
         boundaries,
-        restriction_polygons: restrictionPolygons,
+        restriction_polygons: layoutRestrictionPolygons,
         config_key: selectedLayoutRow.config_key,
         pitch_m: selectedLayoutRow.pitch_m,
         ...layoutApiParams(),
@@ -704,6 +790,19 @@ export function OutputPage({
                     {restrictionPolygons.length === 1 ? "" : "s"} will be excluded.
                   </p>
                 ) : null}
+                {gisBusy ? (
+                  <p className="hint sidebar-hint">
+                    Preparing GIS buildable envelope before LayoutIQ…
+                  </p>
+                ) : layoutUsesGisBuildable ? (
+                  <p className="hint sidebar-hint">
+                    LayoutIQ will use SiteIQ buildable constraints ({gisResult?.buildable_pct}% buildable).
+                  </p>
+                ) : gisError ? (
+                  <p className="hint sidebar-hint">
+                    GIS constraints unavailable; LayoutIQ will use the submitted boundary.
+                  </p>
+                ) : null}
                 <div className="layout-road-tab-row">
                   <button
                     type="button"
@@ -742,7 +841,6 @@ export function OutputPage({
                           {p.label}
                         </option>
                       ))}
-                      <option value="custom">Custom</option>
                     </select>
                   </div>
                 )}
@@ -806,9 +904,9 @@ export function OutputPage({
                 className="btn btn-primary btn-block"
                 type="button"
                 onClick={() => void handleLayoutSweep()}
-                disabled={layoutBusy}
+                disabled={layoutBusy || gisBusy}
               >
-                {layoutBusy ? "Running layout sweep…" : "Run layout sweep"}
+                {layoutBusy ? "Running layout sweep…" : gisBusy ? "Preparing buildable area…" : "Run layout sweep"}
               </button>
             </>
           )}
@@ -964,6 +1062,10 @@ export function OutputPage({
                   <div className="gis-stat gis-stat-accent">
                     <span className="gis-stat-label">Buildable %</span>
                     <strong>{gisResult.buildable_pct}%</strong>
+                  </div>
+                  <div className="gis-stat">
+                    <span className="gis-stat-label">Land score</span>
+                    <strong>{scoreLandFromBuildablePct(gisResult.buildable_pct) ?? "—"}/100</strong>
                   </div>
                 </div>
                 {gisResult.constraint_summary.length > 0 ? (
