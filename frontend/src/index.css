@@ -1437,6 +1437,14 @@ a {
   max-width: none;
 }
 
+.app-layout-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app-layout-collapsed .app-main {
+  padding-left: 1.9rem;
+}
+
 .app-main {
   min-width: 0;
   display: flex;
@@ -1678,9 +1686,17 @@ body.sb-resizing {
 }
 
 .account-caret {
-  font-size: 0.75rem;
-  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1;
+  color: var(--accent-dark);
   flex-shrink: 0;
+  width: 1.6rem;
+  height: 1.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f0faf3;
 }
 
 .account-collapsible {
