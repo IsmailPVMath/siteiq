@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   analyzeTopo,
   analyzeYield,
@@ -137,6 +137,11 @@ function ringsToFeatureCollection(rings: LatLonRing[]): GeoJSON.FeatureCollectio
   return features.length ? { type: "FeatureCollection", features } : null;
 }
 
+function isTopoGridTooLarge(message: string) {
+  const m = message.toLowerCase();
+  return m.includes("too large") || m.includes("allow_coarsen") || m.includes("grid_m");
+}
+
 export function OutputPage({
   token,
   result,
@@ -151,6 +156,9 @@ export function OutputPage({
   const [topoBusy, setTopoBusy] = useState(false);
   const [topoError, setTopoError] = useState("");
   const [topoResult, setTopoResult] = useState<TopoIQAnalyzeResponse | null>(null);
+  const [topoGridM, setTopoGridM] = useState(5);
+  const [topoAllowCoarsen, setTopoAllowCoarsen] = useState(true);
+  const topoAutoRan = useRef(false);
   const [topoPdfBusy, setTopoPdfBusy] = useState(false);
   const [topoZipBusy, setTopoZipBusy] = useState(false);
   const [yieldBusy, setYieldBusy] = useState(false);
@@ -283,12 +291,12 @@ export function OutputPage({
       country: input?.country || "",
       land_use: input?.land_use || "Standard",
       polygons: boundaries.map((ring) => ring.map((p) => ({ lat: p.lat, lon: p.lon }))),
-      grid_m: 5,
-      allow_coarsen: false,
+      grid_m: topoGridM,
+      allow_coarsen: topoAllowCoarsen,
       contour_minor: 0.5,
       contour_major: 1.0,
     };
-  }, [boundaries, hasBoundary, input, result.project_name]);
+  }, [boundaries, hasBoundary, input, result.project_name, topoAllowCoarsen, topoGridM]);
 
   useEffect(() => {
     if (!hasBoundary) return;
@@ -368,13 +376,16 @@ export function OutputPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scoreComponents, topoResult]);
 
-  async function handleRunTopo() {
-    if (!topoPayload) return;
+  async function handleRunTopo(overrides?: Partial<TopoIQAnalyzeRequest>) {
+    const payload = topoPayload ? { ...topoPayload, ...overrides } : null;
+    if (!payload) return;
     setTopoBusy(true);
     setTopoError("");
     try {
-      const topo = await analyzeTopo(token, topoPayload);
+      const topo = await analyzeTopo(token, payload);
       setTopoResult(topo);
+      if (overrides?.grid_m != null) setTopoGridM(overrides.grid_m);
+      if (overrides?.allow_coarsen != null) setTopoAllowCoarsen(overrides.allow_coarsen);
       await refreshFinalScore(topo);
     } catch (err) {
       setTopoError(err instanceof Error ? err.message : "TopoIQ analysis failed");
@@ -383,11 +394,28 @@ export function OutputPage({
     }
   }
 
+  function runTopoAdaptiveGrid() {
+    setTopoAllowCoarsen(true);
+    setTopoGridM(5);
+    void handleRunTopo({ allow_coarsen: true, grid_m: 5 });
+  }
+
+  function runTopoFixedGrid(gridM: number) {
+    setTopoAllowCoarsen(false);
+    setTopoGridM(gridM);
+    void handleRunTopo({ allow_coarsen: false, grid_m: gridM });
+  }
+
   useEffect(() => {
-    if (activeStage !== "topo" || !topoPayload || topoResult || topoBusy) return;
+    if (activeStage !== "topo") {
+      topoAutoRan.current = false;
+      return;
+    }
+    if (topoAutoRan.current || !topoPayload || topoResult || topoBusy) return;
+    topoAutoRan.current = true;
     void handleRunTopo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeStage, topoPayload]);
+  }, [activeStage, topoPayload, topoResult, topoBusy]);
 
   function proceedToTopo() {
     setActiveStage("topo");
@@ -601,6 +629,48 @@ export function OutputPage({
 
   const overallScore = finalScore?.pvmath_score;
   const overallReady = overallScore != null;
+  const topoGridTooLarge = topoError ? isTopoGridTooLarge(topoError) : false;
+
+  function renderTopoRecovery(compact = false) {
+    if (!topoGridTooLarge) return null;
+    return (
+      <div className={`topo-recovery${compact ? " topo-recovery-compact" : ""}`}>
+        <p className="hint">
+          This site is large for a fine terrain grid. Pick an option — you are not blocked:
+        </p>
+        <div className="topo-recovery-actions">
+          <button
+            className="btn btn-primary"
+            type="button"
+            onClick={runTopoAdaptiveGrid}
+            disabled={topoBusy}
+          >
+            {topoBusy ? "Running…" : "Use adaptive grid (recommended)"}
+          </button>
+          <button
+            className="btn btn-ghost"
+            type="button"
+            onClick={() => runTopoFixedGrid(10)}
+            disabled={topoBusy}
+          >
+            10 m grid — more detail, slower
+          </button>
+          <button
+            className="btn btn-ghost"
+            type="button"
+            onClick={() => runTopoFixedGrid(15)}
+            disabled={topoBusy}
+          >
+            15 m grid — faster screening
+          </button>
+        </div>
+        <p className="hint topo-recovery-note">
+          Adaptive spacing uses the same DEM tiles but fewer sample points on very large boundaries —
+          best default for preliminary studies. Fixed 10 m keeps uniform spacing and takes longer.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -654,6 +724,7 @@ export function OutputPage({
               </div>
             </>
           )}
+          {renderTopoRecovery(true)}
         </div>
         ) : null}
 
@@ -1192,6 +1263,13 @@ export function OutputPage({
             ) : null}
             {topoResult ? (
               <>
+                {topoResult.grid_m_used > topoResult.grid_m_requested ? (
+                  <p className="module-note topo-grid-note">
+                    Grid coarsened to <strong>{topoResult.grid_m_used.toFixed(0)} m</strong> (requested{" "}
+                    {topoResult.grid_m_requested.toFixed(0)} m) for this boundary size — suitable for
+                    preliminary screening.
+                  </p>
+                ) : null}
                 <div className="metrics module-metrics">
                   {metric("Elev Range", `${topoResult.elevation.z_range.toFixed(0)} m`)}
                   {metric("Mean Slope", `${topoResult.slope.mean.toFixed(1)}%`)}
@@ -1213,15 +1291,24 @@ export function OutputPage({
           </>
         )}
         {topoError ? <div className="error-banner">{topoError}</div> : null}
+        {renderTopoRecovery()}
         {exportError ? <div className="error-banner">{exportError}</div> : null}
-        <div className="stage-proceed-bar">
+        <div className="stage-proceed-bar stage-proceed-bar-split">
+          {topoError && !topoResult ? (
+            <p className="hint stage-proceed-hint">
+              You can continue to LayoutIQ without terrain — the PVMath score will be incomplete until
+              TopoIQ succeeds.
+            </p>
+          ) : (
+            <span />
+          )}
           <button
             className="btn btn-primary"
             type="button"
             onClick={proceedToLayout}
             disabled={!hasBoundary}
           >
-            Proceed to LayoutIQ →
+            {topoResult ? "Proceed to LayoutIQ →" : "Continue without terrain →"}
           </button>
         </div>
       </section>

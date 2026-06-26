@@ -1046,6 +1046,59 @@ a {
   border-top: 1px solid var(--border);
 }
 
+.stage-proceed-bar-split {
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.stage-proceed-hint {
+  margin: 0;
+  flex: 1;
+  min-width: 200px;
+  font-size: 0.82rem;
+}
+
+.topo-recovery {
+  margin-top: 0.85rem;
+  padding: 0.85rem 1rem;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: var(--radius);
+}
+
+.topo-recovery-compact {
+  margin-top: 0.65rem;
+  padding: 0.65rem 0.75rem;
+}
+
+.topo-recovery-compact .topo-recovery-actions {
+  flex-direction: column;
+}
+
+.topo-recovery-compact .topo-recovery-actions .btn {
+  width: 100%;
+}
+
+.topo-recovery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.topo-recovery-note {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.topo-grid-note {
+  background: #f0faf3;
+  border-left: 3px solid var(--accent);
+  padding: 0.5rem 0.75rem;
+}
+
 /* Stage nav: one module in focus at a time */
 .stage-nav {
   display: flex;
