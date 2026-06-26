@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import io
 import os
 from functools import partial
@@ -123,6 +124,14 @@ def _analysis_response(body: TopoIQAnalyzeRequest, analysis: Dict[str, Any]) -> 
     elevation = _to_builtin(analysis["elevation"])
     extras = _to_builtin(analysis["extras"])
     terrain_drivers = _to_builtin(analysis["terrain_drivers"])
+    slope_map_png_data_url = None
+    try:
+        png_bytes = _render_slope_png(analysis)
+        encoded = base64.b64encode(png_bytes).decode("ascii")
+        slope_map_png_data_url = f"data:image/png;base64,{encoded}"
+    except Exception:
+        # Keep analysis usable even if the optional map renderer is unavailable.
+        slope_map_png_data_url = None
     return TopoIQAnalyzeResponse(
         project_name=body.project_name,
         country=body.country,
@@ -146,6 +155,7 @@ def _analysis_response(body: TopoIQAnalyzeRequest, analysis: Dict[str, Any]) -> 
         disclaimer=str(terrain_source.get("disclaimer", "Public DEM routing by region.")),
         bbox=_to_builtin(analysis["bbox"]),
         route_note=str(terrain_source.get("notes", "")) or None,
+        slope_map_png_data_url=slope_map_png_data_url,
     )
 
 
@@ -256,6 +266,67 @@ async def analyze_topoiq(
         increment_usage(user.user_id, TOPO_APP, user.access_token)
 
     return _analysis_response(body, analysis)
+
+
+def _render_slope_png(analysis: Dict[str, Any]) -> bytes:
+    bbox = analysis["bbox"]
+    buf = render_slope_map_png(
+        analysis["X"],
+        analysis["Y"],
+        analysis["Z"],
+        float(analysis["grid_m_used"]),
+        float(bbox["south"]),
+        float(bbox["north"]),
+        float(bbox["west"]),
+        float(bbox["east"]),
+        polygon_list=analysis["polygons"],
+    )
+    if buf is None:
+        raise RuntimeError("SLOPE_MAP_UNAVAILABLE")
+    return buf.getvalue()
+
+
+@router.post("/topoiq/slope-map")
+async def topoiq_slope_map(
+    body: TopoIQAnalyzeRequest,
+    _user: AuthUser = Depends(get_current_user),
+):
+    loop = asyncio.get_running_loop()
+    try:
+        analysis = await asyncio.wait_for(
+            loop.run_in_executor(None, partial(_run_topo, body)),
+            timeout=TOPO_TIMEOUT_SEC,
+        )
+        png_bytes = await asyncio.wait_for(
+            loop.run_in_executor(None, partial(_render_slope_png, analysis)),
+            timeout=TOPO_TIMEOUT_SEC,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=f"TopoIQ slope map timed out after {TOPO_TIMEOUT_SEC}s.",
+        )
+    except ValueError as exc:
+        detail = str(exc)
+        if detail == "GRID_TOO_LARGE":
+            raise HTTPException(status_code=422, detail="Boundary too large for selected grid spacing.")
+        raise HTTPException(status_code=422, detail=detail)
+    except RuntimeError as exc:
+        detail = str(exc)
+        if detail == "SLOPE_MAP_UNAVAILABLE":
+            raise HTTPException(
+                status_code=503,
+                detail="Slope map rendering is unavailable on this server (SciPy/Matplotlib missing).",
+            )
+        raise HTTPException(status_code=500, detail=f"TopoIQ slope map failed: {detail}")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"TopoIQ slope map failed: {exc}") from exc
+
+    return StreamingResponse(
+        io.BytesIO(png_bytes),
+        media_type="image/png",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @router.post("/topoiq/report-pdf")

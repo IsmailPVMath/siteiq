@@ -1099,6 +1099,141 @@ a {
   padding: 0.5rem 0.75rem;
 }
 
+/* Terrain drivers block (parity with Streamlit TopoIQ) */
+.terrain-drivers {
+  margin-top: 1rem;
+  border: 1px solid var(--border, #e2e6e2);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  background: #fbfdfb;
+}
+
+.terrain-drivers-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.terrain-drivers-tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent, #1d9e52);
+}
+
+.terrain-score {
+  font-size: 0.95rem;
+}
+
+.terrain-score em {
+  color: #5b6b5e;
+  font-style: normal;
+}
+
+.terrain-drivers-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.terrain-drivers-table th {
+  text-align: left;
+  background: #1d9e52;
+  color: #fff;
+  font-weight: 600;
+  padding: 0.4rem 0.6rem;
+}
+
+.terrain-drivers-table td {
+  padding: 0.38rem 0.6rem;
+  border-bottom: 1px solid #eef1ee;
+}
+
+.terrain-drivers-table tr:nth-child(even) td {
+  background: #f4f7f4;
+}
+
+.td-impact {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.td-positive {
+  color: #1d9e52;
+}
+
+.td-warn {
+  color: #c47d11;
+}
+
+.td-neutral {
+  color: #4a5a4d;
+}
+
+.terrain-why {
+  margin-top: 0.75rem;
+}
+
+.terrain-why-title {
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.terrain-why ul {
+  margin: 0.4rem 0 0;
+  padding-left: 0.2rem;
+  list-style: none;
+}
+
+.terrain-why li {
+  font-size: 0.85rem;
+  padding: 0.12rem 0;
+}
+
+.terrain-crossrow {
+  margin-top: 0.6rem;
+  font-size: 0.8rem;
+}
+
+/* Slope map (2D top view, satellite + slope overlay + N arrow) */
+.slope-map {
+  margin-top: 1rem;
+  border: 1px solid var(--border, #e2e6e2);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  background: #fbfdfb;
+}
+
+.slope-map-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.slope-map-legend {
+  font-size: 0.78rem;
+  color: #5b6b5e;
+}
+
+.slope-map-canvas {
+  width: 100%;
+}
+
+.slope-map-canvas img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid #e2e6e2;
+}
+
 /* Stage nav: one module in focus at a time */
 .stage-nav {
   display: flex;

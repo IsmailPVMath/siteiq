@@ -672,6 +672,85 @@ export function OutputPage({
     );
   }
 
+  function renderTerrainDrivers(topo: TopoIQAnalyzeResponse) {
+    const td = topo.terrain_drivers;
+    if (!td || typeof td.terrain_score !== "number") return null;
+    const drivers = Array.isArray(td.drivers) ? td.drivers : [];
+    const why = Array.isArray(td.why_bullets) ? td.why_bullets : [];
+    const ex = (topo.extras ?? {}) as Record<string, unknown>;
+    const crMean = typeof ex.cross_row_mean === "number" ? ex.cross_row_mean : null;
+    const crP95 = typeof ex.cross_row_p95 === "number" ? ex.cross_row_p95 : null;
+    const kindIcon = (k: string) =>
+      k === "positive" ? "✓" : k === "warn" ? "⚠" : "•";
+    return (
+      <div className="terrain-drivers">
+        <div className="terrain-drivers-head">
+          <span className="terrain-drivers-tag">Terrain drivers</span>
+          <span className="terrain-score">
+            Terrain Score: <strong>{td.terrain_score}/100</strong>{" "}
+            {td.terrain_score_label ? <em>({td.terrain_score_label})</em> : null}
+          </span>
+        </div>
+        {drivers.length > 0 ? (
+          <table className="terrain-drivers-table">
+            <thead>
+              <tr>
+                <th>Driver</th>
+                <th>Impact</th>
+              </tr>
+            </thead>
+            <tbody>
+              {drivers.map(([driver, impact, kind], i) => (
+                <tr key={i}>
+                  <td>{driver}</td>
+                  <td className={`td-impact td-${kind}`}>
+                    {kindIcon(kind)} {impact}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : null}
+        {why.length > 0 ? (
+          <div className="terrain-why">
+            <span className="terrain-why-title">Why this verdict?</span>
+            <ul>
+              {why.map(([kind, text], i) => (
+                <li key={i} className={`td-${kind}`}>
+                  {kindIcon(kind)} {text}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {crMean !== null || crP95 !== null ? (
+          <p className="module-note terrain-crossrow">
+            <strong>Cross-row slope (tracker screening):</strong>{" "}
+            {crMean !== null ? `mean ${crMean.toFixed(1)}%` : ""}
+            {crMean !== null && crP95 !== null ? " · " : ""}
+            {crP95 !== null ? `95th pctile ${crP95.toFixed(1)}%` : ""}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  function renderSlopeMap() {
+    const slopeMapUrl = topoResult?.slope_map_png_data_url;
+    if (!slopeMapUrl) return null;
+    return (
+      <div className="slope-map">
+        <div className="slope-map-head">
+          <span className="terrain-drivers-tag">Slope map · top view</span>
+          <span className="slope-map-legend">green &lt;3% · red &gt;10%</span>
+        </div>
+        <div className="slope-map-canvas">
+          <img src={slopeMapUrl} alt="Slope map: top view with satellite basemap and north arrow" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`workflow-page results-shell${
@@ -1116,7 +1195,6 @@ export function OutputPage({
           <h2>Site screening</h2>
           <span className="module-tag">Step 1</span>
         </div>
-        <p className="hint">{result.terrain_note}</p>
         <div className="metrics">
           {metric(
             "Solar",
@@ -1147,9 +1225,10 @@ export function OutputPage({
             String(result.regulatory.note ?? ""),
           )}
         </div>
+        <p className="module-note">{result.terrain_note}</p>
         <p className="module-note">
-          Capacity is computed precisely in LayoutIQ below (per mount type, portrait, and GCR) —
-          not estimated here.
+          Capacity is computed in LayoutIQ in the next steps (per mount type, portrait,
+          and GCR) — not estimated here.
         </p>
         {grid.disclaimer ? <p className="module-note">{String(grid.disclaimer)}</p> : null}
         {result.errors.length > 0 ? (
@@ -1286,6 +1365,8 @@ export function OutputPage({
                   <br />
                   <strong>Source:</strong> {topoResult.terrain_source_used}
                 </div>
+                {renderTerrainDrivers(topoResult)}
+                {renderSlopeMap()}
               </>
             ) : null}
           </>

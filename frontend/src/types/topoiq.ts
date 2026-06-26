@@ -9,6 +9,15 @@ export interface TopoIQAnalyzeRequest {
   contour_major?: number;
 }
 
+export type TerrainDriverKind = "positive" | "warn" | "neutral";
+
+export interface TerrainDrivers {
+  terrain_score: number;
+  terrain_score_label: string;
+  drivers: Array<[string, string, TerrainDriverKind]>;
+  why_bullets: Array<[TerrainDriverKind, string]>;
+}
+
 export interface TopoIQAnalyzeResponse {
   project_name: string;
   country: string;
@@ -37,12 +46,13 @@ export interface TopoIQAnalyzeResponse {
   extras: Record<string, unknown>;
   verdict_fixed: { label: string; detail: string };
   verdict_tracker: { label: string; detail: string };
-  terrain_drivers: Record<string, unknown>;
+  terrain_drivers: TerrainDrivers;
   contour_minor: number;
   contour_major: number;
   disclaimer: string;
   bbox: { lat_c: number; lon_c: number };
   route_note?: string | null;
+  slope_map_png_data_url?: string | null;
 }
 
 export interface YieldIQAnalyzeRequest {
