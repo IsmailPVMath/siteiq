@@ -7,7 +7,6 @@ pages_build_output_dir = "frontend/dist"
 # Build output directory: frontend/dist
 # Production environment variable: VITE_API_URL=https://api.pvmath.com
 #
-# Custom domain (replace Streamlit at siteiq.pvmath.com):
-# Cloudflare Pages → pvmath-react → Custom domains → add siteiq.pvmath.com
-# Then update Namecheap DNS: CNAME siteiq → pvmath-react.pages.dev (or CF auto target)
-# Remove or repoint the old Railway CNAME when ready to cut over.
+# Custom domain (React app — Streamlit stays on siteiq.pvmath.com until cutover):
+# Cloudflare Pages → pvmath-react → Custom domains → app.pvmath.com
+# Namecheap DNS: CNAME app → pvmath-react.pages.dev

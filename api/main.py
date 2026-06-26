@@ -83,8 +83,8 @@ def create_app() -> FastAPI:
     origins = os.environ.get(
         "PVMATH_CORS_ORIGINS",
         "http://localhost:5173,http://localhost:3000,"
-        "https://siteiq.pvmath.com,https://topoiq.pvmath.com,https://pvmath.com,"
-        "https://api.pvmath.com,https://pvmath-react.pages.dev",
+        "https://siteiq.pvmath.com,https://topoiq.pvmath.com,https://app.pvmath.com,"
+        "https://pvmath.com,https://api.pvmath.com,https://pvmath-react.pages.dev",
     )
     app.add_middleware(
         CORSMiddleware,
