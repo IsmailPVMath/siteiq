@@ -12,12 +12,18 @@ from shapely.geometry.base import BaseGeometry
 from shapely.ops import unary_union
 
 from api.deps import get_current_user
+from api.schemas.project_setup import (
+    ProjectPartialUpdateRequest,
+    ProjectSetupValidateRequest,
+    ProjectSetupValidateResponse,
+)
 from api.schemas.projects import (
     BuildableAreaRequest,
     BuildableAreaResponse,
     ProjectRecord,
     ProjectUpsertRequest,
 )
+from pvmath_project_setup import merge_project_data, normalize_legacy_project_data, validate_project_data
 from pvmath_supabase import AuthUser, db_hdr, sb_url
 
 router = APIRouter(tags=["projects"])
@@ -110,24 +116,66 @@ def get_project(project_id: str, user: AuthUser = Depends(get_current_user)):
     return rows[0]
 
 
+@router.post("/projects/validate", response_model=ProjectSetupValidateResponse)
+def validate_setup(body: ProjectSetupValidateRequest, _user: AuthUser = Depends(get_current_user)):
+    data = normalize_legacy_project_data(body.project_data or {})
+    result = validate_project_data(data)
+    return result
+
+
+@router.patch("/projects/{project_id}/partial", response_model=ProjectRecord)
+def partial_update_project(
+    project_id: str,
+    body: ProjectPartialUpdateRequest,
+    user: AuthUser = Depends(get_current_user),
+):
+    existing = get_project(project_id, user)
+    current = normalize_legacy_project_data(existing.project_data or {})
+    patch = {k: v for k, v in body.model_dump(exclude_none=True).items()}
+    merged = merge_project_data(current, patch)
+    buildable_geo, buildable_ha = _buildable_area(
+        merged.get("site_boundary_geojson") or {},
+        merged.get("restriction_polygons_geojson"),
+    )
+    merged["buildable_area_geojson"] = buildable_geo or merged.get("buildable_area_geojson")
+    merged.setdefault("workflow", {})
+    merged["workflow"]["buildable_area_ha"] = buildable_ha
+    r = requests.patch(
+        _project_base(),
+        params={"id": f"eq.{project_id}", "user_id": f"eq.{user.user_id}", "select": "*"},
+        json={"project_data": merged},
+        headers={**db_hdr(user.access_token), "Prefer": "return=representation"},
+        timeout=15,
+    )
+    if r.status_code not in (200, 204):
+        raise HTTPException(status_code=500, detail="Could not update project")
+    rows = r.json() or []
+    if not rows:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return rows[0]
+
+
 @router.patch("/projects/{project_id}", response_model=ProjectRecord)
 def update_project(
     project_id: str,
     body: ProjectUpsertRequest,
     user: AuthUser = Depends(get_current_user),
 ):
+    existing = get_project(project_id, user)
+    current = normalize_legacy_project_data(existing.project_data or {})
+    patch = normalize_legacy_project_data(body.model_dump())
+    merged = merge_project_data(current, patch)
     buildable_geo, buildable_ha = _buildable_area(
-        body.site_boundary_geojson or {},
-        body.restriction_polygons_geojson,
+        merged.get("site_boundary_geojson") or {},
+        merged.get("restriction_polygons_geojson"),
     )
-    payload = body.model_dump()
-    payload["buildable_area_geojson"] = buildable_geo or payload.get("buildable_area_geojson")
-    payload.setdefault("workflow", {})
-    payload["workflow"]["buildable_area_ha"] = buildable_ha
+    merged["buildable_area_geojson"] = buildable_geo or merged.get("buildable_area_geojson")
+    merged.setdefault("workflow", {})
+    merged["workflow"]["buildable_area_ha"] = buildable_ha
     r = requests.patch(
         _project_base(),
         params={"id": f"eq.{project_id}", "user_id": f"eq.{user.user_id}", "select": "*"},
-        json={"project_data": payload},
+        json={"project_data": merged},
         headers={**db_hdr(user.access_token), "Prefer": "return=representation"},
         timeout=15,
     )

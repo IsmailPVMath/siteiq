@@ -1,14 +1,22 @@
-import { useCallback, useEffect, useState } from "react";
-import { Header } from "./components/Header";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AppShell } from "./components/AppShell";
 import { LoginPanel } from "./components/LoginPanel";
-import { Stepper } from "./components/Stepper";
-import { InputPage } from "./pages/InputPage";
+import { ProjectSetupPage } from "./pages/ProjectSetupPage";
 import { OutputPage } from "./pages/OutputPage";
 import { ProcessingPage } from "./pages/ProcessingPage";
 import { fetchMe, runWorkflowScreen } from "./lib/api";
 import { loadSession, signOut, type AuthSession } from "./lib/auth";
 import type { GateAnalyzeRequest, MeResponse } from "./types/gate";
-import type { WorkflowScreenResponse, WorkflowStep } from "./types/workflow";
+import type {
+  OutputModuleStage,
+  PipelineStage,
+  WorkflowScreenResponse,
+  WorkflowStep,
+} from "./types/workflow";
+import {
+  outputModuleFromPipeline,
+  pipelineFromOutputModule,
+} from "./types/workflow";
 
 export default function App() {
   const [session, setSession] = useState<AuthSession | null>(null);
@@ -18,6 +26,7 @@ export default function App() {
   const [lastInput, setLastInput] = useState<GateAnalyzeRequest | null>(null);
   const [error, setError] = useState("");
   const [result, setResult] = useState<WorkflowScreenResponse | null>(null);
+  const [outputModule, setOutputModule] = useState<OutputModuleStage>("screen");
 
   const loadProfile = useCallback(async (accessToken: string) => {
     try {
@@ -46,14 +55,50 @@ export default function App() {
     setResult(null);
     setLastInput(null);
     setStep("input");
+    setOutputModule("screen");
     setError("");
   }
 
   function resetWorkflow() {
     setResult(null);
     setLastInput(null);
+    setOutputModule("screen");
     setError("");
     setStep("input");
+  }
+
+  const pipelineStage: PipelineStage = useMemo(() => {
+    if (step === "input") return "setup";
+    if (step === "processing") return "siteiq";
+    return pipelineFromOutputModule(outputModule);
+  }, [step, outputModule]);
+
+  const pipelineUnlocked = useMemo((): PipelineStage[] => {
+    if (step === "input") return ["setup"];
+    if (step === "processing") return ["setup", "siteiq"];
+    return ["setup", "siteiq", "topoiq", "layoutiq", "yieldiq"];
+  }, [step]);
+
+  const pipelineCompleted = useMemo((): Partial<Record<PipelineStage, boolean>> => {
+    if (step === "input") return {};
+    if (step === "processing") return { setup: true };
+    return {
+      setup: true,
+      siteiq: true,
+      topoiq: outputModule !== "screen",
+      layoutiq: outputModule === "layout" || outputModule === "yield",
+      yieldiq: outputModule === "yield",
+    };
+  }, [step, outputModule]);
+
+  function handlePipelineNavigate(stage: PipelineStage) {
+    if (stage === "setup") {
+      setStep("input");
+      return;
+    }
+    if (step !== "output") return;
+    const mod = outputModuleFromPipeline(stage);
+    if (mod) setOutputModule(mod);
   }
 
   async function handleStartScreening(body: GateAnalyzeRequest) {
@@ -62,6 +107,7 @@ export default function App() {
     setLastInput(body);
     setError("");
     setResult(null);
+    setOutputModule("screen");
     setStep("processing");
     try {
       const data = await runWorkflowScreen(token, {
@@ -84,7 +130,7 @@ export default function App() {
 
   if (booting) {
     return (
-      <div className="app-shell">
+      <div className="app-boot">
         <p className="hint">Loading…</p>
       </div>
     );
@@ -92,24 +138,29 @@ export default function App() {
 
   if (!session) {
     return (
-      <div className="app-shell">
+      <div className="app-boot">
         <LoginPanel onSignedIn={handleSignedIn} />
       </div>
     );
   }
 
   return (
-    <div className={`app-shell ${step === "output" ? "app-shell-results" : "app-shell-wide"}`}>
-      <Header
-        email={session.email || profile?.email || ""}
-        profile={profile}
-        onLogout={handleLogout}
-      />
-      <Stepper current={step} />
+    <AppShell
+      email={session.email || profile?.email || ""}
+      profile={profile}
+      token={session.access_token}
+      pipelineStage={pipelineStage}
+      pipelineInteractive={step === "output" || step === "input"}
+      pipelineUnlocked={pipelineUnlocked}
+      pipelineCompleted={pipelineCompleted}
+      onPipelineNavigate={handlePipelineNavigate}
+      onLogout={handleLogout}
+      wide={step === "output" || step === "input"}
+    >
       {error ? <div className="error-banner">{error}</div> : null}
 
       {step === "input" ? (
-        <InputPage
+        <ProjectSetupPage
           token={session.access_token}
           initial={lastInput ?? undefined}
           onSubmit={handleStartScreening}
@@ -123,10 +174,12 @@ export default function App() {
           token={session.access_token}
           result={result}
           input={lastInput ?? undefined}
+          activeModule={outputModule}
+          onModuleChange={setOutputModule}
           onEditInput={() => setStep("input")}
           onNewScreening={resetWorkflow}
         />
       ) : null}
-    </div>
+    </AppShell>
   );
 }

@@ -3,6 +3,46 @@ import type { LayoutElectricalConfig } from "./layoutConfig";
 
 export type WorkflowStep = "input" | "processing" | "output";
 
+/** Connected pipeline visible across the preliminary study workflow. */
+export type PipelineStage = "setup" | "siteiq" | "topoiq" | "layoutiq" | "yieldiq";
+
+export interface PipelineModule {
+  id: PipelineStage;
+  label: string;
+  future?: boolean;
+}
+
+export const PIPELINE_MODULES: PipelineModule[] = [
+  { id: "setup", label: "Project setup" },
+  { id: "siteiq", label: "SiteIQ" },
+  { id: "topoiq", label: "TerrainIQ" },
+  { id: "layoutiq", label: "LayoutIQ" },
+  { id: "yieldiq", label: "YieldIQ" },
+];
+
+export type OutputModuleStage = "screen" | "topo" | "layout" | "yield";
+
+export function pipelineFromOutputModule(stage: OutputModuleStage): PipelineStage {
+  const map: Record<OutputModuleStage, PipelineStage> = {
+    screen: "siteiq",
+    topo: "topoiq",
+    layout: "layoutiq",
+    yield: "yieldiq",
+  };
+  return map[stage];
+}
+
+export function outputModuleFromPipeline(stage: PipelineStage): OutputModuleStage | null {
+  const map: Partial<Record<PipelineStage, OutputModuleStage>> = {
+    siteiq: "screen",
+    topoiq: "topo",
+    layoutiq: "layout",
+    yieldiq: "yield",
+  };
+  return map[stage] ?? null;
+}
+
+/** @deprecated Use WorkflowPipeline — kept for legacy references */
 export const WORKFLOW_STEPS: { id: WorkflowStep; label: string }[] = [
   { id: "input", label: "Project input" },
   { id: "processing", label: "Screening" },

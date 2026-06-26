@@ -26,6 +26,7 @@ import type {
   LayoutOptimizationMode,
   LayoutLandCost,
   LayoutSweepRow,
+  OutputModuleStage,
   WorkflowLayoutDetailResponse,
   WorkflowLayoutSweepResponse,
   WorkflowScoreResponse,
@@ -37,6 +38,8 @@ interface Props {
   token: string;
   result: WorkflowScreenResponse;
   input?: GateAnalyzeRequest;
+  activeModule: OutputModuleStage;
+  onModuleChange: (stage: OutputModuleStage) => void;
   onNewScreening: () => void;
   onEditInput: () => void;
 }
@@ -67,10 +70,17 @@ function saveBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-type Stage = "screen" | "topo" | "layout" | "yield";
-
-export function OutputPage({ token, result, input, onNewScreening, onEditInput }: Props) {
-  const [activeStage, setActiveStage] = useState<Stage>("screen");
+export function OutputPage({
+  token,
+  result,
+  input,
+  activeModule,
+  onModuleChange,
+  onNewScreening,
+  onEditInput,
+}: Props) {
+  const activeStage = activeModule;
+  const setActiveStage = onModuleChange;
   const [topoBusy, setTopoBusy] = useState(false);
   const [topoError, setTopoError] = useState("");
   const [topoResult, setTopoResult] = useState<TopoIQAnalyzeResponse | null>(null);
@@ -462,13 +472,6 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
   const overallScore = finalScore?.pvmath_score;
   const overallReady = overallScore != null;
 
-  const stages: { id: Stage; label: string; num: number; available: boolean; done: boolean }[] = [
-    { id: "screen", label: "Site screening", num: 1, available: true, done: true },
-    { id: "topo", label: "TopoIQ terrain", num: 2, available: hasBoundary, done: !!topoResult },
-    { id: "layout", label: "LayoutIQ", num: 3, available: hasBoundary, done: !!layoutSweep },
-    { id: "yield", label: "YieldIQ", num: 4, available: !!selectedLayoutRow, done: !!yieldResult },
-  ];
-
   return (
     <div className="workflow-page results-shell">
       <aside className="results-sidebar">
@@ -854,23 +857,6 @@ export function OutputPage({ token, result, input, onNewScreening, onEditInput }
       </aside>
 
       <div className="results-main">
-      <nav className="stage-nav">
-        {stages.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            className={`stage-tab${activeStage === s.id ? " active" : ""}${
-              s.available ? "" : " disabled"
-            }`}
-            disabled={!s.available}
-            onClick={() => setActiveStage(s.id)}
-          >
-            <span className={`stage-num${s.done ? " done" : ""}`}>{s.done ? "✓" : s.num}</span>
-            {s.label}
-          </button>
-        ))}
-      </nav>
-
       {activeStage === "screen" ? (
       <section className="module-card module-screen">
         <div className="module-head">

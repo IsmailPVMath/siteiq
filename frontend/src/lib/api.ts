@@ -1,4 +1,5 @@
 import type { GateAnalyzeRequest, GateAnalyzeResponse, MeResponse } from "../types/gate";
+import type { ProjectSetupValidateResponse } from "../types/projectSetup";
 import type {
   TopoIQAnalyzeRequest,
   TopoIQAnalyzeResponse,
@@ -66,6 +67,16 @@ async function apiFetch<T>(
 
 export function fetchMe(token: string) {
   return apiFetch<MeResponse>("/api/v1/me", token);
+}
+
+export function changePassword(token: string, currentPassword: string, newPassword: string) {
+  return apiFetch<{ success: boolean; message: string }>("/api/v1/me/password", token, {
+    method: "POST",
+    body: JSON.stringify({
+      current_password: currentPassword,
+      new_password: newPassword,
+    }),
+  });
 }
 
 export function runWorkflowScreen(token: string, body: WorkflowScreenRequest) {
@@ -218,6 +229,13 @@ export interface ProjectRecord {
 export interface BuildableAreaResponse {
   buildable_area_geojson: GeoJSON.GeoJSON | null;
   buildable_area_ha: number;
+}
+
+export function validateProjectSetup(token: string, project_data: Record<string, unknown>) {
+  return apiFetch<ProjectSetupValidateResponse>("/api/v1/projects/validate", token, {
+    method: "POST",
+    body: JSON.stringify({ project_data }),
+  });
 }
 
 export function parseBoundaryFile(token: string, file: File) {
