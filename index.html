@@ -1029,8 +1029,8 @@
   <div class="container">
     <div class="section-header" style="text-align:center;">
       <div class="section-label" style="justify-content:center;display:flex;">Pricing</div>
-      <h2 class="section-title">Pay for what you use.</h2>
-      <p class="section-sub" style="margin:0 auto;" data-i18n="pricing.sub">5 runs per workflow step on Free. No credit card — upgrade when your pipeline grows.</p>
+      <h2 class="section-title">Pay per project. Not per step.</h2>
+      <p class="section-sub" style="margin:0 auto;" data-i18n="pricing.sub">10 full project analyses on Free. One workflow run counts as one analysis.</p>
     </div>
 
     <div class="pricing-toggle">
@@ -1046,10 +1046,11 @@
         <div class="price-tier">Free</div>
         <div class="price-amount">&euro;0<span> / month</span></div>
         <div class="price-annual-note">&nbsp;</div>
-        <p class="price-desc">No credit card. 5 runs per step each month — separate caps, not pooled.</p>
+        <p class="price-desc">No credit card. 10 complete project screenings per month.</p>
         <ul class="price-features">
-          <li class="yes">5 runs / month per step (SiteIQ, TopoIQ, LayoutIQ, YieldIQ)</li>
+          <li class="yes">10 project analyses / month</li>
           <li class="yes">Full workflow at app.pvmath.com</li>
+          <li class="yes">SiteIQ &rarr; TopoIQ &rarr; LayoutIQ &rarr; YieldIQ on one credit</li>
           <li class="yes">PDF report download</li>
           <li class="yes">DXF &amp; LandXML terrain export</li>
           <li class="no">Engineering Reference Manual</li>
@@ -1067,8 +1068,8 @@
         <div class="price-annual-note" id="note-pro"></div>
         <p class="price-desc">For engineers and EPC teams screening multiple sites monthly.</p>
         <ul class="price-features">
-          <li class="yes">75 analyses / month (shared pool — any workflow step)</li>
-          <li class="yes">SiteIQ &middot; TopoIQ &middot; LayoutIQ &middot; YieldIQ</li>
+          <li class="yes">50 project analyses / month</li>
+          <li class="yes">Full platform &mdash; all workflow steps included</li>
           <li class="yes">PDF solar &amp; terrain reports</li>
           <li class="yes">DXF & LandXML terrain file export</li>
           <li class="yes">Engineering Reference Manual (Word)</li>
@@ -1086,7 +1087,7 @@
         <div class="price-annual-note" id="note-dev"></div>
         <p class="price-desc">High-volume pipelines and multi-engineer teams.</p>
         <ul class="price-features">
-          <li class="yes">300 analyses / month — one shared pool (5 seats incl. owner)</li>
+          <li class="yes">250 project analyses / month &mdash; shared team pool (5 seats incl. owner)</li>
           <li class="yes">All Professional features</li>
           <li class="yes">Invite teammates by email</li>
           <li class="yes">Priority support</li>
@@ -1101,13 +1102,15 @@
       <div>
         <div class="enterprise-strip-label">Enterprise</div>
         <div class="enterprise-strip-title">Need more? Let&rsquo;s talk.</div>
-        <div class="enterprise-strip-sub">Unlimited &middot; Custom seats &middot; SLA &middot; White-label &middot; Onboarding</div>
+        <div class="enterprise-strip-sub">Unlimited project analyses &middot; Custom seats &middot; SLA &middot; White-label &middot; Onboarding</div>
       </div>
       <a href="#contact" class="enterprise-strip-btn">Contact for Custom Pricing &rarr;</a>
     </div>
 
     <p style="text-align:center;margin-top:1.5rem;font-size:0.82rem;color:var(--muted);">
-      Free tier: 5 runs per workflow step each month (separate caps). Paid plans use one shared pool. Access at <a href="https://app.pvmath.com" target="_blank">app.pvmath.com</a>. No credit card required. Cancel anytime. VAT (19%) added for EU customers.
+      <strong>One project analysis</strong> = one SiteIQ screening run. TopoIQ, LayoutIQ, and YieldIQ on the same project in the same month do not use extra credits.
+      Free: 10/month. Professional: 50/month. Developer: 250/month (team pool). Enterprise: unlimited.
+      Access at <a href="https://app.pvmath.com" target="_blank">app.pvmath.com</a>. No credit card required. Cancel anytime. VAT (19%) added for EU customers.
     </p>
   </div>
 </section>
@@ -1341,7 +1344,7 @@ var T = {
     'reviews.sub':'Early access. Customer stories coming as we grow.',
     'reviews.fb.title':'Share Your Experience',
     'reviews.fb.p':'Using the PVMath platform? Tell us what to build next.',
-    'pricing.sub':'5 runs per workflow step on Free. No credit card — upgrade when your pipeline grows.',
+    'pricing.sub':'10 full project analyses on Free. One workflow run counts as one analysis.',
     'reviews.fb.btn':'Share Requirements →',
     'stats.sites':'Sites Screened','stats.modules':'Workflow Steps','stats.global-val':'Global',
     'stats.coverage':'Data Coverage','stats.speed':'Per Site Screening','stats.start':'To Get Started',
@@ -1351,18 +1354,18 @@ var T = {
     'plan.starter.desc':'For individual engineers doing occasional project screening.',
     'plan.pro.desc':'For solar engineers and EPC teams running active projects.',
     'plan.team.desc':'For EPC companies and developer teams with multiple engineers.',
-    'pf.s.f1':'20 SiteIQ screenings / month','pf.s.f2':'20 TopoIQ analyses / month',
+    'pf.s.f1':'10 project analyses / month','pf.s.f2':'Full platform workflow',
     'pf.s.f3':'PDF report download','pf.s.f4':'Global solar data (PVGIS JRC)',
-    'pf.s.f5':'DXF & LandXML terrain file export','pf.s.f6':'YieldIQ — Full Access','pf.s.f7':'Team seats',
-    'pf.p.f1':'Unlimited SiteIQ screenings','pf.p.f2':'Unlimited TopoIQ analyses',
+    'pf.s.f5':'DXF & LandXML terrain file export','pf.s.f6':'LayoutIQ & YieldIQ included','pf.s.f7':'No credit card',
+    'pf.p.f1':'50 project analyses / month','pf.p.f2':'Full platform workflow',
     'pf.p.f3':'PDF terrain & solar reports','pf.p.f4':'DXF & LandXML terrain file export',
     'pf.p.f5':'Global solar data (PVGIS JRC)','pf.p.f6':'Copernicus Satellite DEM terrain',
-    'pf.p.f7':'YieldIQ — Full Access',
-    'pf.t.f1':'300 analyses/month — shared pool (5 seats)','pf.t.f2':'All Professional features',
+    'pf.p.f7':'Engineering Reference Manual',
+    'pf.t.f1':'250 project analyses/month — shared team pool (5 seats)','pf.t.f2':'All Professional features',
     'pf.t.f3':'Invite teammates by email','pf.t.f4':'Priority support',
     'pf.t.f5':'Custom invoice & billing','pf.t.f6':'YieldIQ — Full Access','pf.t.f7':'Custom invoice & billing',
     'pricing.btn.start':'Get Started →','pricing.btn.sub':'Subscribe →','pricing.btn.contact':'Contact Us →',
-    'pricing.note':'Free tier: 5 tries per module every month. No credit card required. Cancel anytime. VAT (19%) added for EU customers.',
+    'pricing.note':'One project analysis = one SiteIQ screening run. TopoIQ, LayoutIQ, and YieldIQ on the same project do not use extra credits. No credit card required. Cancel anytime. VAT (19%) added for EU customers.',
     'pricing.per.monthly':'/ month','pricing.per.annual':'/ year','pricing.year':'year',
     'pricing.save.pro':'Save €298 vs monthly — 2 months free',
     'pricing.save.dev':'Save €499 vs monthly — 1 month free',
@@ -1474,20 +1477,20 @@ var T = {
     'stats.sites':'Standorte geprüft','stats.modules':'Live-Module','stats.global-val':'Global',
     'stats.coverage':'Datenabdeckung','stats.speed':'Pro Standortprüfung','stats.start':'Zum Starten',
     'pricing.label':'Preise','pricing.title':'Einfache, transparente Preise.',
-    'pricing.sub':'5 Läufe pro Workflow-Schritt im Free-Tarif. Keine Kreditkarte — Upgrade bei wachsender Pipeline.',
+    'pricing.sub':'10 vollständige Projektanalysen im Free-Tarif. Ein Workflow-Lauf = eine Analyse.',
     'pricing.monthly':'Monatlich','pricing.annual':'Jährlich','pricing.popular':'Beliebteste Wahl',
     'tier.starter':'Starter','tier.pro':'Professional','tier.team':'Team',
     'plan.starter.desc':'Für einzelne Ingenieure mit gelegentlicher Standortprüfung.',
     'plan.pro.desc':'Für Solaringenieure und EPC-Teams in aktiven Projekten.',
     'plan.team.desc':'Für EPC-Unternehmen und Entwicklerteams mit mehreren Ingenieuren.',
-    'pf.s.f1':'20 SiteIQ-Prüfungen / Monat','pf.s.f2':'20 TopoIQ-Analysen / Monat',
+    'pf.s.f1':'10 Projektanalysen / Monat','pf.s.f2':'Vollständiger Plattform-Workflow',
     'pf.s.f3':'PDF-Bericht-Download','pf.s.f4':'Globale Solardaten (PVGIS JRC)',
-    'pf.s.f5':'DXF- & LandXML-Geländedatei-Export','pf.s.f6':'YieldIQ — Vollzugang','pf.s.f7':'Team-Zugänge',
-    'pf.p.f1':'Unbegrenzte SiteIQ-Prüfungen','pf.p.f2':'Unbegrenzte TopoIQ-Analysen',
+    'pf.s.f5':'DXF- & LandXML-Geländedatei-Export','pf.s.f6':'LayoutIQ & YieldIQ inklusive','pf.s.f7':'Keine Kreditkarte',
+    'pf.p.f1':'50 Projektanalysen / Monat','pf.p.f2':'Vollständiger Plattform-Workflow',
     'pf.p.f3':'PDF-Gelände- & Solarberichte','pf.p.f4':'DXF- & LandXML-Geländedatei-Export',
     'pf.p.f5':'Globale Solardaten (PVGIS JRC)','pf.p.f6':'Copernicus Satellite DEM-Gelände',
-    'pf.p.f7':'YieldIQ — Vollzugang',
-    'pf.t.f1':'300 Analysen/Monat — gemeinsames Kontingent (5 Sitze)','pf.t.f2':'Alle Professional-Features',
+    'pf.p.f7':'Engineering Reference Manual',
+    'pf.t.f1':'250 Projektanalysen/Monat — gemeinsames Team-Kontingent (5 Sitze)','pf.t.f2':'Alle Professional-Features',
     'pf.t.f3':'Team per E-Mail einladen','pf.t.f4':'Prioritäts-Support',
     'pf.t.f5':'Individuelle Rechnung & Abrechnung','pf.t.f6':'YieldIQ — Vollzugang','pf.t.f7':'Individuelle Rechnung & Abrechnung',
     'pricing.btn.start':'Jetzt starten →','pricing.btn.sub':'Abonnieren →','pricing.btn.contact':'Kontakt →',

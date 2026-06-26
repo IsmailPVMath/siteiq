@@ -82,15 +82,24 @@
 
     <h3>Account Data</h3>
     <p>
-      When you create an account on siteiq.pvmath.com, we collect your <strong>email address</strong> and a
-      <strong>hashed password</strong>. This is required to provide access to the platform tools.
+      When you create an account at <a href="https://app.pvmath.com" target="_blank">app.pvmath.com</a>, we collect your
+      <strong>email address</strong>, optional <strong>name</strong>, and a <strong>hashed password</strong>.
+      This is required to provide access to the platform.
+    </p>
+
+    <h3>Saved Project Data</h3>
+    <p>
+      If you save a project, we store project metadata you provide (project name, country, location label,
+      site boundary coordinates, workflow settings, and analysis snapshots) in Supabase so you can reopen
+      projects later. You can delete saved projects from your account.
     </p>
 
     <h3>Usage Data</h3>
     <p>
-      We store a per-user count of how many analyses have been run on each module (SiteIQ, TopoIQ, YieldIQ).
-      This is used to enforce the free tier limit of 5 analyses per module.
-      No content of your analyses (coordinates, project names, results) is stored on our servers.
+      We store a monthly count of how many <strong>project analyses</strong> you have run on the platform.
+      One analysis is charged when SiteIQ screening runs for a project; TopoIQ, LayoutIQ, and YieldIQ on the
+      same project in the same month do not consume additional credits. This enforces plan limits
+      (Free: 10/month; paid plans as published on pvmath.com).
     </p>
 
     <h3>Contact Form Data</h3>
@@ -101,10 +110,9 @@
 
     <h3>Data We Do NOT Collect</h3>
     <ul>
-      <li>No cookies beyond session management</li>
+      <li>No advertising or tracking cookies</li>
       <li>No tracking pixels or advertising identifiers</li>
-      <li>No IP address logging</li>
-      <li>No project coordinates or site data stored server-side</li>
+      <li>No sale of personal data to third parties</li>
     </ul>
   </div>
 
@@ -120,17 +128,24 @@
   <div class="card">
     <h2>4. Third-Party Services</h2>
 
-    <h3>Supabase (Authentication &amp; Database)</h3>
+    <h3>Supabase (Authentication, Database &amp; Project Storage)</h3>
     <p>
-      Account email addresses and usage counts are stored in Supabase (Supabase Inc., US).
+      Account data, saved projects, and usage counts are stored in Supabase (Supabase Inc., US).
       Supabase is GDPR-compliant and offers EU data residency options.
       Privacy policy: <a href="https://supabase.com/privacy" target="_blank">supabase.com/privacy</a>
     </p>
 
-    <h3>Railway (Application Hosting)</h3>
+    <h3>Cloudflare Pages (React App Hosting)</h3>
     <p>
-      The PVMath application (siteiq.pvmath.com) is hosted on Railway (Railway Corp., US West).
-      No personal data is stored by Railway beyond standard server access logs.
+      The SiteIQ Platform web app (app.pvmath.com) is hosted on Cloudflare Pages.
+      Standard CDN and security logs may apply.
+      Privacy policy: <a href="https://www.cloudflare.com/privacypolicy/" target="_blank">cloudflare.com/privacypolicy</a>
+    </p>
+
+    <h3>Railway (API Hosting)</h3>
+    <p>
+      The PVMath API (api.pvmath.com) is hosted on Railway (Railway Corp., US).
+      Analysis requests are processed server-side; only account and project data you save are persisted.
       Privacy policy: <a href="https://railway.app/legal/privacy" target="_blank">railway.app/legal/privacy</a>
     </p>
 
@@ -172,7 +187,7 @@
   <div class="card">
     <h2>5. Data Retention</h2>
     <p>
-      Account data (email, hashed password, usage counts) is retained for as long as your account is active.
+      Account and saved project data are retained for as long as your account is active.
       You may request deletion at any time by emailing <a href="mailto:contact@pvmath.com">contact@pvmath.com</a>.
       Accounts inactive for more than 24 months may be deleted automatically.
     </p>

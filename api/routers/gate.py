@@ -12,19 +12,19 @@ from api.deps import get_current_user
 from api.schemas.gate import GateAnalyzeRequest, GateAnalyzeResponse
 from pvmath_gate.analyze import run_gate_analysis
 from pvmath_gate.models import GateRequest
-from pvmath_supabase import AuthUser, increment_usage, is_over_limit
+from pvmath_supabase import AuthUser, PLATFORM_APP, increment_usage, is_over_limit, usage_limit_detail
 
 router = APIRouter(tags=["gate"])
 
-GATE_APP = "siteiq"
+GATE_APP = PLATFORM_APP
 GATE_TIMEOUT_SEC = int(os.environ.get("PVMATH_GATE_TIMEOUT", "120"))
 
 
-def _limit_detail() -> str:
-    return (
-        "Monthly analysis limit reached. Free plan: 5 SiteIQ analyses per month. "
-        "Upgrade at contact@pvmath.com"
-    )
+def _limit_detail(user: AuthUser) -> str:
+    from pvmath_supabase import get_plan
+
+    plan = get_plan(user.user_id, user.access_token) if user.access_token else "free"
+    return usage_limit_detail(plan)
 
 
 def _build_gate_request(body: GateAnalyzeRequest) -> GateRequest:
@@ -90,7 +90,7 @@ async def analyze_gate(
     Requires Supabase Bearer token. Counts against SiteIQ monthly usage.
     """
     if user.access_token and is_over_limit(user.user_id, GATE_APP, user.access_token):
-        raise HTTPException(status_code=429, detail=_limit_detail())
+        raise HTTPException(status_code=429, detail=_limit_detail(user))
 
     req = _build_gate_request(body)
     loop = asyncio.get_running_loop()

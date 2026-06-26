@@ -829,8 +829,6 @@ if submitted:
     with st.spinner("Fetching SiteIQ screening reference for cross-check…"):
         _screening_yields = fetch_screening_yields(lat, lon, raddatabase)
 
-    increment_usage(_uid, "yieldiq")
-
     _area_for_cap = float(_area_ha) if _area_ha and _area_ha > 0 else 0.0
     if _area_for_cap:
         attach_capacity(results, _area_for_cap, _yiq_land_use)

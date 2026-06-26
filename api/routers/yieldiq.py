@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from api.deps import get_current_user
 from api.schemas.yieldiq import YieldIQAnalyzeRequest, YieldIQAnalyzeResponse
-from pvmath_supabase import AuthUser, increment_usage, is_over_limit
+from pvmath_supabase import AuthUser, PLATFORM_APP, is_over_limit, usage_limit_detail
 from pvmath_yield import (
     PROFILE_ANALYSIS,
     config_display_name,
@@ -23,15 +23,15 @@ from pvmath_yield import (
 
 router = APIRouter(tags=["yieldiq"])
 
-YIELD_APP = "yieldiq"
+YIELD_APP = PLATFORM_APP
 YIELD_TIMEOUT_SEC = int(os.environ.get("PVMATH_YIELD_TIMEOUT", "120"))
 
 
-def _limit_detail() -> str:
-    return (
-        "Monthly analysis limit reached. Free plan: 5 YieldIQ analyses per month. "
-        "Upgrade at contact@pvmath.com"
-    )
+def _limit_detail(user: AuthUser) -> str:
+    from pvmath_supabase import get_plan
+
+    plan = get_plan(user.user_id, user.access_token) if user.access_token else "free"
+    return usage_limit_detail(plan)
 
 
 def _run_yield(body: YieldIQAnalyzeRequest) -> Dict[str, Any]:
@@ -64,7 +64,7 @@ async def analyze_yieldiq(
     user: AuthUser = Depends(get_current_user),
 ):
     if user.access_token and is_over_limit(user.user_id, YIELD_APP, user.access_token):
-        raise HTTPException(status_code=429, detail=_limit_detail())
+        raise HTTPException(status_code=429, detail=_limit_detail(user))
 
     loop = asyncio.get_running_loop()
     try:
@@ -82,9 +82,6 @@ async def analyze_yieldiq(
             status_code=500,
             detail=f"YieldIQ analysis failed: {exc}",
         ) from exc
-
-    if user.access_token:
-        increment_usage(user.user_id, YIELD_APP, user.access_token)
 
     disclosure = (
         f"{profile_description(PROFILE_ANALYSIS)}. "

@@ -30,24 +30,25 @@ MODULE_CONFIDENCE = {
     "yieldiq": 80,
 }
 
+PLATFORM_APP = "platform"
+
 PLAN_LIMITS = {
-    "free":         5,
-    "professional": 75,    # pooled across SiteIQ + TopoIQ + YieldIQ per month
-    "developer":    300,   # pooled across modules; team shares one monthly pool (usage_key)
+    "free":         10,    # project analyses / month (one full workflow = one credit)
+    "professional": 50,
+    "developer":    250,   # team shares one monthly pool (usage_key)
     "enterprise":   None,
 }
 DEFAULT_PLAN = "free"
 FREE_LIMIT   = PLAN_LIMITS["free"]   # kept for backward compat — pages/*.py import this directly
 
-# free: cap each module separately. professional + developer: one shared monthly pool.
 PLAN_LIMIT_MODE = {
-    "free":         "per_module",
+    "free":         "pooled",
     "professional": "pooled",
     "developer":    "pooled",
     "enterprise":   None,
 }
 
-USAGE_APPS = ("siteiq", "topoiq", "yieldiq")
+USAGE_APPS = (PLATFORM_APP,)
 
 # Team seat caps, by plan. Usage is pooled across a team (see get_team_id/_usage_key
 # below) — seats control how many logins can draw on that one shared monthly pool,
@@ -698,7 +699,7 @@ def sidebar_plan_usage_html(user_id: str) -> str:
         return (
             f'<div style="font-size:0.72rem;color:#b8f5c8;line-height:1.45;margin:0.35rem 0 0.5rem;">'
             f'<span style="color:#4ade80;font-weight:700;">{plan}</span> · '
-            f'{used} / {lim} analyses this month (shared pool)</div>'
+            f'{used} / {lim} project analyses this month</div>'
         )
     if u["limit"] is not None and u.get("remaining_per_app"):
         rem = u["remaining_per_app"]
@@ -721,19 +722,19 @@ def limit_reached_message(user_id: str, app_label: str) -> tuple[str, str]:
     if plan == "free":
         return (
             "Free trial complete",
-            f"You've used your {limit} free {app_label} analyses. "
-            f"Upgrade to Professional for {PLAN_LIMITS['professional']} analyses/month "
-            f"(shared across SiteIQ, TopoIQ, and YieldIQ).",
+            f"You've used your {limit} free project analyses this month. "
+            f"Upgrade to Professional for {PLAN_LIMITS['professional']} project analyses/month.",
         )
     if mode == "pooled":
         return (
             "Monthly limit reached",
-            f"You've used all <b>{limit} {plan_label(plan)} analyses</b> this month "
-            f"(shared across SiteIQ, TopoIQ, and YieldIQ).<br>Your limit resets at the start of next month.",
+            f"You've used all <b>{limit} {plan_label(plan)} project analyses</b> this month.<br>"
+            f"One full workflow (SiteIQ through YieldIQ) counts as one analysis. "
+            f"Your limit resets at the start of next month.",
         )
     return (
         "Monthly limit reached",
-        f"You've used all <b>{limit} {plan_label(plan)} {app_label}</b> analyses for this month.<br>"
+        f"You've used all <b>{limit} {plan_label(plan)} project analyses</b> for this month.<br>"
         f"Your limit resets at the start of next month.",
     )
 
@@ -817,7 +818,9 @@ def get_usage(user_id: str, app: str) -> int:
 
 
 def increment_usage(user_id: str, app: str) -> int:
+    del app  # always bill the unified platform counter
     key, period = _usage_key(user_id), _current_period()
+    app = PLATFORM_APP
     try:
         current = get_usage(user_id, app)
         new_count = current + 1
@@ -838,28 +841,26 @@ def increment_usage(user_id: str, app: str) -> int:
 
 def is_over_limit(user_id: str, app: str) -> bool:
     """Admins and Enterprise (uncapped) are never over the limit."""
+    del app  # pooled platform credits
     if is_admin(user_id):
         return False
     plan = get_plan(user_id)
     limit = plan_limit(plan)
     if limit is None:
         return False
-    if plan_limit_mode(plan) == "pooled":
-        return get_total_usage(user_id) >= limit
-    return get_usage(user_id, app) >= limit
+    return get_usage(user_id, PLATFORM_APP) >= limit
 
 
 def remaining(user_id: str, app: str) -> int:
-    """Analyses left before paywall. Pooled plans: shared remainder across modules."""
+    """Project analyses left before paywall this month."""
+    del app
     if is_admin(user_id):
         return 999
     plan = get_plan(user_id)
     limit = plan_limit(plan)
     if limit is None:
         return 999
-    if plan_limit_mode(plan) == "pooled":
-        return max(0, limit - get_total_usage(user_id))
-    return max(0, limit - get_usage(user_id, app))
+    return max(0, limit - get_usage(user_id, PLATFORM_APP))
 
 
 # ── Project persistence ───────────────────────────────────────
@@ -1511,7 +1512,7 @@ def render_auth_page(app_name: str = "PVMath"):
         <span style="font-family:Inter,sans-serif;font-size:1.7rem;font-weight:800;color:#1a2e1a;letter-spacing:-0.04em;">PVMath</span>
       </a>
       <div class="auth-logo-sub">Solar Site Intelligence &nbsp;·&nbsp; SiteIQ · TopoIQ · YieldIQ</div>
-      <div class="auth-free-note">Free tier: 5 runs per module each month · No credit card</div>
+      <div class="auth-free-note">Free tier: 10 project analyses/month · No credit card</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -1525,7 +1526,7 @@ def render_auth_page(app_name: str = "PVMath"):
         with tab_register:
             st.markdown("""
             <div class="free-badge">
-              ✦ &nbsp;5 free analyses per module — no credit card required
+              ✦ &nbsp;10 free project analyses/month — no credit card required
             </div>
             """, unsafe_allow_html=True)
 

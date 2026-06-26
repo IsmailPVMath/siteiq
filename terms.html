@@ -64,15 +64,15 @@
 
 <div class="container">
   <h1>Terms and Conditions</h1>
-  <p class="subtitle">Terms of use for PVMath and the SiteIQ platform (SiteIQ, TopoIQ, YieldIQ)</p>
+  <p class="subtitle">Terms of use for the PVMath SiteIQ Platform at app.pvmath.com</p>
   <p class="updated">Last updated: June 2026</p>
 
   <div class="card">
     <h2>1. Who We Are</h2>
     <p>
-      PVMath is operated by <strong>Mohammed Ismail Pasha</strong>, Straubinger Strasse 1, 93055 Regensburg,
-      Germany (<a href="mailto:contact@pvmath.com">contact@pvmath.com</a>). By creating an account or using
-      siteiq.pvmath.com, topoiq.pvmath.com, or pvmath.com (together, the &ldquo;Platform&rdquo;), you agree
+      PVMath is operated by <strong>Mohammed Ismail Pasha</strong> (Einzelunternehmen, trading as PVMath),
+      Straubinger Strasse 1, 93055 Regensburg, Germany (<a href="mailto:contact@pvmath.com">contact@pvmath.com</a>).
+      By creating an account or using app.pvmath.com or pvmath.com (together, the &ldquo;Platform&rdquo;), you agree
       to these Terms and Conditions. If you do not agree, do not use the Platform.
     </p>
   </div>
@@ -80,9 +80,10 @@
   <div class="card">
     <h2>2. What the Platform Does</h2>
     <p>
-      PVMath provides software tools for ground-mount solar site screening and engineering support, including
-      solar resource estimates, terrain analysis, capacity and yield screening, and exportable terrain/CAD
-      files (DXF, LandXML). Outputs are generated from third-party data sources (PVGIS, Copernicus/SRTM DEM,
+      PVMath provides an integrated software platform for ground-mount solar site screening and engineering
+      support: project setup, solar resource and regulatory screening (SiteIQ), terrain analysis (TopoIQ),
+      layout generation (LayoutIQ), and yield screening (YieldIQ), plus exportable reports and terrain/CAD
+      files (PDF, DXF, LandXML). Outputs are generated from third-party data sources (PVGIS, Copernicus/SRTM DEM,
       OpenStreetMap) and automated calculations.
     </p>
     <p>
@@ -98,8 +99,9 @@
     <h2>3. Accounts and Plans</h2>
     <ul>
       <li>You must provide an accurate email address to create an account and are responsible for keeping your login credentials secure.</li>
-      <li>The Free plan includes a limited number of analyses per month per module, as displayed on the pricing page at the time of use. PVMath may adjust free-tier limits, features, or pricing going forward; changes will apply prospectively and will be reflected on the pricing page.</li>
-      <li>Paid plans (Professional, Developer, Enterprise) are billed as described at checkout. Subscriptions renew automatically until cancelled; you may cancel at any time and retain access until the end of the current billing period.</li>
+      <li>The Free plan includes <strong>10 project analyses per calendar month</strong>, as displayed on the pricing page. A <strong>project analysis</strong> is counted when SiteIQ screening runs for a project. Running TopoIQ, LayoutIQ, and YieldIQ on the same saved project in the same month does not consume additional analyses.</li>
+      <li>Professional (50 analyses/month), Developer (250 analyses/month, team pool), and Enterprise (unlimited) plans are billed as described on pvmath.com. Limits reset on the 1st of each calendar month (UTC). Unused analyses do not roll over.</li>
+      <li>PVMath may adjust plan limits, features, or pricing prospectively; changes will be reflected on the pricing page.</li>
       <li>We reserve the right to suspend or terminate accounts that abuse the free tier, attempt to circumvent usage limits, or violate these Terms.</li>
     </ul>
   </div>
@@ -119,10 +121,10 @@
   <div class="card">
     <h2>5. Your Data and Content</h2>
     <p>
-      You retain ownership of the project data you input (site coordinates, project names, parameters).
-      As described in our <a href="/privacy.html">Privacy Policy</a>, we do not store the content of your
-      analyses server-side &mdash; only account information and a usage count per module. You grant us a
-      limited license to process your input solely to generate and return the requested outputs.
+      You retain ownership of the project data you input (site coordinates, boundaries, project names, parameters).
+      As described in our <a href="/privacy.html">Privacy Policy</a>, saved projects and account data are stored
+      in Supabase. We store a monthly usage counter to enforce plan limits. You grant us a limited license to
+      process your input solely to generate and return the requested outputs.
     </p>
   </div>
 

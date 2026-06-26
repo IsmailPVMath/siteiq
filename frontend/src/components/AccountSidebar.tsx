@@ -193,7 +193,7 @@ export function AccountSidebar({ email, profile, token, onLogout, onCollapse, on
               </p>
               {usage?.limit != null && !profile?.is_admin ? (
                 <p className="hint">
-                  {usage.total} of {usage.limit} analyses used this month.
+                  {usage.total} of {usage.limit} project analyses used this month.
                 </p>
               ) : null}
               <a className="btn btn-primary btn-block btn-sm" href={UPGRADE_MAIL}>

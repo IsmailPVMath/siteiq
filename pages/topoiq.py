@@ -739,8 +739,6 @@ with right:
             )
             st.stop()
 
-        increment_usage(st.session_state.get("pvm_user_id", "guest"), "topoiq")
-
         if grid_m_used > float(grid_spacing):
             st.warning(
                 f"Grid coarsened to **{grid_m_used:.0f} m** "

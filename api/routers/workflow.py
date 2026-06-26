@@ -28,7 +28,13 @@ from api.schemas.workflow import (
     WorkflowTerrainMeshRequest,
     WorkflowTerrainMeshResponse,
 )
-from pvmath_supabase import AuthUser, increment_usage, is_over_limit
+from pvmath_supabase import (
+    AuthUser,
+    PLATFORM_APP,
+    increment_usage,
+    is_over_limit,
+    usage_limit_detail,
+)
 from pvmath_workflow.gis_analysis import GisAnalysisRequest, run_gis_analysis
 from pvmath_workflow.layout_detail import build_layout_detail, export_layout_dxf
 from pvmath_workflow.layout_matrix import run_fixed_tilt_layout_matrix
@@ -41,7 +47,7 @@ from pvmath_workflow.terrain_mesh import build_terrain_mesh
 
 router = APIRouter(tags=["workflow"])
 
-SCREEN_APP = "siteiq"
+SCREEN_APP = PLATFORM_APP
 SCREEN_TIMEOUT_SEC = int(os.environ.get("PVMATH_GATE_TIMEOUT", "150"))
 LAYOUT_TIMEOUT_SEC = int(os.environ.get("PVMATH_LAYOUT_TIMEOUT", "120"))
 
@@ -97,11 +103,11 @@ def _lonlat_polys(boundary, boundaries):
     return polys
 
 
-def _limit_detail() -> str:
-    return (
-        "Monthly analysis limit reached. Free plan: 5 SiteIQ analyses per month. "
-        "Upgrade at contact@pvmath.com"
-    )
+def _limit_detail(user: AuthUser) -> str:
+    from pvmath_supabase import get_plan
+
+    plan = get_plan(user.user_id, user.access_token) if user.access_token else "free"
+    return usage_limit_detail(plan)
 
 
 GIS_TIMEOUT_SEC = int(os.environ.get("PVMATH_GIS_TIMEOUT", "120"))
@@ -119,7 +125,7 @@ async def workflow_gis_analysis(
   lines inside the site boundary. No user input required beyond the boundary polygon.
     """
     if user.access_token and is_over_limit(user.user_id, SCREEN_APP, user.access_token):
-        raise HTTPException(status_code=429, detail=_limit_detail())
+        raise HTTPException(status_code=429, detail=_limit_detail(user))
 
     rings = []
     for ring in body.boundaries or []:
@@ -165,7 +171,7 @@ async def workflow_screen(
     No terrain slope here; TopoIQ is the only terrain source in the React workflow.
     """
     if user.access_token and is_over_limit(user.user_id, SCREEN_APP, user.access_token):
-        raise HTTPException(status_code=429, detail=_limit_detail())
+        raise HTTPException(status_code=429, detail=_limit_detail(user))
 
     req = ScreenReq(
         project_name=body.project_name,

@@ -2,13 +2,13 @@
 
 **Canonical public version:** [`../../privacy.html`](../../privacy.html) → https://pvmath.com/privacy.html
 
-Last updated on site: June 2025 — **refresh date when Gewerbe/entity details change.**
+Last updated on site: June 2026
 
 ---
 
 ## Data controller
 
-Mohammed Ismail Pasha — PVMath  
+Mohammed Ismail Pasha — PVMath (Einzelunternehmen)  
 Straubinger Strasse 1, 93055 Regensburg, Germany  
 contact@pvmath.com · +49 15 901 482 999
 
@@ -19,51 +19,20 @@ contact@pvmath.com · +49 15 901 482 999
 | Category | Examples | Purpose |
 |----------|----------|---------|
 | Account | Email, password hash, name | Auth (Supabase) |
-| Usage | Module runs per month | Plan limits |
-| Projects | Site name, coordinates, boundaries/KMZ | Core product |
+| Saved projects | Name, coordinates, boundaries, workflow | Core product (Supabase) |
+| Usage | Monthly project analysis count (`platform` app) | Plan limits |
 | Billing | Stripe customer ID (when live) | Subscriptions |
 | Contact form | Name, email, message | Formspree → contact@pvmath.com |
 
 ---
 
-## Processors / sub-processors
+## Usage counting (customer-facing)
 
-| Service | Role | Location |
-|---------|------|----------|
-| Supabase | Auth, DB | EU / configurable |
-| Railway | App hosting | EU/US — check DPA |
-| Stripe | Payments | EU entity when DE account |
-| Brevo | OTP / email | EU |
-| Formspree | Contact form | US — mention in policy |
-| PVGIS, OpenTopoData, Nominatim | Open data APIs | No PII sent beyond coordinates |
+- **1 project analysis** charged when SiteIQ screening runs.
+- TopoIQ, LayoutIQ, YieldIQ on the same project in the same calendar month do not add credits.
 
 ---
 
-## AVV / DPA
+## Processors
 
-Enterprise customers may request AVV (Auftragsverarbeitungsvertrag). Template: ask Steuerberater/lawyer when first EPC requires it.
-
----
-
-## User rights (GDPR)
-
-Access, rectification, deletion, portability, objection — contact@pvmath.com within 30 days.
-
-Account deletion: manual today (Supabase admin); document process for support.
-
----
-
-## Internal rules
-
-- Do not export customer project data for marketing without consent
-- Do not commit secrets or user emails to git
-- Admin access: ismailpasha747@gmail.com only (`_ADMIN` in app.py)
-
----
-
-## When to update public policy
-
-- New subprocessors (e.g. analytics)
-- Stripe live + billing data
-- Entity / address change
-- New data types (LayoutIQ uploads, etc.)
+Supabase · Cloudflare Pages (app) · Railway (API) · GitHub Pages (marketing) · Formspree · Brevo · PVGIS / OpenTopoData / Nominatim (coordinates only)

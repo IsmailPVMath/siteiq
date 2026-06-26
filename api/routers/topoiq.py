@@ -15,7 +15,7 @@ from fastapi.responses import StreamingResponse
 from api.deps import get_current_user
 from api.schemas.topoiq import TopoIQAnalyzeRequest, TopoIQAnalyzeResponse
 from pvmath_geocode import resolve_location_label
-from pvmath_supabase import AuthUser, increment_usage, is_over_limit
+from pvmath_supabase import AuthUser, PLATFORM_APP, is_over_limit, usage_limit_detail
 from pvmath_terrain_report import (
     build_report_context,
     generate_pdf_report,
@@ -42,15 +42,15 @@ from pvmath_yield import fetch_yield_cross_ref_bundle, yield_cross_ref_topoiq_te
 
 router = APIRouter(tags=["topoiq"])
 
-TOPO_APP = "topoiq"
+TOPO_APP = PLATFORM_APP
 TOPO_TIMEOUT_SEC = int(os.environ.get("PVMATH_TOPO_TIMEOUT", "180"))
 
 
-def _limit_detail() -> str:
-    return (
-        "Monthly analysis limit reached. Free plan: 5 TopoIQ analyses per month. "
-        "Upgrade at contact@pvmath.com"
-    )
+def _limit_detail(user: AuthUser) -> str:
+    from pvmath_supabase import get_plan
+
+    plan = get_plan(user.user_id, user.access_token) if user.access_token else "free"
+    return usage_limit_detail(plan)
 
 
 def _area_limit_message(area_ha: float) -> str:
@@ -220,7 +220,7 @@ async def analyze_topoiq(
     user: AuthUser = Depends(get_current_user),
 ):
     if user.access_token and is_over_limit(user.user_id, TOPO_APP, user.access_token):
-        raise HTTPException(status_code=429, detail=_limit_detail())
+        raise HTTPException(status_code=429, detail=_limit_detail(user))
 
     loop = asyncio.get_running_loop()
     try:
@@ -255,9 +255,6 @@ async def analyze_topoiq(
         raise HTTPException(status_code=500, detail=f"TopoIQ analysis failed: {detail}")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"TopoIQ analysis failed: {exc}") from exc
-
-    if user.access_token:
-        increment_usage(user.user_id, TOPO_APP, user.access_token)
 
     return _analysis_response(body, analysis)
 

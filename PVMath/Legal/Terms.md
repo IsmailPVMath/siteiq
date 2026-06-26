@@ -8,33 +8,20 @@ Last synced: June 2026. Edit the HTML file first, then update this summary.
 
 ## Operator
 
-Mohammed Ismail Pasha, Straubinger Strasse 1, 93055 Regensburg, Germany — contact@pvmath.com
-
-*(Update to “Einzelunternehmen” / UG when registered.)*
+Mohammed Ismail Pasha (Einzelunternehmen, trading as PVMath), Straubinger Strasse 1, 93055 Regensburg, Germany — contact@pvmath.com
 
 ---
 
 ## Key points for sales & support
 
-1. **Platform:** siteiq.pvmath.com, topoiq.pvmath.com, pvmath.com — SiteIQ, TopoIQ, YieldIQ modules.
-2. **Screening only:** Outputs are for internal go/no-go screening — not bankable yield, not survey-grade terrain, not a substitute for LiDAR, PVsyst, or lender sign-off.
-3. **Ground-mount focus:** Fixed tilt, single-axis tracker, standard and Agri-PV — no rooftop/carport/floating.
-4. **Accounts:** Email/password via Supabase; usage limits by plan (Free / Professional / Developer / Enterprise).
-5. **Subscriptions:** Monthly plans as published on pvmath.com; cancellation via Stripe Customer Portal when live, or email until then.
-6. **Data:** Customer retains project/boundary data; processing per Privacy Policy.
-7. **Liability:** Limited to fees paid in prior 12 months where permitted by law.
+1. **Platform:** app.pvmath.com (SiteIQ Platform) + pvmath.com marketing.
+2. **Screening only:** Not bankable yield, not survey-grade terrain.
+3. **Usage:** One **project analysis** = SiteIQ screening run. TopoIQ, LayoutIQ, YieldIQ on same project same month = no extra credit.
+4. **Limits:** Free 10/mo · Professional 50/mo · Developer 250/mo (team pool) · Enterprise unlimited.
+5. **Billing:** Manual activation until Stripe live (`docs/PVMath_Manual_Billing_Runbook.md`).
 
 ---
 
-## When to update
+## Customer-facing links
 
-- Entity change (Einzelunternehmen → UG)
-- New module with different liability profile
-- Stripe / auto-renewal live
-- Material change to usage limits or pricing
-
----
-
-## Customer-facing links in app
-
-Paywall and upgrade CTAs should link to Terms and Privacy in footer (website). In-app: pvmath.com/terms.html
+Footer: pvmath.com/terms.html · pvmath.com/privacy.html · pvmath.com/impressum.html

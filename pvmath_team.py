@@ -141,7 +141,7 @@ def render_team_invite_banner(user_id: str, email: str) -> None:
     st.markdown(
         f'<div style="font-size:0.78rem;color:#b8f5c8;line-height:1.45;padding:0.2rem 0 0.4rem;">'
         f"<b>Team invite</b> — join {owner}'s Developer workspace "
-        f"(300 analyses/month shared pool).</div>",
+        f'(250 analyses/month shared pool).</div>',
         unsafe_allow_html=True,
     )
     if st.button("Accept invite", key="pvm_accept_team_invite", use_container_width=True):
@@ -303,6 +303,6 @@ def render_membership_panel(user_id: str, email: str) -> None:
     elif plan == "free":
         st.markdown(
             '<div style="font-size:0.76rem;color:#8ab88a;line-height:1.45;margin:0.25rem 0;">'
-            "Need team access? Developer adds 5 seats and 300 analyses/month.</div>",
+            "Need team access? Developer adds 5 seats and 250 project analyses/month.</div>",
             unsafe_allow_html=True,
         )

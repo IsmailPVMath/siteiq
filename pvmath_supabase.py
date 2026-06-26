@@ -9,20 +9,42 @@ from typing import Optional
 
 import requests
 
+PLATFORM_APP = "platform"
+
 PLAN_LIMITS = {
-    "free": 5,
-    "professional": 75,
-    "developer": 300,
+    "free": 10,
+    "professional": 50,
+    "developer": 250,
     "enterprise": None,
 }
 DEFAULT_PLAN = "free"
 PLAN_LIMIT_MODE = {
-    "free": "per_module",
+    "free": "pooled",
     "professional": "pooled",
     "developer": "pooled",
     "enterprise": None,
 }
-USAGE_APPS = ("siteiq", "topoiq", "yieldiq")
+USAGE_APPS = (PLATFORM_APP,)
+
+PLAN_LABELS = {
+    "free": "Free",
+    "professional": "Professional",
+    "developer": "Developer",
+    "enterprise": "Enterprise",
+}
+
+
+def usage_limit_detail(plan: str) -> str:
+    """User-facing 429 message — one project workflow = one analysis credit."""
+    limit = plan_limit(plan)
+    label = PLAN_LABELS.get(plan, "Free")
+    if limit is None:
+        return "Monthly analysis limit reached. Contact contact@pvmath.com"
+    return (
+        f"Monthly project analysis limit reached ({label}: {limit}/month). "
+        "One full workflow run (SiteIQ through YieldIQ on the same project) counts as one analysis. "
+        "Upgrade at contact@pvmath.com"
+    )
 
 
 def sb_url() -> str:
@@ -185,51 +207,39 @@ def increment_usage(user_id: str, app: str, token: str) -> int:
 
 
 def is_over_limit(user_id: str, app: str, token: str) -> bool:
+    del app  # pooled platform credits — app arg kept for API compatibility
     if is_admin(user_id, token):
         return False
     plan = get_plan(user_id, token)
     limit = plan_limit(plan)
     if limit is None:
         return False
-    if plan_limit_mode(plan) == "pooled":
-        return get_total_usage(user_id, token) >= limit
-    return get_usage(user_id, app, token) >= limit
+    return get_usage(user_id, PLATFORM_APP, token) >= limit
 
 
 def usage_snapshot(user_id: str, token: str) -> dict:
     plan = get_plan(user_id, token)
     limit = plan_limit(plan)
-    mode = plan_limit_mode(plan)
-    per_app = {app: get_usage(user_id, app, token) for app in USAGE_APPS}
-    total = sum(per_app.values())
+    mode = plan_limit_mode(plan) or "pooled"
+    count = get_usage(user_id, PLATFORM_APP, token)
+    per_app = {PLATFORM_APP: count}
     if is_admin(user_id, token) or limit is None:
         return {
             "plan": plan,
             "mode": mode,
             "limit": limit,
-            "total": total,
+            "total": count,
             "per_app": per_app,
             "remaining": None,
             "at_limit": False,
         }
-    if mode == "pooled":
-        remaining = max(0, limit - total)
-        return {
-            "plan": plan,
-            "mode": mode,
-            "limit": limit,
-            "total": total,
-            "per_app": per_app,
-            "remaining": remaining,
-            "at_limit": total >= limit,
-        }
-    rem_siteiq = max(0, limit - per_app["siteiq"])
+    remaining = max(0, limit - count)
     return {
         "plan": plan,
         "mode": mode,
         "limit": limit,
-        "total": total,
+        "total": count,
         "per_app": per_app,
-        "remaining": rem_siteiq,
-        "at_limit": per_app["siteiq"] >= limit,
+        "remaining": remaining,
+        "at_limit": count >= limit,
     }
