@@ -5,7 +5,11 @@ import { MyProjectsPage } from "./pages/MyProjectsPage";
 import { ProjectSetupPage } from "./pages/ProjectSetupPage";
 import { OutputPage } from "./pages/OutputPage";
 import { ProcessingPage } from "./pages/ProcessingPage";
-import { fetchMe, runWorkflowScreen, setTokenRefresher } from "./lib/api";
+import { fetchMe, getProject, runWorkflowScreen, setTokenRefresher } from "./lib/api";
+import {
+  restoreWorkflowFromRecord,
+  type WorkflowRestore,
+} from "./lib/workflowSave";
 import {
   isAccessTokenStale,
   loadSession,
@@ -32,6 +36,7 @@ export default function App() {
   const [step, setStep] = useState<WorkflowStep>("input");
   const [lastInput, setLastInput] = useState<GateAnalyzeRequest | null>(null);
   const [editingProjectId, setEditingProjectId] = useState("");
+  const [workflowRestore, setWorkflowRestore] = useState<WorkflowRestore | null>(null);
   const [error, setError] = useState("");
   const [result, setResult] = useState<WorkflowScreenResponse | null>(null);
   const [outputModule, setOutputModule] = useState<OutputModuleStage>("screen");
@@ -135,6 +140,7 @@ export default function App() {
     setResult(null);
     setLastInput(null);
     setEditingProjectId("");
+    setWorkflowRestore(null);
     setOutputModule("screen");
     setError("");
     setStep("input");
@@ -145,14 +151,33 @@ export default function App() {
     setStep("projects");
   }
 
-  function openProject(id: string) {
-    setEditingProjectId(id);
+  async function openProject(id: string) {
+    const active = await refreshCurrentSession();
+    const token = active?.access_token;
+    if (!token) return;
     setError("");
-    setStep("input");
+    try {
+      const row = await getProject(token, id);
+      const restored = restoreWorkflowFromRecord(row);
+      setEditingProjectId(id);
+      if (restored) {
+        setLastInput(restored.input);
+        setResult(restored.screening);
+        setOutputModule(restored.lastStage);
+        setWorkflowRestore(restored);
+        setStep("output");
+      } else {
+        setWorkflowRestore(null);
+        setStep("input");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not open project");
+    }
   }
 
   function startNewProject() {
     setEditingProjectId("");
+    setWorkflowRestore(null);
     setLastInput(null);
     setResult(null);
     setError("");
@@ -283,6 +308,13 @@ export default function App() {
           onModuleChange={setOutputModule}
           onEditInput={() => setStep("input")}
           onNewScreening={resetWorkflow}
+          projectId={workflowRestore?.projectId ?? editingProjectId}
+          initialTopo={workflowRestore?.topo ?? null}
+          initialFinalScore={workflowRestore?.finalScore ?? null}
+          onProjectIdChange={(id) => {
+            setEditingProjectId(id);
+            setWorkflowRestore((prev) => (prev ? { ...prev, projectId: id } : prev));
+          }}
         />
       ) : null}
     </AppShell>

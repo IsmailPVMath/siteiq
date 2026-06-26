@@ -2827,6 +2827,11 @@ textarea {
   gap: 0.4rem;
 }
 
-.my-project-delete {
+.slope-source-note {
+  margin-top: 0.6rem;
+  font-size: 0.78rem;
+}
+
+.sidebar-hint.save-error {
   color: #b42318;
 }

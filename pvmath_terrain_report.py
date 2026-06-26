@@ -454,6 +454,8 @@ def render_slope_map_png(
     X, Y, Z, grid_m: float,
     south, north, west, east,
     polygon_list=None,
+    terrain_source_used: str = "",
+    terrain_disclaimer: str = "",
 ) -> Optional[io.BytesIO]:
     """Slope map with satellite basemap, north arrow, and scale bar (PDF-ready)."""
     if not HAS_SCIPY:
@@ -515,8 +517,9 @@ def render_slope_map_png(
 
     cbar = fig.colorbar(im, ax=ax, fraction=0.035, pad=0.02)
     cbar.set_label("Slope (%)", fontsize=9)
+    source_label = terrain_source_used.strip() or "Routed public DEM"
     ax.set_title(
-        f"Slope map · {grid_m:.0f} m output grid (GLO-30 ~30 m native)  (green <3%, red >10%)",
+        f"Slope map · {grid_m:.0f} m output grid · {source_label}  (green <3%, red >10%)",
         fontsize=11, fontweight="bold", color="#1a2e1a", pad=8,
     )
     ax.set_xlabel("Longitude", fontsize=8, color="#555")
@@ -887,64 +890,6 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
         info_rows.append([
             _lp("Terrain disclaimer", bold=True, color=DARK_BLUE),
             _lp((ctx.get("terrain_source") or {}).get("disclaimer")),
-        ])
-    if ctx.get("land_use"):
-        info_rows.append([
-            _lp("Land use", bold=True, color=DARK_BLUE),
-            _lp(ctx["land_use"]),
-        ])
-    if ctx.get("mount_type"):
-        info_rows.append([
-            _lp("Project mount (ref.)", bold=True, color=DARK_BLUE),
-            _lp(ctx["mount_type"]),
-        ])
-    if ctx.get("cap_ft_mwp") is not None:
-        ft_band = {
-            "mwp_lo": ctx["cap_ft_mwp"],
-            "mwp_hi": ctx.get("cap_ft_mwp_hi", ctx["cap_ft_mwp"]),
-            "dens_lo": ctx.get("density_ft", 0.40),
-            "dens_hi": ctx.get("density_ft_hi", ctx.get("density_ft", 0.40)),
-            "gcr_lo": ctx.get("gcr_ft", GCR_REF),
-            "gcr_hi": ctx.get("gcr_ft_hi", GCR_SCREEN_HI),
-            "portrait": "1P",
-            "mount_type": "Fixed Tilt",
-        }
-        ft_val = (
-            f"{format_mwp_range(ft_band['mwp_lo'], ft_band['mwp_hi'])} · 1P · "
-            f"{format_density_range(ft_band['dens_lo'], ft_band['dens_hi'], ft_band['gcr_lo'], ft_band['gcr_hi'])}"
-        )
-        info_rows.append([
-            _lp("Fixed tilt DC (1P)", bold=True, color=DARK_BLUE),
-            _lp(ft_val),
-        ])
-    if ctx.get("cap_tr_mwp_lo") is not None:
-        tr_band = {
-            "mwp_lo": ctx["cap_tr_mwp_lo"],
-            "mwp_hi": ctx.get("cap_tr_mwp_hi", ctx["cap_tr_mwp_lo"]),
-            "dens_lo": ctx.get("density_tr_lo", 0.35),
-            "dens_hi": ctx.get("density_tr_hi", ctx.get("density_tr_lo", 0.35)),
-            "gcr_lo": ctx.get("gcr_tr_lo", GCR_REF),
-            "gcr_hi": ctx.get("gcr_tr_hi", GCR_SCREEN_HI),
-            "portrait": "1P",
-            "mount_type": "Single-Axis Tracker",
-        }
-        tr_val = (
-            f"{format_mwp_range(tr_band['mwp_lo'], tr_band['mwp_hi'])} · 1P SAT · "
-            f"{format_density_range(tr_band['dens_lo'], tr_band['dens_hi'], tr_band['gcr_lo'], tr_band['gcr_hi'])}"
-        )
-        info_rows.append([
-            _lp("Tracker DC (1P SAT)", bold=True, color=DARK_BLUE),
-            _lp(tr_val),
-        ])
-    if ctx.get("cap_ft_mwp") is not None:
-        info_rows.append([
-            _lp("Capacity note", bold=True, color=DARK_BLUE),
-            _lp(capacity_footnote_global()),
-        ])
-    if ctx.get("yield_cross_ref"):
-        info_rows.append([
-            _lp("Yield reference", bold=True, color=DARK_BLUE),
-            _lp(ctx["yield_cross_ref"]),
         ])
     if ctx.get("prepared_by"):
         info_rows.append([

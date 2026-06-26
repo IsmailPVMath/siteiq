@@ -154,6 +154,7 @@ def _build_topo_pdf(body: TopoIQAnalyzeRequest, analysis: Dict[str, Any]) -> byt
     X = analysis["X"]
     Y = analysis["Y"]
     Z = analysis["Z"]
+    terrain_meta = analysis.get("terrain_source") or {}
     slope_img_buf = render_slope_map_png(
         X,
         Y,
@@ -164,6 +165,8 @@ def _build_topo_pdf(body: TopoIQAnalyzeRequest, analysis: Dict[str, Any]) -> byt
         float(bbox["west"]),
         float(bbox["east"]),
         polygon_list=analysis["polygons"],
+        terrain_source_used=str(analysis.get("terrain_source_used", "")),
+        terrain_disclaimer=str(terrain_meta.get("disclaimer", "")),
     )
     slope_buf = io.BytesIO(slope_img_buf.getvalue()) if slope_img_buf else None
     if slope_buf:
@@ -260,6 +263,7 @@ async def analyze_topoiq(
 
 def _render_slope_png(analysis: Dict[str, Any]) -> bytes:
     bbox = analysis["bbox"]
+    terrain_meta = analysis.get("terrain_source") or {}
     buf = render_slope_map_png(
         analysis["X"],
         analysis["Y"],
@@ -270,6 +274,8 @@ def _render_slope_png(analysis: Dict[str, Any]) -> bytes:
         float(bbox["west"]),
         float(bbox["east"]),
         polygon_list=analysis["polygons"],
+        terrain_source_used=str(analysis.get("terrain_source_used", "")),
+        terrain_disclaimer=str(terrain_meta.get("disclaimer", "")),
     )
     if buf is None:
         raise RuntimeError("SLOPE_MAP_UNAVAILABLE")

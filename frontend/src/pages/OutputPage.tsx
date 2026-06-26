@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   analyzeTopo,
   analyzeYield,
+  createProject,
   topoExportsZip,
   topoReportPdf,
+  updateProject,
   workflowGisAnalysis,
   workflowLayoutDetail,
   workflowLayoutDxf,
@@ -13,6 +15,7 @@ import {
   workflowScore,
   workflowTerrainMesh,
 } from "../lib/api";
+import { buildWorkflowSavePayload } from "../lib/workflowSave";
 import { ConstraintAnalysisMap } from "../components/ConstraintAnalysisMap";
 import { LayoutPreviewMap } from "../components/LayoutPreviewMap";
 import { SlopeTopMap } from "../components/SlopeTopMap";
@@ -47,6 +50,10 @@ interface Props {
   onModuleChange: (stage: OutputModuleStage) => void;
   onNewScreening: () => void;
   onEditInput: () => void;
+  projectId?: string;
+  initialTopo?: TopoIQAnalyzeResponse | null;
+  initialFinalScore?: WorkflowScoreResponse | null;
+  onProjectIdChange?: (id: string) => void;
 }
 
 function metric(label: string, rating?: string, detail?: string, extra?: string) {
@@ -151,15 +158,22 @@ export function OutputPage({
   onModuleChange,
   onNewScreening,
   onEditInput,
+  projectId: projectIdProp = "",
+  initialTopo = null,
+  initialFinalScore = null,
+  onProjectIdChange,
 }: Props) {
   const activeStage = activeModule;
   const setActiveStage = onModuleChange;
+  const [projectId, setProjectId] = useState(projectIdProp);
+  const [saveBusy, setSaveBusy] = useState(false);
+  const [saveMsg, setSaveMsg] = useState("");
   const [topoBusy, setTopoBusy] = useState(false);
   const [topoError, setTopoError] = useState("");
-  const [topoResult, setTopoResult] = useState<TopoIQAnalyzeResponse | null>(null);
+  const [topoResult, setTopoResult] = useState<TopoIQAnalyzeResponse | null>(initialTopo);
   const [topoGridM, setTopoGridM] = useState(5);
   const [topoAllowCoarsen, setTopoAllowCoarsen] = useState(true);
-  const topoAutoRan = useRef(false);
+  const topoAutoRan = useRef(Boolean(initialTopo));
   const [topoPdfBusy, setTopoPdfBusy] = useState(false);
   const [topoZipBusy, setTopoZipBusy] = useState(false);
   const [topoMesh, setTopoMesh] = useState<WorkflowTerrainMeshResponse | null>(null);
@@ -167,7 +181,7 @@ export function OutputPage({
   const [yieldBusy, setYieldBusy] = useState(false);
   const [yieldError, setYieldError] = useState("");
   const [yieldResult, setYieldResult] = useState<YieldIQAnalyzeResponse | null>(null);
-  const [finalScore, setFinalScore] = useState<WorkflowScoreResponse | null>(null);
+  const [finalScore, setFinalScore] = useState<WorkflowScoreResponse | null>(initialFinalScore);
   const [layoutBusy, setLayoutBusy] = useState(false);
   const [layoutError, setLayoutError] = useState("");
   const [layoutSweep, setLayoutSweep] = useState<WorkflowLayoutSweepResponse | null>(null);
@@ -414,6 +428,42 @@ export function OutputPage({
       setTopoMeshBusy(false);
     }
   }
+
+  async function handleSaveProject() {
+    if (!input) return;
+    setSaveBusy(true);
+    setSaveMsg("");
+    try {
+      const payload = buildWorkflowSavePayload(
+        input,
+        result,
+        activeStage,
+        topoResult,
+        finalScore,
+      );
+      const row = projectId
+        ? await updateProject(token, projectId, payload)
+        : await createProject(token, payload);
+      setProjectId(row.id);
+      onProjectIdChange?.(row.id);
+      setSaveMsg("Project saved — resume from My projects.");
+    } catch (err) {
+      setSaveMsg(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setSaveBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    if (projectIdProp) setProjectId(projectIdProp);
+  }, [projectIdProp]);
+
+  useEffect(() => {
+    if (initialTopo && boundaries.length && !topoMesh) {
+      void fetchTopoMesh();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function runTopoAdaptiveGrid() {
     setTopoAllowCoarsen(true);
@@ -847,14 +897,18 @@ export function OutputPage({
 
   function renderSlopeMap() {
     if (!topoResult) return null;
+    const terrainSrc = topoResult.terrain_source_used || "Routed public DEM";
+    const disclaimer =
+      typeof topoResult.terrain_source?.disclaimer === "string"
+        ? topoResult.terrain_source.disclaimer
+        : topoResult.disclaimer || "";
     return (
       <div className="slope-section">
         <div className="slope-section-head">
           <span className="terrain-drivers-tag">Slope map · interactive top view</span>
           <span className="slope-map-legend">
-            {topoMesh
-              ? `${topoMesh.grid_m_used.toFixed(0)} m grid · hover to read slope`
-              : "high-resolution terrain"}
+            {topoResult.grid_m_used.toFixed(0)} m grid · {terrainSrc}
+            {topoMesh ? ` · ${topoMesh.vertices.length.toLocaleString()} points` : ""}
           </span>
         </div>
         <div className="slope-section-grid">
@@ -869,6 +923,11 @@ export function OutputPage({
           </div>
           {renderSlopeAnalysisTable(topoResult)}
         </div>
+        {disclaimer ? <p className="module-note slope-source-note">{disclaimer}</p> : null}
+        <p className="module-note slope-source-note">
+          Data sources: {terrainSrc} · PVGIS (JRC) for solar · OpenStreetMap for GIS constraints.
+          Output grid is resampled for layout screening — not LiDAR-grade survey data.
+        </p>
       </div>
     );
   }
@@ -923,6 +982,21 @@ export function OutputPage({
                   {topoZipBusy ? "Preparing…" : "CAD ZIP"}
                 </button>
               </div>
+              {topoResult ? (
+                <button
+                  className="btn btn-primary btn-block"
+                  type="button"
+                  onClick={() => void handleSaveProject()}
+                  disabled={saveBusy}
+                >
+                  {saveBusy ? "Saving…" : "Save project"}
+                </button>
+              ) : null}
+              {saveMsg ? (
+                <p className={`hint sidebar-hint${saveMsg.includes("failed") || saveMsg.includes("expired") ? " save-error" : ""}`}>
+                  {saveMsg}
+                </p>
+              ) : null}
             </>
           )}
           {renderTopoRecovery(true)}
@@ -1223,6 +1297,8 @@ export function OutputPage({
           </button>
         </div>
 
+        {yieldResult ? (
+        <>
         <div className="sidebar-group sidebar-deliverables">
           <h3>Project deliverables</h3>
           <p className="hint sidebar-hint">
@@ -1267,18 +1343,7 @@ export function OutputPage({
         </div>
         </>
         ) : null}
-
-        {activeStage === "topo" && overallReady ? (
-        <div className="sidebar-group sidebar-score">
-          <h3>Overall PVMath score</h3>
-          <div className="overall-score-body">
-            <span className="score-pill score-pill-lg">{overallScore}</span>
-            <div>
-              <strong>{finalScore?.verdict}</strong>
-              <p>{finalScore?.verdict_detail}</p>
-            </div>
-          </div>
-        </div>
+        </>
         ) : null}
 
         <div className="sidebar-actions">
