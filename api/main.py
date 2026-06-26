@@ -84,11 +84,12 @@ def create_app() -> FastAPI:
         "PVMATH_CORS_ORIGINS",
         "http://localhost:5173,http://localhost:3000,"
         "https://siteiq.pvmath.com,https://topoiq.pvmath.com,https://pvmath.com,"
-        "https://api.pvmath.com",
+        "https://api.pvmath.com,https://pvmath-react.pages.dev",
     )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[o.strip() for o in origins.split(",") if o.strip()],
+        allow_origin_regex=r"https://[\w-]+\.pages\.dev",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

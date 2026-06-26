@@ -16,6 +16,7 @@ class GisAnalysisRequest:
     boundaries: List[List[Tuple[float, float]]] = field(default_factory=list)
     restriction_polygons_geojson: Optional[dict] = None
     setbacks_m: Optional[Dict[str, float]] = None
+    constraint_layers: Optional[Dict[str, Any]] = None
     include_grid: bool = True
 
 
@@ -35,9 +36,23 @@ def run_gis_analysis(req: GisAnalysisRequest) -> Dict[str, Any]:
     if not rings:
         return {"success": False, "error": "Site boundary required (≥3 points)."}
 
-    constraints = fetch_site_constraints(rings)
-    if not constraints.get("success"):
-        return constraints
+    if req.constraint_layers:
+        constraints = {
+            "success": True,
+            "layers": req.constraint_layers,
+            "feature_counts": {
+                k: len((v or {}).get("features") or [])
+                for k, v in req.constraint_layers.items()
+            },
+            "disclaimer": (
+                "Constraint features from OpenStreetMap — coverage varies by region. "
+                "Setbacks are engineering assumptions; verify against local codes and surveys."
+            ),
+        }
+    else:
+        constraints = fetch_site_constraints(rings)
+        if not constraints.get("success"):
+            return constraints
 
     buildable = compute_buildable_area(
         rings,

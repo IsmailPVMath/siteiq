@@ -14,6 +14,7 @@ class WorkflowGisAnalysisRequest(BaseModel):
     boundaries: Optional[List[List[BoundaryPoint]]] = None
     restriction_polygons_geojson: Optional[Dict[str, Any]] = None
     setbacks_m: Optional[Dict[str, float]] = None
+    constraint_layers: Optional[Dict[str, Any]] = None
     include_grid: bool = True
 
 

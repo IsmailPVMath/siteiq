@@ -52,6 +52,20 @@ def _parse_geometry(geojson_obj: dict[str, Any] | None) -> BaseGeometry | None:
     return shape(obj)
 
 
+def _supabase_error_detail(r: requests.Response, fallback: str) -> str:
+    try:
+        err = r.json()
+        if isinstance(err, dict):
+            return str(err.get("message") or err.get("hint") or err.get("details") or fallback)
+        if isinstance(err, list) and err:
+            first = err[0]
+            if isinstance(first, dict):
+                return str(first.get("message") or fallback)
+    except Exception:
+        pass
+    return fallback if not r.text else r.text[:500]
+
+
 def _buildable_area(site_geojson: dict[str, Any], restrictions_geojson: dict[str, Any] | None):
     try:
         site = _parse_geometry(site_geojson)
@@ -105,7 +119,10 @@ def create_project(body: ProjectUpsertRequest, user: AuthUser = Depends(get_curr
         timeout=15,
     )
     if r.status_code not in (200, 201):
-        raise HTTPException(status_code=500, detail="Could not create project")
+        raise HTTPException(
+            status_code=500,
+            detail=_supabase_error_detail(r, "Could not create project"),
+        )
     rows = r.json() or []
     return rows[0]
 
@@ -158,7 +175,10 @@ def partial_update_project(
         timeout=15,
     )
     if r.status_code not in (200, 204):
-        raise HTTPException(status_code=500, detail="Could not update project")
+        raise HTTPException(
+            status_code=500,
+            detail=_supabase_error_detail(r, "Could not update project"),
+        )
     rows = r.json() or []
     if not rows:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -190,7 +210,10 @@ def update_project(
         timeout=15,
     )
     if r.status_code not in (200, 204):
-        raise HTTPException(status_code=500, detail="Could not update project")
+        raise HTTPException(
+            status_code=500,
+            detail=_supabase_error_detail(r, "Could not update project"),
+        )
     rows = r.json() or []
     if not rows:
         raise HTTPException(status_code=404, detail="Project not found")

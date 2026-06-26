@@ -55,6 +55,7 @@ interface Props {
   projectId?: string;
   initialTopo?: TopoIQAnalyzeResponse | null;
   initialFinalScore?: WorkflowScoreResponse | null;
+  initialGisSetbacks?: Record<string, number> | null;
   onProjectIdChange?: (id: string) => void;
 }
 
@@ -163,6 +164,7 @@ export function OutputPage({
   projectId: projectIdProp = "",
   initialTopo = null,
   initialFinalScore = null,
+  initialGisSetbacks = null,
   onProjectIdChange,
 }: Props) {
   const activeStage = activeModule;
@@ -241,8 +243,12 @@ export function OutputPage({
   const [packageBusy, setPackageBusy] = useState(false);
   const [exportError, setExportError] = useState("");
   const [gisBusy, setGisBusy] = useState(false);
+  const [gisRecomputeBusy, setGisRecomputeBusy] = useState(false);
   const [gisError, setGisError] = useState("");
   const [gisResult, setGisResult] = useState<WorkflowGisAnalysisResponse | null>(null);
+  const [gisSetbacks, setGisSetbacks] = useState<Record<string, number>>(initialGisSetbacks ?? {});
+  const gisLayersRef = useRef<Record<string, GeoJSON.FeatureCollection> | null>(null);
+  const setbacksEditedRef = useRef(false);
 
   const grid = result.grid as Record<string, unknown>;
   const nearest = grid?.nearest as Record<string, unknown> | undefined;
@@ -328,6 +334,13 @@ export function OutputPage({
     };
   }, [boundaries, hasBoundary, input, result.project_name, topoAllowCoarsen, topoGridM, buildableMask]);
 
+  function updateGisSetback(category: string, raw: string) {
+    const value = Math.max(0, Number(raw));
+    if (!Number.isFinite(value)) return;
+    setbacksEditedRef.current = true;
+    setGisSetbacks((prev) => ({ ...prev, [category]: value }));
+  }
+
   useEffect(() => {
     if (!hasBoundary) return;
     let cancelled = false;
@@ -338,9 +351,15 @@ export function OutputPage({
         const data = await workflowGisAnalysis(token, {
           boundaries,
           restriction_polygons_geojson: ringsToFeatureCollection(restrictionPolygons),
+          setbacks_m: Object.keys(gisSetbacks).length ? gisSetbacks : undefined,
           include_grid: false,
         });
-        if (!cancelled) setGisResult(data);
+        if (!cancelled) {
+          setGisResult(data);
+          setGisSetbacks(data.setbacks_m || {});
+          gisLayersRef.current = data.constraint_layers;
+          setbacksEditedRef.current = false;
+        }
       } catch (err) {
         if (!cancelled) {
           setGisError(err instanceof Error ? err.message : "GIS analysis failed");
@@ -354,7 +373,45 @@ export function OutputPage({
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, boundaries, hasBoundary, restrictionPolygons]);
+
+  useEffect(() => {
+    if (!hasBoundary || !setbacksEditedRef.current || !gisLayersRef.current) return;
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        setGisRecomputeBusy(true);
+        setGisError("");
+        try {
+          const data = await workflowGisAnalysis(token, {
+            boundaries,
+            restriction_polygons_geojson: ringsToFeatureCollection(restrictionPolygons),
+            setbacks_m: gisSetbacks,
+            constraint_layers: gisLayersRef.current ?? undefined,
+            include_grid: false,
+          });
+          if (!cancelled) {
+            if (data.success) {
+              setGisResult(data);
+            } else {
+              setGisError(data.error || "Could not update setbacks");
+            }
+          }
+        } catch (err) {
+          if (!cancelled) {
+            setGisError(err instanceof Error ? err.message : "Setback update failed");
+          }
+        } finally {
+          if (!cancelled) setGisRecomputeBusy(false);
+        }
+      })();
+    }, 400);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [gisSetbacks, token, boundaries, hasBoundary, restrictionPolygons]);
 
   const selectedYieldConfigKey = useMemo(() => {
     if (!selectedLayoutRow) return null;
@@ -454,6 +511,7 @@ export function OutputPage({
         activeStage,
         topoResult,
         finalScore,
+        Object.keys(gisSetbacks).length ? gisSetbacks : null,
       );
       const row = projectId
         ? await updateProject(token, projectId, payload)
@@ -1592,26 +1650,46 @@ export function OutputPage({
                   </div>
                 </div>
                 {gisResult.constraint_summary.length > 0 ? (
-                  <table className="gis-summary-table">
-                    <thead>
-                      <tr>
-                        <th>Constraint</th>
-                        <th>Features</th>
-                        <th>Setback</th>
-                        <th>Excluded</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {gisResult.constraint_summary.map((row) => (
-                        <tr key={row.category}>
-                          <td>{row.label}</td>
-                          <td>{row.feature_count}</td>
-                          <td>{row.setback_m} m</td>
-                          <td>{row.excluded_ha} ha</td>
+                  <>
+                    <p className="hint gis-setback-hint">
+                      Adjust setbacks below — buildable area and map update automatically.
+                      {gisRecomputeBusy ? " Updating…" : null}
+                    </p>
+                    <table className="gis-summary-table">
+                      <thead>
+                        <tr>
+                          <th>Constraint</th>
+                          <th>Features</th>
+                          <th>Setback</th>
+                          <th>Excluded</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {gisResult.constraint_summary.map((row) => (
+                          <tr key={row.category}>
+                            <td>{row.label}</td>
+                            <td>{row.feature_count}</td>
+                            <td>
+                              <label className="gis-setback-edit">
+                                <input
+                                  type="number"
+                                  className="gis-setback-input"
+                                  min={0}
+                                  step={1}
+                                  value={gisSetbacks[row.category] ?? row.setback_m}
+                                  onChange={(e) => updateGisSetback(row.category, e.target.value)}
+                                  disabled={gisBusy || gisRecomputeBusy}
+                                  aria-label={`${row.label} setback metres`}
+                                />
+                                <span>m</span>
+                              </label>
+                            </td>
+                            <td>{row.excluded_ha} ha</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </>
                 ) : (
                   <p className="hint">No mapped constraints detected inside the boundary.</p>
                 )}

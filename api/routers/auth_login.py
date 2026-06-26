@@ -20,6 +20,73 @@ class RefreshRequest(BaseModel):
     refresh_token: str = Field(min_length=1, max_length=4096)
 
 
+class SignupRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=200)
+    password: str = Field(min_length=6, max_length=200)
+    first_name: str = Field(default="", max_length=80)
+    last_name: str = Field(default="", max_length=80)
+
+
+def _normalize_name_part(name: str) -> str:
+    return " ".join(name.strip().split())
+
+
+@router.post("/auth/signup")
+def signup(body: SignupRequest):
+    """Create a SiteIQ account (same Supabase project as Streamlit)."""
+    payload: dict = {"email": body.email.strip(), "password": body.password}
+    fn = _normalize_name_part(body.first_name)
+    ln = _normalize_name_part(body.last_name)
+    if fn or ln:
+        payload["data"] = {
+            "first_name": fn,
+            "last_name": ln,
+            "full_name": f"{fn} {ln}".strip(),
+        }
+    try:
+        r = requests.post(
+            f"{sb_url()}/auth/v1/signup",
+            json=payload,
+            headers=auth_hdr(),
+            timeout=15,
+        )
+    except requests.RequestException as exc:
+        raise HTTPException(status_code=503, detail="Auth service unreachable") from exc
+
+    data = r.json() if r.text else {}
+    if r.status_code not in (200, 201):
+        msg = (
+            data.get("msg")
+            or data.get("error_description")
+            or data.get("message")
+            or "Could not create account"
+        )
+        raise HTTPException(status_code=400, detail=str(msg))
+
+    if data.get("access_token"):
+        return {
+            "access_token": data["access_token"],
+            "refresh_token": data.get("refresh_token", ""),
+            "expires_at": data.get("expires_at", 0),
+            "user": {
+                "id": data.get("user", {}).get("id", ""),
+                "email": data.get("user", {}).get("email", body.email.strip()),
+            },
+            "email_confirmation_required": False,
+        }
+
+    return {
+        "access_token": "",
+        "refresh_token": "",
+        "expires_at": 0,
+        "user": {
+            "id": data.get("id") or data.get("user", {}).get("id", ""),
+            "email": data.get("email") or body.email.strip(),
+        },
+        "email_confirmation_required": True,
+    }
+
+
 @router.post("/auth/login")
 def login(body: LoginRequest):
     """Exchange email/password for Supabase access_token (same as SiteIQ account)."""

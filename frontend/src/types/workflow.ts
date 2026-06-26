@@ -270,6 +270,7 @@ export interface WorkflowGisAnalysisRequest {
   boundaries?: { lat: number; lon: number }[][];
   restriction_polygons_geojson?: GeoJSON.GeoJSON | null;
   setbacks_m?: Record<string, number>;
+  constraint_layers?: Record<string, GeoJSON.FeatureCollection>;
   include_grid?: boolean;
 }
 

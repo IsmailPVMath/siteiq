@@ -247,7 +247,17 @@ export function gateRequestToDraft(initial: Partial<GateAnalyzeRequest>): Projec
   if (initial.area_ha != null) d.geometry.gross_area_ha = initial.area_ha;
   if (initial.land_use) d.design_basis.land_use = initial.land_use;
   if (initial.mount_type) d.design_basis.mount_type = initial.mount_type;
-  if (initial.boundary?.length) {
+  if (initial.boundaries?.length) {
+    d.geometry.parcels = initial.boundaries.map((ring, i) => ({
+      id: `saved_${i}`,
+      name: initial.boundaries!.length === 1 ? "Site boundary" : `Parcel ${i + 1}`,
+      layer_group: "Parcels",
+      area_ha: 0,
+      coords: ring,
+      enabled: true,
+    }));
+    d.input_method = "map";
+  } else if (initial.boundary?.length) {
     d.geometry.site_boundary = initial.boundary;
     d.input_method = "map";
   }
@@ -296,7 +306,26 @@ export function projectRecordToDraft(row: ProjectRecord): ProjectSetupDraft {
   if (wf.input_method) d.input_method = wf.input_method as InputMethod;
 
   const site = p.site_boundary_geojson;
-  if (site?.type === "Polygon" && Array.isArray((site as GeoJSON.Polygon).coordinates?.[0])) {
+  if (site) {
+    const parcels = geoJsonToParcels(site as GeoJSON.GeoJSON, p.name || "Site");
+    if (parcels.length) {
+      d.geometry.parcels = parcels;
+      d.input_method = (wf.input_method as InputMethod) || "map";
+    }
+  }
+
+  const restrictions = p.restriction_polygons_geojson;
+  if (restrictions) {
+    const restrictionParcels = geoJsonToParcels(
+      restrictions as GeoJSON.GeoJSON,
+      "Restriction",
+    );
+    if (restrictionParcels.length) {
+      d.geometry.restrictions = restrictionParcels.map((parcel) => parcel.coords);
+    }
+  }
+
+  if (!d.geometry.parcels.length && site?.type === "Polygon" && Array.isArray((site as GeoJSON.Polygon).coordinates?.[0])) {
     const ring = (site as GeoJSON.Polygon).coordinates[0].slice(0, -1);
     d.geometry.site_boundary = ring.map(([lon, lat]) => ({ lon: Number(lon), lat: Number(lat) }));
   }

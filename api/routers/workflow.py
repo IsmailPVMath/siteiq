@@ -131,6 +131,7 @@ async def workflow_gis_analysis(
         boundaries=rings,
         restriction_polygons_geojson=body.restriction_polygons_geojson,
         setbacks_m=body.setbacks_m,
+        constraint_layers=body.constraint_layers,
         include_grid=body.include_grid,
     )
     loop = asyncio.get_running_loop()

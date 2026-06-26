@@ -6,6 +6,7 @@ import { ProjectSetupPage } from "./pages/ProjectSetupPage";
 import { OutputPage } from "./pages/OutputPage";
 import { ProcessingPage } from "./pages/ProcessingPage";
 import { fetchMe, getProject, runWorkflowScreen, setTokenRefresher } from "./lib/api";
+import { draftToGateRequest, projectRecordToDraft } from "./lib/projectSetup";
 import {
   restoreWorkflowFromRecord,
   type WorkflowRestore,
@@ -167,7 +168,10 @@ export default function App() {
         setWorkflowRestore(restored);
         setStep("output");
       } else {
+        const draft = projectRecordToDraft(row);
+        setLastInput(draftToGateRequest(draft));
         setWorkflowRestore(null);
+        setResult(null);
         setStep("input");
       }
     } catch (err) {
@@ -311,6 +315,7 @@ export default function App() {
           projectId={workflowRestore?.projectId ?? editingProjectId}
           initialTopo={workflowRestore?.topo ?? null}
           initialFinalScore={workflowRestore?.finalScore ?? null}
+          initialGisSetbacks={workflowRestore?.gisSetbacks ?? null}
           onProjectIdChange={(id) => {
             setEditingProjectId(id);
             setWorkflowRestore((prev) => (prev ? { ...prev, projectId: id } : prev));

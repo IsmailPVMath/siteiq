@@ -39,6 +39,51 @@ export function saveSession(session: AuthSession | null): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
 }
 
+export async function signUp(
+  email: string,
+  password: string,
+  firstName = "",
+  lastName = "",
+): Promise<{ session: AuthSession | null; emailConfirmationRequired: boolean }> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/v1/auth/signup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        email: email.trim(),
+        password,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+      }),
+    });
+  } catch {
+    throw new Error(
+      `Could not reach API at ${API_URL}. Check internet and VITE_API_URL in .env.local.`,
+    );
+  }
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = data.detail || data.message || "Could not create account";
+    throw new Error(String(msg));
+  }
+
+  if (!data.access_token) {
+    return { session: null, emailConfirmationRequired: Boolean(data.email_confirmation_required) };
+  }
+
+  const session: AuthSession = {
+    access_token: data.access_token,
+    refresh_token: data.refresh_token ?? "",
+    email: data.user?.email ?? email.trim(),
+    user_id: data.user?.id ?? "",
+    expires_at: data.expires_at ?? 0,
+  };
+  saveSession(session);
+  return { session, emailConfirmationRequired: false };
+}
+
 export async function signInWithPassword(
   email: string,
   password: string,

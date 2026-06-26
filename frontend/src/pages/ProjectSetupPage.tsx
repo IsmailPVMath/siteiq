@@ -68,6 +68,25 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const lastGeocodedRef = useRef<string>("");
 
+  useEffect(() => {
+    if (!initialProjectId) return;
+    setProjectId(initialProjectId);
+    void (async () => {
+      setBusy(true);
+      try {
+        const row = await getProject(token, initialProjectId);
+        dispatch({ type: "replace", draft: projectRecordToDraft(row) });
+        setHint("Project loaded.");
+      } catch (err) {
+        setHint(err instanceof Error ? err.message : "Project load failed");
+        setHintIsError(true);
+      } finally {
+        setBusy(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialProjectId, token]);
+
   const validation = useMemo(() => validateDraft(draft), [draft]);
   const rings = useMemo(() => effectiveRings(draft), [draft]);
   const hasBoundary = rings.length > 0;

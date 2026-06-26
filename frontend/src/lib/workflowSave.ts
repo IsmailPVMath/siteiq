@@ -11,6 +11,7 @@ export interface WorkflowRestore {
   lastStage: OutputModuleStage;
   topo?: TopoIQAnalyzeResponse | null;
   finalScore?: WorkflowScoreResponse | null;
+  gisSetbacks?: Record<string, number> | null;
 }
 
 export function buildWorkflowSavePayload(
@@ -19,6 +20,7 @@ export function buildWorkflowSavePayload(
   lastStage: OutputModuleStage,
   topo?: TopoIQAnalyzeResponse | null,
   finalScore?: WorkflowScoreResponse | null,
+  gisSetbacks?: Record<string, number> | null,
 ): ProjectPayload {
   const draft = gateRequestToDraft(input);
   if (screening.project_name) draft.project_info.name = screening.project_name;
@@ -31,6 +33,7 @@ export function buildWorkflowSavePayload(
       screening_snapshot: screening as unknown as Record<string, unknown>,
       topo_snapshot: (topo ?? null) as unknown as Record<string, unknown> | null,
       final_score_snapshot: (finalScore ?? null) as unknown as Record<string, unknown> | null,
+      gis_setbacks_m: gisSetbacks ?? null,
       saved_at: new Date().toISOString(),
     },
   };
@@ -49,5 +52,6 @@ export function restoreWorkflowFromRecord(row: ProjectRecord): WorkflowRestore |
     lastStage,
     topo: (wf.topo_snapshot as TopoIQAnalyzeResponse | null) ?? null,
     finalScore: (wf.final_score_snapshot as WorkflowScoreResponse | null) ?? null,
+    gisSetbacks: (wf.gis_setbacks_m as Record<string, number> | null) ?? null,
   };
 }
