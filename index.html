@@ -184,8 +184,8 @@
 
     /* ── MODULES ── */
     #modules { background: var(--card); }
-    .modules-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; align-items: stretch; }
-    .module-card { border: 1.5px solid var(--border); border-radius: 14px; padding: 1.75rem 1.65rem; background: var(--bg); position: relative; transition: transform .25s, box-shadow .25s, border-color .25s; display: flex; flex-direction: column; height: 100%; }
+    .modules-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.1rem; align-items: stretch; }
+    .module-card { border: 1.5px solid var(--border); border-radius: 14px; padding: 1.5rem 1.35rem; background: var(--bg); position: relative; transition: transform .25s, box-shadow .25s, border-color .25s; display: flex; flex-direction: column; height: 100%; }
     .module-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,.08); }
     .module-card.live { border-color: rgba(29,158,82,.35); }
     .module-card.live:hover { border-color: var(--green); }
@@ -472,10 +472,14 @@
     .stats-bar-divider { width: 1px; height: 2.5rem; background: var(--border); flex-shrink: 0; }
 
     /* ── RESPONSIVE ── */
+    @media (max-width: 1080px) and (min-width: 901px) {
+      .modules-grid { grid-template-columns: repeat(2, 1fr); }
+    }
     @media (max-width: 900px) {
       :root { --section-x: clamp(1.5rem, 4.5vw, 2.25rem); }
       #modules .section-sub { white-space: normal; max-width: 640px; }
-      .modules-grid, .pricing-grid, .steps, .why-grid, .reviews-grid { grid-template-columns: 1fr; }
+      .modules-grid { grid-template-columns: repeat(2, 1fr); }
+      .pricing-grid, .steps, .why-grid, .reviews-grid { grid-template-columns: 1fr; }
       .about-grid, .contact-grid { grid-template-columns: 1fr; }
       .footer-inner { grid-template-columns: 1fr 1fr; }
       .form-row { grid-template-columns: 1fr; }
@@ -518,6 +522,7 @@
       .hero-stats { display: none; }
       .hero-scan { grid-template-columns: 1fr; gap: 0.65rem; margin-top: 1.25rem; }
       .hero-scan-item span { display: none; }
+      .modules-grid { grid-template-columns: 1fr; }
       .section-header { margin-bottom: 2.5rem; }
       body { font-size: 1.0625rem; padding-bottom: 4.5rem; }
       .stat-lbl, .stats-bar-lbl { font-size: 1rem; }
@@ -836,9 +841,9 @@
         <p class="module-tagline coral" data-i18n="siteiq.tagline">Know if a site is buildable within minutes.</p>
         <ul class="module-features">
           <li data-i18n="siteiq.f1">Solar resource &amp; irradiation</li>
-          <li data-i18n="siteiq.f2">Terrain, slope &amp; flood risk</li>
-          <li data-i18n="siteiq.f3">Regulatory flags &amp; capacity range</li>
-          <li data-i18n="siteiq.f4">Screening PDF for go/no-go</li>
+          <li data-i18n="siteiq.f2">Slope &amp; flood risk</li>
+          <li data-i18n="siteiq.f3">Regulatory flags</li>
+          <li data-i18n="siteiq.f4">GIS buildable area &amp; setbacks</li>
         </ul>
         <a href="https://app.pvmath.com" target="_blank" class="module-link link-green" data-i18n="siteiq.btn">Open in App &rarr;</a>
       </div>
@@ -850,10 +855,10 @@
         <div class="module-name blue">TerrainIQ</div>
         <p class="module-tagline blue" data-i18n="topoiq.tagline">Screen terrain before you order the topo survey.</p>
         <ul class="module-features">
-          <li data-i18n="topoiq.f1">Slope maps &amp; cross-row tracker grades</li>
-          <li data-i18n="topoiq.f2">Region-routed DEM &mdash; 5 m layout grid default</li>
-          <li data-i18n="topoiq.f3">CAD export: UTM surface, contours &amp; parcel linework</li>
-          <li data-i18n="topoiq.f4">Executive terrain PDF</li>
+          <li data-i18n="topoiq.f1">Slope maps &amp; cross-row grades</li>
+          <li data-i18n="topoiq.f2">Region-routed DEM</li>
+          <li data-i18n="topoiq.f3">CAD export: DXF + LandXML</li>
+          <li data-i18n="topoiq.f4">Terrain PDF report</li>
         </ul>
         <a href="https://app.pvmath.com" target="_blank" class="module-link link-blue" data-i18n="topoiq.btn">Open in App &rarr;</a>
       </div>
@@ -865,10 +870,10 @@
         <div class="module-name green">LayoutIQ</div>
         <p class="module-tagline green" data-i18n="layoutiq.tagline">Fixed tilt or single-axis tracker — auto-packed rows on your buildable area.</p>
         <ul class="module-features">
-          <li data-i18n="layoutiq.f1">Mount type &amp; pitch / GCR at layout stage</li>
+          <li data-i18n="layoutiq.f1">Mount type, pitch &amp; GCR</li>
           <li data-i18n="layoutiq.f2">Row packing with GIS setbacks</li>
-          <li data-i18n="layoutiq.f3">DC capacity &amp; module count per option</li>
-          <li data-i18n="layoutiq.f4">Interactive 3D terrain + layout preview</li>
+          <li data-i18n="layoutiq.f3">DC capacity &amp; module count</li>
+          <li data-i18n="layoutiq.f4">3D terrain + layout preview</li>
         </ul>
         <a href="https://app.pvmath.com" target="_blank" class="module-link link-green" data-i18n="layoutiq.btn">Open in App &rarr;</a>
       </div>
@@ -878,12 +883,12 @@
         <div class="module-pill pill-live" data-i18n="pill.live">Live Now</div>
         <div class="module-num">Step 5</div>
         <div class="module-name amber">YieldIQ</div>
-        <p class="module-tagline amber" data-i18n="yieldiq.tagline">Compare tracker vs fixed yield before you open PVsyst.</p>
+        <p class="module-tagline amber" data-i18n="yieldiq.tagline">Yield for your chosen layout before you open PVsyst.</p>
         <ul class="module-features">
-          <li data-i18n="yieldiq.f1">4 configs: SAT/Fixed &times; 1P/2P</li>
-          <li data-i18n="yieldiq.f2">Specific yield, PR &amp; capacity factor</li>
-          <li data-i18n="yieldiq.f3">Tracker gain vs fixed tilt</li>
-          <li data-i18n="yieldiq.f4">Preliminary yield PDF</li>
+          <li data-i18n="yieldiq.f1">Runs on your LayoutIQ mount</li>
+          <li data-i18n="yieldiq.f2">Fixed 1P&ndash;4P or SAT 1P/2P</li>
+          <li data-i18n="yieldiq.f3">Specific yield, PR &amp; CF</li>
+          <li data-i18n="yieldiq.f4">PVGIS-based feasibility</li>
         </ul>
         <div class="module-disclaimer">
           <span class="module-disclaimer-icon">&#9888;&#65039;</span>
@@ -1361,19 +1366,19 @@ var T = {
     'modules.sub':'Project setup → site screening → terrain → layout → yield — no separate apps.',
     'pill.live':'Live Now','pill.soon':'Coming Soon',
     'siteiq.tagline':'Know if a site is buildable within minutes.',
-    'siteiq.f1':'Solar resource & irradiation','siteiq.f2':'Terrain, slope & flood risk',
-    'siteiq.f3':'Regulatory flags & capacity range','siteiq.f4':'Screening PDF for go/no-go','siteiq.btn':'Open in App →',
+    'siteiq.f1':'Solar resource & irradiation','siteiq.f2':'Slope & flood risk',
+    'siteiq.f3':'Regulatory flags','siteiq.f4':'GIS buildable area & setbacks','siteiq.btn':'Open in App →',
     'topoiq.tagline':'Screen terrain before you order the topo survey.',
-    'topoiq.f1':'Slope maps & cross-row tracker grades','topoiq.f2':'Region-routed DEM — 5 m layout grid default',
-    'topoiq.f3':'CAD export: UTM surface, contours & parcel linework','topoiq.f4':'Executive terrain PDF','topoiq.btn':'Open in App →',
-    'yieldiq.tagline':'Compare tracker vs fixed yield before you open PVsyst.',
-    'yieldiq.f1':'4 configs: SAT/Fixed × 1P/2P','yieldiq.f2':'Specific yield, PR & capacity factor',
-    'yieldiq.f3':'Tracker gain vs fixed tilt','yieldiq.f4':'Preliminary yield PDF',
+    'topoiq.f1':'Slope maps & cross-row grades','topoiq.f2':'Region-routed DEM',
+    'topoiq.f3':'CAD export: DXF + LandXML','topoiq.f4':'Terrain PDF report','topoiq.btn':'Open in App →',
+    'yieldiq.tagline':'Yield for your chosen layout before you open PVsyst.',
+    'yieldiq.f1':'Runs on your LayoutIQ mount','yieldiq.f2':'Fixed 1P–4P or SAT 1P/2P',
+    'yieldiq.f3':'Specific yield, PR & CF','yieldiq.f4':'PVGIS-based feasibility',
     'yieldiq.disclaimer':'Feasibility only. Not a substitute for bankable assessment (PVsyst, DNV).',
     'yieldiq.btn':'Open in App →',
     'layoutiq.tagline':'Fixed tilt or single-axis tracker — auto-packed rows on your buildable area.',
-    'layoutiq.f1':'Mount type & pitch / GCR at layout stage','layoutiq.f2':'Row packing with GIS setbacks',
-    'layoutiq.f3':'DC capacity & module count per option','layoutiq.f4':'Interactive 3D terrain + layout preview',
+    'layoutiq.f1':'Mount type, pitch & GCR','layoutiq.f2':'Row packing with GIS setbacks',
+    'layoutiq.f3':'DC capacity & module count','layoutiq.f4':'3D terrain + layout preview',
     'layoutiq.btn':'Open in App →',
     'how.label':'Workflow','how.title':'How it works.',
     'how.sub':'One project setup feeds every step. Each result carries into the next.',
@@ -1495,19 +1500,19 @@ var T = {
     'modules.sub':'Projekteinrichtung → Screening → Gelände → Layout → Ertrag — keine separaten Apps.',
     'pill.live':'Jetzt Live','pill.soon':'Demnächst',
     'siteiq.tagline':'In Minuten prüfen, ob ein Standort baubar ist.',
-    'siteiq.f1':'Solarressource & Einstrahlung','siteiq.f2':'Gelände, Neigung & Hochwasserrisiko',
-    'siteiq.f3':'Regulierungshinweise & Kapazitätsbereich','siteiq.f4':'Screening-PDF für Go/No-Go','siteiq.btn':'In der App öffnen →',
+    'siteiq.f1':'Solarressource & Einstrahlung','siteiq.f2':'Neigung & Hochwasserrisiko',
+    'siteiq.f3':'Regulierungshinweise','siteiq.f4':'GIS-Bebaubare Fläche & Abstände','siteiq.btn':'In der App öffnen →',
     'topoiq.tagline':'Gelände screenen — vor der Vermessung.',
-    'topoiq.f1':'Neigungskarten & Querneigung für Tracker','topoiq.f2':'Regionales DEM — 5 m Layout-Raster Standard',
-    'topoiq.f3':'CAD-Export: UTM-Oberfläche, Höhenlinien & Parcel-Linework','topoiq.f4':'Executive-Gelände-PDF','topoiq.btn':'In der App öffnen →',
-    'yieldiq.tagline':'Tracker vs. Festaufständerung — vor PVsyst.',
-    'yieldiq.f1':'4 Konfigurationen: SAT/Fest × 1P/2P','yieldiq.f2':'Spez. Ertrag, PR & Kapazitätsfaktor',
-    'yieldiq.f3':'Tracker-Gewinn vs. Festaufständerung','yieldiq.f4':'Vorläufiger Ertrags-PDF',
+    'topoiq.f1':'Neigungskarten & Querneigung','topoiq.f2':'Regionales DEM',
+    'topoiq.f3':'CAD-Export: DXF + LandXML','topoiq.f4':'Gelände-PDF-Bericht','topoiq.btn':'In der App öffnen →',
+    'yieldiq.tagline':'Ertrag für Ihr gewähltes Layout — vor PVsyst.',
+    'yieldiq.f1':'Läuft mit Ihrer LayoutIQ-Aufständerung','yieldiq.f2':'Fest 1P–4P oder SAT 1P/2P',
+    'yieldiq.f3':'Spez. Ertrag, PR & CF','yieldiq.f4':'PVGIS-basierte Machbarkeit',
     'yieldiq.disclaimer':'Nur Machbarkeit. Kein Ersatz für bankfähiges Gutachten (PVsyst, DNV).',
     'yieldiq.btn':'In der App öffnen →',
     'layoutiq.tagline':'Festaufständerung oder Einachsen-Tracker — automatisch gepackte Reihen auf der baubaren Fläche.',
-    'layoutiq.f1':'Montageart & Pitch / GCR in der Layout-Phase','layoutiq.f2':'Reihenpackung mit GIS-Abständen',
-    'layoutiq.f3':'DC-Leistung & Modulanzahl pro Option','layoutiq.f4':'Interaktive 3D-Gelände- und Layout-Vorschau',
+    'layoutiq.f1':'Montageart, Pitch & GCR','layoutiq.f2':'Reihenpackung mit GIS-Abständen',
+    'layoutiq.f3':'DC-Leistung & Modulanzahl','layoutiq.f4':'3D-Gelände- und Layout-Vorschau',
     'layoutiq.btn':'In der App öffnen →',
     'how.label':'Arbeitsablauf','how.title':'So funktioniert es.',
     'how.sub':'Eine Projekteinrichtung speist jeden Schritt. Jedes Ergebnis fließt in den nächsten.',
