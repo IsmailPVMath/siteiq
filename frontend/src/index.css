@@ -1166,6 +1166,10 @@ a {
   font-size: 0.9rem;
 }
 
+.ghi-section {
+  margin-top: 1rem;
+}
+
 .yield-month-chart {
   display: flex;
   align-items: flex-end;

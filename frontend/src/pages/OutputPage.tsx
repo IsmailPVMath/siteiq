@@ -1689,6 +1689,35 @@ export function OutputPage({
             String(result.regulatory.note ?? ""),
           )}
         </div>
+        {(() => {
+          const monthly = (result.solar as Record<string, unknown>)?.monthly_ghi;
+          if (!Array.isArray(monthly) || monthly.length !== 12) return null;
+          const vals = monthly.map((v) => Number(v) || 0);
+          const max = Math.max(...vals, 1);
+          const months = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+          return (
+            <div className="ghi-section">
+              <h3 className="setup-subhead">Monthly GHI (kWh/m²)</h3>
+              <div className="yield-month-chart" role="img" aria-label="Monthly global horizontal irradiation">
+                {vals.map((val, i) => (
+                  <div className="yield-month-col" key={i}>
+                    <div className="yield-month-bar-track">
+                      <div
+                        className="yield-month-bar"
+                        style={{ height: `${(val / max) * 100}%` }}
+                        title={`${months[i]}: ${val.toFixed(0)} kWh/m²`}
+                      />
+                    </div>
+                    <span className="yield-month-label">{months[i]}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="hint">
+                Global horizontal irradiation per month at this location (PVGIS).
+              </p>
+            </div>
+          );
+        })()}
         <p className="module-note">{result.terrain_note}</p>
         <p className="module-note">
           Capacity is computed in LayoutIQ in the next steps (per mount type, portrait,

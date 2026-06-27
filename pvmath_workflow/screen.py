@@ -102,6 +102,10 @@ def run_workflow_screen(req: WorkflowScreenRequest) -> WorkflowScreenResponse:
             "optimal_tilt": solar.get("optimal_tilt"),
             "rating": solar_label,
             "detail": solar_detail,
+            "monthly_ghi": [
+                round(float(m.get("GHI (kWh/m²)", 0)), 1)
+                for m in (solar.get("monthly_chart") or [])
+            ],
         },
         flood=flood,
         grid=grid,
