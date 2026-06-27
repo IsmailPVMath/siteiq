@@ -26,6 +26,9 @@
       --green-lt: #e8f5ee;
       --blue:     #1565c0;
       --blue-lt:  #e8f0fb;
+      --teal:     #0e9bb0;
+      --teal-dk:  #0b7686;
+      --teal-lt:  #e1f6f9;
       --amber:    #f59e0b;
       --coral:    #e85d04;
       --coral-lt: #fff1ee;
@@ -200,10 +203,12 @@
     .module-name { font-size: 1.65rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.45rem; }
     .module-name.green { color: var(--coral); }
     .module-name.blue  { color: var(--blue); }
+    .module-name.teal  { color: var(--teal); }
     .module-name.amber { color: #92400e; }
     .module-tagline { font-size: var(--text-body); font-weight: 700; margin: 0.25rem 0 1rem 0; font-style: normal; line-height: 1.45; }
     .module-tagline.coral { color: var(--coral); }
     .module-tagline.blue  { color: var(--blue); }
+    .module-tagline.teal  { color: var(--teal-dk); }
     .module-tagline.amber { color: #d4840a; }
     .module-features { list-style: none; display: flex; flex-direction: column; gap: 0.55rem; margin-bottom: 1.25rem; }
     .module-features li { font-size: var(--text-sm); color: var(--muted); display: flex; align-items: flex-start; gap: 0.5rem; line-height: 1.5; }
@@ -217,6 +222,8 @@
     .link-green:hover { background: #c24a00; box-shadow: 0 4px 14px rgba(232,93,4,.3); }
     .link-blue { background: var(--blue); color: #fff; }
     .link-blue:hover { background: #0d47a1; box-shadow: 0 4px 14px rgba(21,101,192,.3); }
+    .link-teal { background: var(--teal); color: #fff; }
+    .link-teal:hover { background: var(--teal-dk); box-shadow: 0 4px 14px rgba(14,155,176,.3); }
     .link-amber { background: var(--amber); color: #fff; }
     .link-amber:hover { background: #b45309; box-shadow: 0 4px 14px rgba(212,132,10,.3); }
     .link-soon { background: var(--bg2); color: var(--muted); cursor: default; border: 1.5px dashed var(--border); }
@@ -232,6 +239,7 @@
     }
     .step-num.coral { background: linear-gradient(135deg, var(--coral), #c24a00); }
     .step-num.blue  { background: linear-gradient(135deg, var(--blue), #0d47a1); }
+    .step-num.teal  { background: linear-gradient(135deg, var(--teal), var(--teal-dk)); }
     .step h3 { font-size: var(--text-body); font-weight: 700; margin-bottom: 0.5rem; }
     .step p  { font-size: var(--text-sm); color: var(--muted); line-height: var(--leading); }
 
@@ -353,9 +361,9 @@
     .preview-card-hdr { padding: 0.55rem 0.85rem; display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
     .preview-card-hdr.siteiq { background: linear-gradient(135deg,#e85d04,#c24a00); }
     .preview-card-hdr.topoiq { background: linear-gradient(135deg,#1565c0,#0d47a1); }
-    .preview-card-hdr.layoutiq { background: linear-gradient(135deg,#1d9e52,#145f34); }
+    .preview-card-hdr.layoutiq { background: linear-gradient(135deg,var(--teal),var(--teal-dk)); }
     .preview-card-hdr.yieldiq { background: linear-gradient(135deg,#d4840a,#b36a00); }
-    .preview-actions.green div { background: var(--green-lt); color: var(--green-dk); }
+    .preview-actions.teal div { background: var(--teal-lt); color: var(--teal-dk); }
     .preview-card-hdr strong { font-size: 0.72rem; font-weight: 800; color: #fff; letter-spacing: 0.05em; }
     .preview-card-icon { font-size: 0.82rem; line-height: 1; flex-shrink: 0; }
     .preview-card-body { background: #fff; padding: 0.85rem 0.9rem 0.75rem; flex: 1; display: flex; flex-direction: column; min-height: 0; }
@@ -759,8 +767,8 @@
           <figure aria-label="Auto-packed tracker rows on buildable area" style="margin:0 0 0.6rem;">
           <svg viewBox="0 0 260 120" xmlns="http://www.w3.org/2000/svg" class="preview-map" style="border-radius:8px;">
             <rect width="260" height="120" fill="#eef4ee"/>
-            <polygon points="18,12 244,18 238,108 24,104" fill="#dcefe0" stroke="#1d9e52" stroke-width="2" stroke-dasharray="6,3"/>
-            <g stroke="#145f34" stroke-width="3">
+            <polygon points="18,12 244,18 238,108 24,104" fill="#d6f0f4" stroke="#0e9bb0" stroke-width="2" stroke-dasharray="6,3"/>
+            <g stroke="#0b7686" stroke-width="3">
               <line x1="34" y1="26" x2="226" y2="30"/>
               <line x1="34" y1="38" x2="228" y2="42"/>
               <line x1="33" y1="50" x2="229" y2="54"/>
@@ -780,7 +788,7 @@
             <li><span class="metric-label">Pitch / GCR</span><span class="metric-value">6.1 m / 0.34</span></li>
           </ul>
           <div class="preview-card-foot">
-            <div class="preview-actions green">
+            <div class="preview-actions teal">
               <div>&#128230; Project ZIP</div>
               <div>&#128208; Layout DXF</div>
             </div>
@@ -877,15 +885,15 @@
       <div class="module-card live">
         <div class="module-pill pill-live" data-i18n="pill.live">Live Now</div>
         <div class="module-num">Step 4</div>
-        <div class="module-name green">LayoutIQ</div>
-        <p class="module-tagline green" data-i18n="layoutiq.tagline">Fixed tilt or single-axis tracker — auto-packed rows on your buildable area.</p>
+        <div class="module-name teal">LayoutIQ</div>
+        <p class="module-tagline teal" data-i18n="layoutiq.tagline">Fixed tilt or single-axis tracker — auto-packed rows on your buildable area.</p>
         <ul class="module-features">
           <li data-i18n="layoutiq.f1">Mount type, pitch &amp; GCR</li>
           <li data-i18n="layoutiq.f2">Row packing with GIS setbacks</li>
           <li data-i18n="layoutiq.f3">DC capacity &amp; module count</li>
           <li data-i18n="layoutiq.f4">3D terrain + layout preview</li>
         </ul>
-        <a href="https://app.pvmath.com" target="_blank" class="module-link link-green" data-i18n="layoutiq.btn">Open in App &rarr;</a>
+        <a href="https://app.pvmath.com" target="_blank" class="module-link link-teal" data-i18n="layoutiq.btn">Open in App &rarr;</a>
       </div>
 
       <!-- YieldIQ -->
@@ -958,14 +966,14 @@
         <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--coral),#c24a00);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:0.85rem;flex-shrink:0;">2</div>
         <div>
           <div style="font-size:1.1rem;font-weight:800;color:var(--coral);letter-spacing:-0.02em;" data-i18n="how.siteiq.title">SiteIQ &mdash; Site Screening</div>
-          <div class="workflow-module-sub" data-i18n="how.siteiq.sub">Step 2 &middot; Solar &middot; flood &middot; regulatory &middot; capacity</div>
+          <div class="workflow-module-sub" data-i18n="how.siteiq.sub">Step 2 &middot; Solar &middot; flood &middot; regulatory &middot; buildable area</div>
         </div>
         <a href="https://app.pvmath.com" target="_blank" style="margin-left:auto;background:var(--coral-lt);color:var(--coral);font-size:var(--text-sm);font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;" data-i18n="how.launch">Open in App &rarr;</a>
       </div>
       <div class="steps">
-        <div class="step"><div class="step-num coral">a</div><h3 data-i18n="siteiq.s1.h">Set land use &amp; area</h3><p data-i18n="siteiq.s1.p">Standard or Agri-PV, site area in hectares. Solar resource (PVGIS), flood, grid proximity (OSM) and regulatory flags load automatically.</p></div>
-        <div class="step"><div class="step-num coral">b</div><h3 data-i18n="siteiq.s2.h">Review suitability score</h3><p data-i18n="siteiq.s2.p">GHI, in-plane irradiation, flood risk, capacity range and a 0&ndash;100 Site Suitability Score with monthly GHI chart.</p></div>
-        <div class="step"><div class="step-num coral">c</div><h3 data-i18n="siteiq.s3.h">Download screening PDF</h3><p data-i18n="siteiq.s3.p">Branded PDF with solar data, score and country-aware next steps &mdash; ready for the go/no-go call.</p></div>
+        <div class="step"><div class="step-num coral">a</div><h3 data-i18n="siteiq.s1.h">Screen solar, flood &amp; grid</h3><p data-i18n="siteiq.s1.p">Standard or Agri-PV. Solar resource (PVGIS), flood heuristic, grid proximity (OSM) and country-aware regulatory flags load automatically &mdash; with a monthly GHI chart.</p></div>
+        <div class="step"><div class="step-num coral">b</div><h3 data-i18n="siteiq.s2.h">Map the buildable area</h3><p data-i18n="siteiq.s2.p">Automatic GIS constraint detection &mdash; roads, rivers, buildings, forests, transmission &mdash; with engineering setbacks gives the buildable polygon, buildable % and a land score.</p></div>
+        <div class="step"><div class="step-num coral">c</div><h3 data-i18n="siteiq.s3.h">Carry into the workflow</h3><p data-i18n="siteiq.s3.p">Buildable area and findings flow straight into TerrainIQ, LayoutIQ and YieldIQ &mdash; one combined PVMath report at the end, no re-entry.</p></div>
       </div>
     </div>
 
@@ -993,17 +1001,17 @@
     <!-- Step 4 — LayoutIQ -->
     <div>
       <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;">
-        <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#1d9e52,#145f34);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:0.85rem;flex-shrink:0;">4</div>
+        <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--teal),var(--teal-dk));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:0.85rem;flex-shrink:0;">4</div>
         <div>
-          <div style="font-size:1.1rem;font-weight:800;color:var(--green-dk);letter-spacing:-0.02em;" data-i18n="how.layoutiq.title">LayoutIQ &mdash; Auto Layout</div>
+          <div style="font-size:1.1rem;font-weight:800;color:var(--teal-dk);letter-spacing:-0.02em;" data-i18n="how.layoutiq.title">LayoutIQ &mdash; Auto Layout</div>
           <div class="workflow-module-sub" data-i18n="how.layoutiq.sub">Step 4 &middot; Mount type chosen here &middot; 3D preview</div>
         </div>
-        <a href="https://app.pvmath.com" target="_blank" style="margin-left:auto;background:var(--green-lt);color:var(--green-dk);font-size:var(--text-sm);font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;" data-i18n="how.launch">Open in App &rarr;</a>
+        <a href="https://app.pvmath.com" target="_blank" style="margin-left:auto;background:var(--teal-lt);color:var(--teal-dk);font-size:var(--text-sm);font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;" data-i18n="how.launch">Open in App &rarr;</a>
       </div>
       <div class="steps">
-        <div class="step"><div class="step-num" style="background:linear-gradient(135deg,#1d9e52,#145f34);">a</div><h3 data-i18n="layoutiq.s1.h">Pick mount type &amp; spacing</h3><p data-i18n="layoutiq.s1.p">Fixed Tilt or Single-Axis Tracker, with pitch / GCR guidance. SiteIQ and TerrainIQ stay mount-agnostic until here.</p></div>
-        <div class="step"><div class="step-num" style="background:linear-gradient(135deg,#1d9e52,#145f34);">b</div><h3 data-i18n="layoutiq.s2.h">Auto-pack the buildable area</h3><p data-i18n="layoutiq.s2.p">Rows pack around GIS setbacks across the buildable polygon. Get DC capacity, module count and MW/ha per option.</p></div>
-        <div class="step"><div class="step-num" style="background:linear-gradient(135deg,#1d9e52,#145f34);">c</div><h3 data-i18n="layoutiq.s3.h">Inspect 3D &amp; export</h3><p data-i18n="layoutiq.s3.p">Interactive 3D terrain + layout preview. Export the layout DXF or the full project package ZIP (A3 sheet, BOM CSV, DXF).</p></div>
+        <div class="step"><div class="step-num teal">a</div><h3 data-i18n="layoutiq.s1.h">Pick mount type &amp; spacing</h3><p data-i18n="layoutiq.s1.p">Fixed Tilt or Single-Axis Tracker, with pitch / GCR guidance. SiteIQ and TerrainIQ stay mount-agnostic until here.</p></div>
+        <div class="step"><div class="step-num teal">b</div><h3 data-i18n="layoutiq.s2.h">Auto-pack the buildable area</h3><p data-i18n="layoutiq.s2.p">Rows pack around GIS setbacks across the buildable polygon. Get DC capacity, module count and MW/ha per option.</p></div>
+        <div class="step"><div class="step-num teal">c</div><h3 data-i18n="layoutiq.s3.h">Inspect 3D &amp; export</h3><p data-i18n="layoutiq.s3.p">Interactive 3D terrain + layout preview. Export the layout DXF or the full project package ZIP (A3 sheet, BOM CSV, DXF).</p></div>
       </div>
     </div>
 
@@ -1021,8 +1029,8 @@
       </div>
       <div class="steps">
         <div class="step"><div class="step-num" style="background:#d4840a;">a</div><h3 data-i18n="yieldiq.s1.h">Carries your layout DC</h3><p data-i18n="yieldiq.s1.p">Selected LayoutIQ configuration, DC capacity and location flow in automatically &mdash; YieldIQ runs on &ldquo;Proceed&rdquo;, no re-entry.</p></div>
-        <div class="step"><div class="step-num" style="background:#d4840a;">b</div><h3 data-i18n="yieldiq.s2.h">Compare four configurations</h3><p data-i18n="yieldiq.s2.p">Fixed vs tracker, 1P vs 2P via PVGIS JRC. Specific yield, PR, capacity factor, tracker gain and a monthly energy chart.</p></div>
-        <div class="step"><div class="step-num" style="background:#d4840a;">c</div><h3 data-i18n="yieldiq.s3.h">Download yield PDF</h3><p data-i18n="yieldiq.s3.p">Comparison PDF with monthly yield &mdash; an early-stage feasibility read before PVsyst.</p></div>
+        <div class="step"><div class="step-num" style="background:#d4840a;">b</div><h3 data-i18n="yieldiq.s2.h">Yield for your chosen layout</h3><p data-i18n="yieldiq.s2.p">Runs on the mount picked in LayoutIQ &mdash; Fixed 1P&ndash;4P or SAT 1P/2P &mdash; via PVGIS JRC. Specific yield, PR, capacity factor and a monthly energy chart.</p></div>
+        <div class="step"><div class="step-num" style="background:#d4840a;">c</div><h3 data-i18n="yieldiq.s3.h">Early-stage feasibility</h3><p data-i18n="yieldiq.s3.p">A screening-grade read to sanity-check the site before detailed PVsyst / DNV modelling &mdash; included in the combined PVMath report.</p></div>
       </div>
     </div>
       </div>
@@ -1398,14 +1406,14 @@ var T = {
     'how.setup.p':'Name the project, set the country, and place the site once. Every step inherits the same project — no re-entry.',
     'how.setup.quick.title':'Coordinates or address','how.setup.quick.p':'Paste lat/lon, search an address, or drop a pin — SiteIQ screening runs without a boundary',
     'how.setup.full.title':'Draw or upload a boundary','how.setup.full.p':'Draw the polygon or upload KMZ/KML — unlocks TerrainIQ, LayoutIQ & buildable-area GIS',
-    'how.siteiq.title':'SiteIQ — Site Screening','how.siteiq.sub':'Step 2 · Solar · flood · regulatory · capacity',
+    'how.siteiq.title':'SiteIQ — Site Screening','how.siteiq.sub':'Step 2 · Solar · flood · regulatory · buildable area',
     'how.topoiq.title':'TerrainIQ — Slope Analysis','how.topoiq.sub':'Step 3 · Needs a boundary · CAD exports',
     'how.layoutiq.title':'LayoutIQ — Auto Layout','how.layoutiq.sub':'Step 4 · Mount type chosen here · 3D preview',
     'how.yieldiq.title':'YieldIQ — Yield Estimation','how.yieldiq.sub':'Step 5 · Auto-runs from your layout · Feasibility only',
     'how.launch':'Open in App →',
-    'siteiq.s1.h':'Set land use & area','siteiq.s1.p':'Standard or Agri-PV, site area in hectares. Solar resource (PVGIS), flood, grid proximity (OSM) and regulatory flags load automatically.',
-    'siteiq.s2.h':'Review suitability score','siteiq.s2.p':'GHI, in-plane irradiation, flood risk, capacity range and a 0–100 Site Suitability Score with monthly GHI chart.',
-    'siteiq.s3.h':'Download screening PDF','siteiq.s3.p':'Branded PDF with solar data, score and country-aware next steps — ready for the go/no-go call.',
+    'siteiq.s1.h':'Screen solar, flood & grid','siteiq.s1.p':'Standard or Agri-PV. Solar resource (PVGIS), flood heuristic, grid proximity (OSM) and country-aware regulatory flags load automatically — with a monthly GHI chart.',
+    'siteiq.s2.h':'Map the buildable area','siteiq.s2.p':'Automatic GIS constraint detection — roads, rivers, buildings, forests, transmission — with engineering setbacks gives the buildable polygon, buildable % and a land score.',
+    'siteiq.s3.h':'Carry into the workflow','siteiq.s3.p':'Buildable area and findings flow straight into TerrainIQ, LayoutIQ and YieldIQ — one combined PVMath report at the end, no re-entry.',
     'topoiq.s1.h':'Confirm boundary & grid','topoiq.s1.p':'Boundary carries over from setup. Default 5 m layout analysis grid; toggle “use full boundary” to skip GIS exclusions.',
     'topoiq.s2.h':'Run terrain screening','topoiq.s2.p':'Region-routed DEM — Copernicus EEA-10 in Europe, USGS 3DEP in the USA, FABDEM globally — resampled inside the boundary. Slope heatmaps and cross-row grades.',
     'topoiq.s3.h':'Export PDF, DXF & LandXML','topoiq.s3.p':'Terrain PDF plus a CAD starter kit: UTM LandXML TIN and DXF contours with parcel linework from your boundary — conceptual, not survey-grade.',
@@ -1413,8 +1421,8 @@ var T = {
     'layoutiq.s2.h':'Auto-pack the buildable area','layoutiq.s2.p':'Rows pack around GIS setbacks across the buildable polygon. Get DC capacity, module count and MW/ha per option.',
     'layoutiq.s3.h':'Inspect 3D & export','layoutiq.s3.p':'Interactive 3D terrain + layout preview. Export the layout DXF or the full project package ZIP (A3 sheet, BOM CSV, DXF).',
     'yieldiq.s1.h':'Carries your layout DC','yieldiq.s1.p':'Selected LayoutIQ configuration, DC capacity and location flow in automatically — YieldIQ runs on “Proceed”, no re-entry.',
-    'yieldiq.s2.h':'Compare four configurations','yieldiq.s2.p':'Fixed vs tracker, 1P vs 2P via PVGIS JRC. Specific yield, PR, capacity factor, tracker gain and a monthly energy chart.',
-    'yieldiq.s3.h':'Download yield PDF','yieldiq.s3.p':'Comparison PDF with monthly yield — an early-stage feasibility read before PVsyst.',
+    'yieldiq.s2.h':'Yield for your chosen layout','yieldiq.s2.p':'Runs on the mount picked in LayoutIQ — Fixed 1P–4P or SAT 1P/2P — via PVGIS JRC. Specific yield, PR, capacity factor and a monthly energy chart.',
+    'yieldiq.s3.h':'Early-stage feasibility','yieldiq.s3.p':'A screening-grade read to sanity-check the site before detailed PVsyst / DNV modelling — included in the combined PVMath report.',
     'why.label':'Why PVMath','why.title':'Engineering-grade screening estimates.<br>Not a bankable study.',
     'why.sub':'Industry-standard datasets. Screening-grade speed. Honest limits built in.',
     'why.c1.h':'Industry-Standard Solar Data','why.c1.p':'PVGIS (EC JRC) GHI and irradiation — used in bankable pre-feasibility worldwide.',
@@ -1532,14 +1540,14 @@ var T = {
     'how.setup.p':'Projekt benennen, Land festlegen, Standort einmal platzieren. Jeder Schritt übernimmt dasselbe Projekt — keine erneute Eingabe.',
     'how.setup.quick.title':'Koordinaten oder Adresse','how.setup.quick.p':'Lat/Lon einfügen, Adresse suchen oder Pin setzen — SiteIQ-Screening läuft ohne Grenze',
     'how.setup.full.title':'Grenze zeichnen oder hochladen','how.setup.full.p':'Polygon zeichnen oder KMZ/KML hochladen — schaltet TerrainIQ, LayoutIQ & baubare-Fläche-GIS frei',
-    'how.siteiq.title':'SiteIQ — Standort-Screening','how.siteiq.sub':'Schritt 2 · Solar · Hochwasser · Regulierung · Kapazität',
+    'how.siteiq.title':'SiteIQ — Standort-Screening','how.siteiq.sub':'Schritt 2 · Solar · Hochwasser · Regulierung · Bebaubare Fläche',
     'how.topoiq.title':'TerrainIQ — Neigungsanalyse','how.topoiq.sub':'Schritt 3 · Benötigt Grenze · CAD-Exporte',
     'how.layoutiq.title':'LayoutIQ — Auto-Layout','how.layoutiq.sub':'Schritt 4 · Montageart hier gewählt · 3D-Vorschau',
     'how.yieldiq.title':'YieldIQ — Ertragsschätzung','how.yieldiq.sub':'Schritt 5 · Läuft automatisch aus dem Layout · Nur Machbarkeit',
     'how.launch':'In der App öffnen →',
-    'siteiq.s1.h':'Landnutzung & Fläche','siteiq.s1.p':'Standard oder Agri-PV, Fläche in Hektar. Solarressource (PVGIS), Hochwasser, Netznähe (OSM) und Regulierung laden automatisch.',
-    'siteiq.s2.h':'Eignungs-Score prüfen','siteiq.s2.p':'GHI, Einstrahlung, Hochwasserrisiko, Kapazitätsbereich und ein 0–100 Site Suitability Score mit Monats-GHI-Diagramm.',
-    'siteiq.s3.h':'Screening-PDF herunterladen','siteiq.s3.p':'Branded PDF mit Solardaten, Score und länderspezifischen nächsten Schritten — bereit für den Go/No-Go-Call.',
+    'siteiq.s1.h':'Solar, Hochwasser & Netz screenen','siteiq.s1.p':'Standard oder Agri-PV. Solarressource (PVGIS), Hochwasser-Heuristik, Netznähe (OSM) und länderspezifische Regulierungshinweise laden automatisch — mit Monats-GHI-Diagramm.',
+    'siteiq.s2.h':'Bebaubare Fläche ermitteln','siteiq.s2.p':'Automatische GIS-Constraint-Erkennung — Straßen, Flüsse, Gebäude, Wald, Leitungen — mit Engineering-Abständen ergibt die bebaubare Fläche, den Anteil in % und einen Land-Score.',
+    'siteiq.s3.h':'In den Workflow übernehmen','siteiq.s3.p':'Bebaubare Fläche und Ergebnisse fließen direkt in TerrainIQ, LayoutIQ und YieldIQ — ein kombinierter PVMath-Bericht am Ende, keine erneute Eingabe.',
     'topoiq.s1.h':'Grenze & Raster bestätigen','topoiq.s1.p':'Grenze wird aus dem Setup übernommen. Standard-5-m-Layout-Raster; „volle Grenze nutzen“ überspringt GIS-Ausschlüsse.',
     'topoiq.s2.h':'Gelände-Screening starten','topoiq.s2.p':'Regionales DEM — Copernicus EEA-10 in Europa, USGS 3DEP in den USA, FABDEM global — innerhalb der Grenze resampled. Neigungskarten und Querneigung.',
     'topoiq.s3.h':'PDF, DXF & LandXML exportieren','topoiq.s3.p':'Gelände-PDF plus CAD-Starterkit: UTM-LandXML und DXF-Höhenlinien mit Parcel-Linework aus Ihrer Grenze — konzeptionell, nicht vermessungsgenau.',
@@ -1547,8 +1555,8 @@ var T = {
     'layoutiq.s2.h':'Baubare Fläche automatisch packen','layoutiq.s2.p':'Reihen packen um GIS-Abstände über das baubare Polygon. DC-Leistung, Modulanzahl und MW/ha pro Option.',
     'layoutiq.s3.h':'3D prüfen & exportieren','layoutiq.s3.p':'Interaktive 3D-Gelände- und Layout-Vorschau. Layout-DXF oder das gesamte Projektpaket-ZIP (A3-Blatt, BOM-CSV, DXF) exportieren.',
     'yieldiq.s1.h':'Übernimmt Ihre Layout-DC','yieldiq.s1.p':'Gewählte LayoutIQ-Konfiguration, DC-Leistung und Standort fließen automatisch ein — YieldIQ läuft bei „Weiter“, keine erneute Eingabe.',
-    'yieldiq.s2.h':'Vier Konfigurationen vergleichen','yieldiq.s2.p':'Fest vs. Tracker, 1P vs. 2P via PVGIS JRC. Spez. Ertrag, PR, Kapazitätsfaktor, Tracker-Gewinn und Monats-Energiediagramm.',
-    'yieldiq.s3.h':'Ertrags-PDF herunterladen','yieldiq.s3.p':'Vergleichs-PDF mit Monatsertrag — eine frühe Machbarkeitseinschätzung vor PVsyst.',
+    'yieldiq.s2.h':'Ertrag für Ihr gewähltes Layout','yieldiq.s2.p':'Läuft mit der in LayoutIQ gewählten Aufständerung — Fest 1P–4P oder SAT 1P/2P — via PVGIS JRC. Spez. Ertrag, PR, Kapazitätsfaktor und Monats-Energiediagramm.',
+    'yieldiq.s3.h':'Frühe Machbarkeit','yieldiq.s3.p':'Eine Screening-Einschätzung zur Plausibilitätsprüfung des Standorts vor detaillierter PVsyst-/DNV-Modellierung — Teil des kombinierten PVMath-Berichts.',
     'why.label':'Warum PVMath','why.title':'Screening-Schätzungen auf Ingenieursniveau.<br>Kein bankfähiges Gutachten.',
     'why.sub':'Branchenübliche Datensätze. Screening-Geschwindigkeit. Ehrliche Grenzen.',
     'why.c1.h':'Branchenstandard-Solardaten','why.c1.p':'PVGIS (EC JRC) GHI und Einstrahlung — in bankfähigen Vorstudien weltweit.',
