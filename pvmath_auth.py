@@ -9,6 +9,8 @@ Requires environment variables (set in Streamlit Cloud secrets):
   SUPABASE_KEY  = your anon/public key
 """
 
+from __future__ import annotations
+
 import os
 import smtplib
 import secrets
