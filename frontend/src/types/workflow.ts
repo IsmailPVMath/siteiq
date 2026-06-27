@@ -126,6 +126,7 @@ export interface WorkflowLayoutSweepRequest extends LayoutElectricalConfig {
   custom_pitch_m?: number;
   mount_filter?: "all" | "fixed" | "sat";
   azimuth?: number;
+  allow_partial_strings?: boolean;
 }
 
 export interface GcrGuidanceEntry {

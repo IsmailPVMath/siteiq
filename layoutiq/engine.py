@@ -23,18 +23,61 @@ def count_strings_in_length(
     Whole strings only along the row (torque tube / row axis).
     Partial strings at the end are dropped.
     """
+    n_whole, _, _ = plan_strings_in_length(
+        length_m,
+        modules_per_string=modules_per_string,
+        module_w=module_w,
+        inter_string_gap_m=inter_string_gap_m,
+        allow_partial=False,
+    )
+    return n_whole
+
+
+def plan_strings_in_length(
+    length_m: float,
+    *,
+    modules_per_string: int,
+    module_w: float,
+    inter_string_gap_m: float,
+    allow_partial: bool = False,
+) -> tuple[int, int, float]:
+    """
+    Plan whole + optional partial string placement along a row segment.
+
+    Returns (n_whole_strings, partial_module_count, used_length_m).
+    Partial strings require at least half a full string (e.g. 14 of 28 modules).
+    """
     if length_m <= 0 or modules_per_string < 1:
-        return 0
+        return 0, 0, 0.0
     string_len = modules_per_string * module_w
     if string_len <= 0:
-        return 0
+        return 0, 0, 0.0
     gap = max(0.0, inter_string_gap_m)
     unit = string_len + gap
-    if unit <= 0:
-        return 0
-    if length_m < string_len:
-        return 0
-    return int((length_m + gap) // unit)
+    min_partial_modules = max(1, modules_per_string // 2)
+
+    n_whole = 0
+    if length_m >= string_len and unit > 0:
+        n_whole = int((length_m + gap) // unit)
+
+    used = string_packed_length(
+        n_whole,
+        modules_per_string=modules_per_string,
+        module_w=module_w,
+        inter_string_gap_m=inter_string_gap_m,
+    )
+    remaining = length_m - used
+    partial_modules = 0
+
+    if allow_partial and remaining >= module_w * min_partial_modules:
+        gap_before = gap if n_whole > 0 else 0.0
+        if remaining >= gap_before + module_w * min_partial_modules:
+            fit_modules = int((remaining - gap_before) // module_w)
+            if fit_modules >= min_partial_modules:
+                partial_modules = min(modules_per_string - 1, fit_modules)
+                used += gap_before + partial_modules * module_w
+
+    return n_whole, partial_modules, used
 
 
 def string_packed_length(
@@ -59,13 +102,15 @@ def pack_tracker_units(
     modules_per_string: int,
     module_w: float,
     inter_string_gap_m: float,
-) -> tuple[list[int], float]:
+    allow_partial: bool = False,
+) -> tuple[list[int], int, float]:
     """
     Greedily pack whole tracker units (8S/7S/6S/5S...) along a row segment.
 
     Each unit is made from whole strings; each string has ``modules_per_string``
     modules. Options whose physical unit length exceeds max_tracker_length_m are
-    ignored. Partial tracker units are not placed.
+    ignored. When ``allow_partial`` is True, a trailing half-string (or longer)
+    may be placed if space remains.
     """
     options = sorted({int(v) for v in tracker_string_options if int(v) > 0}, reverse=True)
     if not options:
@@ -89,7 +134,7 @@ def pack_tracker_units(
         if unit_len(s) <= max_tracker_length_m + 1e-9 and unit_len(s) <= length_m + 1e-9
     ]
     if not feasible:
-        return [], 0.0
+        return [], 0, 0.0
 
     while remaining > 0:
         chosen = None
@@ -106,7 +151,17 @@ def pack_tracker_units(
         units.append(chosen)
         used += chosen_len
         remaining -= chosen_len
-    return units, used
+
+    partial_modules = 0
+    min_partial_modules = max(1, modules_per_string // 2)
+    gap_before = gap if units else 0.0
+    if allow_partial and remaining >= gap_before + module_w * min_partial_modules:
+        fit_modules = int((remaining - gap_before) // module_w)
+        if fit_modules >= min_partial_modules:
+            partial_modules = min(modules_per_string - 1, fit_modules)
+            used += gap_before + partial_modules * module_w
+
+    return units, partial_modules, used
 
 
 def _line_length(geom) -> float:
@@ -179,8 +234,9 @@ def _string_rects_in_segment(
     module_w: float,
     inter_string_gap_m: float,
     is_tracker: bool,
+    partial_modules: int = 0,
 ) -> list[Polygon]:
-    if n_strings < 1:
+    if n_strings < 1 and partial_modules < 1:
         return []
     string_len = modules_per_string * module_w
     gap = max(0.0, inter_string_gap_m)
@@ -194,6 +250,11 @@ def _string_rects_in_segment(
                 break
             rects.append(box(x0, y, x1, y + row_ns))
             x_cursor = x0 - gap
+        if partial_modules > 0:
+            x1 = x_cursor
+            x0 = x1 - partial_modules * module_w
+            if x0 >= x_seg_min - 1e-6:
+                rects.append(box(x0, y, x1, y + row_ns))
     else:
         x_cursor = x_seg_min
         for _ in range(n_strings):
@@ -203,7 +264,42 @@ def _string_rects_in_segment(
                 break
             rects.append(box(x0, y, x1, y + row_ns))
             x_cursor = x1 + gap
+        if partial_modules > 0:
+            x0 = x_cursor + (gap if n_strings > 0 else 0.0)
+            x1 = x0 + partial_modules * module_w
+            if x1 <= x_seg_max + 1e-6:
+                rects.append(box(x0, y, x1, y + row_ns))
     return rects
+
+
+def _accept_string_geom(
+    geom,
+    full_rect: Polygon,
+    *,
+    allow_partial: bool,
+    min_partial_modules: int,
+    module_w: float,
+    row_ns: float,
+) -> bool:
+    """Drop clipped fragments unless partial strings are allowed."""
+    if geom is None or geom.is_empty:
+        return False
+    full_area = full_rect.area
+    if full_area <= 0:
+        return False
+    if geom.geom_type == "Polygon":
+        pieces = [geom]
+    elif geom.geom_type == "MultiPolygon":
+        pieces = [g for g in geom.geoms if not g.is_empty]
+    else:
+        return allow_partial
+    for piece in pieces:
+        frac = piece.area / full_area
+        if frac >= 0.98:
+            return True
+        if allow_partial and piece.area >= module_w * min_partial_modules * row_ns * 0.92:
+            return True
+    return False
 
 
 def _string_rects_rotated(
@@ -300,6 +396,7 @@ def run_layout(
     south_fence_x: float | None = None,
     west_fence_x: float | None = None,
     rotate_origin: tuple[float, float] | None = None,
+    allow_partial_strings: bool = False,
 ):
     """
     Sweep row bands across a rotated boundary polygon on a shared site grid.
@@ -364,31 +461,28 @@ def run_layout(
                 continue
 
             tracker_units: list[int] = []
+            partial_modules = 0
             if is_tracker:
-                tracker_units, actual_len = pack_tracker_units(
+                tracker_units, partial_modules, actual_len = pack_tracker_units(
                     avail_len,
                     tracker_string_options=tracker_string_options or [8, 7, 6, 5, 4, 3, 2, 1],
                     max_tracker_length_m=max_tracker_length_m,
                     modules_per_string=modules_per_string,
                     module_w=module_w,
                     inter_string_gap_m=inter_string_gap_m,
+                    allow_partial=allow_partial_strings,
                 )
-                n_strings = sum(tracker_units)
+                n_strings = sum(tracker_units) + (1 if partial_modules > 0 else 0)
             else:
-                n_strings = count_strings_in_length(
+                n_strings, partial_modules, actual_len = plan_strings_in_length(
                     avail_len,
                     modules_per_string=modules_per_string,
                     module_w=module_w,
                     inter_string_gap_m=inter_string_gap_m,
-                )
-                actual_len = string_packed_length(
-                    n_strings,
-                    modules_per_string=modules_per_string,
-                    module_w=module_w,
-                    inter_string_gap_m=inter_string_gap_m,
+                    allow_partial=allow_partial_strings,
                 )
 
-            if n_strings < 1:
+            if n_strings < 1 and partial_modules < 1:
                 continue
 
             if is_tracker:
@@ -405,19 +499,29 @@ def run_layout(
             elif row_orig.geom_type == "MultiPolygon":
                 rows_polys.extend(row_orig.geoms)
 
+            min_partial_modules = max(1, modules_per_string // 2)
+            whole_strings = sum(tracker_units) if is_tracker else n_strings - (1 if partial_modules > 0 else 0)
             for srect in _string_rects_in_segment(
                 x_seg_min=seg_min,
                 x_seg_max=seg_max,
                 y=y,
                 row_ns=row_ns,
-                n_strings=n_strings,
+                n_strings=whole_strings,
                 modules_per_string=modules_per_string,
                 module_w=module_w,
                 inter_string_gap_m=inter_string_gap_m,
                 is_tracker=is_tracker,
+                partial_modules=partial_modules,
             ):
                 s_clipped = srect.intersection(poly_rot)
-                if s_clipped.is_empty:
+                if not _accept_string_geom(
+                    s_clipped,
+                    srect,
+                    allow_partial=allow_partial_strings,
+                    min_partial_modules=min_partial_modules,
+                    module_w=module_w,
+                    row_ns=row_ns,
+                ):
                     continue
                 s_orig = shp_rotate(s_clipped, -rot_angle, origin=origin)
                 if s_orig.geom_type == "Polygon":
@@ -425,11 +529,12 @@ def run_layout(
                 elif s_orig.geom_type == "MultiPolygon":
                     string_polys.extend(g for g in s_orig.geoms if not g.is_empty)
 
-            n_mod = n_strings * modules_per_string
+            n_mod = whole_strings * modules_per_string + partial_modules
             rows_data.append(
                 {
                     "n_modules": n_mod,
-                    "n_strings": n_strings,
+                    "n_strings": whole_strings + (1 if partial_modules > 0 else 0),
+                    "partial_modules": partial_modules,
                     "tracker_units": tracker_units,
                     "length_m": round(actual_len, 2),
                     "y_rot_m": round(y, 1),

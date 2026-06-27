@@ -118,6 +118,10 @@ class WorkflowLayoutSweepRequest(BaseModel):
         default="all",
         description="Limit sweep to the mount type chosen in project setup.",
     )
+    allow_partial_strings: bool = Field(
+        default=False,
+        description="Place half-strings (≥50% modules) at row ends when space remains; otherwise stop at last complete string.",
+    )
 
 
 class WorkflowLayoutSweepResponse(BaseModel):
@@ -154,6 +158,7 @@ class WorkflowLayoutDetailRequest(BaseModel):
     exclude_tracker_slope: bool = Field(default=False)
     tracker_slope_limit_pct: float = Field(default=6.0, ge=0.5, le=30.0)
     slope_restriction_grid_m: float = Field(default=20.0, ge=5.0, le=100.0)
+    allow_partial_strings: bool = Field(default=False)
 
 
 class WorkflowLayoutDetailResponse(BaseModel):

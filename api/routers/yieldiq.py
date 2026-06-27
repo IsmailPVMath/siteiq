@@ -85,7 +85,7 @@ async def analyze_yieldiq(
 
     disclosure = (
         f"{profile_description(PROFILE_ANALYSIS)}. "
-        "Includes four PVGIS configurations: 1P/2P Fixed Tilt and 1P/2P Single-Axis Tracker."
+        "Early screening — not bankable yield. Verify with detailed modelling (PVsyst, DNV, etc.) before financial close."
     )
     return YieldIQAnalyzeResponse(
         lat=body.lat,

@@ -241,6 +241,7 @@ export function OutputPage({
   const [layoutOptimization, setLayoutOptimization] = useState<LayoutOptimizationMode>("balanced");
   const [layoutLandCost, setLayoutLandCost] = useState<LayoutLandCost>("auto");
   const [layoutBifacial, setLayoutBifacial] = useState(false);
+  const [allowPartialStrings, setAllowPartialStrings] = useState(false);
   const [layoutMountType, setLayoutMountType] = useState<"Fixed Tilt" | "Single-Axis Tracker">(
     "Fixed Tilt",
   );
@@ -368,9 +369,10 @@ export function OutputPage({
         road_preset: "custom",
         rows_per_block: rowsPerBlock,
         block_gap_m: blockGapM,
+        allow_partial_strings: allowPartialStrings,
       };
     }
-    return { ...base, azimuth: azimuthDeg };
+    return { ...base, azimuth: azimuthDeg, allow_partial_strings: allowPartialStrings };
   }
 
   const buildableMask = useFullBoundary
@@ -1601,6 +1603,19 @@ export function OutputPage({
                   </div>
                 </div>
               ) : null}
+              <label className="checkbox-field layout-bifacial">
+                <input
+                  type="checkbox"
+                  checked={allowPartialStrings}
+                  onChange={(e) => setAllowPartialStrings(e.target.checked)}
+                />
+                Allow half-strings at row ends
+              </label>
+              <p className="hint sidebar-hint">
+                When off, layout stops at the last complete string (no clipped tables at parcel
+                edges). When on, places a partial string if at least half a string fits (e.g. 14 of
+                28 modules).
+              </p>
               <button
                 className="btn btn-primary btn-block"
                 type="button"
@@ -2329,6 +2344,7 @@ export function OutputPage({
             selectedConfigKey={selectedYieldConfigKey}
             selectedDcKwp={selectedLayoutRow?.dc_kwp ?? null}
             mountFilter={mountFilter}
+            layoutGeoJson={layoutDetail?.geojson ?? null}
           />
         ) : yieldBusy ? (
           renderModuleRunning(

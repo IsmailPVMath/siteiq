@@ -101,6 +101,7 @@ def run_layout_sweep(
     inv_ac_kw: float = 100.0,
     include_bom: bool = False,
     mount_filter: str = "all",
+    allow_partial_strings: bool = False,
 ) -> Dict[str, Any]:
     """
     Iterate mount/portrait × pitch across one or more site parcels.
@@ -222,6 +223,7 @@ def run_layout_sweep(
                     restriction_latlons=active_restrictions,
                     ref_lat=ref_lat,
                     ref_lon=ref_lon,
+                    allow_partial_strings=allow_partial_strings,
                     **grid_kwargs,
                 )
                 if layout:
@@ -283,6 +285,7 @@ def run_layout_sweep(
                     restriction_latlons=active_restrictions,
                     ref_lat=ref_lat,
                     ref_lon=ref_lon,
+                    allow_partial_strings=allow_partial_strings,
                     **grid_kwargs,
                 )
                 if single:

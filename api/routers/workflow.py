@@ -331,6 +331,7 @@ async def workflow_layout_sweep(
                     road_mode=body.road_mode,
                     road_preset=body.road_preset,
                     mount_filter=body.mount_filter,
+                    allow_partial_strings=body.allow_partial_strings,
                 ),
             ),
             timeout=LAYOUT_TIMEOUT_SEC,
@@ -383,6 +384,7 @@ def _layout_detail_payload(body: WorkflowLayoutDetailRequest):
         block_gap_m=body.block_gap_m,
         road_mode=body.road_mode,
         road_preset=body.road_preset,
+        allow_partial_strings=body.allow_partial_strings,
     )
 
 

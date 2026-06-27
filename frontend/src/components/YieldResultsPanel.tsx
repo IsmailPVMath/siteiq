@@ -1,12 +1,28 @@
 import type { YieldConfig, YieldIQAnalyzeResponse } from "../types/terrainiq";
+import { LayoutPreviewMap } from "./LayoutPreviewMap";
+import type * as GeoJSON from "geojson";
 
 const CONFIG_ORDER = ["1P Fixed", "2P Fixed", "1P Tracker", "2P Tracker"] as const;
+const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 interface Props {
   result: YieldIQAnalyzeResponse;
   selectedConfigKey?: string | null;
   selectedDcKwp?: number | null;
   mountFilter?: "all" | "fixed" | "sat";
+  layoutGeoJson?: GeoJSON.GeoJSON | null;
+}
+
+function niceCeil(x: number) {
+  const exp = Math.floor(Math.log10(x));
+  const base = Math.pow(10, exp);
+  const f = x / base;
+  const nf = f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10;
+  return nf * base;
+}
+
+function kmPerDegLon(lat: number) {
+  return 111.32 * Math.cos((lat * Math.PI) / 180);
 }
 
 function fmtLoss(val: unknown): string {
@@ -34,6 +50,7 @@ export function YieldResultsPanel({
   selectedConfigKey,
   selectedDcKwp,
   mountFilter = "all",
+  layoutGeoJson = null,
 }: Props) {
   const configs = result.configs;
   const visibleKeys = CONFIG_ORDER.filter(
@@ -64,8 +81,120 @@ export function YieldResultsPanel({
       ? (selectedDcKwp * Number(selectedCfg.spec_y)) / 1000
       : null;
 
+  const screeningCfg = selectedCfg ?? bestCfg;
+  const monthlyVals =
+    screeningCfg?.monthly && Array.isArray(screeningCfg.monthly)
+      ? screeningCfg.monthly.map((v) => Number(v) || 0)
+      : [];
+  const peakMonthIdx = monthlyVals.length
+    ? monthlyVals.indexOf(Math.max(...monthlyVals))
+    : -1;
+  const lowMonthIdx = monthlyVals.length ? monthlyVals.indexOf(Math.min(...monthlyVals)) : -1;
+
   return (
     <div className="yield-results-panel">
+      <div className="yield-section">
+        <h3>Site &amp; resource map</h3>
+        <div className="yield-site-map-wrap">
+          <LayoutPreviewMap center={{ lat: result.lat, lon: result.lon }} layoutGeoJson={layoutGeoJson} />
+          <div className="yield-map-scalebar">
+            <span className="yield-scale-line" />
+            <span>1 km</span>
+          </div>
+        </div>
+        <div className="yield-metrics-row">
+          <div className="yield-metric">
+            <span className="label">Latitude</span>
+            <span className="value">{result.lat.toFixed(5)}°</span>
+          </div>
+          <div className="yield-metric">
+            <span className="label">Longitude</span>
+            <span className="value">{result.lon.toFixed(5)}°</span>
+          </div>
+          <div className="yield-metric">
+            <span className="label">Map scale</span>
+            <span className="value">~{kmPerDegLon(result.lat).toFixed(2)} km/° lon</span>
+          </div>
+        </div>
+      </div>
+
+      {screeningCfg ? (
+        <div className="yield-section yield-screening-card">
+          <h3>Screening summary</h3>
+          <p className="hint">
+            Early-stage yield snapshot — comparable to Aurora / DNV / PVsyst headline results, not a
+            bankable loss study.
+          </p>
+          <div className="yield-metrics-row">
+            <div className="yield-metric">
+              <span className="label">Configuration</span>
+              <span className="value">{screeningCfg.display_name ?? selectedConfigKey ?? bestKey ?? "—"}</span>
+            </div>
+            <div className="yield-metric">
+              <span className="label">Specific yield</span>
+              <span className="value">{Number(screeningCfg.spec_y).toFixed(0)} kWh/kWp/yr</span>
+            </div>
+            <div className="yield-metric">
+              <span className="label">Annual energy</span>
+              <span className="value">
+                {selectedMwh != null ? `${selectedMwh.toFixed(0)} MWh/yr` : "Select layout DC"}
+              </span>
+            </div>
+            <div className="yield-metric">
+              <span className="label">Performance ratio</span>
+              <span className="value">
+                {screeningCfg.pr != null ? `${Number(screeningCfg.pr).toFixed(1)}%` : "—"}
+              </span>
+            </div>
+            <div className="yield-metric">
+              <span className="label">Capacity factor</span>
+              <span className="value">
+                {screeningCfg.cf != null ? `${Number(screeningCfg.cf).toFixed(1)}%` : "—"}
+              </span>
+            </div>
+            <div className="yield-metric">
+              <span className="label">POA irradiance</span>
+              <span className="value">{fmtNum(screeningCfg.h_y, 0)} kWh/m²/yr</span>
+            </div>
+            <div className="yield-metric">
+              <span className="label">Total loss</span>
+              <span className="value">{fmtLoss(screeningCfg.l_total ?? screeningCfg.total_loss)}</span>
+            </div>
+            <div className="yield-metric">
+              <span className="label">Shading (GCR)</span>
+              <span className="value">{fmtLoss(screeningCfg.shading)}</span>
+            </div>
+            <div className="yield-metric">
+              <span className="label">Temperature</span>
+              <span className="value">{fmtLoss(screeningCfg.l_tg)}</span>
+            </div>
+            <div className="yield-metric">
+              <span className="label">Soiling + BOS</span>
+              <span className="value">
+                {fmtLoss(
+                  (Number(screeningCfg.soiling_loss) || 0) + (Number(screeningCfg.other_loss) || 0),
+                )}
+              </span>
+            </div>
+            {peakMonthIdx >= 0 ? (
+              <div className="yield-metric">
+                <span className="label">Peak month</span>
+                <span className="value">
+                  {MONTHS_SHORT[peakMonthIdx]} ({monthlyVals[peakMonthIdx].toFixed(0)} kWh/kWp)
+                </span>
+              </div>
+            ) : null}
+            {lowMonthIdx >= 0 ? (
+              <div className="yield-metric">
+                <span className="label">Low month</span>
+                <span className="value">
+                  {MONTHS_SHORT[lowMonthIdx]} ({monthlyVals[lowMonthIdx].toFixed(0)} kWh/kWp)
+                </span>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
       {selectedCfg && selectedMwh != null ? (
         <div className="selected-yield-summary">
           <strong>Selected layout estimate:</strong> {selectedMwh.toFixed(0)} MWh/yr at{" "}
@@ -261,34 +390,53 @@ export function YieldResultsPanel({
         const chartCfg = selectedCfg ?? bestCfg;
         const monthly = chartCfg?.monthly;
         if (!Array.isArray(monthly) || monthly.length !== 12) return null;
-        const max = Math.max(...monthly.map((v) => Number(v) || 0), 1);
-        const months = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+        const vals = monthly.map((v) => Number(v) || 0);
+        const dataMax = Math.max(...vals, 1);
+        const axisMax = niceCeil(dataMax);
+        const ticks = Array.from({ length: 5 }, (_, i) => axisMax - (i * axisMax) / 4);
         return (
           <div className="yield-section">
             <h3>
               Monthly specific yield
               {chartCfg?.display_name ? ` — ${chartCfg.display_name}` : ""}
             </h3>
-            <div className="yield-month-chart" role="img" aria-label="Monthly specific yield">
-              {monthly.map((v, i) => {
-                const val = Number(v) || 0;
-                return (
-                  <div className="yield-month-col" key={i}>
-                    <div className="yield-month-bar-track">
-                      <div
-                        className="yield-month-bar"
-                        style={{ height: `${(val / max) * 100}%` }}
-                        title={`${months[i]}: ${val.toFixed(0)} kWh/kWp`}
-                      />
+            <div className="ghi-chart" role="img" aria-label="Monthly specific yield chart">
+              <div className="ghi-yaxis">
+                <span className="ghi-yaxis-title">kWh/kWp</span>
+                <div className="ghi-yaxis-ticks">
+                  {ticks.map((t) => (
+                    <span className="ghi-ytick" key={t}>
+                      {t.toFixed(0)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="ghi-plot">
+                <div className="ghi-gridlines">
+                  {ticks.map((t) => (
+                    <div className="ghi-gridline" key={t} />
+                  ))}
+                </div>
+                <div className="ghi-bars">
+                  {vals.map((val, i) => (
+                    <div className="ghi-col" key={i}>
+                      <div className="ghi-bar-track">
+                        <span className="ghi-bar-value">{val.toFixed(0)}</span>
+                        <div
+                          className="ghi-bar yield-month-bar"
+                          style={{ height: `${(val / axisMax) * 100}%` }}
+                          title={`${MONTHS_SHORT[i]}: ${val.toFixed(0)} kWh/kWp`}
+                        />
+                      </div>
+                      <span className="ghi-xlabel">{MONTHS_SHORT[i]}</span>
                     </div>
-                    <span className="yield-month-label">{months[i]}</span>
-                  </div>
-                );
-              })}
+                  ))}
+                </div>
+                <span className="ghi-xaxis-title">Month</span>
+              </div>
             </div>
             <p className="hint">
-              Specific yield (kWh/kWp) per month for the selected configuration. Full PVsyst-style
-              loss waterfall and shading scene come in detailed YieldIQ.
+              Specific yield per month for the selected configuration (PVGIS analysis profile).
             </p>
           </div>
         );

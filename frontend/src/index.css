@@ -856,6 +856,50 @@ a {
   gap: 1rem;
 }
 
+.yield-site-map-wrap {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  height: 220px;
+}
+
+.yield-site-map-wrap .leaflet-container {
+  height: 220px;
+}
+
+.yield-map-scalebar {
+  position: absolute;
+  left: 0.75rem;
+  bottom: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.45rem;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--muted);
+  z-index: 500;
+}
+
+.yield-scale-line {
+  display: inline-block;
+  width: 48px;
+  height: 3px;
+  background: #145f34;
+  border-radius: 2px;
+}
+
+.yield-screening-card {
+  background: linear-gradient(135deg, #fff8ee, #ffffff);
+  border: 1px solid #f0d9b8;
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+}
+
 .yield-section h3 {
   margin: 0 0 0.55rem;
   font-size: 0.78rem;

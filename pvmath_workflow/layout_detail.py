@@ -112,6 +112,7 @@ def build_layout_detail(
     block_gap_m: float = 5.0,
     road_mode: str = "auto",
     road_preset: str = "sat_auto",
+    allow_partial_strings: bool = False,
 ) -> Dict[str, Any]:
     n_portrait, tracker, label = _config_from_key(config_key)
     polys = _normalize_polys(boundary, boundaries)
@@ -176,6 +177,7 @@ def build_layout_detail(
             restriction_latlons=restrictions,
             ref_lat=ref_lat,
             ref_lon=ref_lon,
+            allow_partial_strings=allow_partial_strings,
             **grid_kwargs,
         )
         if layout:
@@ -214,6 +216,7 @@ def build_layout_detail(
                         "kind": "pv_module",
                         "string_index": string_index,
                         "modules_per_string": layout["modules_per_string"],
+                        "n_modules": layout["modules_per_string"],
                     },
                 )
             )
@@ -237,6 +240,7 @@ def build_layout_detail(
                         "kind": "pv_row",
                         "row_index": row_index,
                         "n_modules": row_data["n_modules"],
+                        "partial_modules": row_data.get("partial_modules", 0),
                         "n_strings": row_data.get("n_strings", 0),
                         "tracker_units": row_data.get("tracker_units") or [],
                         "length_m": row_data["length_m"],

@@ -100,7 +100,11 @@ export interface OrientedRow {
   nModules: number;
 }
 
-function orientedRowFromRing(ring: number[][], origin: { lat: number; lon: number }): OrientedRow | null {
+function orientedRowFromRing(
+  ring: number[][],
+  origin: { lat: number; lon: number },
+  props?: { length_m?: number; n_modules?: number },
+): OrientedRow | null {
   const pts = ring.slice(0, -1).map(([lon, lat]) => localXY(lon, lat, origin));
   if (pts.length < 3) return null;
 
@@ -132,14 +136,21 @@ function orientedRowFromRing(ring: number[][], origin: { lat: number; lon: numbe
     maxRy = Math.max(maxRy, ry);
   }
 
-  const length = Math.max(0.8, maxRx - minRx);
-  const width = Math.max(0.4, maxRy - minRy);
+  const geomLength = Math.max(0.8, maxRx - minRx);
+  const geomWidth = Math.max(0.4, maxRy - minRy);
+  const length = props?.length_m && props.length_m > 0 ? props.length_m : geomLength;
+  const width = geomWidth;
   const rcx = (minRx + maxRx) / 2;
   const rcy = (minRy + maxRy) / 2;
   const cx = rcx * Math.cos(angle) - rcy * Math.sin(angle);
   const cy = rcx * Math.sin(angle) + rcy * Math.cos(angle);
 
-  return { cx, cy, length, width, angle, nModules: 28 };
+  const nModules =
+    props?.n_modules && props.n_modules > 0
+      ? props.n_modules
+      : Math.max(4, Math.round(length / 1.038));
+
+  return { cx, cy, length, width, angle, nModules };
 }
 
 export function parseLayoutRows(
@@ -153,19 +164,18 @@ export function parseLayoutRows(
     (f) => f.geometry?.type === "Polygon" && f.properties?.kind === "pv_row",
   ) as Array<GeoJSON.Feature<GeoJSON.Polygon>>;
 
-  if (!features.length) {
-    features = layoutGeoJson.features.filter(
-      (f) => f.geometry?.type === "Polygon" && f.properties?.kind === "pv_module",
-    ) as Array<GeoJSON.Feature<GeoJSON.Polygon>>;
-  }
-
+  // Do not fall back to per-string polygons — clipped fragments collapse the 3D view.
   for (const feature of features.slice(0, MAX_3D_ROWS)) {
     const ring = feature.geometry.coordinates[0];
     if (!ring || ring.length < 4) continue;
-    const row = orientedRowFromRing(ring, origin);
+    const lengthM = Number(feature.properties?.length_m ?? 0);
+    const nMod = Number(feature.properties?.n_modules ?? 0);
+    const row = orientedRowFromRing(ring, origin, {
+      length_m: Number.isFinite(lengthM) ? lengthM : undefined,
+      n_modules: Number.isFinite(nMod) ? nMod : undefined,
+    });
     if (!row) continue;
-    const nMod = Number(feature.properties?.n_modules ?? feature.properties?.modules_per_string ?? 28);
-    row.nModules = Number.isFinite(nMod) ? nMod : 28;
+    if (row.length < 3) continue;
     rows.push(row);
   }
   return rows;
@@ -228,7 +238,8 @@ export function buildTerrain3DScene(
   const FIXED_TILT_DEG = 22;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color("#c8e6c9");
-  scene.fog = new THREE.Fog("#c8e6c9", 500, 3200);
+  const fogFar = Math.max(1200, Math.max(mesh.vertices.length > 0 ? 800 : 1200, 1));
+  scene.fog = new THREE.Fog("#c8e6c9", fogFar * 0.35, fogFar * 2.4);
 
   const positions: number[] = [];
   const colors: number[] = [];
