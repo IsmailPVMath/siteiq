@@ -127,7 +127,7 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
   }, [draft.geometry.parcels]);
 
   const overlayParcels = useMemo(
-    () => draft.geometry.parcels.map((p) => ({ coords: p.coords, enabled: p.enabled })),
+    () => draft.geometry.parcels.map((p) => ({ id: p.id, coords: p.coords, enabled: p.enabled })),
     [draft.geometry.parcels],
   );
 
@@ -517,6 +517,15 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
               }}
               onExpandAllGroups={expandAllGroups}
               onCollapseAllGroups={collapseAllGroups}
+              onRemoveOverlayParcels={(ids) => {
+                const next = draft.geometry.parcels.filter((p) => !ids.includes(p.id));
+                dispatch({ type: "set_parcels", parcels: next });
+                setHint(
+                  next.length
+                    ? `Removed ${ids.length} layer(s) from map.`
+                    : "All parcels removed.",
+                );
+              }}
             />
 
             <AdvancedProjectOptions

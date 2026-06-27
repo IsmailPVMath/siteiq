@@ -43,6 +43,7 @@ interface Props {
   onClearBoundary: () => void;
   onExpandAllGroups: () => void;
   onCollapseAllGroups: () => void;
+  onRemoveOverlayParcels: (ids: string[]) => void;
 }
 
 export function BoundaryWorkspace({
@@ -76,6 +77,7 @@ export function BoundaryWorkspace({
   onClearBoundary,
   onExpandAllGroups,
   onCollapseAllGroups,
+  onRemoveOverlayParcels,
 }: Props) {
   const uploadOpt = INPUT_METHOD_OPTIONS.find((o) => o.id === inputMethod);
   const isUpload = ["kml", "kmz", "geojson"].includes(inputMethod);
@@ -337,6 +339,14 @@ export function BoundaryWorkspace({
         </div>
       ) : null}
 
+      {draft.geometry.parcels.length > 0 ? (
+        <p className="hint map-draw-hint">
+          Map tools (top-left): <strong>delete</strong> removes imported boundary/access layers —
+          click a polygon, then confirm with ✓. <strong>Edit</strong> adjusts hand-drawn site or
+          restriction zones.
+        </p>
+      ) : null}
+
       <SiteMap
         lat={draft.location.lat}
         lon={draft.location.lon}
@@ -348,6 +358,7 @@ export function BoundaryWorkspace({
         onPick={onPick}
         onSiteBoundaryChange={onSiteBoundaryChange}
         onRestrictionsChange={onRestrictionsChange}
+        onRemoveOverlayParcels={onRemoveOverlayParcels}
       />
     </section>
   );

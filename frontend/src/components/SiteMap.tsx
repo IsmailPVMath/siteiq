@@ -14,6 +14,7 @@ export interface MapBoundary {
 type DrawMode = "site" | "restriction";
 
 export interface OverlayParcel {
+  id: string;
   coords: MapBoundary[];
   enabled: boolean;
 }
@@ -29,6 +30,7 @@ interface Props {
   onPick: (lat: number, lon: number) => void;
   onSiteBoundaryChange?: (boundary: MapBoundary[] | undefined) => void;
   onRestrictionsChange?: (restrictions: MapBoundary[][]) => void;
+  onRemoveOverlayParcels?: (ids: string[]) => void;
 }
 
 const pinIcon = L.icon({
@@ -50,22 +52,24 @@ export function SiteMap({
   onPick,
   onSiteBoundaryChange,
   onRestrictionsChange,
+  onRemoveOverlayParcels,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
   const isDrawingRef = useRef(false);
   const drawLayerRef = useRef<L.FeatureGroup | null>(null);
-  const parcelLayerRef = useRef<L.FeatureGroup | null>(null);
   const buildableLayerRef = useRef<L.GeoJSON | null>(null);
   const onPickRef = useRef(onPick);
   const drawModeRef = useRef<DrawMode>(drawMode);
   const onSiteBoundaryChangeRef = useRef(onSiteBoundaryChange);
   const onRestrictionsChangeRef = useRef(onRestrictionsChange);
+  const onRemoveOverlayParcelsRef = useRef(onRemoveOverlayParcels);
   onPickRef.current = onPick;
   drawModeRef.current = drawMode;
   onSiteBoundaryChangeRef.current = onSiteBoundaryChange;
   onRestrictionsChangeRef.current = onRestrictionsChange;
+  onRemoveOverlayParcelsRef.current = onRemoveOverlayParcels;
 
   function normalizeBoundary(latlngs: L.LatLng[]): MapBoundary[] {
     return latlngs.map((p) => ({
@@ -81,7 +85,9 @@ export function SiteMap({
     const restrictionPolys: MapBoundary[][] = [];
     featureGroup.eachLayer((layer) => {
       if (!(layer instanceof L.Polygon)) return;
-      const role = (layer as L.Polygon & { _pvmRole?: DrawMode })._pvmRole || "restriction";
+      const tagged = layer as L.Polygon & { _pvmRole?: DrawMode; _pvmParcelId?: string };
+      if (tagged._pvmParcelId) return;
+      const role = tagged._pvmRole || "restriction";
       const latlngs = layer.getLatLngs();
       const ring = Array.isArray(latlngs[0]) ? (latlngs[0] as L.LatLng[]) : [];
       const coords = normalizeBoundary(ring);
@@ -93,10 +99,45 @@ export function SiteMap({
     onRestrictionsChangeRef.current?.(restrictionPolys);
   }
 
-  function clearDrawLayers() {
-    if (drawLayerRef.current) {
-      drawLayerRef.current.clearLayers();
-    }
+  function clearSiteRestrictionLayers() {
+    const featureGroup = drawLayerRef.current;
+    if (!featureGroup) return;
+    const toRemove: L.Layer[] = [];
+    featureGroup.eachLayer((layer) => {
+      const tagged = layer as L.Polygon & { _pvmParcelId?: string };
+      if (tagged._pvmParcelId) return;
+      toRemove.push(layer);
+    });
+    toRemove.forEach((l) => featureGroup.removeLayer(l));
+  }
+
+  function refreshOverlayLayers(parcels: OverlayParcel[] | undefined) {
+    const featureGroup = drawLayerRef.current;
+    if (!featureGroup) return;
+    const toRemove: L.Layer[] = [];
+    featureGroup.eachLayer((layer) => {
+      if ((layer as L.Polygon & { _pvmParcelId?: string })._pvmParcelId) {
+        toRemove.push(layer);
+      }
+    });
+    toRemove.forEach((l) => featureGroup.removeLayer(l));
+
+    (parcels || []).forEach((parcel) => {
+      if (parcel.coords.length < 3) return;
+      const color = parcel.enabled ? "#1d9e52" : "#94a3b8";
+      const layer = L.polygon(
+        parcel.coords.map((p) => [p.lat, p.lon] as [number, number]),
+        {
+          color,
+          fillColor: color,
+          fillOpacity: parcel.enabled ? 0.22 : 0.06,
+          weight: parcel.enabled ? 2 : 1,
+          dashArray: parcel.enabled ? undefined : "5 4",
+        },
+      ) as L.Polygon & { _pvmParcelId?: string };
+      layer._pvmParcelId = parcel.id;
+      featureGroup.addLayer(layer);
+    });
   }
 
   function addRolePolygon(coords: MapBoundary[], role: DrawMode) {
@@ -140,7 +181,6 @@ export function SiteMap({
       isDrawingRef.current = false;
     });
 
-    parcelLayerRef.current = new L.FeatureGroup().addTo(map);
     const drawnItems = new L.FeatureGroup().addTo(map);
     drawLayerRef.current = drawnItems;
     const drawControl = new L.Control.Draw({
@@ -188,7 +228,18 @@ export function SiteMap({
       syncBoundaryFromMap();
     });
     map.on(L.Draw.Event.EDITED, () => syncBoundaryFromMap());
-    map.on(L.Draw.Event.DELETED, () => syncBoundaryFromMap());
+    map.on(L.Draw.Event.DELETED, (e: L.LeafletEvent) => {
+      const parcelIds: string[] = [];
+      const event = e as L.LeafletEvent & { layers?: L.FeatureGroup };
+      event.layers?.eachLayer((layer) => {
+        const id = (layer as L.Polygon & { _pvmParcelId?: string })._pvmParcelId;
+        if (id) parcelIds.push(id);
+      });
+      if (parcelIds.length) {
+        onRemoveOverlayParcelsRef.current?.(parcelIds);
+      }
+      syncBoundaryFromMap();
+    });
 
     mapRef.current = map;
 
@@ -207,7 +258,6 @@ export function SiteMap({
       map.remove();
       mapRef.current = null;
       drawLayerRef.current = null;
-      parcelLayerRef.current = null;
       buildableLayerRef.current = null;
     };
   }, []);
@@ -228,7 +278,7 @@ export function SiteMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !drawLayerRef.current) return;
-    clearDrawLayers();
+    clearSiteRestrictionLayers();
     if (siteBoundary && siteBoundary.length >= 3) {
       addRolePolygon(siteBoundary, "site");
     }
@@ -243,24 +293,8 @@ export function SiteMap({
 
   useEffect(() => {
     const map = mapRef.current;
-    const layer = parcelLayerRef.current;
-    if (!map || !layer) return;
-    layer.clearLayers();
-    (overlayParcels || []).forEach((parcel) => {
-      if (parcel.coords.length < 3) return;
-      const color = parcel.enabled ? "#1d9e52" : "#94a3b8";
-      L.polygon(
-        parcel.coords.map((p) => [p.lat, p.lon] as [number, number]),
-        {
-          color,
-          fillColor: color,
-          fillOpacity: parcel.enabled ? 0.22 : 0.06,
-          weight: parcel.enabled ? 2 : 1,
-          dashArray: parcel.enabled ? undefined : "5 4",
-          interactive: false,
-        },
-      ).addTo(layer);
-    });
+    if (!map || !drawLayerRef.current) return;
+    refreshOverlayLayers(overlayParcels);
     const enabled = (overlayParcels || []).filter((p) => p.enabled && p.coords.length >= 3);
     if (enabled.length) {
       const bounds = L.latLngBounds(

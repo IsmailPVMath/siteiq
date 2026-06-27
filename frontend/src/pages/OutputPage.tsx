@@ -1272,7 +1272,7 @@ export function OutputPage({
 
         {activeStage === "topo" ? (
         <div className="sidebar-group">
-          <h3>TerrainIQ terrain</h3>
+          <h3>TerrainIQ</h3>
           {!hasBoundary ? (
             <p className="hint sidebar-hint">
               Add a site boundary on Project input to enable terrain analysis.
@@ -2061,7 +2061,7 @@ export function OutputPage({
       {activeStage === "topo" ? (
       <section className="module-card module-terrainiq">
         <div className="module-head">
-          <h2>TerrainIQ terrain</h2>
+          <h2>TerrainIQ</h2>
           <span className="module-tag">Step 2 · authoritative terrain</span>
         </div>
         {!hasBoundary ? (
