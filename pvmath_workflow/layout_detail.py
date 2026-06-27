@@ -82,6 +82,36 @@ def _polygon_feature(poly: Any, ref_lat: float, ref_lon: float, props: Dict[str,
     }
 
 
+def _axis_features(
+    axis: Any, ref_lat: float, ref_lon: float, row_number: int
+) -> List[Dict[str, Any]]:
+    """Centre-axis line plus a south-end point label for one row/tracker."""
+    if axis is None or getattr(axis, "is_empty", True) or axis.geom_type != "LineString":
+        return []
+    coords = list(axis.coords)
+    if len(coords) < 2:
+        return []
+    latlons = xy_to_latlon(coords, ref_lat, ref_lon)
+    line_coords = [[round(lon, 8), round(lat, 8)] for lat, lon in latlons]
+    # South end = endpoint with the lowest latitude (works for any orientation).
+    south_lat, south_lon = min(latlons, key=lambda p: p[0])
+    return [
+        {
+            "type": "Feature",
+            "properties": {"kind": "pv_axis", "row_number": row_number},
+            "geometry": {"type": "LineString", "coordinates": line_coords},
+        },
+        {
+            "type": "Feature",
+            "properties": {"kind": "pv_axis_label", "row_number": row_number},
+            "geometry": {
+                "type": "Point",
+                "coordinates": [round(south_lon, 8), round(south_lat, 8)],
+            },
+        },
+    ]
+
+
 def _normalize_polys(
     boundary: Optional[List[List[float]]],
     boundaries: Optional[List[List[List[float]]]],
@@ -189,6 +219,7 @@ def build_layout_detail(
 
     features: List[Dict[str, Any]] = []
     row_index = 0
+    axis_row_number = 0
     string_index = 0
     total_modules = 0
     total_rows = 0
@@ -258,6 +289,9 @@ def build_layout_detail(
         total_strings += layout.get("total_strings", 0)
         total_tracker_units += layout.get("total_tracker_units", 0)
         total_area_ha += layout["area_ha"]
+        for axis in layout.get("axis_lines") or []:
+            axis_row_number += 1
+            features.extend(_axis_features(axis, ref_lat, ref_lon, axis_row_number))
 
     dc_kwp = round(total_modules * module_wp / 1000, 1)
     dc_mwp = round(dc_kwp / 1000, 3)
@@ -313,13 +347,31 @@ def export_layout_dxf(detail: Dict[str, Any], project_name: str = "LayoutIQ") ->
     doc.layers.add("SITE_BOUNDARY", color=5)
     doc.layers.add("SETBACK_INSET", color=8)
     doc.layers.add("PV_ROWS", color=3)
+    doc.layers.add("PV_AXES", color=9)
+    doc.layers.add("ROW_NUMBERS", color=9)
     doc.layers.add("LABELS", color=7)
+    # Arial text style for row numbers (field-friendly).
+    if "ARIAL" not in doc.styles:
+        doc.styles.add("ARIAL", font="arial.ttf")
 
     for layout in layouts:
         _add_polyline(msp, layout["poly_m"], "SITE_BOUNDARY")
         _add_polyline(msp, layout["poly_inset"], "SETBACK_INSET")
         for poly in layout["rows_polys"]:
             _add_polyline(msp, poly, "PV_ROWS")
+        axis_row = 0
+        for axis in layout.get("axis_lines") or []:
+            axis_row += 1
+            if axis is None or axis.is_empty or axis.geom_type != "LineString":
+                continue
+            coords = list(axis.coords)
+            msp.add_lwpolyline(coords, dxfattribs={"layer": "PV_AXES"})
+            south = min(coords, key=lambda c: c[1])
+            msp.add_text(
+                str(axis_row),
+                height=1.2,
+                dxfattribs={"layer": "ROW_NUMBERS", "style": "ARIAL"},
+            ).set_placement((south[0], south[1] - 1.0))
 
     summary = (
         f"{project_name} | {detail['label']} | Pitch {detail['pitch_m']} m | "

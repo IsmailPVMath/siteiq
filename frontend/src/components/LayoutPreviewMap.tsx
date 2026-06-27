@@ -57,6 +57,19 @@ export function LayoutPreviewMap({ center, layoutGeoJson }: Props) {
       layoutGeoJson.features.some((f) => f.properties?.kind === "pv_module");
 
     layoutLayerRef.current = L.geoJSON(layoutGeoJson as GeoJSON.GeoJsonObject, {
+      pointToLayer: (feature, latlng) => {
+        if (feature.properties?.kind === "pv_axis_label") {
+          return L.marker(latlng, {
+            interactive: false,
+            icon: L.divIcon({
+              className: "pv-row-number",
+              html: String(feature.properties.row_number ?? ""),
+              iconSize: [0, 0],
+            }),
+          });
+        }
+        return L.circleMarker(latlng, { radius: 0, opacity: 0, fillOpacity: 0 });
+      },
       style: (feature) => {
         const kind = feature?.properties?.kind;
         if (kind === "pv_module") {
@@ -66,6 +79,9 @@ export function LayoutPreviewMap({ center, layoutGeoJson }: Props) {
             fillOpacity: 0.88,
             weight: 0.35,
           };
+        }
+        if (kind === "pv_axis") {
+          return { color: "#6b7280", weight: 0.8, opacity: 0.85 };
         }
         if (kind === "pv_row") {
           if (hasModules) {
@@ -95,6 +111,8 @@ export function LayoutPreviewMap({ center, layoutGeoJson }: Props) {
           layer.bindTooltip(`Row ${row}: ${modules} modules`, { sticky: true });
         } else if (kind === "buildable_parcel") {
           layer.bindTooltip("Buildable parcel", { sticky: true });
+        } else if (kind === "pv_axis") {
+          layer.bindTooltip(`Row ${feature.properties.row_number} axis`, { sticky: true });
         }
       },
     }).addTo(map);

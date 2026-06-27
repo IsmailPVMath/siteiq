@@ -449,6 +449,7 @@ def run_layout(
     y = grid_y_origin if grid_y_origin is not None else _snap_y_origin(miny, pitch)
     rows_data: list[dict[str, Any]] = []
     rows_polys: list[Polygon] = []
+    axis_lines: list[Any] = []
     string_polys: list[Polygon] = []
     string_row_local_idx: list[int] = []
     rows_in_block = 0
@@ -567,6 +568,17 @@ def run_layout(
                         string_row_local_idx.append(row_local_idx)
 
             n_mod = whole_strings * modules_per_string + partial_modules
+            # Center axis (torque-tube / fixed-tilt centreline) through the row,
+            # extended 0.1 m at each end so it stays visible past the modules.
+            if is_tracker:
+                ax_x0 = seg_max - actual_len
+                ax_x1 = seg_max
+            else:
+                ax_x0 = seg_min
+                ax_x1 = seg_min + actual_len
+            cy_axis = y + row_ns / 2.0
+            axis_rot = LineString([(ax_x0 - 0.1, cy_axis), (ax_x1 + 0.1, cy_axis)])
+            axis_lines.append(shp_rotate(axis_rot, -rot_angle, origin=origin))
             rows_data.append(
                 {
                     "n_modules": n_mod,
@@ -593,6 +605,7 @@ def run_layout(
     return {
         "rows_data": rows_data,
         "rows_polys": rows_polys,
+        "axis_lines": axis_lines,
         "string_polys": string_polys,
         "string_row_local_idx": string_row_local_idx,
         "poly_m": poly_m,
