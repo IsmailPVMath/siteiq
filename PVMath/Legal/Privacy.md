@@ -29,7 +29,7 @@ contact@pvmath.com · +49 15 901 482 999
 ## Usage counting (customer-facing)
 
 - **1 project analysis** charged when SiteIQ screening runs.
-- TopoIQ, LayoutIQ, YieldIQ on the same project in the same calendar month do not add credits.
+- TerrainIQ, LayoutIQ, YieldIQ on the same project in the same calendar month do not add credits.
 
 ---
 

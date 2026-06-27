@@ -16,7 +16,7 @@ Mohammed Ismail Pasha (Einzelunternehmen, trading as PVMath), Straubinger Strass
 
 1. **Platform:** app.pvmath.com (PVMath-Solar Site Intelligence Platform) + pvmath.com marketing.
 2. **Screening only:** Not bankable yield, not survey-grade terrain.
-3. **Usage:** One **project analysis** = SiteIQ screening run. TopoIQ, LayoutIQ, YieldIQ on same project same month = no extra credit.
+3. **Usage:** One **project analysis** = SiteIQ screening run. TerrainIQ, LayoutIQ, YieldIQ on same project same month = no extra credit.
 4. **Limits:** Free 10/mo · Professional 50/mo · Developer 250/mo (team pool) · Enterprise unlimited.
 5. **Billing:** Manual activation until Stripe live (`docs/PVMath_Manual_Billing_Runbook.md`).
 

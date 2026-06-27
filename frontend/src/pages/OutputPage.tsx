@@ -344,7 +344,7 @@ export function OutputPage({
   const topoPayload: TopoIQAnalyzeRequest | null = useMemo(() => {
     if (!hasBoundary) return null;
     return {
-      project_name: input?.project_name || result.project_name || "TopoIQ run",
+      project_name: input?.project_name || result.project_name || "TerrainIQ run",
       country: input?.country || "",
       land_use: input?.land_use || "Standard",
       polygons: boundaries.map((ring) => ring.map((p) => ({ lat: p.lat, lon: p.lon }))),
@@ -498,7 +498,7 @@ export function OutputPage({
       await refreshFinalScore(topo);
       void fetchTopoMesh();
     } catch (err) {
-      setTopoError(err instanceof Error ? err.message : "TopoIQ analysis failed");
+      setTopoError(err instanceof Error ? err.message : "TerrainIQ analysis failed");
     } finally {
       setTopoBusy(false);
     }
@@ -638,7 +638,7 @@ export function OutputPage({
     activeStage === "topo"
       ? "← Back to SiteIQ"
       : activeStage === "layout"
-        ? "← Back to TopoIQ"
+        ? "← Back to TerrainIQ"
         : activeStage === "yield"
           ? "← Back to LayoutIQ"
           : "← Edit input";
@@ -1164,7 +1164,7 @@ export function OutputPage({
 
         {activeStage === "topo" ? (
         <div className="sidebar-group">
-          <h3>TopoIQ terrain</h3>
+          <h3>TerrainIQ terrain</h3>
           {!hasBoundary ? (
             <p className="hint sidebar-hint">
               Add a site boundary on Project input to enable terrain analysis.
@@ -1206,7 +1206,7 @@ export function OutputPage({
                 onClick={() => void handleRunTopo()}
                 disabled={topoBusy}
               >
-                {topoBusy ? "Running TopoIQ…" : topoResult ? "Re-run TopoIQ" : "Run TopoIQ"}
+                {topoBusy ? "Running TerrainIQ…" : topoResult ? "Re-run TerrainIQ" : "Run TerrainIQ"}
               </button>
               <div className="sidebar-btn-row">
                 <button
@@ -1252,7 +1252,7 @@ export function OutputPage({
                   <option value="Single-Axis Tracker">Single-Axis Tracker</option>
                 </select>
                 <p className="hint sidebar-hint">
-                  Choose here — SiteIQ and TopoIQ run mount-agnostic; layout and yield use this
+                  Choose here — SiteIQ and TerrainIQ run mount-agnostic; layout and yield use this
                   selection.
                 </p>
               </div>
@@ -1578,7 +1578,7 @@ export function OutputPage({
         <div className="sidebar-group sidebar-deliverables">
           <h3>Project deliverables</h3>
           <p className="hint sidebar-hint">
-            PVMath report combines SiteIQ, TopoIQ, LayoutIQ, and YieldIQ. Project package adds A3 layout sheet, BOM CSV, and DXF.
+            PVMath report combines SiteIQ, TerrainIQ, LayoutIQ, and YieldIQ. Project package adds A3 layout sheet, BOM CSV, and DXF.
           </p>
           <button
             className="btn btn-primary btn-block"
@@ -1614,7 +1614,7 @@ export function OutputPage({
             </div>
           ) : (
             <p className="hint sidebar-hint">
-              Complete TopoIQ to compute the overall PVMath score.
+              Complete TerrainIQ to compute the overall PVMath score.
             </p>
           )}
         </div>
@@ -1773,12 +1773,12 @@ export function OutputPage({
                     checked={useFullBoundary}
                     onChange={(e) => setUseFullBoundary(e.target.checked)}
                   />
-                  Use full site boundary — ignore buildable exclusions in TopoIQ & LayoutIQ
+                  Use full site boundary — ignore buildable exclusions in TerrainIQ & LayoutIQ
                 </label>
                 {useFullBoundary ? (
                   <p className="hint sidebar-hint">
                     Exclusions are shown below for reference but will <strong>not</strong> be
-                    removed — TopoIQ and LayoutIQ will use the entire {gisResult.site_area_ha} ha
+                    removed — TerrainIQ and LayoutIQ will use the entire {gisResult.site_area_ha} ha
                     boundary.
                   </p>
                 ) : null}
@@ -1849,7 +1849,7 @@ export function OutputPage({
         )}
         {renderStageBar(
           <button className="btn btn-primary" type="button" onClick={proceedToTopo}>
-            Proceed to TopoIQ →
+            Proceed to TerrainIQ →
           </button>,
         )}
       </section>
@@ -1858,23 +1858,23 @@ export function OutputPage({
       {activeStage === "topo" ? (
       <section className="module-card module-topoiq">
         <div className="module-head">
-          <h2>TopoIQ terrain</h2>
+          <h2>TerrainIQ terrain</h2>
           <span className="module-tag">Step 2 · authoritative terrain</span>
         </div>
         {!hasBoundary ? (
           <p className="hint">
             Draw or upload a site boundary on Project input. Terrain slope and the PVMath
-            terrain score come only from TopoIQ — not from site screening.
+            terrain score come only from TerrainIQ — not from site screening.
           </p>
         ) : (
           <>
             {topoBusy && !topoResult ? (
               renderModuleRunning(
-                "Running TopoIQ terrain analysis",
+                "Running TerrainIQ terrain analysis",
                 "Fetching the public DEM, building the grid, and computing slope across your buildable area.",
               )
             ) : !topoResult ? (
-              <p className="hint">TopoIQ runs automatically when you open this step.</p>
+              <p className="hint">TerrainIQ runs automatically when you open this step.</p>
             ) : null}
             {topoResult ? (
               <>
@@ -1922,7 +1922,7 @@ export function OutputPage({
           topoError && !topoResult ? (
             <p className="hint stage-proceed-hint">
               You can continue to LayoutIQ without terrain — the PVMath score will be incomplete until
-              TopoIQ succeeds.
+              TerrainIQ succeeds.
             </p>
           ) : null,
         )}
@@ -1947,7 +1947,7 @@ export function OutputPage({
                   : "Sweeps Fixed Tilt 1P–4P and Single-Axis Tracker 1P–2P across industry pitch/GCR bands."}
             </p>
             {!topoResult ? (
-              <p className="module-note">TopoIQ should finish first — layout uses your boundary polygon.</p>
+              <p className="module-note">TerrainIQ should finish first — layout uses your boundary polygon.</p>
             ) : null}
             {!layoutSweep && !layoutBusy ? (
               <div className="layout-cta">
@@ -2162,7 +2162,7 @@ export function OutputPage({
                         />
                         <p className="module-note">
                           3D preview of the selected {mountFilter === "sat" ? "tracker" : "fixed-tilt"}{" "}
-                          layout on the TopoIQ DEM ({terrain3D.terrain_source_used}). Use Export GLB
+                          layout on the TerrainIQ DEM ({terrain3D.terrain_source_used}). Use Export GLB
                           for external 3D tools.
                         </p>
                       </>
@@ -2224,7 +2224,7 @@ export function OutputPage({
       ) : null}
 
       <p className="disclaimer footer-note">
-        Screening-grade only — not bankable. Terrain from TopoIQ grid only. Data: PVGIS (JRC),
+        Screening-grade only — not bankable. Terrain from TerrainIQ grid only. Data: PVGIS (JRC),
         routed public DEM, OpenStreetMap.
       </p>
       </div>

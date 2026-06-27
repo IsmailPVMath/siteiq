@@ -49,7 +49,7 @@ export const WORKFLOW_STEPS: { id: WorkflowStep; label: string }[] = [
   { id: "output", label: "Results" },
 ];
 
-/** Unified workflow — screening excludes terrain (TopoIQ only). */
+/** Unified workflow — screening excludes terrain (TerrainIQ only). */
 export const PROCESSING_STAGES = [
   "Solar resource (PVGIS)",
   "Grid proximity (OSM)",

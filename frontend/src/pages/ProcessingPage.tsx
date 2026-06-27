@@ -23,7 +23,7 @@ export function ProcessingPage({ projectName }: Props) {
         <p className="processing-project">{projectName}</p>
         <p className="hint">
           Fetching PVGIS solar data, nearest substation (OpenStreetMap), flood heuristic,
-          and regulatory pointers. Terrain slope is assessed separately in TopoIQ.
+          and regulatory pointers. Terrain slope is assessed separately in TerrainIQ.
         </p>
 
         <ol className="processing-list">

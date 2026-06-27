@@ -144,6 +144,55 @@
     .hero-scan-item span { font-size: 0.82rem; color: var(--muted); line-height: 1.5; font-weight: 500; }
     @media (max-width: 900px) { .hero-scan { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 700px) { .hero-scan { grid-template-columns: 1fr; } }
+
+    /* ── UNIFIED PIPELINE (hero + modules) ── */
+    .pipeline {
+      display: flex; align-items: flex-start; justify-content: center; flex-wrap: wrap;
+      gap: 0.35rem 0; margin-top: 2rem; max-width: 100%; margin-left: auto; margin-right: auto;
+    }
+    .pipeline-step { flex: 1 1 88px; min-width: 72px; max-width: 118px; text-align: center; padding: 0 0.15rem; }
+    .pipeline-node {
+      width: 46px; height: 46px; border-radius: 50%; margin: 0 auto 0.45rem;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 800; font-size: 0.8rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    }
+    .pipeline-node.green { background: linear-gradient(135deg, var(--green), var(--green-dk)); }
+    .pipeline-node.coral { background: linear-gradient(135deg, var(--coral), #c24a00); }
+    .pipeline-node.blue  { background: linear-gradient(135deg, var(--blue), #0d47a1); }
+    .pipeline-node.teal  { background: linear-gradient(135deg, var(--teal), var(--teal-dk)); }
+    .pipeline-node.amber { background: linear-gradient(135deg, #d4840a, #b36a00); }
+    .pipeline-icon { width: 46px; height: 46px; margin: 0 auto 0.45rem; display: flex; align-items: center; justify-content: center; }
+    .pipeline-icon svg { width: 40px; height: 40px; display: block; }
+    .pipeline-label { font-size: 0.72rem; font-weight: 800; letter-spacing: -0.01em; line-height: 1.25; }
+    .pipeline-label.green { color: var(--green-dk); }
+    .pipeline-label.coral { color: var(--coral); }
+    .pipeline-label.blue  { color: var(--blue); }
+    .pipeline-label.teal  { color: var(--teal-dk); }
+    .pipeline-label.amber { color: #d4840a; }
+    .pipeline-arrow {
+      flex: 0 0 auto; align-self: center; color: #b8c8b8; font-size: 1.1rem; font-weight: 700;
+      padding: 0 0.1rem; margin-top: -1.1rem;
+    }
+    .pipeline-report {
+      flex: 1 1 100px; min-width: 90px; max-width: 130px; text-align: center;
+      background: linear-gradient(135deg, var(--green-lt), #f4faf6);
+      border: 1.5px solid rgba(29,158,82,.28); border-radius: 12px;
+      padding: 0.65rem 0.5rem 0.7rem; margin-left: 0.25rem;
+    }
+    .pipeline-report .pipeline-label { color: var(--green-dk); font-size: 0.7rem; }
+    .pipeline-report span { display: block; font-size: 0.6rem; color: #3a5a3a; margin-top: 0.2rem; line-height: 1.35; font-weight: 600; }
+    .pipeline-modules { margin-top: 0; margin-bottom: 2rem; padding: 1.5rem 1rem; background: var(--bg); border: 1.5px solid var(--border); border-radius: 14px; }
+    .pipeline-modules .pipeline-step { max-width: 130px; }
+    .pipeline-modules .pipeline-sub { font-size: 0.62rem; color: var(--muted); margin-top: 0.25rem; line-height: 1.4; font-weight: 500; }
+    .modules-cta { text-align: center; margin-top: 0.5rem; }
+    .modules-cta .btn-primary { display: inline-flex; }
+    @media (max-width: 720px) {
+      .pipeline-arrow { display: none; }
+      .pipeline { gap: 0.75rem; }
+      .pipeline-step, .pipeline-report { flex: 1 1 40%; max-width: none; }
+      .pipeline-report { margin-left: 0; }
+    }
     @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.4)} }
     .hero h1 { font-size: clamp(2.4rem, 5vw, 4rem); font-weight: 900; letter-spacing: -0.04em; line-height: 1.1; margin-bottom: 1.2rem; color: var(--text); }
     .hero h1 em { font-style: normal; color: var(--green); }
@@ -696,22 +745,45 @@
       <div class="stat"><div class="stat-num">Global</div><div class="stat-lbl" data-i18n="stat.coverage">Solar Data Coverage</div></div>
       <div class="stat"><div class="stat-num" data-i18n="stat.free-val">Free</div><div class="stat-lbl" data-i18n="stat.start">To Get Started</div></div>
     </div>
-    <div class="hero-scan" aria-label="What PVMath does">
-      <div class="hero-scan-item">
-        <strong class="siteiq">SiteIQ</strong>
-        <span data-i18n="hero.scan.siteiq">Site screening with solar, flood &amp; regulatory checks. GIS buildable area with auto-detected setbacks from roads, rivers, buildings &amp; more.</span>
+    <div class="pipeline pipeline-hero" aria-label="Unified workflow: five steps to PVMath report">
+      <div class="pipeline-step">
+        <div class="pipeline-node green" aria-hidden="true">1</div>
+        <div class="pipeline-label green" data-i18n="pipe.setup">Project Setup</div>
       </div>
-      <div class="hero-scan-item">
-        <strong class="topoiq">TerrainIQ</strong>
-        <span data-i18n="hero.scan.topoiq">Slope analysis on region-routed DEM. Export surface + contours to CAD.</span>
+      <div class="pipeline-arrow" aria-hidden="true">→</div>
+      <div class="pipeline-step">
+        <div class="pipeline-icon" aria-hidden="true">
+          <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="16" r="9" fill="#fef3c7" stroke="#e85d04" stroke-width="1.5"/><g stroke="#e85d04" stroke-width="1.5" fill="none"><path d="M24 4v4M24 28v4M4 16h4M40 16h4"/></g></svg>
+        </div>
+        <div class="pipeline-label coral">SiteIQ</div>
       </div>
-      <div class="hero-scan-item">
-        <strong class="siteiq">LayoutIQ</strong>
-        <span data-i18n="hero.scan.layoutiq">Auto-pack fixed-tilt or tracker rows with GIS setbacks &amp; 3D preview.</span>
+      <div class="pipeline-arrow" aria-hidden="true">→</div>
+      <div class="pipeline-step">
+        <div class="pipeline-icon" aria-hidden="true">
+          <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M4 36 L14 22 L22 28 L32 14 L44 24" fill="none" stroke="#1565c0" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+        <div class="pipeline-label blue">TerrainIQ</div>
       </div>
-      <div class="hero-scan-item">
-        <strong class="yieldiq">YieldIQ</strong>
-        <span data-i18n="hero.scan.yieldiq">PVGIS yield for your chosen mount and layout &mdash; specific yield, PR, and capacity factor. Runs automatically from LayoutIQ.</span>
+      <div class="pipeline-arrow" aria-hidden="true">→</div>
+      <div class="pipeline-step">
+        <div class="pipeline-icon" aria-hidden="true">
+          <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="10" width="36" height="28" rx="3" fill="#e1f6f9" stroke="#0e9bb0" stroke-width="1.5"/><g stroke="#0b7686" stroke-width="2.5"><line x1="10" y1="18" x2="38" y2="18"/><line x1="10" y1="24" x2="38" y2="24"/><line x1="10" y1="30" x2="32" y2="30"/></g></svg>
+        </div>
+        <div class="pipeline-label teal">LayoutIQ</div>
+      </div>
+      <div class="pipeline-arrow" aria-hidden="true">→</div>
+      <div class="pipeline-step">
+        <div class="pipeline-icon" aria-hidden="true">
+          <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="28" width="5" height="12" rx="1" fill="#d4840a"/><rect x="17" y="20" width="5" height="20" rx="1" fill="#e85d04"/><rect x="26" y="14" width="5" height="26" rx="1" fill="#1d9e52"/></svg>
+        </div>
+        <div class="pipeline-label amber">YieldIQ</div>
+      </div>
+      <div class="pipeline-arrow" aria-hidden="true">→</div>
+      <div class="pipeline-report">
+        <div class="pipeline-icon" aria-hidden="true" style="margin-bottom:0.35rem;">
+          <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="6" width="28" height="36" rx="3" fill="#fff" stroke="#1d9e52" stroke-width="2"/><circle cx="33" cy="33" r="8" fill="#1d9e52"/></svg>
+        </div>
+        <div class="pipeline-label green" data-i18n="pipe.report">PVMath Report / ZIP</div>
       </div>
     </div>
   </div>
@@ -926,72 +998,55 @@
       <h2 class="section-title" data-i18n-html="modules.title">Five steps.<br>One login.</h2>
       <p class="section-sub" data-i18n="modules.sub">Project setup &rarr; site screening &rarr; terrain &rarr; layout &rarr; yield — no separate apps.</p>
     </div>
-    <div class="modules-grid">
-
-      <!-- SiteIQ -->
-      <div class="module-card live siteiq">
-        <div class="module-pill pill-live" data-i18n="pill.live">Live Now</div>
-        <div class="module-num">Step 2</div>
-        <div class="module-name green">SiteIQ</div>
-        <p class="module-tagline coral" data-i18n="siteiq.tagline">Know if a site is buildable within minutes.</p>
-        <ul class="module-features">
-          <li data-i18n="siteiq.f1">Solar resource &amp; irradiation</li>
-          <li data-i18n="siteiq.f2">Slope &amp; flood risk</li>
-          <li data-i18n="siteiq.f3">Regulatory flags</li>
-          <li data-i18n="siteiq.f4">GIS buildable area &amp; setbacks</li>
-        </ul>
-        <a href="https://app.pvmath.com" target="_blank" class="module-link link-green" data-i18n="siteiq.btn">Open in App &rarr;</a>
+    <div class="pipeline pipeline-modules" aria-label="Five workflow steps to PVMath report">
+      <div class="pipeline-step">
+        <div class="pipeline-node green" aria-hidden="true">1</div>
+        <div class="pipeline-label green" data-i18n="pipe.setup">Project Setup</div>
+        <p class="pipeline-sub" data-i18n="pipe.setup.sub">Pin or boundary &middot; project type</p>
       </div>
-
-      <!-- TerrainIQ -->
-      <div class="module-card live">
-        <div class="module-pill pill-live" data-i18n="pill.live">Live Now</div>
-        <div class="module-num">Step 3</div>
-        <div class="module-name blue">TerrainIQ</div>
-        <p class="module-tagline blue" data-i18n="topoiq.tagline">Screen terrain before you order the topo survey.</p>
-        <ul class="module-features">
-          <li data-i18n="topoiq.f1">Slope maps &amp; cross-row grades</li>
-          <li data-i18n="topoiq.f2">Region-routed DEM</li>
-          <li data-i18n="topoiq.f3">CAD export: DXF + LandXML</li>
-          <li data-i18n="topoiq.f4">Terrain PDF report</li>
-        </ul>
-        <a href="https://app.pvmath.com" target="_blank" class="module-link link-blue" data-i18n="topoiq.btn">Open in App &rarr;</a>
-      </div>
-
-      <!-- LayoutIQ -->
-      <div class="module-card live">
-        <div class="module-pill pill-live" data-i18n="pill.live">Live Now</div>
-        <div class="module-num">Step 4</div>
-        <div class="module-name teal">LayoutIQ</div>
-        <p class="module-tagline teal" data-i18n="layoutiq.tagline">Fixed tilt or single-axis tracker — auto-packed rows on your buildable area.</p>
-        <ul class="module-features">
-          <li data-i18n="layoutiq.f1">Mount type, pitch &amp; GCR</li>
-          <li data-i18n="layoutiq.f2">Row packing with GIS setbacks</li>
-          <li data-i18n="layoutiq.f3">DC capacity &amp; module count</li>
-          <li data-i18n="layoutiq.f4">3D terrain + layout preview</li>
-        </ul>
-        <a href="https://app.pvmath.com" target="_blank" class="module-link link-teal" data-i18n="layoutiq.btn">Open in App &rarr;</a>
-      </div>
-
-      <!-- YieldIQ -->
-      <div class="module-card live">
-        <div class="module-pill pill-live" data-i18n="pill.live">Live Now</div>
-        <div class="module-num">Step 5</div>
-        <div class="module-name amber">YieldIQ</div>
-        <p class="module-tagline amber" data-i18n="yieldiq.tagline">Yield for your chosen layout before you open PVsyst.</p>
-        <ul class="module-features">
-          <li data-i18n="yieldiq.f1">Runs on your LayoutIQ mount</li>
-          <li data-i18n="yieldiq.f2">Fixed 1P&ndash;4P or SAT 1P/2P</li>
-          <li data-i18n="yieldiq.f3">Specific yield, PR &amp; CF</li>
-          <li data-i18n="yieldiq.f4">PVGIS-based feasibility</li>
-        </ul>
-        <div class="module-disclaimer">
-          <span class="module-disclaimer-icon">&#9888;&#65039;</span>
-          <div class="module-disclaimer-text" data-i18n="yieldiq.disclaimer">Feasibility only. Not a substitute for bankable assessment (PVsyst, DNV).</div>
+      <div class="pipeline-arrow" aria-hidden="true">→</div>
+      <div class="pipeline-step">
+        <div class="pipeline-icon" aria-hidden="true">
+          <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="16" r="9" fill="#fef3c7" stroke="#e85d04" stroke-width="1.5"/><g stroke="#e85d04" stroke-width="1.5" fill="none"><path d="M24 4v4M24 28v4M4 16h4M40 16h4"/></g></svg>
         </div>
-        <a href="https://app.pvmath.com" target="_blank" class="module-link link-amber" data-i18n="yieldiq.btn">Open in App &rarr;</a>
+        <div class="pipeline-label coral">SiteIQ</div>
+        <p class="pipeline-sub" data-i18n="pipe.siteiq.sub">Solar, flood &amp; regulatory &middot; GIS buildable area</p>
       </div>
-
+      <div class="pipeline-arrow" aria-hidden="true">→</div>
+      <div class="pipeline-step">
+        <div class="pipeline-icon" aria-hidden="true">
+          <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M4 36 L14 22 L22 28 L32 14 L44 24" fill="none" stroke="#1565c0" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+        <div class="pipeline-label blue">TerrainIQ</div>
+        <p class="pipeline-sub" data-i18n="pipe.topoiq.sub">Slope heatmaps &middot; DXF + LandXML</p>
+      </div>
+      <div class="pipeline-arrow" aria-hidden="true">→</div>
+      <div class="pipeline-step">
+        <div class="pipeline-icon" aria-hidden="true">
+          <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="10" width="36" height="28" rx="3" fill="#e1f6f9" stroke="#0e9bb0" stroke-width="1.5"/><g stroke="#0b7686" stroke-width="2.5"><line x1="10" y1="18" x2="38" y2="18"/><line x1="10" y1="24" x2="38" y2="24"/><line x1="10" y1="30" x2="32" y2="30"/></g></svg>
+        </div>
+        <div class="pipeline-label teal">LayoutIQ</div>
+        <p class="pipeline-sub" data-i18n="pipe.layoutiq.sub">Auto-packed rows &middot; 3D preview</p>
+      </div>
+      <div class="pipeline-arrow" aria-hidden="true">→</div>
+      <div class="pipeline-step">
+        <div class="pipeline-icon" aria-hidden="true">
+          <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="28" width="5" height="12" rx="1" fill="#d4840a"/><rect x="17" y="20" width="5" height="20" rx="1" fill="#e85d04"/><rect x="26" y="14" width="5" height="26" rx="1" fill="#1d9e52"/></svg>
+        </div>
+        <div class="pipeline-label amber">YieldIQ</div>
+        <p class="pipeline-sub" data-i18n="pipe.yieldiq.sub">PVGIS yield &middot; PR &amp; CF</p>
+      </div>
+      <div class="pipeline-arrow" aria-hidden="true">→</div>
+      <div class="pipeline-report">
+        <div class="pipeline-icon" aria-hidden="true" style="margin-bottom:0.35rem;">
+          <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="6" width="28" height="36" rx="3" fill="#fff" stroke="#1d9e52" stroke-width="2"/><circle cx="33" cy="33" r="8" fill="#1d9e52"/></svg>
+        </div>
+        <div class="pipeline-label green" data-i18n="pipe.report">PVMath Report / ZIP</div>
+        <span data-i18n="pipe.report.sub">PDF + CAD + project package</span>
+      </div>
+    </div>
+    <div class="modules-cta">
+      <a href="https://app.pvmath.com" target="_blank" rel="noopener" class="btn-primary" data-i18n="modules.cta">Open unified app &rarr;</a>
     </div>
   </div>
 </section>
@@ -1171,7 +1226,7 @@
             <p>EU Commission irradiance database (SARAH / ERA5). GHI uncertainty ~5&ndash;8% at P50. Same source used in bankable pre-feasibility globally.</p>
           </div>
           <div class="accuracy-card">
-            <div class="accuracy-card-title" style="color:#1565c0;">Region-Routed Terrain DEM</div>
+            <div class="accuracy-card-title" style="color:#1565c0;">TerrainIQ &mdash; Region-Routed DEM</div>
             <p>Best public DEM per location: <strong>Copernicus EEA-10</strong> (Europe, ~10 m), <strong>USGS 3DEP</strong> (USA, ~10 m), <strong>FABDEM</strong> bare-earth (global, ~30 m), Copernicus GLO-30 fallback. Resampled to a <strong>5 m</strong> layout grid &mdash; not RTK survey.</p>
           </div>
           <div class="accuracy-card warn">
@@ -1484,6 +1539,13 @@ var T = {
     'modules.label':'PVMath-Solar Site Intelligence Platform',
     'modules.title':'Five steps.<br>One login.',
     'modules.sub':'Project setup → site screening → terrain → layout → yield — no separate apps.',
+    'pipe.setup':'Project Setup','pipe.setup.sub':'Pin or boundary · project type',
+    'pipe.siteiq.sub':'Solar, flood & regulatory · GIS buildable area',
+    'pipe.topoiq.sub':'Slope heatmaps · DXF + LandXML',
+    'pipe.layoutiq.sub':'Auto-packed rows · 3D preview',
+    'pipe.yieldiq.sub':'PVGIS yield · PR & CF',
+    'pipe.report':'PVMath Report / ZIP','pipe.report.sub':'PDF + CAD + project package',
+    'modules.cta':'Open unified app →',
     'pill.live':'Live Now','pill.soon':'Coming Soon',
     'siteiq.tagline':'Know if a site is buildable within minutes.',
     'siteiq.f1':'Solar resource & irradiation','siteiq.f2':'Slope & flood risk',
@@ -1620,6 +1682,13 @@ var T = {
     'modules.label':'PVMath-Solar Site Intelligence Platform',
     'modules.title':'Fünf Schritte.<br>Ein Login.',
     'modules.sub':'Projekteinrichtung → Screening → Gelände → Layout → Ertrag — keine separaten Apps.',
+    'pipe.setup':'Projekteinrichtung','pipe.setup.sub':'Pin oder Grenze · Projekttyp',
+    'pipe.siteiq.sub':'Solar, Hochwasser & Regulierung · GIS-Bebaubare Fläche',
+    'pipe.topoiq.sub':'Neigungskarten · DXF + LandXML',
+    'pipe.layoutiq.sub':'Automatisch gepackte Reihen · 3D-Vorschau',
+    'pipe.yieldiq.sub':'PVGIS-Ertrag · PR & CF',
+    'pipe.report':'PVMath-Bericht / ZIP','pipe.report.sub':'PDF + CAD + Projektpaket',
+    'modules.cta':'Einheitliche App öffnen →',
     'pill.live':'Jetzt Live','pill.soon':'Demnächst',
     'siteiq.tagline':'In Minuten prüfen, ob ein Standort baubar ist.',
     'siteiq.f1':'Solarressource & Einstrahlung','siteiq.f2':'Neigung & Hochwasserrisiko',
