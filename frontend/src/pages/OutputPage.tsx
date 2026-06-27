@@ -176,6 +176,40 @@ export function OutputPage({
 }: Props) {
   const activeStage = activeModule;
   const setActiveStage = onModuleChange;
+
+  const SIDEBAR_MIN = 240;
+  const SIDEBAR_MAX = 560;
+  const SIDEBAR_DEFAULT = 320;
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
+    const stored = Number(localStorage.getItem("pvm_results_sb_width"));
+    return stored ? Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, stored)) : SIDEBAR_DEFAULT;
+  });
+  const sidebarDraggingRef = useRef(false);
+  useEffect(() => {
+    localStorage.setItem("pvm_results_sb_width", String(sidebarWidth));
+  }, [sidebarWidth]);
+  const onSidebarPointerMove = useRef((e: PointerEvent) => {
+    if (!sidebarDraggingRef.current) return;
+    const shell = document.querySelector(".results-shell") as HTMLElement | null;
+    const left = shell?.getBoundingClientRect().left ?? 0;
+    const next = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, e.clientX - left));
+    setSidebarWidth(next);
+  });
+  const stopSidebarDrag = useRef(() => {
+    sidebarDraggingRef.current = false;
+    document.body.classList.remove("sb-resizing");
+    window.removeEventListener("pointermove", onSidebarPointerMove.current);
+    window.removeEventListener("pointerup", stopSidebarDrag.current);
+  });
+  function startSidebarDrag(e: React.PointerEvent) {
+    e.preventDefault();
+    sidebarDraggingRef.current = true;
+    document.body.classList.add("sb-resizing");
+    window.addEventListener("pointermove", onSidebarPointerMove.current);
+    window.addEventListener("pointerup", stopSidebarDrag.current);
+  }
+  useEffect(() => () => stopSidebarDrag.current(), []);
+
   const [projectId, setProjectId] = useState(projectIdProp);
   const [saveBusy, setSaveBusy] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
@@ -1152,6 +1186,11 @@ export function OutputPage({
       className={`workflow-page results-shell${
         activeStage === "screen" ? " results-shell-full" : ""
       }`}
+      style={
+        activeStage === "screen"
+          ? undefined
+          : ({ "--results-sb-w": `${sidebarWidth}px` } as React.CSSProperties)
+      }
     >
       {activeStage !== "screen" ? (
       <aside className="results-sidebar">
@@ -1632,6 +1671,17 @@ export function OutputPage({
           </button>
         </div>
       </aside>
+      ) : null}
+
+      {activeStage !== "screen" ? (
+        <div
+          className="results-resizer"
+          onPointerDown={startSidebarDrag}
+          onDoubleClick={() => setSidebarWidth(SIDEBAR_DEFAULT)}
+          role="separator"
+          aria-orientation="vertical"
+          title="Drag to resize · double-click to reset"
+        />
       ) : null}
 
       <div className="results-main">
