@@ -26,21 +26,19 @@ export function localXY(lon: number, lat: number, origin: { lat: number; lon: nu
   };
 }
 
-export function sunPosition(latDeg: number, hour: number) {
-  const lat = (latDeg * Math.PI) / 180;
-  const dayOfYear = 172;
-  const decl = ((23.44 * Math.PI) / 180) * Math.sin((((360 / 365) * (dayOfYear - 81) * Math.PI) / 180));
-  const hourAngle = ((hour - 12) * 15 * Math.PI) / 180;
-  const altitude = Math.asin(
-    Math.sin(lat) * Math.sin(decl) + Math.cos(lat) * Math.cos(decl) * Math.cos(hourAngle),
+export function toThreePosition(
+  lx: number,
+  north: number,
+  groundElevM: number,
+  realOffsetM: number,
+  center: THREE.Vector3,
+): THREE.Vector3 {
+  return new THREE.Vector3(
+    lx - center.x,
+    groundElevM * Z_SCALE + realOffsetM - center.y,
+    -north - center.z,
   );
-  const east = Math.sin(hourAngle);
-  const north = Math.cos(hourAngle) * Math.sin(lat) - Math.tan(decl) * Math.cos(lat);
-  const azimuth = Math.atan2(east, north);
-  return { altitude, azimuth };
 }
-
-export type ElevationSampler = (x: number, y: number) => number;
 
 export function buildElevationSampler(mesh: WorkflowTerrainMeshResponse, cellSize = 6): ElevationSampler {
   let minX = Infinity;
@@ -207,14 +205,7 @@ function createModuleTableTexture(moduleCols: number): THREE.CanvasTexture {
   return tex;
 }
 
-export function toThreePosition(
-  lx: number,
-  north: number,
-  elevM: number,
-  center: THREE.Vector3,
-): THREE.Vector3 {
-  return new THREE.Vector3(lx - center.x, elevM * Z_SCALE - center.y, -north - center.z);
-}
+export type ElevationSampler = (x: number, y: number) => number;
 
 export interface Terrain3DScene {
   scene: THREE.Scene;
@@ -231,7 +222,6 @@ export type MountKind = "fixed" | "tracker";
 export function buildTerrain3DScene(
   mesh: WorkflowTerrainMeshResponse,
   layoutGeoJson: GeoJSON.GeoJSON | null | undefined,
-  sunHour: number,
   options?: { showWireframe?: boolean; mountType?: MountKind },
 ): Terrain3DScene {
   const mountType: MountKind = options?.mountType ?? "tracker";
@@ -295,12 +285,13 @@ export function buildTerrain3DScene(
   sun.shadow.bias = -0.0006;
   scene.add(sun);
 
-  const sunViz = sunPosition(mesh.origin.lat, sunHour);
+  const sunAzimuth = (135 * Math.PI) / 180;
+  const sunAltitude = (50 * Math.PI) / 180;
   const sunRadius = Math.max(terrainSize.x, terrainSize.z, 180) * 0.9;
   sun.position.set(
-    Math.sin(sunViz.azimuth) * Math.cos(sunViz.altitude) * sunRadius,
-    Math.max(Math.sin(sunViz.altitude) * sunRadius, 40),
-    -Math.cos(sunViz.azimuth) * Math.cos(sunViz.altitude) * sunRadius,
+    Math.sin(sunAzimuth) * Math.cos(sunAltitude) * sunRadius,
+    Math.max(Math.sin(sunAltitude) * sunRadius, 40),
+    -Math.cos(sunAzimuth) * Math.cos(sunAltitude) * sunRadius,
   );
   sun.target.position.set(0, 0, 0);
   scene.add(sun.target);
@@ -368,14 +359,14 @@ export function buildTerrain3DScene(
           const post = new THREE.Mesh(postGeo, postMat);
           post.castShadow = true;
           post.receiveShadow = true;
-          post.position.copy(toThreePosition(lx, north, sampler(lx, north) + h / 2, terrainCenter));
+          post.position.copy(toThreePosition(lx, north, sampler(lx, north), h / 2, terrainCenter));
           pvGroup.add(post);
           postCount += 1;
         }
         // table-top centre reference for this support
         const groundZ = sampler(baseLx, baseNorth);
         tableTops.push(
-          toThreePosition(baseLx, baseNorth, groundZ + (frontH + backH) / 2, terrainCenter),
+          toThreePosition(baseLx, baseNorth, groundZ, (frontH + backH) / 2, terrainCenter),
         );
       }
 
@@ -401,12 +392,12 @@ export function buildTerrain3DScene(
       const post = new THREE.Mesh(postGeo, postMat);
       post.castShadow = true;
       post.receiveShadow = true;
-      const pos = toThreePosition(lx, north, sampler(lx, north) + postH / 2, terrainCenter);
+      const pos = toThreePosition(lx, north, sampler(lx, north), postH / 2, terrainCenter);
       post.position.copy(pos);
       pvGroup.add(post);
       postCount += 1;
 
-      postTops.push(toThreePosition(lx, north, sampler(lx, north) + TABLE_CLEARANCE_M, terrainCenter));
+      postTops.push(toThreePosition(lx, north, sampler(lx, north), TABLE_CLEARANCE_M, terrainCenter));
     }
 
     if (postTops.length >= 2) {

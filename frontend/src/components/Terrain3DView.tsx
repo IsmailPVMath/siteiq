@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { WorkflowTerrainMeshResponse } from "../types/workflow";
@@ -14,16 +14,29 @@ interface Props {
 
 export function Terrain3DView({ mesh, layoutGeoJson, mountType = "tracker" }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [sunHour, setSunHour] = useState(12);
   const [showWireframe, setShowWireframe] = useState(false);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const controlsRef = useRef<OrbitControls | null>(null);
+  const defaultCamPosRef = useRef<THREE.Vector3 | null>(null);
 
   const rowCount = parseLayoutRows(layoutGeoJson ?? null, mesh.origin).length;
+
+  const resetView = useCallback(() => {
+    const cam = cameraRef.current;
+    const controls = controlsRef.current;
+    const defaultPos = defaultCamPosRef.current;
+    if (!cam || !controls || !defaultPos) return;
+    cam.position.copy(defaultPos);
+    cam.lookAt(0, 0, 0);
+    controls.target.set(0, 0, 0);
+    controls.update();
+  }, []);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    const built = buildTerrain3DScene(mesh, layoutGeoJson ?? null, sunHour, {
+    const built = buildTerrain3DScene(mesh, layoutGeoJson ?? null, {
       showWireframe,
       mountType,
     });
@@ -42,14 +55,20 @@ export function Terrain3DView({ mesh, layoutGeoJson, mountType = "tracker" }: Pr
     container.appendChild(renderer.domElement);
 
     const maxDim = Math.max(terrainSize.x, terrainSize.y, terrainSize.z, 100);
-    camera.position.set(maxDim * 0.62, maxDim * 0.74, maxDim * 0.95);
+    const defaultPos = new THREE.Vector3(maxDim * 0.62, maxDim * 0.74, maxDim * 0.95);
+    camera.position.copy(defaultPos);
     camera.lookAt(0, 0, 0);
+    cameraRef.current = camera;
+    defaultCamPosRef.current = defaultPos.clone();
+
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.07;
-    controls.maxPolarAngle = Math.PI / 2.05;
+    controls.minPolarAngle = Math.PI / 8;
+    controls.maxPolarAngle = Math.PI / 2.4;
     controls.minDistance = maxDim * 0.12;
     controls.maxDistance = maxDim * 3.8;
+    controlsRef.current = controls;
 
     function resize() {
       if (!container) return;
@@ -74,29 +93,18 @@ export function Terrain3DView({ mesh, layoutGeoJson, mountType = "tracker" }: Pr
       active = false;
       window.removeEventListener("resize", resize);
       controls.dispose();
+      cameraRef.current = null;
+      controlsRef.current = null;
+      defaultCamPosRef.current = null;
       dispose();
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [layoutGeoJson, mesh, showWireframe, sunHour, mountType]);
+  }, [layoutGeoJson, mesh, showWireframe, mountType]);
 
   return (
     <div className="terrain-3d-wrap">
       <div className="terrain-3d-toolbar">
-        <div className="terrain-sun-controls">
-          <label htmlFor="terrain-sun-hour">
-            Sun hour: <strong>{sunHour}:00</strong>
-          </label>
-          <input
-            id="terrain-sun-hour"
-            type="range"
-            min="6"
-            max="18"
-            step="1"
-            value={sunHour}
-            onChange={(event) => setSunHour(Number(event.target.value))}
-          />
-        </div>
         <label className="terrain-wire-toggle checkbox-field">
           <input
             type="checkbox"
@@ -105,6 +113,9 @@ export function Terrain3DView({ mesh, layoutGeoJson, mountType = "tracker" }: Pr
           />
           Terrain mesh wireframe
         </label>
+        <button className="btn btn-ghost btn-sm" type="button" onClick={resetView}>
+          Reset view
+        </button>
       </div>
       <div ref={containerRef} className="terrain-3d-view" aria-label="3D terrain view" />
       <div className="terrain-3d-meta">
@@ -122,8 +133,8 @@ export function Terrain3DView({ mesh, layoutGeoJson, mountType = "tracker" }: Pr
       </div>
       <p className="hint terrain-3d-note">
         {mountType === "fixed"
-          ? "3D preview: south-tilted fixed-tilt tables on front/back legs. Drag to orbit, scroll to zoom. XYZ gizmo: red=E, green=up, blue=N."
-          : "3D preview: module tables, posts, and torque tubes on terrain. Drag to orbit, scroll to zoom. XYZ gizmo: red=E, green=up, blue=N."}
+          ? "3D layout preview: fixed-tilt tables and posts on terrain. Drag to orbit, scroll to zoom — use Reset view if you lose orientation. Gizmo: red=E, green=up, blue=N."
+          : "3D layout preview: tracker rows, posts, and torque tubes on terrain. Drag to orbit, scroll to zoom — use Reset view if you lose orientation. Gizmo: red=E, green=up, blue=N."}
       </p>
     </div>
   );
