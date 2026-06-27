@@ -9,6 +9,11 @@ export const POST_SPACING_M = 8;
 export const TABLE_THICKNESS_M = 0.06;
 export const TABLE_CLEARANCE_M = 1.85;
 export const TUBE_RADIUS_M = 0.055;
+// Visualization-only post radii — exaggerated for legibility at typical zoom (not true diameters).
+export const POST_VIS_RADIUS_TOP_M = 0.1;
+export const POST_VIS_RADIUS_BOTTOM_M = 0.13;
+export const MIN_TABLE_LENGTH_M = 0.3;
+export const MIN_TABLE_WIDTH_M = 0.2;
 
 export function slopeColor(slope: number) {
   if (slope <= 3) return new THREE.Color("#2d8a47");
@@ -96,6 +101,7 @@ export interface OrientedRow {
   width: number;
   angle: number;
   nModules: number;
+  rowIndex: number;
 }
 
 function orientedRowFromRing(
@@ -148,7 +154,7 @@ function orientedRowFromRing(
       ? props.n_modules
       : Math.max(4, Math.round(length / 1.038));
 
-  return { cx, cy, length, width, angle, nModules };
+  return { cx, cy, length, width, angle, nModules, rowIndex: 0 };
 }
 
 export function parseLayoutRows(
@@ -174,9 +180,49 @@ export function parseLayoutRows(
     });
     if (!row) continue;
     if (row.length < 3) continue;
-    rows.push(row);
+    const rowIndex = Number(feature.properties?.row_index ?? rows.length + 1);
+    rows.push({ ...row, rowIndex });
   }
   return rows;
+}
+
+export function parseLayoutTables(
+  layoutGeoJson: GeoJSON.GeoJSON | null | undefined,
+  origin: { lat: number; lon: number },
+): Map<number, OrientedRow[]> {
+  const byRow = new Map<number, OrientedRow[]>();
+  if (!layoutGeoJson || layoutGeoJson.type !== "FeatureCollection") return byRow;
+
+  const features = layoutGeoJson.features.filter(
+    (f) => f.geometry?.type === "Polygon" && f.properties?.kind === "pv_module",
+  ) as Array<GeoJSON.Feature<GeoJSON.Polygon>>;
+
+  for (const feature of features) {
+    const rowIndex = Number(feature.properties?.row_index ?? 0);
+    if (!rowIndex) continue;
+    const ring = feature.geometry.coordinates[0];
+    if (!ring || ring.length < 4) continue;
+    const nMod = Number(feature.properties?.n_modules ?? feature.properties?.modules_per_string ?? 0);
+    const table = orientedRowFromRing(ring, origin, {
+      n_modules: Number.isFinite(nMod) && nMod > 0 ? nMod : undefined,
+    });
+    if (!table) continue;
+    if (table.length < MIN_TABLE_LENGTH_M || table.width < MIN_TABLE_WIDTH_M) continue;
+    const bucket = byRow.get(rowIndex) ?? [];
+    bucket.push({ ...table, rowIndex });
+    byRow.set(rowIndex, bucket);
+  }
+  return byRow;
+}
+
+function layoutModulesPerString(layoutGeoJson: GeoJSON.GeoJSON | null | undefined): number {
+  if (!layoutGeoJson || layoutGeoJson.type !== "FeatureCollection") return 28;
+  for (const feature of layoutGeoJson.features) {
+    if (feature.properties?.kind !== "pv_module") continue;
+    const mps = Number(feature.properties?.modules_per_string ?? 0);
+    if (Number.isFinite(mps) && mps > 0) return mps;
+  }
+  return 28;
 }
 
 function createModuleTableTexture(moduleCols: number): THREE.CanvasTexture {
@@ -222,7 +268,7 @@ export type MountKind = "fixed" | "tracker";
 export function buildTerrain3DScene(
   mesh: WorkflowTerrainMeshResponse,
   layoutGeoJson: GeoJSON.GeoJSON | null | undefined,
-  options?: { showWireframe?: boolean; mountType?: MountKind },
+  options?: { showWireframe?: boolean; mountType?: MountKind; showStructure?: boolean },
 ): Terrain3DScene {
   const mountType: MountKind = options?.mountType ?? "tracker";
   const FIXED_TILT_DEG = 22;
@@ -296,11 +342,16 @@ export function buildTerrain3DScene(
   sun.target.position.set(0, 0, 0);
   scene.add(sun.target);
 
+  const sharedTableTex = createModuleTableTexture(layoutModulesPerString(layoutGeoJson ?? null));
+  const showStructure = options?.showStructure ?? false;
   const tableMat = new THREE.MeshStandardMaterial({
     color: "#2563eb",
+    map: sharedTableTex,
     roughness: 0.28,
     metalness: 0.35,
     side: THREE.DoubleSide,
+    transparent: showStructure,
+    opacity: showStructure ? 0.85 : 1,
   });
   const postMat = new THREE.MeshStandardMaterial({
     color: "#94a3b8",
@@ -314,16 +365,27 @@ export function buildTerrain3DScene(
   });
 
   const rows = parseLayoutRows(layoutGeoJson ?? null, mesh.origin);
+  const tablesByRow = parseLayoutTables(layoutGeoJson ?? null, mesh.origin);
+
+  type TableInstance = {
+    position: THREE.Vector3;
+    quaternion: THREE.Quaternion;
+    scale: THREE.Vector3;
+  };
+  type PostInstance = {
+    position: THREE.Vector3;
+    heightM: number;
+  };
+
+  const tableInstances: TableInstance[] = [];
+  const postInstances: PostInstance[] = [];
+  const dummy = new THREE.Object3D();
   let postCount = 0;
 
   const pvGroup = new THREE.Group();
   pvGroup.name = "PV_Layout";
 
   for (const row of rows) {
-    const tableTex = createModuleTableTexture(row.nModules);
-    const rowTableMat = tableMat.clone();
-    rowTableMat.map = tableTex;
-
     const nPosts = Math.max(2, Math.floor(row.length / POST_SPACING_M) + 1);
     const postXs: number[] = [];
     for (let i = 0; i < nPosts; i += 1) {
@@ -333,19 +395,31 @@ export function buildTerrain3DScene(
 
     const cos = Math.cos(row.angle);
     const sin = Math.sin(row.angle);
+    const rowTables = tablesByRow.get(row.rowIndex) ?? [];
+    const tablesToRender =
+      rowTables.length > 0
+        ? rowTables
+        : [
+            {
+              cx: row.cx,
+              cy: row.cy,
+              length: row.length,
+              width: row.width,
+              angle: row.angle,
+              nModules: row.nModules,
+              rowIndex: row.rowIndex,
+            },
+          ];
 
     if (mountType === "fixed") {
-      // Fixed tilt: tables tilted toward the sun on front (short) + back (tall) legs.
       const tiltRad = (FIXED_TILT_DEG * Math.PI) / 180;
       const backExtra = Math.sin(tiltRad) * row.width;
       const frontH = TABLE_CLEARANCE_M * 0.55;
       const backH = frontH + backExtra;
-      // legs are offset along the row's transverse (width) axis
       const tcos = Math.cos(row.angle + Math.PI / 2);
       const tsin = Math.sin(row.angle + Math.PI / 2);
       const halfW = row.width / 2;
 
-      const tableTops: THREE.Vector3[] = [];
       for (const px of postXs) {
         const baseLx = row.cx + px * cos;
         const baseNorth = row.cy + px * sin;
@@ -355,31 +429,36 @@ export function buildTerrain3DScene(
         ] as const) {
           const lx = baseLx + off * tcos;
           const north = baseNorth + off * tsin;
-          const postGeo = new THREE.CylinderGeometry(0.06, 0.08, h, 8);
-          const post = new THREE.Mesh(postGeo, postMat);
-          post.castShadow = true;
-          post.receiveShadow = true;
-          post.position.copy(toThreePosition(lx, north, sampler(lx, north), h / 2, terrainCenter));
-          pvGroup.add(post);
+          postInstances.push({
+            position: toThreePosition(lx, north, sampler(lx, north), h / 2, terrainCenter),
+            heightM: h,
+          });
           postCount += 1;
         }
-        // table-top centre reference for this support
-        const groundZ = sampler(baseLx, baseNorth);
-        tableTops.push(
-          toThreePosition(baseLx, baseNorth, groundZ, (frontH + backH) / 2, terrainCenter),
-        );
       }
 
-      const avgTop =
-        tableTops.reduce((acc, v) => acc.add(v), new THREE.Vector3()).multiplyScalar(1 / tableTops.length);
-      const tableGeo = new THREE.BoxGeometry(row.length, TABLE_THICKNESS_M, row.width);
-      const table = new THREE.Mesh(tableGeo, rowTableMat);
-      table.castShadow = true;
-      table.receiveShadow = false;
-      table.position.copy(avgTop);
-      table.rotation.y = -row.angle;
-      table.rotateX(-tiltRad);
-      pvGroup.add(table);
+      for (const table of tablesToRender) {
+        const tableBackExtra = Math.sin(tiltRad) * table.width;
+        const tableFrontH = TABLE_CLEARANCE_M * 0.55;
+        const tableBackH = tableFrontH + tableBackExtra;
+        const groundZ = sampler(table.cx, table.cy);
+        const top = toThreePosition(
+          table.cx,
+          table.cy,
+          groundZ,
+          (tableFrontH + tableBackH) / 2,
+          terrainCenter,
+        );
+        dummy.position.copy(top);
+        dummy.rotation.set(-tiltRad, -table.angle, 0, "YXZ");
+        dummy.scale.set(table.length, TABLE_THICKNESS_M, table.width);
+        dummy.updateMatrix();
+        tableInstances.push({
+          position: dummy.position.clone(),
+          quaternion: dummy.quaternion.clone(),
+          scale: dummy.scale.clone(),
+        });
+      }
       continue;
     }
 
@@ -388,15 +467,11 @@ export function buildTerrain3DScene(
       const lx = row.cx + px * cos;
       const north = row.cy + px * sin;
       const postH = TABLE_CLEARANCE_M;
-      const postGeo = new THREE.CylinderGeometry(0.07, 0.09, postH, 10);
-      const post = new THREE.Mesh(postGeo, postMat);
-      post.castShadow = true;
-      post.receiveShadow = true;
-      const pos = toThreePosition(lx, north, sampler(lx, north), postH / 2, terrainCenter);
-      post.position.copy(pos);
-      pvGroup.add(post);
+      postInstances.push({
+        position: toThreePosition(lx, north, sampler(lx, north), postH / 2, terrainCenter),
+        heightM: postH,
+      });
       postCount += 1;
-
       postTops.push(toThreePosition(lx, north, sampler(lx, north), TABLE_CLEARANCE_M, terrainCenter));
     }
 
@@ -414,16 +489,64 @@ export function buildTerrain3DScene(
       pvGroup.add(tube);
     }
 
-    const avgTop =
-      postTops.reduce((acc, v) => acc.add(v), new THREE.Vector3()).multiplyScalar(1 / postTops.length);
-    const tableGeo = new THREE.BoxGeometry(row.length, TABLE_THICKNESS_M, row.width);
-    const table = new THREE.Mesh(tableGeo, rowTableMat);
-    table.castShadow = true;
-    table.receiveShadow = false;
-    table.position.copy(avgTop);
-    table.position.y += TABLE_THICKNESS_M / 2;
-    table.rotation.y = -row.angle;
-    pvGroup.add(table);
+    for (const table of tablesToRender) {
+      const groundZ = sampler(table.cx, table.cy);
+      const top = toThreePosition(
+        table.cx,
+        table.cy,
+        groundZ,
+        TABLE_CLEARANCE_M + TABLE_THICKNESS_M / 2,
+        terrainCenter,
+      );
+      dummy.position.copy(top);
+      dummy.rotation.set(0, -table.angle, 0, "YXZ");
+      dummy.scale.set(table.length, TABLE_THICKNESS_M, table.width);
+      dummy.updateMatrix();
+      tableInstances.push({
+        position: dummy.position.clone(),
+        quaternion: dummy.quaternion.clone(),
+        scale: dummy.scale.clone(),
+      });
+    }
+  }
+
+  if (tableInstances.length > 0) {
+    const tableUnitGeo = new THREE.BoxGeometry(1, 1, 1);
+    const tableMesh = new THREE.InstancedMesh(tableUnitGeo, tableMat, tableInstances.length);
+    tableMesh.castShadow = true;
+    tableMesh.receiveShadow = false;
+    for (let i = 0; i < tableInstances.length; i += 1) {
+      const inst = tableInstances[i];
+      dummy.position.copy(inst.position);
+      dummy.quaternion.copy(inst.quaternion);
+      dummy.scale.copy(inst.scale);
+      dummy.updateMatrix();
+      tableMesh.setMatrixAt(i, dummy.matrix);
+    }
+    tableMesh.instanceMatrix.needsUpdate = true;
+    pvGroup.add(tableMesh);
+  }
+
+  if (postInstances.length > 0) {
+    const postUnitGeo = new THREE.CylinderGeometry(
+      POST_VIS_RADIUS_TOP_M,
+      POST_VIS_RADIUS_BOTTOM_M,
+      1,
+      10,
+    );
+    const postMesh = new THREE.InstancedMesh(postUnitGeo, postMat, postInstances.length);
+    postMesh.castShadow = true;
+    postMesh.receiveShadow = true;
+    for (let i = 0; i < postInstances.length; i += 1) {
+      const inst = postInstances[i];
+      dummy.position.copy(inst.position);
+      dummy.rotation.set(0, 0, 0);
+      dummy.scale.set(1, inst.heightM, 1);
+      dummy.updateMatrix();
+      postMesh.setMatrixAt(i, dummy.matrix);
+    }
+    postMesh.instanceMatrix.needsUpdate = true;
+    pvGroup.add(postMesh);
   }
 
   scene.add(pvGroup);
@@ -461,7 +584,7 @@ export function buildTerrain3DScene(
     postCount,
     dispose: () => {
       scene.traverse((obj) => {
-        if (obj instanceof THREE.Mesh) {
+        if (obj instanceof THREE.Mesh || obj instanceof THREE.InstancedMesh) {
           obj.geometry.dispose();
           const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
           mats.forEach((m) => {

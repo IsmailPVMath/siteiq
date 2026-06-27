@@ -15,6 +15,7 @@ interface Props {
 export function Terrain3DView({ mesh, layoutGeoJson, mountType = "tracker" }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showWireframe, setShowWireframe] = useState(false);
+  const [showStructure, setShowStructure] = useState(false);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const defaultCamPosRef = useRef<THREE.Vector3 | null>(null);
@@ -38,6 +39,7 @@ export function Terrain3DView({ mesh, layoutGeoJson, mountType = "tracker" }: Pr
 
     const built = buildTerrain3DScene(mesh, layoutGeoJson ?? null, {
       showWireframe,
+      showStructure,
       mountType,
     });
     const { scene, terrainSize, dispose } = built;
@@ -100,7 +102,7 @@ export function Terrain3DView({ mesh, layoutGeoJson, mountType = "tracker" }: Pr
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [layoutGeoJson, mesh, showWireframe, mountType]);
+  }, [layoutGeoJson, mesh, showWireframe, showStructure, mountType]);
 
   return (
     <div className="terrain-3d-wrap">
@@ -112,6 +114,14 @@ export function Terrain3DView({ mesh, layoutGeoJson, mountType = "tracker" }: Pr
             onChange={(e) => setShowWireframe(e.target.checked)}
           />
           Terrain mesh wireframe
+        </label>
+        <label className="terrain-wire-toggle checkbox-field">
+          <input
+            type="checkbox"
+            checked={showStructure}
+            onChange={(e) => setShowStructure(e.target.checked)}
+          />
+          Show structure
         </label>
         <button className="btn btn-ghost btn-sm" type="button" onClick={resetView}>
           Reset view
@@ -133,8 +143,8 @@ export function Terrain3DView({ mesh, layoutGeoJson, mountType = "tracker" }: Pr
       </div>
       <p className="hint terrain-3d-note">
         {mountType === "fixed"
-          ? "3D layout preview: fixed-tilt tables and posts on terrain. Drag to orbit, scroll to zoom — use Reset view if you lose orientation. Gizmo: red=E, green=up, blue=N."
-          : "3D layout preview: tracker rows, posts, and torque tubes on terrain. Drag to orbit, scroll to zoom — use Reset view if you lose orientation. Gizmo: red=E, green=up, blue=N."}
+          ? "3D layout preview: per-table gaps, fixed-tilt tables and posts on terrain. Toggle Show structure to see posts through semi-transparent tables. Drag to orbit, scroll to zoom — use Reset view if you lose orientation."
+          : "3D layout preview: per-table gaps, tracker posts, and torque tubes on terrain. Toggle Show structure to see posts and tube through semi-transparent tables. Drag to orbit, scroll to zoom — use Reset view if you lose orientation."}
       </p>
     </div>
   );

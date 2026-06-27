@@ -194,6 +194,7 @@ def build_layout_detail(
     total_tracker_units = 0
     total_area_ha = 0.0
     for layout in layouts:
+        row_index_base = row_index
         features.append(
             _polygon_feature(layout["poly_m"], ref_lat, ref_lon, {"kind": "site_boundary"})
         )
@@ -207,6 +208,8 @@ def build_layout_detail(
         )
         for s_idx, spoly in enumerate(layout.get("string_polys") or []):
             string_index += 1
+            local_idxs = layout.get("string_row_local_idx") or []
+            local_row_idx = local_idxs[s_idx] if s_idx < len(local_idxs) else 0
             features.append(
                 _polygon_feature(
                     spoly,
@@ -217,6 +220,7 @@ def build_layout_detail(
                         "string_index": string_index,
                         "modules_per_string": layout["modules_per_string"],
                         "n_modules": layout["modules_per_string"],
+                        "row_index": row_index_base + local_row_idx + 1,
                     },
                 )
             )

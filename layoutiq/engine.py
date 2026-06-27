@@ -443,6 +443,7 @@ def run_layout(
     rows_data: list[dict[str, Any]] = []
     rows_polys: list[Polygon] = []
     string_polys: list[Polygon] = []
+    string_row_local_idx: list[int] = []
     rows_in_block = 0
 
     while y + row_ns <= maxy + 1e-6:
@@ -494,6 +495,9 @@ def run_layout(
                 continue
 
             row_orig = shp_rotate(row_clipped, -rot_angle, origin=origin)
+            # On concave parcels a segment can clip into a MultiPolygon — all strings
+            # from this segment share the first row-local index for that band.
+            row_local_idx = len(rows_polys)
             if row_orig.geom_type == "Polygon":
                 rows_polys.append(row_orig)
             elif row_orig.geom_type == "MultiPolygon":
@@ -526,8 +530,13 @@ def run_layout(
                 s_orig = shp_rotate(s_clipped, -rot_angle, origin=origin)
                 if s_orig.geom_type == "Polygon":
                     string_polys.append(s_orig)
+                    string_row_local_idx.append(row_local_idx)
                 elif s_orig.geom_type == "MultiPolygon":
-                    string_polys.extend(g for g in s_orig.geoms if not g.is_empty)
+                    for g in s_orig.geoms:
+                        if g.is_empty:
+                            continue
+                        string_polys.append(g)
+                        string_row_local_idx.append(row_local_idx)
 
             n_mod = whole_strings * modules_per_string + partial_modules
             rows_data.append(
@@ -557,6 +566,7 @@ def run_layout(
         "rows_data": rows_data,
         "rows_polys": rows_polys,
         "string_polys": string_polys,
+        "string_row_local_idx": string_row_local_idx,
         "poly_m": poly_m,
         "poly_inset": poly_inset,
         "total_modules": total_modules,
