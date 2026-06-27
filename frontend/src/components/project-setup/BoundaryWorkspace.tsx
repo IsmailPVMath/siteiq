@@ -38,6 +38,8 @@ interface Props {
   onToggleParcel: (id: string) => void;
   onToggleGroup: (group: string, enabled: boolean) => void;
   onToggleGroupCollapsed: (group: string) => void;
+  onRemoveParcel: (id: string) => void;
+  onRemoveGroup: (group: string) => void;
   onClearBoundary: () => void;
 }
 
@@ -67,6 +69,8 @@ export function BoundaryWorkspace({
   onToggleParcel,
   onToggleGroup,
   onToggleGroupCollapsed,
+  onRemoveParcel,
+  onRemoveGroup,
   onClearBoundary,
 }: Props) {
   const uploadOpt = INPUT_METHOD_OPTIONS.find((o) => o.id === inputMethod);
@@ -131,6 +135,15 @@ export function BoundaryWorkspace({
                             {grp.enabled}/{grp.total} · {grp.area.toFixed(1)} ha
                           </span>
                         </button>
+                        <button
+                          type="button"
+                          className="parcel-remove"
+                          title={`Remove ${grp.group} layer`}
+                          aria-label={`Remove ${grp.group} layer`}
+                          onClick={() => onRemoveGroup(grp.group)}
+                        >
+                          ×
+                        </button>
                       </div>
                       {!collapsed ? (
                         <ul className="parcel-list">
@@ -147,6 +160,15 @@ export function BoundaryWorkspace({
                                   {p.area_ha > 0 ? `${p.area_ha} ha` : `${p.coords.length} pts`}
                                 </span>
                               </label>
+                              <button
+                                type="button"
+                                className="parcel-remove"
+                                title={`Remove ${p.name}`}
+                                aria-label={`Remove ${p.name}`}
+                                onClick={() => onRemoveParcel(p.id)}
+                              >
+                                ×
+                              </button>
                             </li>
                           ))}
                         </ul>

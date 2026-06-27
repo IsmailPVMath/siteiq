@@ -2106,15 +2106,15 @@ body.sb-resizing .results-resizer::before {
 .parcel-groups {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  max-height: 320px;
+  gap: 0.4rem;
+  max-height: 280px;
   overflow-y: auto;
   padding-right: 0.15rem;
 }
 
 .parcel-group {
-  border: 1px solid var(--border);
-  border-radius: 9px;
+  border: 1px solid #d8e5de;
+  border-radius: 8px;
   background: #fff;
   overflow: hidden;
 }
@@ -2126,10 +2126,37 @@ body.sb-resizing .results-resizer::before {
 .parcel-group-head {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.45rem 0.55rem;
-  background: #f1f5f3;
-  border-bottom: 1px solid var(--border);
+  gap: 0.45rem;
+  padding: 0.4rem 0.5rem;
+  background: #f7faf8;
+}
+
+.parcel-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.15rem 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.parcel-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.55rem;
+  border: none;
+  border-radius: 0;
+  border-bottom: 1px solid #edf2ef;
+  background: transparent;
+}
+
+.parcel-list li:last-child {
+  border-bottom: none;
+}
+
+.parcel-list li.parcel-off {
+  opacity: 0.65;
+  background: transparent;
 }
 
 .parcel-group-toggle {
@@ -2143,48 +2170,31 @@ body.sb-resizing .results-resizer::before {
   padding: 0;
   text-align: left;
   font: inherit;
+  min-width: 0;
 }
 
 .parcel-caret {
   color: var(--muted);
   font-size: 0.7rem;
   width: 0.8rem;
+  flex: 0 0 auto;
 }
 
 .parcel-group-name {
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .parcel-group-meta {
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   white-space: nowrap;
-}
-
-.parcel-list {
-  list-style: none;
-  margin: 0;
-  padding: 0.4rem 0.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.parcel-list li {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: #fff;
-}
-
-.parcel-list li.parcel-off {
-  opacity: 0.6;
-  background: #f5f6f7;
+  flex: 0 0 auto;
 }
 
 .parcel-check {
@@ -2194,6 +2204,7 @@ body.sb-resizing .results-resizer::before {
   flex: 1;
   cursor: pointer;
   font-size: 0.9rem;
+  min-width: 0;
 }
 
 .parcel-name {

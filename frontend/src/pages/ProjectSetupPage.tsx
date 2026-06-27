@@ -471,6 +471,18 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
               onToggleGroupCollapsed={(g) =>
                 setCollapsedGroups((prev) => ({ ...prev, [g]: !prev[g] }))
               }
+              onRemoveParcel={(id) => {
+                const next = draft.geometry.parcels.filter((p) => p.id !== id);
+                dispatch({ type: "set_parcels", parcels: next });
+                setHint(next.length ? "Parcel removed." : "All parcels removed.");
+              }}
+              onRemoveGroup={(group) => {
+                const next = draft.geometry.parcels.filter(
+                  (p) => (p.layer_group || "Other") !== group,
+                );
+                dispatch({ type: "set_parcels", parcels: next });
+                setHint(`Removed ${group} layer.`);
+              }}
               onClearBoundary={() => {
                 dispatch({
                   type: "patch",
