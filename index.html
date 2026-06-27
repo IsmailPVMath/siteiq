@@ -473,6 +473,83 @@
     .workflow-mode-chip span { font-size:0.9375rem;color:#5a7a5a;line-height:1.45; }
     .workflow-module-sub { font-size:var(--text-sm);color:var(--muted); }
 
+    /* ── WORKFLOW TIMELINE ── */
+    .wf-timeline { position: relative; padding-left: 1.75rem; }
+    .wf-timeline::before {
+      content: ''; position: absolute; left: 0.65rem; top: 1.25rem; bottom: 1.25rem; width: 2px;
+      background: linear-gradient(to bottom, var(--green) 0%, var(--coral) 18%, var(--blue) 38%, var(--teal) 58%, #d4840a 78%, var(--green) 100%);
+      border-radius: 2px; opacity: 0.35;
+    }
+    .wf-stage { display: grid; grid-template-columns: auto 1fr; gap: 1rem 1.15rem; margin-bottom: 1.35rem; position: relative; }
+    .wf-stage:last-of-type { margin-bottom: 0.5rem; }
+    .wf-marker { display: flex; justify-content: center; padding-top: 0.15rem; }
+    .wf-node {
+      width: 2rem; height: 2rem; border-radius: 50%; color: #fff; font-weight: 800; font-size: 0.82rem;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      box-shadow: 0 0 0 3px var(--card);
+      position: relative; z-index: 1;
+    }
+    .wf-node.green { background: linear-gradient(135deg, var(--green), var(--green-dk)); }
+    .wf-node.coral { background: linear-gradient(135deg, var(--coral), #c24a00); }
+    .wf-node.blue  { background: linear-gradient(135deg, var(--blue), #0d47a1); }
+    .wf-node.teal  { background: linear-gradient(135deg, var(--teal), var(--teal-dk)); }
+    .wf-node.amber { background: linear-gradient(135deg, #d4840a, #b36a00); }
+    .wf-card {
+      background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px;
+      padding: 1.1rem 1.15rem 1.15rem;
+    }
+    .wf-card-head { display: flex; align-items: flex-start; gap: 0.85rem; margin-bottom: 0.65rem; }
+    .wf-icon { flex-shrink: 0; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; }
+    .wf-icon svg { width: 44px; height: 44px; display: block; }
+    .wf-stage-name { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.25; }
+    .wf-stage-name.green { color: var(--green-dk); }
+    .wf-stage-name.coral { color: var(--coral); }
+    .wf-stage-name.blue  { color: var(--blue); }
+    .wf-stage-name.teal  { color: var(--teal-dk); }
+    .wf-stage-name.amber { color: #d4840a; }
+    .wf-sub { font-size: 0.78rem; color: var(--muted); margin-top: 0.2rem; font-weight: 500; }
+    .wf-does { font-size: var(--text-sm); color: var(--muted); line-height: 1.55; margin: 0 0 0.65rem 0; }
+    .wf-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.65rem; }
+    .wf-chip {
+      font-size: 0.68rem; font-weight: 700; padding: 0.28rem 0.55rem; border-radius: 6px;
+      background: var(--bg2); border: 1px solid var(--border); color: var(--text); line-height: 1.3;
+    }
+    .wf-stage.coral .wf-chip { background: var(--coral-lt); border-color: rgba(232,93,4,.2); color: #9a3d00; }
+    .wf-stage.blue  .wf-chip { background: var(--blue-lt); border-color: rgba(21,101,192,.2); color: #0d47a1; }
+    .wf-stage.teal  .wf-chip { background: var(--teal-lt); border-color: rgba(14,155,176,.25); color: var(--teal-dk); }
+    .wf-stage.amber .wf-chip { background: #fef3e2; border-color: rgba(212,132,10,.25); color: #92400e; }
+    .wf-stage.green .wf-chip { background: var(--green-lt); border-color: rgba(29,158,82,.2); color: var(--green-dk); }
+    .wf-mode-row { display: flex; gap: 0.65rem; flex-wrap: wrap; margin-top: 0.15rem; }
+    .wf-report {
+      margin-top: 1.5rem; margin-left: 0; padding: 1.35rem 1.5rem;
+      background: linear-gradient(135deg, var(--green-lt), #f4faf6);
+      border: 1.5px solid rgba(29,158,82,.3); border-radius: 14px;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 1rem 1.5rem;
+    }
+    .wf-report-body { flex: 1; min-width: 200px; display: flex; align-items: flex-start; gap: 0.85rem; }
+    .wf-report h3 { margin: 0 0 0.35rem 0; font-size: 1.05rem; font-weight: 800; color: var(--green-dk); }
+    .wf-report p { margin: 0; font-size: var(--text-sm); color: #3a5a3a; line-height: 1.55; }
+    .wf-report .wf-chip { background: rgba(255,255,255,.7); border-color: rgba(29,158,82,.25); color: var(--green-dk); }
+    .wf-report-cta {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, var(--green), var(--green-dk)); color: #fff;
+      text-decoration: none; padding: 0.75rem 1.35rem; border-radius: 9px;
+      font-weight: 700; font-size: 0.92rem; white-space: nowrap;
+      transition: box-shadow .2s, transform .2s;
+    }
+    .wf-report-cta:hover { box-shadow: 0 4px 16px rgba(29,158,82,.35); transform: translateY(-1px); }
+    @media (max-width: 640px) {
+      .wf-timeline { padding-left: 0; }
+      .wf-timeline::before { display: none; }
+      .wf-stage { grid-template-columns: 1fr; gap: 0.55rem; }
+      .wf-marker { justify-content: flex-start; }
+      .wf-report { flex-direction: column; align-items: stretch; }
+      .wf-report-cta { width: 100%; text-align: center; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .wf-report-cta:hover { transform: none; }
+    }
+
     /* ── STATS BAR (Early Access) ── */
     .stats-bar {
       background: var(--card); border: 1.5px solid var(--border); border-radius: 14px;
@@ -933,14 +1010,24 @@
       <summary data-i18n="how.expand">Step-by-step workflow</summary>
       <div class="workflow-details-body">
 
-    <!-- Step 1 — Project Setup -->
-    <div class="workflow-setup">
-      <div style="display:flex;align-items:flex-start;gap:1.2rem;flex-wrap:wrap;">
-        <div style="font-size:2rem;flex-shrink:0;">&#128203;</div>
-        <div style="flex:1;min-width:200px;">
-          <h3 data-i18n="how.setup.title">Step 1 &mdash; Project Setup</h3>
-          <p data-i18n="how.setup.p">Name the project, set the country, and place the site once. Every step inherits the same project &mdash; no re-entry.</p>
-          <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+    <div class="wf-timeline" aria-label="Unified SiteIQ workflow">
+
+      <!-- Stage 1 — Project Setup -->
+      <div class="wf-stage green">
+        <div class="wf-marker"><div class="wf-node green" aria-hidden="true">1</div></div>
+        <div class="wf-card">
+          <div class="wf-card-head">
+            <div class="wf-icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="20" r="14" fill="#e8f5ee" stroke="#1d9e52" stroke-width="2"/><path d="M24 10c-5.5 0-10 4.5-10 10 0 7.5 10 18 10 18s10-10.5 10-18c0-5.5-4.5-10-10-10z" fill="none" stroke="#157a40" stroke-width="1.5"/><circle cx="24" cy="20" r="4" fill="#1d9e52"/></svg>
+            </div>
+            <div>
+              <div class="wf-stage-name green" data-i18n="how.setup.title">Step 1 &mdash; Project Setup</div>
+              <div class="wf-sub" data-i18n="wf.setup.sub">One login &middot; one project context</div>
+            </div>
+          </div>
+          <p class="wf-does" data-i18n="wf.setup.does">Name the project, set the country, and place the site once. Every step inherits the same project &mdash; no re-entry.</p>
+          <div class="wf-chips" data-i18n-chips="wf.setup.get"></div>
+          <div class="wf-mode-row">
             <div class="workflow-mode-chip">
               <span style="font-size:1rem;">&#128205;</span>
               <div>
@@ -958,81 +1045,96 @@
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Step 2 — SiteIQ -->
-    <div style="margin-bottom:3rem;">
-      <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;">
-        <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--coral),#c24a00);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:0.85rem;flex-shrink:0;">2</div>
-        <div>
-          <div style="font-size:1.1rem;font-weight:800;color:var(--coral);letter-spacing:-0.02em;" data-i18n="how.siteiq.title">SiteIQ &mdash; Site Screening</div>
-          <div class="workflow-module-sub" data-i18n="how.siteiq.sub">Step 2 &middot; Solar &middot; flood &middot; regulatory &middot; buildable area</div>
+      <!-- Stage 2 — SiteIQ -->
+      <div class="wf-stage coral">
+        <div class="wf-marker"><div class="wf-node coral" aria-hidden="true">2</div></div>
+        <div class="wf-card">
+          <div class="wf-card-head">
+            <div class="wf-icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="16" r="9" fill="#fef3c7" stroke="#e85d04" stroke-width="1.5"/><g stroke="#e85d04" stroke-width="1.5" fill="none"><path d="M24 4v4M24 28v4M4 16h4M40 16h4M9 7l3 3M36 25l3 3M9 25l3-3M36 7l3-3"/></g><path d="M8 38c4-3 8-4 16-4s12 1 16 4" stroke="#1565c0" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+            </div>
+            <div>
+              <div class="wf-stage-name coral" data-i18n="how.siteiq.title">SiteIQ &mdash; Site Screening</div>
+              <div class="wf-sub" data-i18n="how.siteiq.sub">Step 2 &middot; Solar &middot; flood &middot; regulatory &middot; buildable area</div>
+            </div>
+          </div>
+          <p class="wf-does" data-i18n="wf.siteiq.does">Screen solar resource, flood risk and grid proximity, then map buildable area with automatic GIS setbacks from roads, rivers, buildings and more.</p>
+          <div class="wf-chips" data-i18n-chips="wf.siteiq.get"></div>
         </div>
-        <a href="https://app.pvmath.com" target="_blank" style="margin-left:auto;background:var(--coral-lt);color:var(--coral);font-size:var(--text-sm);font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;" data-i18n="how.launch">Open in App &rarr;</a>
       </div>
-      <div class="steps">
-        <div class="step"><div class="step-num coral">a</div><h3 data-i18n="siteiq.s1.h">Screen solar, flood &amp; grid</h3><p data-i18n="siteiq.s1.p">Standard or Agri-PV. Solar resource (PVGIS), flood heuristic, grid proximity (OSM) and country-aware regulatory flags load automatically &mdash; with a monthly GHI chart.</p></div>
-        <div class="step"><div class="step-num coral">b</div><h3 data-i18n="siteiq.s2.h">Map the buildable area</h3><p data-i18n="siteiq.s2.p">Automatic GIS constraint detection &mdash; roads, rivers, buildings, forests, transmission &mdash; with engineering setbacks gives the buildable polygon, buildable % and a land score.</p></div>
-        <div class="step"><div class="step-num coral">c</div><h3 data-i18n="siteiq.s3.h">Carry into the workflow</h3><p data-i18n="siteiq.s3.p">Buildable area and findings flow straight into TerrainIQ, LayoutIQ and YieldIQ &mdash; one combined PVMath report at the end, no re-entry.</p></div>
-      </div>
-    </div>
 
-    <div style="border-top:1px solid var(--border);margin-bottom:3rem;"></div>
-
-    <!-- Step 3 — TerrainIQ -->
-    <div>
-      <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;">
-        <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#1565c0,#0d47a1);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:0.85rem;flex-shrink:0;">3</div>
-        <div>
-          <div style="font-size:1.1rem;font-weight:800;color:#1565c0;letter-spacing:-0.02em;" data-i18n="how.topoiq.title">TerrainIQ &mdash; Slope Analysis</div>
-          <div class="workflow-module-sub" data-i18n="how.topoiq.sub">Step 3 &middot; Needs a boundary &middot; CAD exports</div>
+      <!-- Stage 3 — TerrainIQ -->
+      <div class="wf-stage blue">
+        <div class="wf-marker"><div class="wf-node blue" aria-hidden="true">3</div></div>
+        <div class="wf-card">
+          <div class="wf-card-head">
+            <div class="wf-icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M4 36 L14 22 L22 28 L32 14 L44 24" fill="none" stroke="#1565c0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 36 L14 30 L22 34 L32 26 L44 32" fill="none" stroke="#64b5f6" stroke-width="1.2" opacity="0.7"/><ellipse cx="24" cy="38" rx="20" ry="3" fill="#e8f0fb"/></svg>
+            </div>
+            <div>
+              <div class="wf-stage-name blue" data-i18n="how.topoiq.title">TerrainIQ &mdash; Slope Analysis</div>
+              <div class="wf-sub" data-i18n="how.topoiq.sub">Step 3 &middot; Needs a boundary &middot; CAD exports</div>
+            </div>
+          </div>
+          <p class="wf-does" data-i18n="wf.topoiq.does">Region-routed DEM inside your boundary &mdash; slope heatmaps, cross-row grades and engineering verdicts before you order a topo survey.</p>
+          <div class="wf-chips" data-i18n-chips="wf.topoiq.get"></div>
         </div>
-        <a href="https://app.pvmath.com" target="_blank" style="margin-left:auto;background:#e8f0fb;color:#1565c0;font-size:var(--text-sm);font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;" data-i18n="how.launch">Open in App &rarr;</a>
       </div>
-      <div class="steps">
-        <div class="step"><div class="step-num blue">a</div><h3 data-i18n="topoiq.s1.h">Confirm boundary &amp; grid</h3><p data-i18n="topoiq.s1.p">Boundary carries over from setup. Default 5 m layout analysis grid; toggle &ldquo;use full boundary&rdquo; to skip GIS exclusions.</p></div>
-        <div class="step"><div class="step-num blue">b</div><h3 data-i18n="topoiq.s2.h">Run terrain screening</h3><p data-i18n="topoiq.s2.p">Region-routed DEM &mdash; Copernicus EEA-10 in Europe, USGS 3DEP in the USA, FABDEM globally &mdash; resampled inside the boundary. Slope heatmaps and cross-row grades.</p></div>
-        <div class="step"><div class="step-num blue">c</div><h3 data-i18n="topoiq.s3.h">Export PDF, DXF &amp; LandXML</h3><p data-i18n="topoiq.s3.p">Terrain PDF plus a CAD starter kit: UTM LandXML TIN and DXF contours with parcel linework from your boundary &mdash; conceptual, not survey-grade.</p></div>
-      </div>
-    </div>
 
-    <div style="border-top:1px solid var(--border);margin-bottom:3rem;margin-top:3rem;"></div>
-
-    <!-- Step 4 — LayoutIQ -->
-    <div>
-      <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;">
-        <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--teal),var(--teal-dk));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:0.85rem;flex-shrink:0;">4</div>
-        <div>
-          <div style="font-size:1.1rem;font-weight:800;color:var(--teal-dk);letter-spacing:-0.02em;" data-i18n="how.layoutiq.title">LayoutIQ &mdash; Auto Layout</div>
-          <div class="workflow-module-sub" data-i18n="how.layoutiq.sub">Step 4 &middot; Mount type chosen here &middot; 3D preview</div>
+      <!-- Stage 4 — LayoutIQ -->
+      <div class="wf-stage teal">
+        <div class="wf-marker"><div class="wf-node teal" aria-hidden="true">4</div></div>
+        <div class="wf-card">
+          <div class="wf-card-head">
+            <div class="wf-icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="10" width="36" height="28" rx="3" fill="#e1f6f9" stroke="#0e9bb0" stroke-width="1.5"/><g stroke="#0b7686" stroke-width="2.5" stroke-linecap="round"><line x1="10" y1="18" x2="38" y2="18"/><line x1="10" y1="24" x2="38" y2="24"/><line x1="10" y1="30" x2="32" y2="30"/></g></svg>
+            </div>
+            <div>
+              <div class="wf-stage-name teal" data-i18n="how.layoutiq.title">LayoutIQ &mdash; Auto Layout</div>
+              <div class="wf-sub" data-i18n="how.layoutiq.sub">Step 4 &middot; Mount type chosen here &middot; 3D preview</div>
+            </div>
+          </div>
+          <p class="wf-does" data-i18n="wf.layoutiq.does">Pick Fixed Tilt or Single-Axis Tracker, then auto-pack rows on the buildable polygon with GIS setbacks applied.</p>
+          <div class="wf-chips" data-i18n-chips="wf.layoutiq.get"></div>
         </div>
-        <a href="https://app.pvmath.com" target="_blank" style="margin-left:auto;background:var(--teal-lt);color:var(--teal-dk);font-size:var(--text-sm);font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;" data-i18n="how.launch">Open in App &rarr;</a>
       </div>
-      <div class="steps">
-        <div class="step"><div class="step-num teal">a</div><h3 data-i18n="layoutiq.s1.h">Pick mount type &amp; spacing</h3><p data-i18n="layoutiq.s1.p">Fixed Tilt or Single-Axis Tracker, with pitch / GCR guidance. SiteIQ and TerrainIQ stay mount-agnostic until here.</p></div>
-        <div class="step"><div class="step-num teal">b</div><h3 data-i18n="layoutiq.s2.h">Auto-pack the buildable area</h3><p data-i18n="layoutiq.s2.p">Rows pack around GIS setbacks across the buildable polygon. Get DC capacity, module count and MW/ha per option.</p></div>
-        <div class="step"><div class="step-num teal">c</div><h3 data-i18n="layoutiq.s3.h">Inspect 3D &amp; export</h3><p data-i18n="layoutiq.s3.p">Interactive 3D terrain + layout preview. Export the layout DXF or the full project package ZIP (A3 sheet, BOM CSV, DXF).</p></div>
-      </div>
-    </div>
 
-    <div style="border-top:1px solid var(--border);margin-bottom:3rem;margin-top:3rem;"></div>
-
-    <!-- Step 5 — YieldIQ -->
-    <div>
-      <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;">
-        <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#d4840a,#b36a00);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:0.85rem;flex-shrink:0;">5</div>
-        <div>
-          <div style="font-size:1.1rem;font-weight:800;color:#d4840a;letter-spacing:-0.02em;" data-i18n="how.yieldiq.title">YieldIQ &mdash; Yield Estimation</div>
-          <div class="workflow-module-sub" data-i18n="how.yieldiq.sub">Step 5 &middot; Auto-runs from your layout &middot; Feasibility only</div>
+      <!-- Stage 5 — YieldIQ -->
+      <div class="wf-stage amber">
+        <div class="wf-marker"><div class="wf-node amber" aria-hidden="true">5</div></div>
+        <div class="wf-card">
+          <div class="wf-card-head">
+            <div class="wf-icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="28" width="5" height="12" rx="1" fill="#d4840a"/><rect x="17" y="20" width="5" height="20" rx="1" fill="#e85d04"/><rect x="26" y="14" width="5" height="26" rx="1" fill="#1d9e52"/><rect x="35" y="22" width="5" height="18" rx="1" fill="#d4840a" opacity="0.7"/><line x1="6" y1="40" x2="42" y2="40" stroke="#ccc" stroke-width="1.5"/></svg>
+            </div>
+            <div>
+              <div class="wf-stage-name amber" data-i18n="how.yieldiq.title">YieldIQ &mdash; Yield Estimation</div>
+              <div class="wf-sub" data-i18n="how.yieldiq.sub">Step 5 &middot; Auto-runs from your layout &middot; Feasibility only</div>
+            </div>
+          </div>
+          <p class="wf-does" data-i18n="wf.yieldiq.does">PVGIS yield for your chosen LayoutIQ mount &mdash; Fixed 1P&ndash;4P or SAT 1P/2P. Runs automatically when you proceed, no re-entry.</p>
+          <div class="wf-chips" data-i18n-chips="wf.yieldiq.get"></div>
         </div>
-        <a href="https://app.pvmath.com" target="_blank" style="margin-left:auto;background:#fef3e2;color:#d4840a;font-size:var(--text-sm);font-weight:700;padding:0.35rem 0.9rem;border-radius:7px;text-decoration:none;" data-i18n="how.launch">Open in App &rarr;</a>
       </div>
-      <div class="steps">
-        <div class="step"><div class="step-num" style="background:#d4840a;">a</div><h3 data-i18n="yieldiq.s1.h">Carries your layout DC</h3><p data-i18n="yieldiq.s1.p">Selected LayoutIQ configuration, DC capacity and location flow in automatically &mdash; YieldIQ runs on &ldquo;Proceed&rdquo;, no re-entry.</p></div>
-        <div class="step"><div class="step-num" style="background:#d4840a;">b</div><h3 data-i18n="yieldiq.s2.h">Yield for your chosen layout</h3><p data-i18n="yieldiq.s2.p">Runs on the mount picked in LayoutIQ &mdash; Fixed 1P&ndash;4P or SAT 1P/2P &mdash; via PVGIS JRC. Specific yield, PR, capacity factor and a monthly energy chart.</p></div>
-        <div class="step"><div class="step-num" style="background:#d4840a;">c</div><h3 data-i18n="yieldiq.s3.h">Early-stage feasibility</h3><p data-i18n="yieldiq.s3.p">A screening-grade read to sanity-check the site before detailed PVsyst / DNV modelling &mdash; included in the combined PVMath report.</p></div>
-      </div>
+
     </div>
+
+    <!-- PVMath report culmination -->
+    <div class="wf-report">
+      <div class="wf-report-body">
+        <div class="wf-icon" aria-hidden="true">
+          <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="6" width="28" height="36" rx="3" fill="#fff" stroke="#1d9e52" stroke-width="2"/><line x1="15" y1="14" x2="33" y2="14" stroke="#1d9e52" stroke-width="2" stroke-linecap="round"/><line x1="15" y1="22" x2="33" y2="22" stroke="#86efac" stroke-width="2" stroke-linecap="round"/><line x1="15" y1="30" x2="28" y2="30" stroke="#86efac" stroke-width="2" stroke-linecap="round"/><circle cx="33" cy="33" r="8" fill="#1d9e52"/><path d="M30 33l2 2 4-5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div>
+          <h3 data-i18n="wf.report.title">Combined PVMath report</h3>
+          <p data-i18n="wf.report.p">SiteIQ + TerrainIQ + LayoutIQ + YieldIQ in one export &mdash; project ZIP, layout DXF, terrain LandXML and screening PDF.</p>
+          <div class="wf-chips" data-i18n-chips="wf.report.get" style="margin-top:0.65rem;margin-bottom:0;"></div>
+        </div>
+      </div>
+      <a href="https://app.pvmath.com" target="_blank" rel="noopener" class="wf-report-cta" data-i18n="wf.report.cta">Open in App &rarr;</a>
+    </div>
+
       </div>
     </details>
   </div>
@@ -1410,19 +1512,21 @@ var T = {
     'how.topoiq.title':'TerrainIQ — Slope Analysis','how.topoiq.sub':'Step 3 · Needs a boundary · CAD exports',
     'how.layoutiq.title':'LayoutIQ — Auto Layout','how.layoutiq.sub':'Step 4 · Mount type chosen here · 3D preview',
     'how.yieldiq.title':'YieldIQ — Yield Estimation','how.yieldiq.sub':'Step 5 · Auto-runs from your layout · Feasibility only',
-    'how.launch':'Open in App →',
-    'siteiq.s1.h':'Screen solar, flood & grid','siteiq.s1.p':'Standard or Agri-PV. Solar resource (PVGIS), flood heuristic, grid proximity (OSM) and country-aware regulatory flags load automatically — with a monthly GHI chart.',
-    'siteiq.s2.h':'Map the buildable area','siteiq.s2.p':'Automatic GIS constraint detection — roads, rivers, buildings, forests, transmission — with engineering setbacks gives the buildable polygon, buildable % and a land score.',
-    'siteiq.s3.h':'Carry into the workflow','siteiq.s3.p':'Buildable area and findings flow straight into TerrainIQ, LayoutIQ and YieldIQ — one combined PVMath report at the end, no re-entry.',
-    'topoiq.s1.h':'Confirm boundary & grid','topoiq.s1.p':'Boundary carries over from setup. Default 5 m layout analysis grid; toggle “use full boundary” to skip GIS exclusions.',
-    'topoiq.s2.h':'Run terrain screening','topoiq.s2.p':'Region-routed DEM — Copernicus EEA-10 in Europe, USGS 3DEP in the USA, FABDEM globally — resampled inside the boundary. Slope heatmaps and cross-row grades.',
-    'topoiq.s3.h':'Export PDF, DXF & LandXML','topoiq.s3.p':'Terrain PDF plus a CAD starter kit: UTM LandXML TIN and DXF contours with parcel linework from your boundary — conceptual, not survey-grade.',
-    'layoutiq.s1.h':'Pick mount type & spacing','layoutiq.s1.p':'Fixed Tilt or Single-Axis Tracker, with pitch / GCR guidance. SiteIQ and TerrainIQ stay mount-agnostic until here.',
-    'layoutiq.s2.h':'Auto-pack the buildable area','layoutiq.s2.p':'Rows pack around GIS setbacks across the buildable polygon. Get DC capacity, module count and MW/ha per option.',
-    'layoutiq.s3.h':'Inspect 3D & export','layoutiq.s3.p':'Interactive 3D terrain + layout preview. Export the layout DXF or the full project package ZIP (A3 sheet, BOM CSV, DXF).',
-    'yieldiq.s1.h':'Carries your layout DC','yieldiq.s1.p':'Selected LayoutIQ configuration, DC capacity and location flow in automatically — YieldIQ runs on “Proceed”, no re-entry.',
-    'yieldiq.s2.h':'Yield for your chosen layout','yieldiq.s2.p':'Runs on the mount picked in LayoutIQ — Fixed 1P–4P or SAT 1P/2P — via PVGIS JRC. Specific yield, PR, capacity factor and a monthly energy chart.',
-    'yieldiq.s3.h':'Early-stage feasibility','yieldiq.s3.p':'A screening-grade read to sanity-check the site before detailed PVsyst / DNV modelling — included in the combined PVMath report.',
+    'wf.setup.sub':'One login · one project context',
+    'wf.setup.does':'Name the project, set the country, and place the site once. Every step inherits the same project — no re-entry.',
+    'wf.setup.get':'Quick Mode (pin)|Full Mode (boundary)|Standard & Agri-PV',
+    'wf.siteiq.does':'Screen solar resource, flood risk and grid proximity, then map buildable area with automatic GIS setbacks from roads, rivers, buildings and more.',
+    'wf.siteiq.get':'Monthly GHI chart|Buildable % & land score|OSM constraint map',
+    'wf.topoiq.does':'Region-routed DEM inside your boundary — slope heatmaps, cross-row grades and engineering verdicts before you order a topo survey.',
+    'wf.topoiq.get':'EEA-10 / 3DEP / FABDEM|Terrain PDF|DXF + LandXML',
+    'wf.layoutiq.does':'Pick Fixed Tilt or Single-Axis Tracker, then auto-pack rows on the buildable polygon with GIS setbacks applied.',
+    'wf.layoutiq.get':'Mount type & GCR|DC capacity & modules|3D terrain preview',
+    'wf.yieldiq.does':'PVGIS yield for your chosen LayoutIQ mount — Fixed 1P–4P or SAT 1P/2P. Runs automatically when you proceed, no re-entry.',
+    'wf.yieldiq.get':'Specific yield & PR|Monthly energy chart|Feasibility only',
+    'wf.report.title':'Combined PVMath report',
+    'wf.report.p':'SiteIQ + TerrainIQ + LayoutIQ + YieldIQ in one export — project ZIP, layout DXF, terrain LandXML and screening PDF.',
+    'wf.report.get':'One project ZIP|Layout DXF|Terrain LandXML',
+    'wf.report.cta':'Open in App →',
     'why.label':'Why PVMath','why.title':'Engineering-grade screening estimates.<br>Not a bankable study.',
     'why.sub':'Industry-standard datasets. Screening-grade speed. Honest limits built in.',
     'why.c1.h':'Industry-Standard Solar Data','why.c1.p':'PVGIS (EC JRC) GHI and irradiation — used in bankable pre-feasibility worldwide.',
@@ -1544,19 +1648,21 @@ var T = {
     'how.topoiq.title':'TerrainIQ — Neigungsanalyse','how.topoiq.sub':'Schritt 3 · Benötigt Grenze · CAD-Exporte',
     'how.layoutiq.title':'LayoutIQ — Auto-Layout','how.layoutiq.sub':'Schritt 4 · Montageart hier gewählt · 3D-Vorschau',
     'how.yieldiq.title':'YieldIQ — Ertragsschätzung','how.yieldiq.sub':'Schritt 5 · Läuft automatisch aus dem Layout · Nur Machbarkeit',
-    'how.launch':'In der App öffnen →',
-    'siteiq.s1.h':'Solar, Hochwasser & Netz screenen','siteiq.s1.p':'Standard oder Agri-PV. Solarressource (PVGIS), Hochwasser-Heuristik, Netznähe (OSM) und länderspezifische Regulierungshinweise laden automatisch — mit Monats-GHI-Diagramm.',
-    'siteiq.s2.h':'Bebaubare Fläche ermitteln','siteiq.s2.p':'Automatische GIS-Constraint-Erkennung — Straßen, Flüsse, Gebäude, Wald, Leitungen — mit Engineering-Abständen ergibt die bebaubare Fläche, den Anteil in % und einen Land-Score.',
-    'siteiq.s3.h':'In den Workflow übernehmen','siteiq.s3.p':'Bebaubare Fläche und Ergebnisse fließen direkt in TerrainIQ, LayoutIQ und YieldIQ — ein kombinierter PVMath-Bericht am Ende, keine erneute Eingabe.',
-    'topoiq.s1.h':'Grenze & Raster bestätigen','topoiq.s1.p':'Grenze wird aus dem Setup übernommen. Standard-5-m-Layout-Raster; „volle Grenze nutzen“ überspringt GIS-Ausschlüsse.',
-    'topoiq.s2.h':'Gelände-Screening starten','topoiq.s2.p':'Regionales DEM — Copernicus EEA-10 in Europa, USGS 3DEP in den USA, FABDEM global — innerhalb der Grenze resampled. Neigungskarten und Querneigung.',
-    'topoiq.s3.h':'PDF, DXF & LandXML exportieren','topoiq.s3.p':'Gelände-PDF plus CAD-Starterkit: UTM-LandXML und DXF-Höhenlinien mit Parcel-Linework aus Ihrer Grenze — konzeptionell, nicht vermessungsgenau.',
-    'layoutiq.s1.h':'Montageart & Abstand wählen','layoutiq.s1.p':'Festaufständerung oder Einachsen-Tracker, mit Pitch / GCR-Empfehlung. SiteIQ und TerrainIQ bleiben bis hier montage-neutral.',
-    'layoutiq.s2.h':'Baubare Fläche automatisch packen','layoutiq.s2.p':'Reihen packen um GIS-Abstände über das baubare Polygon. DC-Leistung, Modulanzahl und MW/ha pro Option.',
-    'layoutiq.s3.h':'3D prüfen & exportieren','layoutiq.s3.p':'Interaktive 3D-Gelände- und Layout-Vorschau. Layout-DXF oder das gesamte Projektpaket-ZIP (A3-Blatt, BOM-CSV, DXF) exportieren.',
-    'yieldiq.s1.h':'Übernimmt Ihre Layout-DC','yieldiq.s1.p':'Gewählte LayoutIQ-Konfiguration, DC-Leistung und Standort fließen automatisch ein — YieldIQ läuft bei „Weiter“, keine erneute Eingabe.',
-    'yieldiq.s2.h':'Ertrag für Ihr gewähltes Layout','yieldiq.s2.p':'Läuft mit der in LayoutIQ gewählten Aufständerung — Fest 1P–4P oder SAT 1P/2P — via PVGIS JRC. Spez. Ertrag, PR, Kapazitätsfaktor und Monats-Energiediagramm.',
-    'yieldiq.s3.h':'Frühe Machbarkeit','yieldiq.s3.p':'Eine Screening-Einschätzung zur Plausibilitätsprüfung des Standorts vor detaillierter PVsyst-/DNV-Modellierung — Teil des kombinierten PVMath-Berichts.',
+    'wf.setup.sub':'Ein Login · ein Projektkontext',
+    'wf.setup.does':'Projekt benennen, Land festlegen, Standort einmal platzieren. Jeder Schritt übernimmt dasselbe Projekt — keine erneute Eingabe.',
+    'wf.setup.get':'Quick Mode (Pin)|Full Mode (Grenze)|Standard & Agri-PV',
+    'wf.siteiq.does':'Solarressource, Hochwasserrisiko und Netznähe screenen, dann bebaubare Fläche mit automatischen GIS-Abständen zu Straßen, Flüssen, Gebäuden u. a. ermitteln.',
+    'wf.siteiq.get':'Monats-GHI-Diagramm|Bebaubar % & Land-Score|OSM-Constraint-Karte',
+    'wf.topoiq.does':'Regionales DEM innerhalb Ihrer Grenze — Neigungskarten, Querneigung und Engineering-Bewertungen vor der Vermessung.',
+    'wf.topoiq.get':'EEA-10 / 3DEP / FABDEM|Gelände-PDF|DXF + LandXML',
+    'wf.layoutiq.does':'Festaufständerung oder Einachsen-Tracker wählen, dann Reihen auf dem baubaren Polygon mit GIS-Abständen automatisch packen.',
+    'wf.layoutiq.get':'Montageart & GCR|DC-Leistung & Module|3D-Geländevorschau',
+    'wf.yieldiq.does':'PVGIS-Ertrag für Ihre gewählte LayoutIQ-Aufständerung — Fest 1P–4P oder SAT 1P/2P. Läuft automatisch bei „Weiter“, keine erneute Eingabe.',
+    'wf.yieldiq.get':'Spez. Ertrag & PR|Monats-Energiediagramm|Nur Machbarkeit',
+    'wf.report.title':'Kombinierter PVMath-Bericht',
+    'wf.report.p':'SiteIQ + TerrainIQ + LayoutIQ + YieldIQ in einem Export — Projekt-ZIP, Layout-DXF, Gelände-LandXML und Screening-PDF.',
+    'wf.report.get':'Ein Projekt-ZIP|Layout-DXF|Gelände-LandXML',
+    'wf.report.cta':'In der App öffnen →',
     'why.label':'Warum PVMath','why.title':'Screening-Schätzungen auf Ingenieursniveau.<br>Kein bankfähiges Gutachten.',
     'why.sub':'Branchenübliche Datensätze. Screening-Geschwindigkeit. Ehrliche Grenzen.',
     'why.c1.h':'Branchenstandard-Solardaten','why.c1.p':'PVGIS (EC JRC) GHI und Einstrahlung — in bankfähigen Vorstudien weltweit.',
@@ -1655,6 +1761,14 @@ function setLanguage(lang) {
   document.querySelectorAll('[data-i18n-ph]').forEach(function(el) {
     var key = el.getAttribute('data-i18n-ph');
     if (T[lang][key] !== undefined) el.placeholder = T[lang][key];
+  });
+  document.querySelectorAll('[data-i18n-chips]').forEach(function(el) {
+    var key = el.getAttribute('data-i18n-chips');
+    if (T[lang][key] === undefined) return;
+    var chips = T[lang][key].split('|').map(function(s) { return s.trim(); }).filter(Boolean);
+    el.innerHTML = chips.map(function(c) {
+      return '<span class="wf-chip">' + c.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>';
+    }).join('');
   });
   document.querySelectorAll('.lang-btn').forEach(function(btn) {
     btn.classList.toggle('active', btn.dataset.lang === lang);
