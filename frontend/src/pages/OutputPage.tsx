@@ -2393,9 +2393,14 @@ export function OutputPage({
                           buildable parcel outline).
                         </p>
                       </>
+                    ) : layoutDetailBusy ? (
+                      renderModuleRunning(
+                        "Generating layout preview",
+                        "Packing strings across the buildable parcel and rendering the row geometry.",
+                      )
                     ) : (
                       <p className="module-note">
-                        {layoutDetailBusy ? "Generating layout preview…" : "Select a row or press Refresh preview."}
+                        Select a row or press Refresh preview.
                       </p>
                     )}
                     {terrain3D ? (
