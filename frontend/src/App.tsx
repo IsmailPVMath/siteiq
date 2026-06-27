@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PRODUCT_NAME } from "./lib/brand";
+import { APP_TAB_TITLE } from "./lib/brand";
 import { AppShell } from "./components/AppShell";
 import { LoginPanel } from "./components/LoginPanel";
 import { MyProjectsPage } from "./pages/MyProjectsPage";
@@ -123,7 +123,7 @@ export default function App() {
   useEffect(() => {
     // OutputPage sets a project-specific title while a project is open.
     if (step === "output") return;
-    document.title = PRODUCT_NAME;
+    document.title = APP_TAB_TITLE;
   }, [step]);
 
   function handleSignedIn(next: AuthSession) {
