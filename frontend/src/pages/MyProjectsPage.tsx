@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { deleteAllProjects, deleteProject, listProjects, type ProjectRecord } from "../lib/api";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { deleteProject, deleteProjectsBulk, listProjects, type ProjectRecord } from "../lib/api";
 
 function projectMeta(row: ProjectRecord) {
   const d = row.project_data ?? ({} as ProjectRecord["project_data"]);
@@ -45,17 +45,34 @@ export function MyProjectsPage({ token, onOpenProject, onNewProject }: Props) {
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState("");
-  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
-  const [deleteAllBusy, setDeleteAllBusy] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [bulkDeleteBusy, setBulkDeleteBusy] = useState(false);
+  const selectAllRef = useRef<HTMLInputElement>(null);
+
+  const allIds = useMemo(() => rows.map((row) => row.id), [rows]);
+  const selectedCount = selectedIds.size;
+  const allSelected = rows.length > 0 && selectedCount === rows.length;
+  const someSelected = selectedCount > 0 && !allSelected;
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = someSelected;
+    }
+  }, [someSelected]);
 
   async function load() {
     setBusy(true);
     setError("");
     try {
-      setRows(await listProjects(token));
+      const nextRows = await listProjects(token);
+      setRows(nextRows);
+      setSelectedIds(new Set());
+      setConfirmBulkDelete(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load projects");
       setRows([]);
+      setSelectedIds(new Set());
     } finally {
       setBusy(false);
     }
@@ -65,6 +82,21 @@ export function MyProjectsPage({ token, onOpenProject, onNewProject }: Props) {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
+
+  function toggleSelectAll(checked: boolean) {
+    setSelectedIds(checked ? new Set(allIds) : new Set());
+    setConfirmBulkDelete(false);
+  }
+
+  function toggleSelectId(id: string, checked: boolean) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+    setConfirmBulkDelete(false);
+  }
 
   async function handleDelete(id: string) {
     try {
@@ -76,18 +108,20 @@ export function MyProjectsPage({ token, onOpenProject, onNewProject }: Props) {
     }
   }
 
-  async function handleDeleteAll() {
-    setDeleteAllBusy(true);
+  async function handleDeleteSelected() {
+    const ids = [...selectedIds];
+    if (!ids.length) return;
+    setBulkDeleteBusy(true);
     setError("");
     try {
-      await deleteAllProjects(token);
-      setConfirmDeleteAll(false);
+      await deleteProjectsBulk(token, ids);
+      setConfirmBulkDelete(false);
       setConfirmDeleteId("");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Delete all failed");
+      setError(err instanceof Error ? err.message : "Delete selected failed");
     } finally {
-      setDeleteAllBusy(false);
+      setBulkDeleteBusy(false);
     }
   }
 
@@ -124,54 +158,85 @@ export function MyProjectsPage({ token, onOpenProject, onNewProject }: Props) {
       ) : (
         <>
           <div className="my-projects-toolbar">
-            <p className="my-projects-count">
-              {rows.length} project{rows.length !== 1 ? "s" : ""}
-            </p>
-            {confirmDeleteAll ? (
-              <div className="my-projects-delete-all">
+            <div className="my-projects-toolbar-left">
+              <p className="my-projects-count">
+                {rows.length} project{rows.length !== 1 ? "s" : ""}
+              </p>
+              <label className="my-projects-select-all checkbox-field">
+                <input
+                  ref={selectAllRef}
+                  type="checkbox"
+                  checked={allSelected}
+                  disabled={bulkDeleteBusy}
+                  onChange={(event) => toggleSelectAll(event.target.checked)}
+                />
+                Select all
+              </label>
+              {selectedCount > 0 ? (
+                <span className="my-projects-selected-count">
+                  {selectedCount} selected
+                </span>
+              ) : null}
+            </div>
+            {confirmBulkDelete ? (
+              <div className="my-projects-bulk-delete">
                 <span className="hint">
-                  Delete all {rows.length} project{rows.length !== 1 ? "s" : ""}? This cannot be
-                  undone.
+                  Delete {selectedCount} selected project{selectedCount !== 1 ? "s" : ""}? This
+                  cannot be undone.
                 </span>
                 <button
                   className="btn btn-ghost btn-sm"
                   type="button"
-                  disabled={deleteAllBusy}
-                  onClick={() => setConfirmDeleteAll(false)}
+                  disabled={bulkDeleteBusy}
+                  onClick={() => setConfirmBulkDelete(false)}
                 >
                   Cancel
                 </button>
                 <button
                   className="btn btn-ghost btn-sm my-project-delete"
                   type="button"
-                  disabled={deleteAllBusy}
-                  onClick={() => void handleDeleteAll()}
+                  disabled={bulkDeleteBusy}
+                  onClick={() => void handleDeleteSelected()}
                 >
-                  {deleteAllBusy ? "Deleting…" : "Confirm delete all"}
+                  {bulkDeleteBusy ? "Deleting…" : "Confirm delete"}
                 </button>
               </div>
             ) : (
               <button
                 className="btn btn-ghost btn-sm my-project-delete"
                 type="button"
-                disabled={deleteAllBusy}
+                disabled={bulkDeleteBusy || selectedCount === 0}
                 onClick={() => {
                   setConfirmDeleteId("");
-                  setConfirmDeleteAll(true);
+                  setConfirmBulkDelete(true);
                 }}
               >
-                Delete all
+                Delete selected
               </button>
             )}
           </div>
           <div className="my-projects-grid">
             {rows.map((row) => {
               const meta = projectMeta(row);
+              const isSelected = selectedIds.has(row.id);
               return (
-                <article key={row.id} className="my-project-card">
-                  <h2 className="my-project-name" title={meta.name}>
-                    {meta.name}
-                  </h2>
+                <article
+                  key={row.id}
+                  className={`my-project-card${isSelected ? " selected" : ""}`}
+                >
+                  <div className="my-project-card-top">
+                    <label className="my-project-select checkbox-field" title="Select project">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        disabled={bulkDeleteBusy}
+                        onChange={(event) => toggleSelectId(row.id, event.target.checked)}
+                      />
+                    </label>
+                    <h2 className="my-project-name" title={meta.name}>
+                      {meta.name}
+                    </h2>
+                  </div>
                   <span
                     className={`my-project-badge${meta.isFull ? " full" : " quick"}`}
                   >

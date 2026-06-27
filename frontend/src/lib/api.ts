@@ -335,9 +335,10 @@ export function deleteProject(token: string, id: string) {
   });
 }
 
-export function deleteAllProjects(token: string) {
-  return apiFetch<{ success: boolean; deleted: number }>("/api/v1/projects", token, {
-    method: "DELETE",
+export function deleteProjectsBulk(token: string, ids: string[]) {
+  return apiFetch<{ success: boolean; deleted: number }>("/api/v1/projects/bulk-delete", token, {
+    method: "POST",
+    body: JSON.stringify({ ids }),
   });
 }
 

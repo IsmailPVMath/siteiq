@@ -39,3 +39,7 @@ class BuildableAreaRequest(BaseModel):
 class BuildableAreaResponse(BaseModel):
     buildable_area_geojson: Optional[Dict[str, Any]] = None
     buildable_area_ha: float
+
+
+class ProjectBulkDeleteRequest(BaseModel):
+    ids: list[str] = Field(min_length=1)

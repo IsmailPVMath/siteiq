@@ -20,6 +20,7 @@ from api.schemas.project_setup import (
 from api.schemas.projects import (
     BuildableAreaRequest,
     BuildableAreaResponse,
+    ProjectBulkDeleteRequest,
     ProjectRecord,
     ProjectUpsertRequest,
 )
@@ -218,6 +219,31 @@ def update_project(
     if not rows:
         raise HTTPException(status_code=404, detail="Project not found")
     return rows[0]
+
+
+@router.post("/projects/bulk-delete")
+def bulk_delete_projects(body: ProjectBulkDeleteRequest, user: AuthUser = Depends(get_current_user)):
+    ids = list(dict.fromkeys(i.strip() for i in body.ids if i and i.strip()))
+    if not ids:
+        raise HTTPException(status_code=400, detail="No project ids provided")
+    id_filter = ",".join(ids)
+    r = requests.delete(
+        _project_base(),
+        params={
+            "id": f"in.({id_filter})",
+            "user_id": f"eq.{user.user_id}",
+            "select": "id",
+        },
+        headers={**db_hdr(user.access_token), "Prefer": "return=representation"},
+        timeout=60,
+    )
+    if r.status_code not in (200, 204):
+        raise HTTPException(
+            status_code=500,
+            detail=_supabase_error_detail(r, "Could not delete projects"),
+        )
+    rows = r.json() if r.status_code == 200 else []
+    return {"success": True, "deleted": len(rows) if isinstance(rows, list) else 0}
 
 
 @router.delete("/projects")
