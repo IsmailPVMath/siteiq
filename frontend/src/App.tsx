@@ -204,7 +204,7 @@ export default function App() {
   const pipelineUnlocked = useMemo((): PipelineStage[] => {
     if (step === "projects" || step === "input") return ["setup"];
     if (step === "processing") return ["setup", "siteiq"];
-    return ["setup", "siteiq", "topoiq", "layoutiq", "yieldiq"];
+    return ["setup", "siteiq", "terrainiq", "layoutiq", "yieldiq"];
   }, [step]);
 
   const pipelineCompleted = useMemo((): Partial<Record<PipelineStage, boolean>> => {
@@ -213,7 +213,7 @@ export default function App() {
     return {
       setup: true,
       siteiq: true,
-      topoiq: outputModule !== "screen",
+      terrainiq: outputModule !== "screen",
       layoutiq: outputModule === "layout" || outputModule === "yield",
       yieldiq: outputModule === "yield",
     };

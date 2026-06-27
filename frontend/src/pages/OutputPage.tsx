@@ -31,7 +31,7 @@ import {
   layoutPayloadFrom,
   type RoadMode,
 } from "../types/layoutConfig";
-import type { TopoIQAnalyzeRequest, TopoIQAnalyzeResponse, YieldIQAnalyzeResponse } from "../types/topoiq";
+import type { TerrainIQAnalyzeRequest, TerrainIQAnalyzeResponse, YieldIQAnalyzeResponse } from "../types/terrainiq";
 import type {
   LayoutOptimizationMode,
   LayoutLandCost,
@@ -55,7 +55,7 @@ interface Props {
   onNewScreening: () => void;
   onEditInput: () => void;
   projectId?: string;
-  initialTopo?: TopoIQAnalyzeResponse | null;
+  initialTopo?: TerrainIQAnalyzeResponse | null;
   initialFinalScore?: WorkflowScoreResponse | null;
   initialGisSetbacks?: Record<string, number> | null;
   onProjectIdChange?: (id: string) => void;
@@ -181,7 +181,7 @@ export function OutputPage({
   const [saveMsg, setSaveMsg] = useState("");
   const [topoBusy, setTopoBusy] = useState(false);
   const [topoError, setTopoError] = useState("");
-  const [topoResult, setTopoResult] = useState<TopoIQAnalyzeResponse | null>(initialTopo);
+  const [topoResult, setTopoResult] = useState<TerrainIQAnalyzeResponse | null>(initialTopo);
   const [topoGridM, setTopoGridM] = useState(5);
   const [topoAllowCoarsen, setTopoAllowCoarsen] = useState(true);
   const topoAutoRan = useRef(Boolean(initialTopo));
@@ -341,7 +341,7 @@ export function OutputPage({
       ? (gisResult.buildable_area_geojson ?? null)
       : null;
 
-  const topoPayload: TopoIQAnalyzeRequest | null = useMemo(() => {
+  const topoPayload: TerrainIQAnalyzeRequest | null = useMemo(() => {
     if (!hasBoundary) return null;
     return {
       project_name: input?.project_name || result.project_name || "TerrainIQ run",
@@ -464,7 +464,7 @@ export function OutputPage({
       ? (selectedLayoutRow.dc_kwp * selectedYieldConfig.spec_y) / 1000
       : null;
 
-  async function refreshFinalScore(topo: TopoIQAnalyzeResponse) {
+  async function refreshFinalScore(topo: TerrainIQAnalyzeResponse) {
     const terrainScore = topo.terrain_drivers.terrain_score as number | undefined;
     if (terrainScore == null) return;
     try {
@@ -485,7 +485,7 @@ export function OutputPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scoreComponents, topoResult]);
 
-  async function handleRunTopo(overrides?: Partial<TopoIQAnalyzeRequest>) {
+  async function handleRunTopo(overrides?: Partial<TerrainIQAnalyzeRequest>) {
     const payload = topoPayload ? { ...topoPayload, ...overrides } : null;
     if (!payload) return;
     setTopoBusy(true);
@@ -608,7 +608,7 @@ export function OutputPage({
       return;
     }
     if (topoAutoRan.current || !topoPayload || topoResult || topoBusy) return;
-    // Wait for SiteIQ GIS so TopoIQ can clip to the buildable area (red zones omitted).
+    // Wait for SiteIQ GIS so TerrainIQ can clip to the buildable area (red zones omitted).
     if (gisBusy) return;
     topoAutoRan.current = true;
     void handleRunTopo();
@@ -679,7 +679,7 @@ export function OutputPage({
     setTopoError("");
     try {
       const blob = await topoReportPdf(token, topoPayload);
-      const safe = (topoPayload.project_name || "topoiq").replace(/\s+/g, "_");
+      const safe = (topoPayload.project_name || "terrainiq").replace(/\s+/g, "_");
       saveBlob(blob, `${safe}_terrain_report.pdf`);
     } catch (err) {
       setTopoError(err instanceof Error ? err.message : "Terrain PDF failed");
@@ -694,8 +694,8 @@ export function OutputPage({
     setTopoError("");
     try {
       const blob = await topoExportsZip(token, topoPayload);
-      const safe = (topoPayload.project_name || "topoiq").replace(/\s+/g, "_");
-      saveBlob(blob, `${safe}_topoiq_exports.zip`);
+      const safe = (topoPayload.project_name || "terrainiq").replace(/\s+/g, "_");
+      saveBlob(blob, `${safe}_terrainiq_exports.zip`);
     } catch (err) {
       setTopoError(err instanceof Error ? err.message : "CAD ZIP failed");
     } finally {
@@ -947,7 +947,7 @@ export function OutputPage({
     );
   }
 
-  function renderTerrainDrivers(topo: TopoIQAnalyzeResponse) {
+  function renderTerrainDrivers(topo: TerrainIQAnalyzeResponse) {
     const td = topo.terrain_drivers;
     if (!td || typeof td.terrain_score !== "number") return null;
     const drivers = Array.isArray(td.drivers) ? td.drivers : [];
@@ -1010,7 +1010,7 @@ export function OutputPage({
     );
   }
 
-  function renderSlopeAnalysisTable(topo: TopoIQAnalyzeResponse) {
+  function renderSlopeAnalysisTable(topo: TerrainIQAnalyzeResponse) {
     const bins = Array.isArray(topo.slope.bins) ? topo.slope.bins : null;
     const ex = (topo.extras ?? {}) as Record<string, unknown>;
     const crMean = typeof ex.cross_row_mean === "number" ? ex.cross_row_mean : null;
@@ -1856,7 +1856,7 @@ export function OutputPage({
       ) : null}
 
       {activeStage === "topo" ? (
-      <section className="module-card module-topoiq">
+      <section className="module-card module-terrainiq">
         <div className="module-head">
           <h2>TerrainIQ terrain</h2>
           <span className="module-tag">Step 2 · authoritative terrain</span>

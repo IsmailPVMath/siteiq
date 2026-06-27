@@ -1,4 +1,4 @@
-"""Unified PVMath project reports — SiteIQ + TopoIQ + YieldIQ + LayoutIQ deliverables."""
+"""Unified PVMath project reports — SiteIQ + TerrainIQ + YieldIQ + LayoutIQ deliverables."""
 
 from __future__ import annotations
 
@@ -87,7 +87,7 @@ def build_pvmath_report_pdf(
     yield_result: Optional[Dict[str, Any]] = None,
     selected_yield_mwh: Optional[float] = None,
 ) -> bytes:
-    """A4 PVMath report: SiteIQ → TopoIQ → LayoutIQ → YieldIQ → overall score."""
+    """A4 PVMath report: SiteIQ → TerrainIQ → LayoutIQ → YieldIQ → overall score."""
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf,
@@ -103,7 +103,7 @@ def build_pvmath_report_pdf(
     hdr = Table(
         [[
             _lp("PVMath — Project Intelligence Report", st["white"]),
-            _lp("SiteIQ · TopoIQ · LayoutIQ · YieldIQ", ParagraphStyle(
+            _lp("SiteIQ · TerrainIQ · LayoutIQ · YieldIQ", ParagraphStyle(
                 "hs", parent=st["muted"], fontSize=8, textColor=colors.HexColor("#d4e8d4"), alignment=TA_RIGHT,
             )),
         ]],
@@ -155,9 +155,9 @@ def build_pvmath_report_pdf(
         story.append(Spacer(1, 0.15 * cm))
         story.append(_lp(str(scr["terrain_note"]), st["muted"]))
 
-    # ── TopoIQ ──────────────────────────────────────────────────────────────
+    # ── TerrainIQ ──────────────────────────────────────────────────────────────
     story.append(PageBreak())
-    story.append(_lp("2. TopoIQ — Terrain analysis", st["h2"]))
+    story.append(_lp("2. TerrainIQ — Terrain analysis", st["h2"]))
     if topo:
         elev = topo.get("elevation") or {}
         slope = topo.get("slope") or {}
@@ -176,7 +176,7 @@ def build_pvmath_report_pdf(
         ]
         story.append(_section_table(topo_rows, [5 * cm, 12 * cm]))
     else:
-        story.append(_lp("TopoIQ not run — draw a site boundary and run terrain analysis.", st["muted"]))
+        story.append(_lp("TerrainIQ not run — draw a site boundary and run terrain analysis.", st["muted"]))
 
     # ── LayoutIQ ────────────────────────────────────────────────────────────
     story.append(Spacer(1, 0.5 * cm))
@@ -238,7 +238,7 @@ def build_pvmath_report_pdf(
         story.append(_lp(score.get("verdict_detail", ""), st["body"]))
     else:
         story.append(_lp(
-            "Overall score requires TopoIQ terrain on a defined site boundary.",
+            "Overall score requires TerrainIQ terrain on a defined site boundary.",
             st["muted"],
         ))
 

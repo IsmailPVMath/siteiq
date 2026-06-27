@@ -1,4 +1,4 @@
-"""30-minute TopoIQ technical deep-dive — terrain screening + CAD export."""
+"""30-minute TerrainIQ technical deep-dive — terrain screening + CAD export."""
 
 from __future__ import annotations
 
@@ -14,11 +14,11 @@ from pvmath_deck.content import (
 )
 
 
-def build_topoiq_30(builder: DeckBuilder) -> None:
+def build_terrainiq_30(builder: DeckBuilder) -> None:
     """~18 slides · ~28 min talk + demo + Q&A."""
 
     builder.cover(
-        title="TopoIQ",
+        title="TerrainIQ",
         subtitle="Terrain screening & CAD starter kit for ground-mount solar",
         notes=(
             "Technical audience: civil, layout, structural. "
@@ -41,7 +41,7 @@ def build_topoiq_30(builder: DeckBuilder) -> None:
     )
 
     builder.bullets_slide(
-        title="Who TopoIQ is for",
+        title="Who TerrainIQ is for",
         items=[
             "Civil / structural engineers evaluating buildability",
             "Layout engineers needing slope direction before row design",
@@ -55,9 +55,9 @@ def build_topoiq_30(builder: DeckBuilder) -> None:
 
     builder.bullets_slide(
         title="Purpose & scope",
-        subtitle=MODULES["topoiq"]["tagline"],
+        subtitle=MODULES["terrainiq"]["tagline"],
         items=[
-            MODULES["topoiq"]["purpose"],
+            MODULES["terrainiq"]["purpose"],
             "Copernicus GLO-30 inside user-drawn or KMZ boundary",
             "Screening-grade — go/no-go and layout direction",
             "Complements SiteIQ (suitability) and YieldIQ (yield)",
@@ -74,7 +74,7 @@ def build_topoiq_30(builder: DeckBuilder) -> None:
             "Global DEM ~30 m native posting",
             "Resampled to analysis grid (default 5 m) for maps & contours",
             "Finer grid ≠ finer terrain detail — underlying limit ~30 m",
-            "Consistent worldwide — no EU-only dataset switch in TopoIQ",
+            "Consistent worldwide — no EU-only dataset switch in TerrainIQ",
             "Honest labeling on PDF exports",
         ],
         notes="Compare to LiDAR (cm–dm) and typical topo survey (decimetre).",
@@ -86,10 +86,10 @@ def build_topoiq_30(builder: DeckBuilder) -> None:
         title="Inputs & outputs",
         headers=["Category", "Detail"],
         rows=[
-            ("Inputs", MODULES["topoiq"]["inputs"]),
-            ("Outputs", MODULES["topoiq"]["outputs"]),
-            ("Typical runtime", MODULES["topoiq"]["time"]),
-            ("Users", MODULES["topoiq"]["users"]),
+            ("Inputs", MODULES["terrainiq"]["inputs"]),
+            ("Outputs", MODULES["terrainiq"]["outputs"]),
+            ("Typical runtime", MODULES["terrainiq"]["time"]),
+            ("Users", MODULES["terrainiq"]["users"]),
         ],
         notes="Highlight LandXML + DXF as differentiator vs spreadsheet-only tools.",
         duration=75,
@@ -138,7 +138,7 @@ def build_topoiq_30(builder: DeckBuilder) -> None:
         ],
         notes="No emojis in PDF — professional engineering tone.",
         duration=60,
-        visual="Screenshot: TopoIQ PDF pages",
+        visual="Screenshot: TerrainIQ PDF pages",
     )
 
     builder.bullets_slide(
@@ -169,9 +169,9 @@ def build_topoiq_30(builder: DeckBuilder) -> None:
             "Lender or EPC contract requires survey-grade surface",
             "Cut/fill quantities for BOQ — need measured topo",
             "Drainage and access road detail — beyond DEM screening",
-            "TopoIQ tells you whether survey spend is justified now",
+            "TerrainIQ tells you whether survey spend is justified now",
         ],
-        notes="Position TopoIQ as filter before €10k–€50k+ survey spend.",
+        notes="Position TerrainIQ as filter before €10k–€50k+ survey spend.",
         duration=75,
     )
 
@@ -191,12 +191,12 @@ def build_topoiq_30(builder: DeckBuilder) -> None:
 
     builder.roadmap(
         ROADMAP,
-        notes="LayoutIQ will consume TopoIQ surfaces for auto row layout — future.",
+        notes="LayoutIQ will consume TerrainIQ surfaces for auto row layout — future.",
         duration=45,
     )
 
     builder.pricing(
-        notes="Free tier: 5 TopoIQ runs/month separate cap. Pooled on Pro/Developer.",
+        notes="Free tier: 5 TerrainIQ runs/month separate cap. Pooled on Pro/Developer.",
         duration=45,
     )
 
@@ -214,7 +214,7 @@ def build_topoiq_30(builder: DeckBuilder) -> None:
 
     builder.speaker_script_appendix(
         {
-            "Opening": "TopoIQ technical session — terrain screening with CAD handoff.",
+            "Opening": "TerrainIQ technical session — terrain screening with CAD handoff.",
             "Data honesty": "GLO-30 ~30 m native; 5 m grid for workflow only.",
             "Demo script": "\n".join(
                 f"Step {i+1} — {s['title']}: {s.get('talk', '')}"

@@ -123,7 +123,7 @@ def _add_cover(doc: Document, *, public: bool):
     doc.add_paragraph()
     sub = doc.add_paragraph()
     sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = sub.add_run("SiteIQ  ·  TopoIQ  ·  YieldIQ")
+    r = sub.add_run("SiteIQ  ·  TerrainIQ  ·  YieldIQ")
     _set_run_font(r, size=16, color=(26, 46, 26))
     doc.add_paragraph()
     meta = doc.add_paragraph()
@@ -209,7 +209,7 @@ def build_document(*, public: bool = False) -> Document:
     _add_toc(doc, public=public)
 
     _write_section(
-        doc, "Terrain Analysis (TopoIQ)", SECTIONS[0]["intro"],
+        doc, "Terrain Analysis (TerrainIQ)", SECTIONS[0]["intro"],
         [t for t in TERM_ENTRIES if t["section"] == "terrain"], public=public,
     )
     _write_section(

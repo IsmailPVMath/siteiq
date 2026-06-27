@@ -4,7 +4,7 @@ import type { LayoutElectricalConfig } from "./layoutConfig";
 export type WorkflowStep = "input" | "processing" | "output" | "projects";
 
 /** Connected pipeline visible across the preliminary study workflow. */
-export type PipelineStage = "setup" | "siteiq" | "topoiq" | "layoutiq" | "yieldiq";
+export type PipelineStage = "setup" | "siteiq" | "terrainiq" | "layoutiq" | "yieldiq";
 
 export interface PipelineModule {
   id: PipelineStage;
@@ -15,7 +15,7 @@ export interface PipelineModule {
 export const PIPELINE_MODULES: PipelineModule[] = [
   { id: "setup", label: "Project setup" },
   { id: "siteiq", label: "SiteIQ" },
-  { id: "topoiq", label: "TerrainIQ" },
+  { id: "terrainiq", label: "TerrainIQ" },
   { id: "layoutiq", label: "LayoutIQ" },
   { id: "yieldiq", label: "YieldIQ" },
 ];
@@ -25,7 +25,7 @@ export type OutputModuleStage = "screen" | "topo" | "layout" | "yield";
 export function pipelineFromOutputModule(stage: OutputModuleStage): PipelineStage {
   const map: Record<OutputModuleStage, PipelineStage> = {
     screen: "siteiq",
-    topo: "topoiq",
+    topo: "terrainiq",
     layout: "layoutiq",
     yield: "yieldiq",
   };
@@ -35,7 +35,7 @@ export function pipelineFromOutputModule(stage: OutputModuleStage): PipelineStag
 export function outputModuleFromPipeline(stage: PipelineStage): OutputModuleStage | null {
   const map: Partial<Record<PipelineStage, OutputModuleStage>> = {
     siteiq: "screen",
-    topoiq: "topo",
+    terrainiq: "topo",
     layoutiq: "layout",
     yieldiq: "yield",
   };

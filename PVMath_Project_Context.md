@@ -12,7 +12,7 @@ This is the single source of truth for how the app is built, deployed, and what 
 
 **PVMath-Solar Site Intelligence Platform** for ground-mount solar (Fixed Tilt + Single-Axis Tracker, Standard + Agri-PV). No rooftop/carport/floating/BIPV.
 
-Three modules are **live and public:** SiteIQ, TopoIQ, YieldIQ. LayoutIQ is **admin-only** (in progress).
+Three modules are **live and public:** SiteIQ, TerrainIQ, YieldIQ. LayoutIQ is **admin-only** (in progress).
 
 Owner: Mohammed Ismail Pasha (ismailpasha747@gmail.com) — solo founder, side project alongside a full-time solar engineering job at Ideematec GmbH, Regensburg. **Does not write code directly — all changes are made by Claude/Cursor.**
 
@@ -72,17 +72,17 @@ git checkout main && git pull && git merge staging && git push origin main
 | Project (setup) | `pages/project.py` | Live — Quick/Full mode, pin or boundary |
 | My Projects | `pages/my_projects.py` | Live |
 | **SiteIQ** | `pages/siteiq.py` | Live — screening + PDF |
-| **TopoIQ** | `pages/topoiq.py` | Live — terrain + CAD/PDF |
+| **TerrainIQ** | `pages/terrainiq.py` | Live — terrain + CAD/PDF |
 | **YieldIQ** | `pages/yieldiq.py` | Live — yield workflow + PDF |
 | LayoutIQ | `pages/_layoutiq.py` | **Admin-only** — not public |
 
-Root-level `topoiq.py` and `usage_tracker.py` are **dead code** — do not edit expecting live effect.
+Root-level `terrainiq.py` and `usage_tracker.py` are **dead code** — do not edit expecting live effect.
 
 ### Project Setup modes (`pages/project.py`)
 | Mode | Map behaviour | Modules enabled |
 |---|---|---|
 | **Quick** | Single-click pin drop (search also drops pin) | SiteIQ, YieldIQ |
-| **Full** | Draw polygon boundary (+ KMZ upload) | SiteIQ, YieldIQ, **TopoIQ** |
+| **Full** | Draw polygon boundary (+ KMZ upload) | SiteIQ, YieldIQ, **TerrainIQ** |
 
 Pin status bar shows **resolved place name + coordinates** (same `reverse_geocode` as reports). Quick Mode copy explicitly states boundary drawing requires Full Mode.
 
@@ -92,7 +92,7 @@ Pin status bar shows **resolved place name + coordinates** (same `reverse_geocod
 
 | Plan | Price | Limit |
 |---|---|---|
-| Free | €0 | **5 per module** (SiteIQ, TopoIQ, YieldIQ each) |
+| Free | €0 | **5 per module** (SiteIQ, TerrainIQ, YieldIQ each) |
 | Professional | **€149/mo** | **75 pooled/month** across all three modules |
 | Developer | **€499/mo** | **300 pooled/month** shared team pool (5 seats) |
 | Enterprise | Custom | Custom |
@@ -111,7 +111,7 @@ Engineering Reference Manual download is gated to Professional+ (`can_download_e
 - Maps: streamlit-folium + folium; Project Setup map in `@st.fragment` (`_render_proj_map_fragment`)
 - Geocoding: Nominatim/OSM — User-Agent `"SiteIQ/1.0 (pvmath.com; contact@pvmath.com)"` — **never revert**
 - Solar: EU PVGIS API (JRC)
-- Terrain: OpenTopoData — `eudem25m` (Europe 34–72°N, −25–45°E), `srtm30m` globally; TopoIQ also Copernicus GLO-30
+- Terrain: OpenTopoData — `eudem25m` (Europe 34–72°N, −25–45°E), `srtm30m` globally; TerrainIQ also Copernicus GLO-30
 - PDF: ReportLab — every table cell in `Paragraph`; **no emoji** in PDF
 - Auth/DB: Supabase REST via `pvmath_auth.py` (no supabase-py SDK in use)
 - Email: Brevo HTTP API, SMTP fallback for local dev
@@ -138,7 +138,7 @@ Engineering Reference Manual download is gated to Professional+ (`can_download_e
 6. **`assess_eeg()` project_country-first priority**
 7. **No hardcoded stale prices in UI** — use plan-aware copy from `pvmath_auth.py`
 8. **PDF: Paragraph wrapping, no emoji**
-9. **Folium Draw maps** — Full Mode / TopoIQ draw must use `st_folium_with_draw()` from `pvmath_folium_draw.py` with **`last_active_drawing` only**. Never add `all_drawings` or `last_clicked` to draw-mode `returned_objects` (reruns every vertex → map remounts → 4× regression). Run `python3 scripts/check_folium_draw_regression.py` before deploy.
+9. **Folium Draw maps** — Full Mode / TerrainIQ draw must use `st_folium_with_draw()` from `pvmath_folium_draw.py` with **`last_active_drawing` only**. Never add `all_drawings` or `last_clicked` to draw-mode `returned_objects` (reruns every vertex → map remounts → 4× regression). Run `python3 scripts/check_folium_draw_regression.py` before deploy.
 
 ---
 
@@ -157,9 +157,9 @@ Engineering Reference Manual download is gated to Professional+ (`can_download_e
 - **Project Setup map:** single-click pin + immediate rerun; place name in status bar; Quick vs Full Mode guidance (`pages/project.py`, `pvmath_geocode.py`)
 - **Pooled usage limits:** Pro 75 / Dev 300 per month (`pvmath_auth.py`, `pages/overview.py`)
 - **Engineering manual:** paid-plan gate + admin caption fix
-- **TopoIQ:** CAD exports with UTM georef; contour clip to boundary
+- **TerrainIQ:** CAD exports with UTM georef; contour clip to boundary
 - Session persistence via `pvm_refresh_token` + `?s=` URL param
-- TopoIQ PDF slope map aspect ratio; slope distribution table
+- TerrainIQ PDF slope map aspect ratio; slope distribution table
 
 ---
 

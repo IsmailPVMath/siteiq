@@ -95,15 +95,15 @@ with st.spinner("Loading your stats…"):
     with ThreadPoolExecutor(max_workers=4) as _ex:
         _f_rows    = _ex.submit(_with_ctx, list_projects, _uid)
         _f_siteiq  = _ex.submit(_with_ctx, get_usage, _uid, "siteiq")
-        _f_topoiq  = _ex.submit(_with_ctx, get_usage, _uid, "topoiq")
+        _f_terrainiq  = _ex.submit(_with_ctx, get_usage, _uid, "terrainiq")
         _f_yieldiq = _ex.submit(_with_ctx, get_usage, _uid, "yieldiq")
         _rows      = _f_rows.result()
         _siteiq_n  = _f_siteiq.result()
-        _topoiq_n  = _f_topoiq.result()
+        _terrainiq_n  = _f_terrainiq.result()
         _yieldiq_n = _f_yieldiq.result()
 
 _project_count  = len(_rows)
-_analysis_total = _siteiq_n + _topoiq_n + _yieldiq_n
+_analysis_total = _siteiq_n + _terrainiq_n + _yieldiq_n
 _usage = usage_status(_uid)
 _plan = _usage["plan"]
 _limit_mode = _usage["mode"]
@@ -116,7 +116,7 @@ if _project_count == 0:
       <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;
                   color:#1d9e52;margin-bottom:0.35rem;">Start here</div>
       <div style="font-size:1rem;font-weight:700;color:#1a2e1a;margin-bottom:0.35rem;">
-        Create your first project to unlock SiteIQ, TopoIQ, and YieldIQ
+        Create your first project to unlock SiteIQ, TerrainIQ, and YieldIQ
       </div>
       <div style="font-size:0.88rem;color:#3a5a3a;line-height:1.5;">
         Open <strong>Project Setup</strong> in the sidebar — enter a name, country, and location once.
@@ -143,7 +143,7 @@ with c2:
           <div class="ov-stat-lbl">Analyses used this month ({plan_label(_plan)} pool)</div>
           <div class="ov-module-row"><b>{_rem}</b> remaining &nbsp;·&nbsp; shared across all modules</div>
           <div class="ov-module-row">
-            <b>{_siteiq_n}</b> SiteIQ &nbsp;·&nbsp; <b>{_topoiq_n}</b> TopoIQ &nbsp;·&nbsp; <b>{_yieldiq_n}</b> YieldIQ
+            <b>{_siteiq_n}</b> SiteIQ &nbsp;·&nbsp; <b>{_terrainiq_n}</b> TerrainIQ &nbsp;·&nbsp; <b>{_yieldiq_n}</b> YieldIQ
           </div>
         </div>
         """, unsafe_allow_html=True)
@@ -153,7 +153,7 @@ with c2:
           <div class="ov-stat-num">{_analysis_total}</div>
           <div class="ov-stat-lbl">Analyses run (all modules)</div>
           <div class="ov-module-row">
-            <b>{_siteiq_n}</b> SiteIQ &nbsp;·&nbsp; <b>{_topoiq_n}</b> TopoIQ &nbsp;·&nbsp; <b>{_yieldiq_n}</b> YieldIQ
+            <b>{_siteiq_n}</b> SiteIQ &nbsp;·&nbsp; <b>{_terrainiq_n}</b> TerrainIQ &nbsp;·&nbsp; <b>{_yieldiq_n}</b> YieldIQ
           </div>
         </div>
         """, unsafe_allow_html=True)
@@ -169,7 +169,7 @@ elif _limit_mode == "per_module" and _limit is not None and _usage.get("remainin
     if _low <= 1:
         st.caption(
             f"Per-module limits ({_limit}/module on {plan_label(_plan)}): "
-            f"SiteIQ {_rem_apps['siteiq']} left · TopoIQ {_rem_apps['topoiq']} left · "
+            f"SiteIQ {_rem_apps['siteiq']} left · TerrainIQ {_rem_apps['terrainiq']} left · "
             f"YieldIQ {_rem_apps['yieldiq']} left."
         )
 

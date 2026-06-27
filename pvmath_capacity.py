@@ -1,4 +1,4 @@
-"""Unified DC capacity screening — single source of truth for SiteIQ, TopoIQ, YieldIQ."""
+"""Unified DC capacity screening — single source of truth for SiteIQ, TerrainIQ, YieldIQ."""
 from __future__ import annotations
 
 GCR_REF = 0.30

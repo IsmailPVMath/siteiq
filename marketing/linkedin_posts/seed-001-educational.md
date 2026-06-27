@@ -12,7 +12,7 @@ Copernicus posts at ~30 m. Your layout grid can be 5 m.
 
 Explain resampling vs sensor resolution before FEED.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Read the guide: https://pvmath.com/guides/
 

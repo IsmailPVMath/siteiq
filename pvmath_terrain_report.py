@@ -1,4 +1,4 @@
-"""TopoIQ terrain analytics, map rendering, and PDF report generation."""
+"""TerrainIQ terrain analytics, map rendering, and PDF report generation."""
 from __future__ import annotations
 
 import io
@@ -730,7 +730,7 @@ def _append_terrain_drivers_section(story, ctx: dict, usable, hdr_style, body_st
 
 def generate_pdf_report(ctx: dict) -> Optional[bytes]:
     """
-    Build TopoIQ terrain screening PDF from a context dict.
+    Build TerrainIQ terrain screening PDF from a context dict.
     See build_report_context() for expected keys.
     """
     try:
@@ -1111,7 +1111,7 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
     ))
     append_pdf_footer(
         story,
-        "TopoIQ",
+        "TerrainIQ",
         data_sources=(
             f"Region-routed free DEM source: {ctx.get('terrain_source_used', 'copernicus_glo30')}."
         ),

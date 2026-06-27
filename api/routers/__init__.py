@@ -1,3 +1,3 @@
-from api.routers import gate, health, projects, topoiq, workflow, yieldiq
+from api.routers import gate, health, projects, terrainiq, workflow, yieldiq
 
-__all__ = ["gate", "health", "projects", "topoiq", "workflow", "yieldiq"]
+__all__ = ["gate", "health", "projects", "terrainiq", "workflow", "yieldiq"]

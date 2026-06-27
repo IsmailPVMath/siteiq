@@ -1,4 +1,4 @@
-"""Generate no-build polygons from TopoIQ slope rasters."""
+"""Generate no-build polygons from TerrainIQ slope rasters."""
 
 from __future__ import annotations
 

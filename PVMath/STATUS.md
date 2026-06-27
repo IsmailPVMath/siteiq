@@ -7,7 +7,7 @@
 
 ## One-line summary
 
-**Unified PVMath-Solar Site Intelligence Platform** at **app.pvmath.com** (React + FastAPI): one guided workflow from coordinates/boundary through screening, terrain, layout, and yield. **Per-project analysis billing** (10 / 50 / 250 / unlimited per month). **Stripe not live** — manual Supabase activation. **Streamlit legacy** (`siteiq` / `topoiq` subdomains) still in repo; primary product is the React app.
+**Unified PVMath-Solar Site Intelligence Platform** at **app.pvmath.com** (React + FastAPI): one guided workflow from coordinates/boundary through screening, terrain, layout, and yield. **Per-project analysis billing** (10 / 50 / 250 / unlimited per month). **Stripe not live** — manual Supabase activation. **Streamlit legacy** (`siteiq` / `terrainiq` subdomains) still in repo; primary product is the React app.
 
 ---
 
@@ -87,7 +87,7 @@ Recent stack (newest first): `be7a53a` per-project pricing + legal · `3fbd72a` 
 | Billing piece | Status |
 |---------------|--------|
 | Usage counter | `usage_tracking.app = 'platform'` — enforced in `pvmath_supabase.py` / `pvmath_auth.py` |
-| Credit charged on | SiteIQ screen only (`api/routers/workflow.py`, `gate.py`) — not on TopoIQ/YieldIQ |
+| Credit charged on | SiteIQ screen only (`api/routers/workflow.py`, `gate.py`) — not on TerrainIQ/YieldIQ |
 | Stripe account | **Not opened yet** |
 | Website **Subscribe** | Still → `#contact` (Formspree) — wire Stripe Payment Links when ready |
 | Manual activation | Supabase SQL — `docs/PVMath_Manual_Billing_Runbook.md` |
@@ -128,7 +128,7 @@ pvmath.com (static)          app.pvmath.com (React/Vite)
 | Layer | Key paths |
 |-------|-----------|
 | React UI | `frontend/src/` — `App.tsx`, `pages/OutputPage.tsx`, `pages/ProjectSetupPage.tsx` |
-| API | `api/main.py`, `api/routers/workflow.py`, `projects.py`, `topoiq.py`, `yieldiq.py` |
+| API | `api/main.py`, `api/routers/workflow.py`, `projects.py`, `terrainiq.py`, `yieldiq.py` |
 | Shared logic | `pvmath_workflow/`, `layoutiq/`, `pvmath_gate/`, `pvmath_terrain_sources.py` |
 | Auth / usage | `pvmath_supabase.py` (API), `pvmath_auth.py` (Streamlit legacy) |
 | Marketing + legal | `index.html`, `impressum.html`, `privacy.html`, `terms.html` |
@@ -142,7 +142,7 @@ pvmath.com (static)          app.pvmath.com (React/Vite)
 2. [ ] Wire **index.html** Subscribe + in-app upgrade → Stripe; keep manual runbook as fallback
 3. [ ] **Gewerbe** + Steuernummer / USt-IdNr — update impressum when received
 4. [ ] (Optional) Supabase Edge Function **stripe-webhook** for auto plan activation
-5. [ ] **Retire Streamlit** from production Railway when React is fully validated — redirect siteiq/topoiq → app.pvmath.com
+5. [ ] **Retire Streamlit** from production Railway when React is fully validated — redirect siteiq/terrainiq → app.pvmath.com
 6. [ ] Keep **`PVMath/STATUS.md`** updated after each milestone (2 min)
 
 ---

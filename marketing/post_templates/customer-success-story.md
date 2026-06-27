@@ -4,7 +4,7 @@
 
 **Context:** [Region · ~MWp · mount type · land use]
 
-**Approach:** [SiteIQ / TopoIQ / YieldIQ — what was run]
+**Approach:** [SiteIQ / TerrainIQ / YieldIQ — what was run]
 
 **Outcome:** [Time saved, decision made, LiDAR scoped/deferred — real numbers only if provided]
 

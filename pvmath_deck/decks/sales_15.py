@@ -1,4 +1,4 @@
-"""15-minute EPC / developer sales deck — SiteIQ + TopoIQ + YieldIQ."""
+"""15-minute EPC / developer sales deck — SiteIQ + TerrainIQ + YieldIQ."""
 
 from __future__ import annotations
 
@@ -35,11 +35,11 @@ def build_sales_15(builder: DeckBuilder) -> None:
         [
             "Why screening breaks down today",
             "PVMath workflow — one project, three modules",
-            "SiteIQ · TopoIQ · YieldIQ overview",
+            "SiteIQ · TerrainIQ · YieldIQ overview",
             "Live demo flow",
             "Pricing & next steps",
         ],
-        notes="Set expectation: 15 minutes, Q&A at end. Offer to go deeper on TopoIQ in a follow-up.",
+        notes="Set expectation: 15 minutes, Q&A at end. Offer to go deeper on TerrainIQ in a follow-up.",
         duration=30,
     )
 
@@ -73,7 +73,7 @@ def build_sales_15(builder: DeckBuilder) -> None:
         subtitle="Solar Site Intelligence Platform — ground mount only",
         items=[
             "SiteIQ — rapid suitability screening (solar, terrain flag, flood, regulatory hints)",
-            "TopoIQ — Copernicus terrain screening + CAD starter exports",
+            "TerrainIQ — Copernicus terrain screening + CAD starter exports",
             "YieldIQ — four-configuration yield comparison before PVsyst",
             "One project setup shared across modules",
             "Early Access — contact@pvmath.com for team activation",
@@ -85,10 +85,10 @@ def build_sales_15(builder: DeckBuilder) -> None:
 
     builder.module_card_slide(
         title="Three modules — one platform",
-        modules=[MODULES["siteiq"], MODULES["topoiq"], MODULES["yieldiq"]],
+        modules=[MODULES["siteiq"], MODULES["terrainiq"], MODULES["yieldiq"]],
         notes=(
             "Walk left to right. Emphasise time-to-output, not precision claims. "
-            "SiteIQ ≤4 min · TopoIQ ~20–60 s · YieldIQ ≤4 min (typical)."
+            "SiteIQ ≤4 min · TerrainIQ ~20–60 s · YieldIQ ≤4 min (typical)."
         ),
         duration=90,
     )
@@ -109,9 +109,9 @@ def build_sales_15(builder: DeckBuilder) -> None:
         visual="Screenshot: SiteIQ suitability + PDF download",
     )
 
-    m = MODULES["topoiq"]
+    m = MODULES["terrainiq"]
     builder.bullets_slide(
-        title="TopoIQ — terrain before survey",
+        title="TerrainIQ — terrain before survey",
         subtitle=m["tagline"],
         items=[
             f"Inputs: {m['inputs']}",
@@ -120,9 +120,9 @@ def build_sales_15(builder: DeckBuilder) -> None:
             "LandXML + DXF for civil workflow starter kit",
             f"Data: {m['data']}",
         ],
-        notes="Tease deeper TopoIQ session for civil leads.",
+        notes="Tease deeper TerrainIQ session for civil leads.",
         duration=60,
-        visual="Screenshot: TopoIQ slope heatmap",
+        visual="Screenshot: TerrainIQ slope heatmap",
     )
 
     m = MODULES["yieldiq"]
@@ -177,7 +177,7 @@ def build_sales_15(builder: DeckBuilder) -> None:
 
     builder.qa_contact(
         notes=(
-            "Close with concrete next step: free account, pilot on 3 sites, or TopoIQ deep-dive. "
+            "Close with concrete next step: free account, pilot on 3 sites, or TerrainIQ deep-dive. "
             "Collect follow-up contact."
         ),
         duration=60,

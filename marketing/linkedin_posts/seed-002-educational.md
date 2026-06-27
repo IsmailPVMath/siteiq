@@ -12,7 +12,7 @@ Mean slope flat. Trackers still need cross-row review.
 
 Link to cross-row p95 for SAT clearance talks.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Read the guide: https://pvmath.com/guides/
 

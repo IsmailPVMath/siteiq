@@ -12,7 +12,7 @@ Agri-PV uses lower MWp/ha bands by design.
 
 Dual-use is not standard ground-mount density.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Read the guide: https://pvmath.com/guides/
 

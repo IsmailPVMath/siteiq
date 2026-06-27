@@ -631,8 +631,8 @@ def yield_cross_ref_yieldiq_pdf_text(
     )
 
 
-def yield_cross_ref_topoiq_text(bundle: dict) -> str:
-    """One-line yield reference for TopoIQ UI and PDF."""
+def yield_cross_ref_terrainiq_text(bundle: dict) -> str:
+    """One-line yield reference for TerrainIQ UI and PDF."""
     sf, st = bundle.get("screening_fixed"), bundle.get("screening_tracker")
     af, at = bundle.get("analysis_fixed"), bundle.get("analysis_tracker")
     if sf is None or st is None:
@@ -652,8 +652,8 @@ def yield_cross_ref_topoiq_text(bundle: dict) -> str:
     return line
 
 
-def yield_cross_ref_topoiq_html(bundle: dict) -> str:
-    text = yield_cross_ref_topoiq_text(bundle)
+def yield_cross_ref_terrainiq_html(bundle: dict) -> str:
+    text = yield_cross_ref_terrainiq_text(bundle)
     if not text:
         return ""
     return (

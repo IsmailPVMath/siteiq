@@ -1,4 +1,4 @@
-"""Site screening for unified workflow — no terrain slope (TopoIQ only)."""
+"""Site screening for unified workflow — no terrain slope (TerrainIQ only)."""
 
 from __future__ import annotations
 
@@ -59,7 +59,7 @@ class WorkflowScreenResponse:
     errors: List[str] = field(default_factory=list)
     terrain_note: str = (
         "Terrain slope is not assessed in site screening. "
-        "Run TopoIQ on your site boundary for the authoritative terrain result and PVMath score."
+        "Run TerrainIQ on your site boundary for the authoritative terrain result and PVMath score."
     )
 
 

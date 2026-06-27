@@ -69,7 +69,7 @@ def build() -> Document:
     doc.add_heading("Where you are today", level=1)
     rows = [
         ("Legal operator", "Mohammed Ismail Pasha personally — Impressum/Terms, Regensburg"),
-        ("Product", "SiteIQ, TopoIQ, YieldIQ live at siteiq.pvmath.com / topoiq.pvmath.com"),
+        ("Product", "SiteIQ, TerrainIQ, YieldIQ live at siteiq.pvmath.com / topoiq.pvmath.com"),
         ("Website", "pvmath.com — Professional €149/mo, Developer €499/mo, VAT noted"),
         ("Payments", "Stripe not live yet — good timing to open under the UG"),
         ("Job", "Full-time solar engineer at Ideematec GmbH — side project"),
@@ -314,7 +314,7 @@ def build() -> Document:
     lines.rows[0].cells[1].text = "What it is"
     lines.rows[0].cells[2].text = "Risk / regulation"
     line_rows = [
-        ("PVMath SaaS", "Screening software (SiteIQ, TopoIQ, YieldIQ)", "Product liability, AGB, GDPR"),
+        ("PVMath SaaS", "Screening software (SiteIQ, TerrainIQ, YieldIQ)", "Product liability, AGB, GDPR"),
         (
             "Engineering services",
             "Layout, project design, worldwide consulting",

@@ -60,7 +60,7 @@ SITEIQ_RATING_LEGEND_MD = """
 | ⚠️ Acceptable | Feasible with constraints | Proceed with attention to this factor |
 | ⚠️ Challenging | Near viability limit — significant effort | Detailed study mandatory |
 | ❌ Critical | Exceeds viability threshold | High risk — reconsider site or system type |
-| ⚠️ Indicative (slope) | Sparse OpenTopoData sample — quality tag reflects the sample, not confirmed site-wide terrain | Run **TopoIQ** before bankable use; overall verdict uses sample quality, not a blanket downgrade |
+| ⚠️ Indicative (slope) | Sparse OpenTopoData sample — quality tag reflects the sample, not confirmed site-wide terrain | Run **TerrainIQ** before bankable use; overall verdict uses sample quality, not a blanket downgrade |
 | ⚠️ Data unavailable | Solar or terrain data could not be retrieved | Retry or check API coverage for this location |
 | — (capacity / output) | Screening MWp DC band from area × density @ GCR | Indicative only — confirm with layout / bankable study |
 | ✅ EXCELLENT (overall) | All key parameters in ideal range | Proceed to detailed feasibility study |
@@ -441,7 +441,7 @@ def get_flood_risk(lat, lon, elevation):
 
 
 def _boundary_center(polygons):
-    """BBox centre of enabled boundary rings — matches TopoIQ report coordinates."""
+    """BBox centre of enabled boundary rings — matches TerrainIQ report coordinates."""
     if not polygons:
         return None, None
     all_lats = [p[0] for poly in polygons for p in poly]
@@ -545,7 +545,7 @@ def get_terrain_data(lat, lon, polygon=None, polygons=None, radius_km=0.5):
     """
     Slope/elevation screening.
     - If `polygon` or `polygons` (site boundary rings as [[lat,lon],...]) is supplied,
-      samples a grid of points across the ACTUAL boundary — same spirit as TopoIQ's
+      samples a grid of points across the ACTUAL boundary — same spirit as TerrainIQ's
       just coarser — so the verdict reflects the whole site, not just the pin.
     - Otherwise (Quick Mode, pin only), samples a denser 8-direction ring around the pin
       (9 points total, up from the old 4-direction/5-point cross) for the best estimate
@@ -687,7 +687,7 @@ def assess_slope(pct, mount_type="Fixed Tilt", sparse_screening=False, sample_po
             lbl = f"⚠️ {q_word} (Indicative)"
         detail = (
             f"Sparse sample: {pct}% max ({n} OpenTopoData points) — {q_word.lower()} "
-            f"indicators in the sample; confirm site-wide terrain in TopoIQ before bankable use."
+            f"indicators in the sample; confirm site-wide terrain in TerrainIQ before bankable use."
         )
     return lbl, color, detail
 
@@ -851,7 +851,7 @@ def _sparse_topo_note(sample_points: int = 0) -> str:
     n = sample_points or "sparse"
     return (
         f" Terrain from an OpenTopoData boundary sample ({n} points) — "
-        f"favorable sample indicators; run TopoIQ to confirm before bankable use."
+        f"favorable sample indicators; run TerrainIQ to confirm before bankable use."
     )
 
 
@@ -891,7 +891,7 @@ def overall_verdict(
     if worst == 2 and sparse and slope_tier <= 2:
         return "⚠️ CHALLENGING", (
             "Sparse terrain sample indicates steep or near-limit slopes — "
-            "detailed civil study mandatory; run TopoIQ for confirmed metrics."
+            "detailed civil study mandatory; run TerrainIQ for confirmed metrics."
         )
     if worst == 2:
         return "⚠️ CHALLENGING", (
@@ -1057,9 +1057,9 @@ def get_next_steps(project_country, land_use="Standard", lat=None, lon=None):
     return [f"{i+1}. {s}" for i, s in enumerate(steps)]
 
 
-def _tier_to_score(tier: int, *, indicative: bool = False, topoiq: bool = False) -> int:
+def _tier_to_score(tier: int, *, indicative: bool = False, terrainiq: bool = False) -> int:
     base = {5: 95, 4: 88, 3: 75, 2: 55, 1: 50, 0: 30}.get(tier, 70)
-    if topoiq and tier >= 4:
+    if terrainiq and tier >= 4:
         return min(98, base + 2)
     if indicative and tier >= 4:
         return max(50, base - 5)
@@ -1147,26 +1147,26 @@ def compute_site_suitability(
 ) -> dict:
     """Weighted suitability breakdown + key drivers for PDF."""
     solar_tier = _param_tier(solar_lbl)
-    if terrain.get("topoiq_confirmed") and terrain.get("mean_slope_pct") is not None:
+    if (terrain.get("terrainiq_confirmed") or terrain.get("topoiq_confirmed")) and terrain.get("mean_slope_pct") is not None:
         slope_tier = _slope_quality_tier(terrain["mean_slope_pct"], mount_type)
         terrain_indicative = False
-        terrain_topoiq = True
+        terrain_terrainiq = True
     elif "(Indicative)" in slope_lbl or terrain.get("boundary_sampled"):
         pct = terrain.get("mean_slope_pct") or terrain.get("max_slope_pct")
         slope_tier = _slope_quality_tier(pct, mount_type) if pct is not None else _param_tier(slope_lbl)
         terrain_indicative = True
-        terrain_topoiq = False
+        terrain_terrainiq = False
     else:
         slope_tier = _param_tier(slope_lbl)
         terrain_indicative = False
-        terrain_topoiq = False
+        terrain_terrainiq = False
 
     solar_score = _ghi_to_score(solar.get("annual_ghi") if solar.get("success") else None)
     if solar_tier < 4 and solar.get("success"):
         solar_score = min(solar_score, _tier_to_score(solar_tier))
 
     terrain_score = _tier_to_score(
-        slope_tier, indicative=terrain_indicative, topoiq=terrain_topoiq,
+        slope_tier, indicative=terrain_indicative, terrainiq=terrain_terrainiq,
     )
     flood_score = _flood_risk_to_score(flood_risk)
     land_score = _land_use_to_score(land_use)
@@ -1190,7 +1190,7 @@ def compute_site_suitability(
             drivers.append(("positive", f"Solar resource {float(ghi):,.1f} kWh/m²/yr"))
 
     if terrain.get("success"):
-        if terrain.get("topoiq_confirmed") and terrain.get("mean_slope_pct") is not None:
+        if (terrain.get("terrainiq_confirmed") or terrain.get("topoiq_confirmed")) and terrain.get("mean_slope_pct") is not None:
             drivers.append((
                 "positive",
                 f"Low terrain constraints (mean slope {terrain['mean_slope_pct']:.1f}%)",
@@ -1208,8 +1208,8 @@ def compute_site_suitability(
         ))
 
     drivers.append(("warn", "Flood assessment based on screening-level data only"))
-    if terrain.get("boundary_sampled") and not terrain.get("topoiq_confirmed"):
-        drivers.append(("warn", "Terrain confirmation recommended via TopoIQ"))
+    if terrain.get("boundary_sampled") and not (terrain.get("terrainiq_confirmed") or terrain.get("topoiq_confirmed")):
+        drivers.append(("warn", "Terrain confirmation recommended via TerrainIQ"))
 
     return {
         "scores": raw,
@@ -1530,9 +1530,9 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
         rows.append([lp("Optimal Tilt", MUTED, size=9), lp(f"{solar.get('optimal_tilt','—')}°", bold=True, size=9), lp("—", MUTED, size=8)])
     _flood_val = flood_reason or flood_detail or "—"
 
-    _slope_metric_lbl = "Mean Slope" if terrain.get("topoiq_confirmed") else "Max Slope"
+    _slope_metric_lbl = "Mean Slope" if (terrain.get("terrainiq_confirmed") or terrain.get("topoiq_confirmed")) else "Max Slope"
     _slope_metric_val = (
-        terrain.get("mean_slope_pct") if terrain.get("topoiq_confirmed")
+        terrain.get("mean_slope_pct") if (terrain.get("terrainiq_confirmed") or terrain.get("topoiq_confirmed"))
         else terrain.get("max_slope_pct", "—")
     )
 
@@ -1590,11 +1590,11 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
         ))
 
     if terrain.get("success"):
-        if terrain.get("topoiq_confirmed"):
+        if (terrain.get("terrainiq_confirmed") or terrain.get("topoiq_confirmed")):
             _gp = terrain.get("sample_points", 0)
             _gm = terrain.get("grid_m", 0)
             _slope_note = (
-                f"<b>Terrain confirmed via TopoIQ</b> — mean slope {terrain.get('mean_slope_pct','—')}%, "
+                f"<b>Terrain confirmed via TerrainIQ</b> — mean slope {terrain.get('mean_slope_pct','—')}%, "
                 f"max {terrain.get('max_slope_pct','—')}% from {_gp:,} Copernicus GLO-30 grid points "
                 f"at {float(_gm):.0f} m across the project boundary."
             )
@@ -1606,14 +1606,14 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
                 f"OpenTopoData sample points across the drawn boundary "
                 f"({terrain.get('pct_over5','—')}% of samples &gt;5% slope, "
                 f"{terrain.get('pct_over10','—')}% &gt;10%). "
-                f"Do <b>not</b> treat the Max Slope rating as confirmed until TopoIQ has been run."
+                f"Do <b>not</b> treat the Max Slope rating as confirmed until TerrainIQ has been run."
             )
             _slope_note_color = C_ORANGE
             _slope_note_bg = C_LORANG
         else:
             _slope_note = (
                 f"Slope estimated from {terrain.get('sample_points','—')} elevation samples within a 500m radius "
-                "of the pin (no site boundary drawn). Run TopoIQ for full-resolution terrain analysis."
+                "of the pin (no site boundary drawn). Run TerrainIQ for full-resolution terrain analysis."
             )
             _slope_note_color = MUTED
             _slope_note_bg = None
@@ -1769,8 +1769,11 @@ def build_pdf(site_name, lat, lon, area_ha, solar, terrain,
 
 # ── Shared project context ──────────────────────────────────────────────────
 _proj       = st.session_state.get("pvm_project", {})
-if _proj.get("topoiq_cache"):
-    st.session_state.setdefault("topoiq_run_cache", _proj["topoiq_cache"])
+if _proj.get("terrainiq_cache") or _proj.get("topoiq_cache"):
+    st.session_state.setdefault(
+        "terrainiq_run_cache",
+        _proj.get("terrainiq_cache") or _proj.get("topoiq_cache"),
+    )
 _proj_name  = _proj.get("name", "")
 _proj_ctry  = _proj.get("country", "")
 _proj_lat   = _proj.get("lat")
@@ -1967,10 +1970,10 @@ with left:
             st.session_state.get("pvm_project_row_id"),
         )
         if _enabled_polys_latlon and _has_topo_cache:
-            st.caption("Confirmed TopoIQ terrain is available — this screening will use GLO-30 grid results.")
+            st.caption("Confirmed TerrainIQ terrain is available — this screening will use GLO-30 grid results.")
         elif _enabled_polys_latlon:
             st.caption(
-                "Tip: run **TopoIQ** on this boundary first — SiteIQ will then use confirmed "
+                "Tip: run **TerrainIQ** on this boundary first — SiteIQ will then use confirmed "
                 "terrain instead of a sparse sample."
             )
         go_clicked = st.button(
@@ -2062,11 +2065,11 @@ with right:
         _sparse_slope = bool(
             terrain.get("success")
             and terrain.get("boundary_sampled")
-            and not terrain.get("topoiq_confirmed")
+            and not (terrain.get("terrainiq_confirmed") or terrain.get("topoiq_confirmed"))
         )
         _slope_pct = (
             terrain.get("mean_slope_pct")
-            if terrain.get("topoiq_confirmed")
+            if (terrain.get("terrainiq_confirmed") or terrain.get("topoiq_confirmed"))
             else terrain.get("max_slope_pct")
         ) if terrain.get("success") else 0
         s_lbl, _, s_detail = assess_slope(
@@ -2075,11 +2078,11 @@ with right:
             sparse_screening=_sparse_slope,
             sample_points=terrain.get("sample_points", 0) if terrain.get("success") else 0,
         )
-        if terrain.get("topoiq_confirmed"):
+        if (terrain.get("terrainiq_confirmed") or terrain.get("topoiq_confirmed")):
             _gp = terrain.get("sample_points", 0)
             _gm = terrain.get("grid_m", 0)
             s_detail = (
-                f"TopoIQ confirmed — mean slope {terrain['mean_slope_pct']:.1f}%, "
+                f"TerrainIQ confirmed — mean slope {terrain['mean_slope_pct']:.1f}%, "
                 f"max {terrain['max_slope_pct']:.1f}% ({_gp:,} GLO-30 grid points at {_gm:.0f} m)."
             )
         if solar["success"]:
@@ -2167,14 +2170,14 @@ with right:
         )
         st.markdown("")
 
-        if terrain.get("topoiq_confirmed"):
+        if (terrain.get("terrainiq_confirmed") or terrain.get("topoiq_confirmed")):
             st.success(
-                "**Terrain confirmed via TopoIQ** — SiteIQ is using Copernicus GLO-30 grid "
-                "analysis from your last TopoIQ run on this boundary."
+                "**Terrain confirmed via TerrainIQ** — SiteIQ is using Copernicus GLO-30 grid "
+                "analysis from your last TerrainIQ run on this boundary."
             )
         elif _sparse_slope and terrain.get("success"):
             st.caption(
-                "Slope is from a sparse OpenTopoData sample — run **TopoIQ** on this boundary "
+                "Slope is from a sparse OpenTopoData sample — run **TerrainIQ** on this boundary "
                 "for confirmed terrain in SiteIQ."
             )
 
@@ -2220,13 +2223,13 @@ with right:
             _mc4_unit = "deg tilt"
 
         _slope_num = _fmt_metric_num(terrain.get("max_slope_pct") if terrain.get("success") else None, 1)
-        if terrain.get("topoiq_confirmed") and terrain.get("success"):
+        if (terrain.get("terrainiq_confirmed") or terrain.get("topoiq_confirmed")) and terrain.get("success"):
             _slope_lbl = "Mean Slope"
             _slope_num = _fmt_metric_num(terrain.get("mean_slope_pct"), 1)
             _slope_unit = f"% · max {terrain.get('max_slope_pct', '—')}%"
         elif _sparse_slope and terrain.get("success"):
             _slope_lbl = "Sparse Sample Slope"
-            _slope_unit = "max % · run TopoIQ"
+            _slope_unit = "max % · run TerrainIQ"
         else:
             _slope_lbl = "Max Slope"
             _slope_unit = "%"
@@ -2262,9 +2265,9 @@ with right:
             )
         _notes.append(capacity_footnote_global())
         if terrain.get("success"):
-            if terrain.get("topoiq_confirmed"):
+            if (terrain.get("terrainiq_confirmed") or terrain.get("topoiq_confirmed")):
                 _notes.append(
-                    f"Terrain confirmed via TopoIQ: mean <b>{terrain.get('mean_slope_pct', '—')}%</b>, "
+                    f"Terrain confirmed via TerrainIQ: mean <b>{terrain.get('mean_slope_pct', '—')}%</b>, "
                     f"max <b>{terrain.get('max_slope_pct', '—')}%</b> "
                     f"({terrain.get('sample_points', '—'):,} GLO-30 grid points)."
                 )
@@ -2272,12 +2275,12 @@ with right:
                 _notes.append(
                     f"Sparse sample slope: <b>{terrain.get('max_slope_pct', '—')}%</b> max "
                     f"({terrain.get('sample_points', '—')} points) — not confirmed. "
-                    "Run <b>TopoIQ</b> for confirmed terrain metrics."
+                    "Run <b>TerrainIQ</b> for confirmed terrain metrics."
                 )
             else:
                 _notes.append(
                     f"Slope from {terrain.get('sample_points', '—')} pin-radius samples — "
-                    "draw a boundary or run TopoIQ for site-wide terrain."
+                    "draw a boundary or run TerrainIQ for site-wide terrain."
                 )
         _notes.append(
             "Pre-feasibility screening only — not a substitute for a bankable energy study or confirmed layout."

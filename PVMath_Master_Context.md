@@ -13,7 +13,7 @@
 **Target users:** Solar EPCs, project developers, and engineering firms, worldwide (explicitly not DACH-only — "built with European markets in mind, but global data coverage from day one").
 
 **Current development status (as of 2026-06-18, 7 days after first commit on 2026-06-11):**
-- Three modules are live and public: **SiteIQ**, **TopoIQ**, **YieldIQ**.
+- Three modules are live and public: **SiteIQ**, **TerrainIQ**, **YieldIQ**.
 - A fourth module, **LayoutIQ** (auto layout + BOM generator), is functionally built but gated admin-only — not yet released to real users.
 - Paid pricing is live: Free / Professional (€199/mo) / Developer (€799/mo) / Enterprise (custom).
 - Stripe billing is **not** actually wired up yet (placeholder link).
@@ -59,8 +59,8 @@
   1. User signs in (Supabase auth, `pvmath_auth.py`) → auth gate (`render_auth_page`) blocks all anonymous access.
   2. User sets up a project on `pages/project.py` — Quick Mode (pin drop) or Full Mode (drawn boundary) — choosing project name, country, land use, mounting type.
   3. On "Save Project," the project dict is written to `st.session_state["pvm_project"]` and persisted to Supabase (`user_projects` table, multi-row per user since the 2026-06-16 migration).
-  4. The user opens a module (SiteIQ / TopoIQ / YieldIQ / LayoutIQ) via a "Continue" button on the Project page — **not** via sidebar links, which were deliberately removed to stop users from jumping into a module before a boundary draft was actually saved.
-  5. The module reads the shared project context, calls the relevant external API(s), renders results, and (for SiteIQ/TopoIQ/YieldIQ/LayoutIQ) builds a downloadable PDF via ReportLab.
+  4. The user opens a module (SiteIQ / TerrainIQ / YieldIQ / LayoutIQ) via a "Continue" button on the Project page — **not** via sidebar links, which were deliberately removed to stop users from jumping into a module before a boundary draft was actually saved.
+  5. The module reads the shared project context, calls the relevant external API(s), renders results, and (for SiteIQ/TerrainIQ/YieldIQ/LayoutIQ) builds a downloadable PDF via ReportLab.
   6. The Supabase refresh token is kept in both `st.session_state` and a `?s=` URL query param, re-asserted as the very last line of every `app.py` run, because Streamlit's own multipage router can silently strip query params on navigation — without this, every refresh logged users out.
 
 ---
@@ -129,13 +129,13 @@ restartPolicyType = "on_failure"
 - **Known limitations:** Regional solar-database coverage gaps (mitigated by fallback, not eliminated); flood risk is an elevation-based heuristic, not authoritative flood-zone data.
 - **Free tier:** 5 screenings/month.
 
-### TopoIQ — Module 02 — **Live, public**
+### TerrainIQ — Module 02 — **Live, public**
 - **Purpose:** Satellite terrain extraction for solar site engineering — CAD-ready terrain export.
 - **Inputs:** Drawn site boundary on a satellite map, or uploaded KML/KMZ/DXF.
 - **Outputs:** Elevation & solar-grade slope heatmaps, contour lines at custom spacing, DXF and LandXML terrain file export (Civil 3D-ready), PDF terrain report with a slope distribution table.
-- **Implementation:** `pages/topoiq.py` (1,405 lines). Pulls Copernicus GLO-30 DEM (~30 m native, resampled to a 5 m grid) via OpenTopoData terrarium tiles (`deg2tile`/`tile2deg`/`fetch_terrarium_tile`/`get_dem_for_bbox`). Exports via `export_xyz`, `export_landxml`, `export_dxf`.
+- **Implementation:** `pages/terrainiq.py` (1,405 lines). Pulls Copernicus GLO-30 DEM (~30 m native, resampled to a 5 m grid) via OpenTopoData terrarium tiles (`deg2tile`/`tile2deg`/`fetch_terrarium_tile`/`get_dem_for_bbox`). Exports via `export_xyz`, `export_landxml`, `export_dxf`.
 - **Known limitations:** Small-area grids previously crashed (fixed); DEM tile alignment had a sentinel-value bug (fixed, elevation map dropped in favor of slope-map-only as part of that fix).
-- **A root-level duplicate `topoiq.py` exists but is dead code** — not imported anywhere; do not edit it expecting any effect on the live app.
+- **A root-level duplicate `terrainiq.py` exists but is dead code** — not imported anywhere; do not edit it expecting any effect on the live app.
 
 ### YieldIQ — Module 03 — **Live, public**
 - **Purpose:** Quick pre-layout energy yield estimation, before committing to full PV layout design.
@@ -143,7 +143,7 @@ restartPolicyType = "on_failure"
 - **Outputs:** Specific yield (kWh/kWp), performance ratio, capacity factor, monthly energy profile, POA irradiance, tracker-vs-fixed comparison, preliminary yield PDF.
 - **Implementation:** `pages/yieldiq.py` (1,106 lines). Uses PVGIS `PVcalc` — **important gotcha:** `PVcalc` has no `trackingtype` parameter; tracker yield must be modeled via the `inclined_axis` system type instead (an earlier bug sent `trackingtype: 1`, which PVGIS silently ignored).
 - **Known limitations:** Explicitly disclaimed on the website as "early-stage feasibility only — not a substitute for bankable energy assessment (PVsyst, DNV SolarFarmer, Aurora)."
-- **Inconsistency to fix:** the website's module card for YieldIQ still has CSS class `"soon"` even though its pill text reads "Live Now" — visually it should match SiteIQ/TopoIQ's `"live"` class. See §9.
+- **Inconsistency to fix:** the website's module card for YieldIQ still has CSS class `"soon"` even though its pill text reads "Live Now" — visually it should match SiteIQ/TerrainIQ's `"live"` class. See §9.
 
 ### LayoutIQ — Module 04 — **Admin-only, in progress, not public**
 - **Purpose:** Auto PV layout + BOM (bill of materials) generator.
@@ -158,7 +158,7 @@ restartPolicyType = "on_failure"
 - Multi-project support required a Supabase schema migration (`supabase_migration_multi_project.sql`) — the original `user_projects` table had `user_id` as its primary key, limiting every user to exactly one saved project ever; the migration adds a proper `id` primary key so users can save multiple projects.
 
 ### Modules referenced only in older planning docs — status unconfirmed
-`CLAUDE.md`'s original roadmap listed **RevenueIQ** (EEG/feed-in tariff calculator), **ProcureIQ**, and **FieldIQ** as the next planned modules after SiteIQ. None of these appear anywhere in the current codebase or live website — the actual build instead went straight to TopoIQ → YieldIQ → LayoutIQ as modules 2–4. It's unclear whether RevenueIQ/ProcureIQ/FieldIQ were abandoned, deprioritized, or simply haven't come up yet in conversation. **Needs owner confirmation — see §14.**
+`CLAUDE.md`'s original roadmap listed **RevenueIQ** (EEG/feed-in tariff calculator), **ProcureIQ**, and **FieldIQ** as the next planned modules after SiteIQ. None of these appear anywhere in the current codebase or live website — the actual build instead went straight to TerrainIQ → YieldIQ → LayoutIQ as modules 2–4. It's unclear whether RevenueIQ/ProcureIQ/FieldIQ were abandoned, deprioritized, or simply haven't come up yet in conversation. **Needs owner confirmation — see §14.**
 
 ---
 
@@ -174,7 +174,7 @@ restartPolicyType = "on_failure"
 
 ### OpenTopoData
 - **Endpoint pattern:** `https://api.opentopodata.org/v1/{dataset}`
-- **Used for:** SiteIQ's quick terrain/slope check (`eudem25m` for Europe — 34–72°N, −25–45°E — `srtm30m` globally); TopoIQ's higher-resolution work instead pulls Copernicus GLO-30 DEM directly via terrarium tile URLs (not through this REST endpoint).
+- **Used for:** SiteIQ's quick terrain/slope check (`eudem25m` for Europe — 34–72°N, −25–45°E — `srtm30m` globally); TerrainIQ's higher-resolution work instead pulls Copernicus GLO-30 DEM directly via terrarium tile URLs (not through this REST endpoint).
 - **Auth:** None — public API.
 - **Rate limits:** Not documented or explicitly handled in code.
 - **Error handling:** Dataset selection is by lat/lon bounding box only (unlike `assess_eeg()`, which prioritizes a `project_country` text field — these two features deliberately use different precedence logic; don't assume they're consistent).
@@ -219,8 +219,8 @@ restartPolicyType = "on_failure"
 | A | @ | 185.199.108.153, .109.153, .110.153, .111.153 | pvmath.com → GitHub Pages (website) |
 | CNAME | www | ismailpvmath.github.io | website |
 | CNAME | siteiq | `<railway-generated-host>` | app, reverse proxy |
-| CNAME | topoiq | `<railway-generated-host>` (different host, same deployment) | app, reverse proxy |
-| TXT | _railway-verify.siteiq / _railway-verify.topoiq | Railway verification tokens | domain verification |
+| CNAME | terrainiq | `<railway-generated-host>` (different host, same deployment) | app, reverse proxy |
+| TXT | _railway-verify.siteiq / _railway-verify.terrainiq | Railway verification tokens | domain verification |
 
 - **GitHub repo:** `IsmailPVMath/siteiq`, branches `main` (production) and `staging` (pre-merge workflow only — **not** a separate deployment).
 - **Common deployment failures / gotchas:**
@@ -242,7 +242,7 @@ solarscout/                          (repo root = local dev folder = ~/Desktop/s
 ├── app.py                           — main Streamlit entrypoint: page config, auth gate, sidebar, navigation, bfcache/token-refresh fixes
 ├── pvmath_auth.py                   — Supabase auth (REST, no SDK), OTP/email, usage tracking, project save/load, paywall UI, Stripe link
 ├── pvmath_styles.py                 — shared CSS/JS injected into every module page (typography, Streamlit-chrome removal)
-├── topoiq.py                        — DEAD CODE, root-level duplicate, not imported anywhere
+├── terrainiq.py                        — DEAD CODE, root-level duplicate, not imported anywhere
 ├── usage_tracker.py                 — DEAD CODE, root-level local-JSON usage tracker, superseded by Supabase-backed usage functions in pvmath_auth.py
 ├── requirements.txt
 ├── railway.toml                     — Railway build/deploy config
@@ -255,7 +255,7 @@ solarscout/                          (repo root = local dev folder = ~/Desktop/s
 │   ├── my_projects.py               — multi-project list/management
 │   ├── project.py                   — project setup (Quick/Full Mode), module hand-off buttons
 │   ├── siteiq.py                    — Module 01, live
-│   ├── topoiq.py                    — Module 02, live
+│   ├── terrainiq.py                    — Module 02, live
 │   ├── yieldiq.py                   — Module 03, live
 │   └── _layoutiq.py                 — Module 04, admin-only (leading underscore = hidden from normal nav)
 ├── assets/                          — logos, favicons, press kit, LinkedIn banner debris
@@ -277,7 +277,7 @@ solarscout/                          (repo root = local dev folder = ~/Desktop/s
 - PDF table cells overflowing — ReportLab plain strings don't wrap; fixed by wrapping every cell in a `Paragraph`.
 - PDF emojis rendering as black squares — fixed by using colored `Paragraph` text instead of emoji glyphs.
 - YieldIQ tracker yield was wrong — `PVcalc` has no `trackingtype` param; fixed to use the `inclined_axis` system type.
-- TopoIQ DEM tile alignment / sentinel-value bug — fixed; elevation map was dropped in favor of slope-map-only as part of the same fix.
+- TerrainIQ DEM tile alignment / sentinel-value bug — fixed; elevation map was dropped in favor of slope-map-only as part of the same fix.
 - Nominatim geocoding silently blocked — generic User-Agent replaced with a descriptive one (`SiteIQ/1.0 (pvmath.com; contact@pvmath.com)`).
 - Non-DACH sites showing German regulatory authorities — `assess_eeg()` fixed to prioritize a `project_country` text field over lat/lon bounding box.
 - `NameError`: `site_name` → `project_name` rename mismatch in a download button.
@@ -289,8 +289,8 @@ solarscout/                          (repo root = local dev folder = ~/Desktop/s
 ### Open bugs / known technical debt
 - `STRIPE_LINK` is still a placeholder — "Manage Membership" doesn't yet show a real plan or upgrade path. Needs the owner's own Stripe account access; Claude cannot complete this part.
 - Brevo OTP verification is disabled pending account activation — users are currently auto-logged-in right after signup with no email verification step enforced.
-- **Website inconsistency:** YieldIQ's module card in `index.html` still has the CSS class `"soon"` even though its pill reads "Live Now" — cosmetic mismatch, should be `"live"` to match SiteIQ/TopoIQ.
-- Root-level `topoiq.py` and `usage_tracker.py` are dead code — confirmed unused via import search, but still sitting in the repo. Harmless, but worth deleting eventually to avoid future confusion about which file is "real."
+- **Website inconsistency:** YieldIQ's module card in `index.html` still has the CSS class `"soon"` even though its pill reads "Live Now" — cosmetic mismatch, should be `"live"` to match SiteIQ/TerrainIQ.
+- Root-level `terrainiq.py` and `usage_tracker.py` are dead code — confirmed unused via import search, but still sitting in the repo. Harmless, but worth deleting eventually to avoid future confusion about which file is "real."
 - `assets/linkedin-banner.svg` is a broken, abandoned intermediate file from a failed SVG-rendering attempt this session — the real deliverable was a `.png` rendered via pycairo and was never committed. Couldn't be deleted from the sandbox (permission error); still there, unreferenced and harmless.
 - `.DS_Store` (root and `assets/`) and `index.html.bak` are untracked clutter, not in `.gitignore`.
 - There is no real staging *deployment* — only a `staging` git branch used as a pre-merge workflow step. Everything merged to `main` goes live on Railway immediately.
@@ -299,7 +299,7 @@ solarscout/                          (repo root = local dev folder = ~/Desktop/s
 
 ## 10. Product Roadmap
 
-**Completed:** SiteIQ, TopoIQ, YieldIQ (all live and public) · Supabase auth with password reset · multi-project save/list/delete · PDF reporting for all three live modules · EN/DE i18n across the website and app · custom domains for both app subdomains and the marketing site · tiered pricing page (Free/Professional/Developer/Enterprise) · shared Project Setup flow (Quick Mode / Full Mode) feeding all modules.
+**Completed:** SiteIQ, TerrainIQ, YieldIQ (all live and public) · Supabase auth with password reset · multi-project save/list/delete · PDF reporting for all three live modules · EN/DE i18n across the website and app · custom domains for both app subdomains and the marketing site · tiered pricing page (Free/Professional/Developer/Enterprise) · shared Project Setup flow (Quick Mode / Full Mode) feeding all modules.
 
 **In Progress:** LayoutIQ (admin-only, functionally built, pending public launch per the one-module-at-a-time rule) · Brevo OTP re-activation · Stripe Customer Portal integration.
 
@@ -334,10 +334,10 @@ VAT (19%) is added for EU customers. **Pricing history** (illustrates how fast t
 Chronological, key decisions only — see `git log` for the exhaustive day-by-day record (project started 2026-06-11; this log already spans 7 days and ~150 commits).
 
 - **2026-06-11 — First commit.** SiteIQ built first: project type selector, interactive map, KML/KMZ import, country-aware regulatory + terrain logic, global (not just-Europe) data sources from day one.
-- **2026-06-12 — Added TopoIQ (Module 2)** and Supabase-backed auth + a paywall, with an initial flat €99 price. Decided early that pricing/paywall infrastructure should exist before scaling features.
+- **2026-06-12 — Added TerrainIQ (Module 2)** and Supabase-backed auth + a paywall, with an initial flat €99 price. Decided early that pricing/paywall infrastructure should exist before scaling features.
 - **2026-06-12/13 — Hosting decision: moved to Railway.** Streamlit Community Cloud couldn't provide a true custom top-level domain (only a `*.streamlit.app` subdomain), which was a hard requirement for `siteiq.pvmath.com`/`topoiq.pvmath.com`.
 - **2026-06-13 — Replaced `supabase-py` SDK with direct REST `requests` calls** after the SDK caused a DNS error in the deployed environment — decided to keep the dependency surface minimal and debuggable.
-- **2026-06-14 — YieldIQ built and made public as Module 03**, after briefly being hidden again the same day pending stability, then re-confirmed live. Decision: 3 live modules (SiteIQ/TopoIQ/YieldIQ), not the RevenueIQ path originally sketched in early planning.
+- **2026-06-14 — YieldIQ built and made public as Module 03**, after briefly being hidden again the same day pending stability, then re-confirmed live. Decision: 3 live modules (SiteIQ/TerrainIQ/YieldIQ), not the RevenueIQ path originally sketched in early planning.
 - **2026-06-14 — LayoutIQ (Module 04) added, admin-only from day one** — explicit decision to never expose an unstable module to real users, gated by an email allowlist rather than a feature flag in code.
 - **2026-06-15 — Removed direct sidebar links to modules**, replacing them with Project-page "Continue" buttons only — decision driven by a real bug where users could jump into a module before their boundary draft was actually saved, landing on a confusing blank state.
 - **2026-06-15 — Persisted auth via URL query param + localStorage self-heal** (not cookies) after a cookie library proved unreliable — decision to lean on Streamlit's own session-state/query-param mechanics rather than fight the framework.
@@ -370,7 +370,7 @@ If conversation history is lost, this section alone should be enough to keep wor
 
 ## 14. Missing Information — needs owner confirmation
 
-- **RevenueIQ / ProcureIQ / FieldIQ:** Listed in the older `CLAUDE.md` roadmap as modules 2, 4, and 5, but absent from all current code and the live website (which instead shows TopoIQ, YieldIQ, LayoutIQ as modules 2–4). Are these abandoned, renamed into what was actually built, or still planned for later?
+- **RevenueIQ / ProcureIQ / FieldIQ:** Listed in the older `CLAUDE.md` roadmap as modules 2, 4, and 5, but absent from all current code and the live website (which instead shows TerrainIQ, YieldIQ, LayoutIQ as modules 2–4). Are these abandoned, renamed into what was actually built, or still planned for later?
 - **YieldIQ website CSS class:** `index.html`'s YieldIQ module card uses `class="module-card soon"` while its pill text says "Live Now." Almost certainly should be `"live"` — confirm before fixing, in case it's intentional for some reason not visible in code.
 - **Legal entity:** PVMath currently operates as a sole proprietorship under the owner's personal name (per the Impressum), not a registered company. Is a formal entity (GmbH or otherwise) planned, especially given the Developer tier's "custom invoice & VAT billing" promise?
 - **Social media:** No LinkedIn, Twitter/X, Instagram, or Facebook presence is referenced anywhere in the codebase. A LinkedIn banner was designed this session in anticipation of a company page — does one exist yet, or is this still to be created?

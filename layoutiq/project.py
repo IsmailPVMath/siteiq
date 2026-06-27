@@ -40,8 +40,8 @@ def load_project_context(session_state: dict[str, Any]) -> dict[str, Any]:
             latlons = list(primary["coords"])
             source = primary.get("name") or "project boundary"
 
-    topoiq = proj.get("topoiq_cache") or {}
-    mount_hint = "sat" if "tracker" in str(topoiq.get("mount_type", "")).lower() else "fixed_tilt"
+    terrainiq = proj.get("terrainiq_cache") or proj.get("topoiq_cache") or {}
+    mount_hint = "sat" if "tracker" in str(terrainiq.get("mount_type", "")).lower() else "fixed_tilt"
 
     return {
         "latlons": latlons,
@@ -50,5 +50,5 @@ def load_project_context(session_state: dict[str, Any]) -> dict[str, Any]:
         "area_ha": proj.get("area_ha"),
         "suggested_mount": mount_hint,
         "suggested_pitch": 5.5 if mount_hint == "sat" else 5.0,
-        "has_topoiq": bool(topoiq.get("verdict") or topoiq.get("slope_stats")),
+        "has_terrainiq": bool(terrainiq.get("verdict") or terrainiq.get("slope_stats")),
     }

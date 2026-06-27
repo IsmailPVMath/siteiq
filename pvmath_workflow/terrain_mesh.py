@@ -1,4 +1,4 @@
-"""TopoIQ terrain mesh for browser-side 3D visualization."""
+"""TerrainIQ terrain mesh for browser-side 3D visualization."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ def build_terrain_mesh(
     max_vertices: int = 12_000,
     mask_geojson: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
-    """Return a compact triangular mesh from TopoIQ DEM grids."""
+    """Return a compact triangular mesh from TerrainIQ DEM grids."""
     enabled_polys = [list(poly) for poly in polygons if poly and len(poly) >= 3]
     if not enabled_polys:
         raise ValueError("NO_BOUNDARY")

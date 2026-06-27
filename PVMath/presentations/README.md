@@ -14,14 +14,14 @@ Outputs land in `docs/decks/`:
 
 | File | Length | Use case |
 |------|--------|----------|
-| `PVMath_Sales_15min.pptx` | ~15 min | EPC / developer intro — SiteIQ, TopoIQ, YieldIQ |
-| `PVMath_TopoIQ_30min.pptx` | ~30 min | Technical deep-dive — terrain, exports, CAD |
+| `PVMath_Sales_15min.pptx` | ~15 min | EPC / developer intro — SiteIQ, TerrainIQ, YieldIQ |
+| `PVMath_TerrainIQ_30min.pptx` | ~30 min | Technical deep-dive — terrain, exports, CAD |
 
 ## Options
 
 ```bash
 python scripts/generate_pvmath_deck.py --deck sales-15
-python scripts/generate_pvmath_deck.py --deck topoiq-30 --presenter "Jane Doe" --date "19 June 2026"
+python scripts/generate_pvmath_deck.py --deck terrainiq-30 --presenter "Jane Doe" --date "19 June 2026"
 python scripts/generate_pvmath_deck.py --out ./my-decks
 ```
 
@@ -35,7 +35,7 @@ python scripts/generate_pvmath_deck.py --out ./my-decks
 ## Editing content
 
 - **Facts & Q&A:** `pvmath_deck/content.py`
-- **Slide order:** `pvmath_deck/decks/sales_15.py`, `topoiq_30.py`
+- **Slide order:** `pvmath_deck/decks/sales_15.py`, `terrainiq_30.py`
 - **Visual theme:** `pvmath_deck/theme.py`
 - **Layouts:** `pvmath_deck/builder.py`
 

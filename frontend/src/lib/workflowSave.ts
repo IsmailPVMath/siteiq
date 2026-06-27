@@ -1,7 +1,7 @@
 import { draftToGateRequest, draftToProjectPayload, gateRequestToDraft, projectRecordToDraft } from "./projectSetup";
 import type { ProjectPayload, ProjectRecord } from "./api";
 import type { GateAnalyzeRequest } from "../types/gate";
-import type { TopoIQAnalyzeResponse } from "../types/topoiq";
+import type { TerrainIQAnalyzeResponse } from "../types/terrainiq";
 import type { OutputModuleStage, WorkflowScoreResponse, WorkflowScreenResponse } from "../types/workflow";
 
 export interface WorkflowRestore {
@@ -9,14 +9,14 @@ export interface WorkflowRestore {
   input: GateAnalyzeRequest;
   screening: WorkflowScreenResponse;
   lastStage: OutputModuleStage;
-  topo?: TopoIQAnalyzeResponse | null;
+  topo?: TerrainIQAnalyzeResponse | null;
   finalScore?: WorkflowScoreResponse | null;
   gisSetbacks?: Record<string, number> | null;
 }
 
-export function slimTopoSnapshot(topo: TopoIQAnalyzeResponse | null | undefined): Record<string, unknown> | null {
+export function slimTopoSnapshot(topo: TerrainIQAnalyzeResponse | null | undefined): Record<string, unknown> | null {
   if (!topo) return null;
-  const { extras: _extras, terrain_source: _ts, ...rest } = topo as TopoIQAnalyzeResponse & {
+  const { extras: _extras, terrain_source: _ts, ...rest } = topo as TerrainIQAnalyzeResponse & {
     extras?: unknown;
     terrain_source?: unknown;
   };
@@ -27,7 +27,7 @@ export function buildWorkflowSavePayload(
   input: GateAnalyzeRequest,
   screening: WorkflowScreenResponse,
   lastStage: OutputModuleStage,
-  topo?: TopoIQAnalyzeResponse | null,
+  topo?: TerrainIQAnalyzeResponse | null,
   finalScore?: WorkflowScoreResponse | null,
   gisSetbacks?: Record<string, number> | null,
 ): ProjectPayload {
@@ -59,7 +59,7 @@ export function restoreWorkflowFromRecord(row: ProjectRecord): WorkflowRestore |
     input,
     screening,
     lastStage,
-    topo: (wf.topo_snapshot as TopoIQAnalyzeResponse | null) ?? null,
+    topo: (wf.topo_snapshot as TerrainIQAnalyzeResponse | null) ?? null,
     finalScore: (wf.final_score_snapshot as WorkflowScoreResponse | null) ?? null,
     gisSetbacks: (wf.gis_setbacks_m as Record<string, number> | null) ?? null,
   };

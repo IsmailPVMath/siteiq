@@ -96,7 +96,7 @@ _pages = [
     st.Page("pages/project.py",      title="Project"),
     st.Page("pages/my_projects.py",  title="My Projects"),
     st.Page("pages/siteiq.py",  title="SiteIQ"),
-    st.Page("pages/topoiq.py",  title="TopoIQ"),
+    st.Page("pages/terrainiq.py",  title="TerrainIQ"),
     st.Page("pages/yieldiq.py", title="YieldIQ"),
 ]
 _ADMIN = LAYOUTIQ_ADMIN_EMAILS
@@ -178,7 +178,7 @@ st.markdown(f"""
      versions, NOT [data-testid="stSidebarNavLink"] (that testid belongs to the
      native auto-generated nav, which we hide via position="hidden"). Targeting
      only the old testid meant this color rule never matched — Overview / SiteIQ /
-     TopoIQ / YieldIQ silently fell back to default dim/illegible link styling.
+     TerrainIQ / YieldIQ silently fell back to default dim/illegible link styling.
      Both selectors are kept so this keeps working if Streamlit changes again. */
   [data-testid="stPageLink"],
   [data-testid="stSidebarNavLink"] {{
@@ -209,7 +209,7 @@ st.markdown(f"""
   [data-testid="stSidebarNavLink"][aria-current="page"] * {{
     color: #fff !important;
   }}
-  /* Disabled module links (e.g. TopoIQ before a boundary exists) — visibly
+  /* Disabled module links (e.g. TerrainIQ before a boundary exists) — visibly
      muted, but still readable, instead of disappearing into the background. */
   [data-testid="stPageLink"][aria-disabled="true"] *,
   [data-testid="stPageLink"]:has([disabled]) * {{
@@ -467,7 +467,7 @@ with st.sidebar:
         st.markdown('<div class="pvm-group-label">Modules</div>', unsafe_allow_html=True)
         st.page_link("pages/siteiq.py", label="SiteIQ")
         st.page_link("pages/yieldiq.py", label="YieldIQ")
-        st.page_link("pages/topoiq.py", label="TopoIQ")
+        st.page_link("pages/terrainiq.py", label="TerrainIQ")
 
         # ── Bottom-pinned group: account / settings / membership / logout ──
         with st.container():
@@ -623,7 +623,7 @@ pg.run()
 # Streamlit's own URL-sync. That sync appears to register a new browser
 # history entry every time it fires — on top of the entry the page switch
 # itself just created. So one logical in-app navigation (e.g. Project ->
-# TopoIQ) silently consumed TWO history slots: pressing Back once only undid
+# TerrainIQ) silently consumed TWO history slots: pressing Back once only undid
 # half of it, and the popstate listener above (which forces a reload on every
 # Back/Forward) re-ran this same reassertion on that reload, pushing yet
 # another entry that wiped out whatever was sitting in the Forward stack —

@@ -22,7 +22,7 @@ Store official registration documents here **on your machine only** (PDFs are gi
 
 **DE (Gewerbe):** Entwicklung, Betrieb und Vertrieb von webbasierten SaaS-Lösungen (PVMath / SiteIQ) zur technischen Vorprüfung von Freiflächen-Photovoltaik-Anlagen; Abonnement-Vertrieb; keine bankfähigen Gutachten, keine Feldvermessung in dieser Phase.
 
-**EN:** B2B SaaS for utility-scale ground-mount solar site screening (SiteIQ, TopoIQ, YieldIQ); subscription sales worldwide; screening-grade outputs only.
+**EN:** B2B SaaS for utility-scale ground-mount solar site screening (SiteIQ, TerrainIQ, YieldIQ); subscription sales worldwide; screening-grade outputs only.
 
 Full wording: `../docs/PVMath_Einzelunternehmen_Launch_Plan.docx`
 

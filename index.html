@@ -139,7 +139,7 @@
     }
     .hero-scan-item strong { font-size: 0.92rem; font-weight: 800; letter-spacing: -0.01em; }
     .hero-scan-item strong.siteiq { color: var(--coral); }
-    .hero-scan-item strong.topoiq { color: var(--blue); }
+    .hero-scan-item strong.terrainiq { color: var(--blue); }
     .hero-scan-item strong.yieldiq { color: #b36a00; }
     .hero-scan-item span { font-size: 0.82rem; color: var(--muted); line-height: 1.5; font-weight: 500; }
     @media (max-width: 900px) { .hero-scan { grid-template-columns: repeat(2, 1fr); } }
@@ -402,14 +402,14 @@
     .footer-social svg { width: 18px; height: 18px; fill: currentColor; }
 
     /* ── PRODUCT PREVIEW ── */
-    /* Equal height: row follows tallest card (SiteIQ); TopoIQ/YieldIQ pin footers — no stretch-to-TopoIQ */
+    /* Equal height: row follows tallest card (SiteIQ); TerrainIQ/YieldIQ pin footers — no stretch-to-TerrainIQ */
     .preview-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; align-items: stretch; }
     @media (max-width: 1100px) { .preview-grid { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 620px) { .preview-grid { grid-template-columns: 1fr; } }
     .preview-card { border-radius: 14px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,.12); border: 1.5px solid var(--border); display: flex; flex-direction: column; height: 100%; }
     .preview-card-hdr { padding: 0.55rem 0.85rem; display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
     .preview-card-hdr.siteiq { background: linear-gradient(135deg,#e85d04,#c24a00); }
-    .preview-card-hdr.topoiq { background: linear-gradient(135deg,#1565c0,#0d47a1); }
+    .preview-card-hdr.terrainiq { background: linear-gradient(135deg,#1565c0,#0d47a1); }
     .preview-card-hdr.layoutiq { background: linear-gradient(135deg,var(--teal),var(--teal-dk)); }
     .preview-card-hdr.yieldiq { background: linear-gradient(135deg,#d4840a,#b36a00); }
     .preview-actions.teal div { background: var(--teal-lt); color: var(--teal-dk); }
@@ -851,7 +851,7 @@
       <!-- TerrainIQ mockup -->
       <article class="preview-card" itemscope itemtype="https://schema.org/SoftwareApplication" aria-label="TerrainIQ terrain analysis example output">
         <meta itemprop="name" content="TerrainIQ">
-        <header class="preview-card-hdr topoiq">
+        <header class="preview-card-hdr terrainiq">
           <span class="preview-card-icon" aria-hidden="true">&#9968;&#65039;</span>
           <strong>TERRAINIQ — SLOPE ANALYSIS</strong>
         </header>
@@ -1018,7 +1018,7 @@
           <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M4 36 L14 22 L22 28 L32 14 L44 24" fill="none" stroke="#1565c0" stroke-width="2" stroke-linecap="round"/></svg>
         </div>
         <div class="pipeline-label blue">TerrainIQ</div>
-        <p class="pipeline-sub" data-i18n="pipe.topoiq.sub">Slope heatmaps &middot; DXF + LandXML</p>
+        <p class="pipeline-sub" data-i18n="pipe.terrainiq.sub">Slope heatmaps &middot; DXF + LandXML</p>
       </div>
       <div class="pipeline-arrow" aria-hidden="true">→</div>
       <div class="pipeline-step">
@@ -1128,12 +1128,12 @@
               <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M4 36 L14 22 L22 28 L32 14 L44 24" fill="none" stroke="#1565c0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 36 L14 30 L22 34 L32 26 L44 32" fill="none" stroke="#64b5f6" stroke-width="1.2" opacity="0.7"/><ellipse cx="24" cy="38" rx="20" ry="3" fill="#e8f0fb"/></svg>
             </div>
             <div>
-              <div class="wf-stage-name blue" data-i18n="how.topoiq.title">TerrainIQ &mdash; Slope Analysis</div>
-              <div class="wf-sub" data-i18n="how.topoiq.sub">Step 3 &middot; Needs a boundary &middot; CAD exports</div>
+              <div class="wf-stage-name blue" data-i18n="how.terrainiq.title">TerrainIQ &mdash; Slope Analysis</div>
+              <div class="wf-sub" data-i18n="how.terrainiq.sub">Step 3 &middot; Needs a boundary &middot; CAD exports</div>
             </div>
           </div>
-          <p class="wf-does" data-i18n="wf.topoiq.does">Region-routed DEM inside your boundary &mdash; slope heatmaps, cross-row grades and engineering verdicts before you order a topo survey.</p>
-          <div class="wf-chips" data-i18n-chips="wf.topoiq.get"></div>
+          <p class="wf-does" data-i18n="wf.terrainiq.does">Region-routed DEM inside your boundary &mdash; slope heatmaps, cross-row grades and engineering verdicts before you order a topo survey.</p>
+          <div class="wf-chips" data-i18n-chips="wf.terrainiq.get"></div>
         </div>
       </div>
 
@@ -1531,7 +1531,7 @@ var T = {
     'hero.p':'Drop coordinates or draw a boundary and get site screening, terrain & slope analysis, auto-layout, and yield — one guided workflow. PDF reports and CAD exports (DXF + LandXML) included.',
     'hero.btn1':'Try it Free →','hero.btn2':'See Real Outputs',
     'hero.scan.siteiq':'Site screening with solar, flood & regulatory checks. GIS buildable area with auto-detected setbacks from roads, rivers, buildings & more.',
-    'hero.scan.topoiq':'Slope analysis on region-routed DEM. Export surface + contours to CAD.',
+    'hero.scan.terrainiq':'Slope analysis on region-routed DEM. Export surface + contours to CAD.',
     'hero.scan.layoutiq':'Auto-pack fixed-tilt or tracker rows with GIS setbacks & 3D preview.',
     'hero.scan.yieldiq':'PVGIS yield for your chosen mount and layout — specific yield, PR, and capacity factor. Runs automatically from LayoutIQ.',
     'stat.modules':'Workflow Steps','stat.speed':'Site Screening Time','stat.time-val':'≤ 4 min',
@@ -1541,7 +1541,7 @@ var T = {
     'modules.sub':'Project setup → site screening → terrain → layout → yield — no separate apps.',
     'pipe.setup':'Project Setup','pipe.setup.sub':'Pin or boundary · project type',
     'pipe.siteiq.sub':'Solar, flood & regulatory · GIS buildable area',
-    'pipe.topoiq.sub':'Slope heatmaps · DXF + LandXML',
+    'pipe.terrainiq.sub':'Slope heatmaps · DXF + LandXML',
     'pipe.layoutiq.sub':'Auto-packed rows · 3D preview',
     'pipe.yieldiq.sub':'PVGIS yield · PR & CF',
     'pipe.report':'PVMath Report / ZIP','pipe.report.sub':'PDF + CAD + project package',
@@ -1550,9 +1550,9 @@ var T = {
     'siteiq.tagline':'Know if a site is buildable within minutes.',
     'siteiq.f1':'Solar resource & irradiation','siteiq.f2':'Slope & flood risk',
     'siteiq.f3':'Regulatory flags','siteiq.f4':'GIS buildable area & setbacks','siteiq.btn':'Open in App →',
-    'topoiq.tagline':'Screen terrain before you order the topo survey.',
-    'topoiq.f1':'Slope maps & cross-row grades','topoiq.f2':'Region-routed DEM',
-    'topoiq.f3':'CAD export: DXF + LandXML','topoiq.f4':'Terrain PDF report','topoiq.btn':'Open in App →',
+    'terrainiq.tagline':'Screen terrain before you order the topo survey.',
+    'terrainiq.f1':'Slope maps & cross-row grades','terrainiq.f2':'Region-routed DEM',
+    'terrainiq.f3':'CAD export: DXF + LandXML','terrainiq.f4':'Terrain PDF report','terrainiq.btn':'Open in App →',
     'yieldiq.tagline':'Yield for your chosen layout before you open PVsyst.',
     'yieldiq.f1':'Runs on your LayoutIQ mount','yieldiq.f2':'Fixed 1P–4P or SAT 1P/2P',
     'yieldiq.f3':'Specific yield, PR & CF','yieldiq.f4':'PVGIS-based feasibility',
@@ -1571,7 +1571,7 @@ var T = {
     'how.setup.quick.title':'Coordinates or address','how.setup.quick.p':'Paste lat/lon, search an address, or drop a pin — SiteIQ screening runs without a boundary',
     'how.setup.full.title':'Draw or upload a boundary','how.setup.full.p':'Draw the polygon or upload KMZ/KML — unlocks TerrainIQ, LayoutIQ & buildable-area GIS',
     'how.siteiq.title':'SiteIQ — Site Screening','how.siteiq.sub':'Step 2 · Solar · flood · regulatory · buildable area',
-    'how.topoiq.title':'TerrainIQ — Slope Analysis','how.topoiq.sub':'Step 3 · Needs a boundary · CAD exports',
+    'how.terrainiq.title':'TerrainIQ — Slope Analysis','how.terrainiq.sub':'Step 3 · Needs a boundary · CAD exports',
     'how.layoutiq.title':'LayoutIQ — Auto Layout','how.layoutiq.sub':'Step 4 · Mount type chosen here · 3D preview',
     'how.yieldiq.title':'YieldIQ — Yield Estimation','how.yieldiq.sub':'Step 5 · Auto-runs from your layout · Feasibility only',
     'wf.setup.sub':'One login · one project context',
@@ -1579,8 +1579,8 @@ var T = {
     'wf.setup.get':'Quick Mode (pin)|Full Mode (boundary)|Standard & Agri-PV',
     'wf.siteiq.does':'Screen solar resource, flood risk and grid proximity, then map buildable area with automatic GIS setbacks from roads, rivers, buildings and more.',
     'wf.siteiq.get':'Monthly GHI chart|Buildable % & land score|OSM constraint map',
-    'wf.topoiq.does':'Region-routed DEM inside your boundary — slope heatmaps, cross-row grades and engineering verdicts before you order a topo survey.',
-    'wf.topoiq.get':'EEA-10 / 3DEP / FABDEM|Terrain PDF|DXF + LandXML',
+    'wf.terrainiq.does':'Region-routed DEM inside your boundary — slope heatmaps, cross-row grades and engineering verdicts before you order a topo survey.',
+    'wf.terrainiq.get':'EEA-10 / 3DEP / FABDEM|Terrain PDF|DXF + LandXML',
     'wf.layoutiq.does':'Pick Fixed Tilt or Single-Axis Tracker, then auto-pack rows on the buildable polygon with GIS setbacks applied.',
     'wf.layoutiq.get':'Mount type & GCR|DC capacity & modules|3D terrain preview',
     'wf.yieldiq.does':'PVGIS yield for your chosen LayoutIQ mount — Fixed 1P–4P or SAT 1P/2P. Runs automatically when you proceed, no re-entry.',
@@ -1674,7 +1674,7 @@ var T = {
     'hero.p':'Koordinaten eingeben oder Grenze zeichnen und Standort-Screening, Gelände- & Neigungsanalyse, Auto-Layout und Ertrag erhalten — ein geführter Workflow. PDF-Berichte und CAD-Exporte (DXF + LandXML) inklusive.',
     'hero.btn1':'Kostenlos testen →','hero.btn2':'Echte Ergebnisse ansehen',
     'hero.scan.siteiq':'Standort-Screening mit Solar-, Hochwasser- & Regulierungsprüfung. GIS-Bebaubare Fläche mit automatischen Abständen zu Straßen, Flüssen, Gebäuden u. a.',
-    'hero.scan.topoiq':'Neigungsanalyse auf regionalem DEM. Oberfläche + Höhenlinien nach CAD.',
+    'hero.scan.terrainiq':'Neigungsanalyse auf regionalem DEM. Oberfläche + Höhenlinien nach CAD.',
     'hero.scan.layoutiq':'Fest- oder Tracker-Reihen automatisch packen, mit GIS-Abständen & 3D-Vorschau.',
     'hero.scan.yieldiq':'PVGIS-Ertrag für gewählte Aufständerung und Layout — spezifischer Ertrag, PR und Kapazitätsfaktor. Läuft automatisch aus LayoutIQ.',
     'stat.modules':'Workflow-Schritte','stat.speed':'Standortprüfungszeit','stat.time-val':'≤ 4 Min',
@@ -1684,7 +1684,7 @@ var T = {
     'modules.sub':'Projekteinrichtung → Screening → Gelände → Layout → Ertrag — keine separaten Apps.',
     'pipe.setup':'Projekteinrichtung','pipe.setup.sub':'Pin oder Grenze · Projekttyp',
     'pipe.siteiq.sub':'Solar, Hochwasser & Regulierung · GIS-Bebaubare Fläche',
-    'pipe.topoiq.sub':'Neigungskarten · DXF + LandXML',
+    'pipe.terrainiq.sub':'Neigungskarten · DXF + LandXML',
     'pipe.layoutiq.sub':'Automatisch gepackte Reihen · 3D-Vorschau',
     'pipe.yieldiq.sub':'PVGIS-Ertrag · PR & CF',
     'pipe.report':'PVMath-Bericht / ZIP','pipe.report.sub':'PDF + CAD + Projektpaket',
@@ -1693,9 +1693,9 @@ var T = {
     'siteiq.tagline':'In Minuten prüfen, ob ein Standort baubar ist.',
     'siteiq.f1':'Solarressource & Einstrahlung','siteiq.f2':'Neigung & Hochwasserrisiko',
     'siteiq.f3':'Regulierungshinweise','siteiq.f4':'GIS-Bebaubare Fläche & Abstände','siteiq.btn':'In der App öffnen →',
-    'topoiq.tagline':'Gelände screenen — vor der Vermessung.',
-    'topoiq.f1':'Neigungskarten & Querneigung','topoiq.f2':'Regionales DEM',
-    'topoiq.f3':'CAD-Export: DXF + LandXML','topoiq.f4':'Gelände-PDF-Bericht','topoiq.btn':'In der App öffnen →',
+    'terrainiq.tagline':'Gelände screenen — vor der Vermessung.',
+    'terrainiq.f1':'Neigungskarten & Querneigung','terrainiq.f2':'Regionales DEM',
+    'terrainiq.f3':'CAD-Export: DXF + LandXML','terrainiq.f4':'Gelände-PDF-Bericht','terrainiq.btn':'In der App öffnen →',
     'yieldiq.tagline':'Ertrag für Ihr gewähltes Layout — vor PVsyst.',
     'yieldiq.f1':'Läuft mit Ihrer LayoutIQ-Aufständerung','yieldiq.f2':'Fest 1P–4P oder SAT 1P/2P',
     'yieldiq.f3':'Spez. Ertrag, PR & CF','yieldiq.f4':'PVGIS-basierte Machbarkeit',
@@ -1714,7 +1714,7 @@ var T = {
     'how.setup.quick.title':'Koordinaten oder Adresse','how.setup.quick.p':'Lat/Lon einfügen, Adresse suchen oder Pin setzen — SiteIQ-Screening läuft ohne Grenze',
     'how.setup.full.title':'Grenze zeichnen oder hochladen','how.setup.full.p':'Polygon zeichnen oder KMZ/KML hochladen — schaltet TerrainIQ, LayoutIQ & baubare-Fläche-GIS frei',
     'how.siteiq.title':'SiteIQ — Standort-Screening','how.siteiq.sub':'Schritt 2 · Solar · Hochwasser · Regulierung · Bebaubare Fläche',
-    'how.topoiq.title':'TerrainIQ — Neigungsanalyse','how.topoiq.sub':'Schritt 3 · Benötigt Grenze · CAD-Exporte',
+    'how.terrainiq.title':'TerrainIQ — Neigungsanalyse','how.terrainiq.sub':'Schritt 3 · Benötigt Grenze · CAD-Exporte',
     'how.layoutiq.title':'LayoutIQ — Auto-Layout','how.layoutiq.sub':'Schritt 4 · Montageart hier gewählt · 3D-Vorschau',
     'how.yieldiq.title':'YieldIQ — Ertragsschätzung','how.yieldiq.sub':'Schritt 5 · Läuft automatisch aus dem Layout · Nur Machbarkeit',
     'wf.setup.sub':'Ein Login · ein Projektkontext',
@@ -1722,8 +1722,8 @@ var T = {
     'wf.setup.get':'Quick Mode (Pin)|Full Mode (Grenze)|Standard & Agri-PV',
     'wf.siteiq.does':'Solarressource, Hochwasserrisiko und Netznähe screenen, dann bebaubare Fläche mit automatischen GIS-Abständen zu Straßen, Flüssen, Gebäuden u. a. ermitteln.',
     'wf.siteiq.get':'Monats-GHI-Diagramm|Bebaubar % & Land-Score|OSM-Constraint-Karte',
-    'wf.topoiq.does':'Regionales DEM innerhalb Ihrer Grenze — Neigungskarten, Querneigung und Engineering-Bewertungen vor der Vermessung.',
-    'wf.topoiq.get':'EEA-10 / 3DEP / FABDEM|Gelände-PDF|DXF + LandXML',
+    'wf.terrainiq.does':'Regionales DEM innerhalb Ihrer Grenze — Neigungskarten, Querneigung und Engineering-Bewertungen vor der Vermessung.',
+    'wf.terrainiq.get':'EEA-10 / 3DEP / FABDEM|Gelände-PDF|DXF + LandXML',
     'wf.layoutiq.does':'Festaufständerung oder Einachsen-Tracker wählen, dann Reihen auf dem baubaren Polygon mit GIS-Abständen automatisch packen.',
     'wf.layoutiq.get':'Montageart & GCR|DC-Leistung & Module|3D-Geländevorschau',
     'wf.yieldiq.does':'PVGIS-Ertrag für Ihre gewählte LayoutIQ-Aufständerung — Fest 1P–4P oder SAT 1P/2P. Läuft automatisch bei „Weiter“, keine erneute Eingabe.',

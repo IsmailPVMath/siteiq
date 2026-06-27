@@ -4,7 +4,7 @@ Read this in 15 minutes, then go build. For full depth on anything here, see `PV
 
 ## What this is
 
-PVMath-Solar Site Intelligence Platform — a solar site intelligence platform for **ground-mount solar only** (Fixed Tilt + Single-Axis Tracker, Standard + Agri-PV). Three modules are live: **SiteIQ** (site screening), **TopoIQ** (terrain/DEM export), **YieldIQ** (preliminary yield). A fourth, **LayoutIQ** (auto layout + BOM), is built but admin-only.
+PVMath-Solar Site Intelligence Platform — a solar site intelligence platform for **ground-mount solar only** (Fixed Tilt + Single-Axis Tracker, Standard + Agri-PV). Three modules are live: **SiteIQ** (site screening), **TerrainIQ** (terrain/DEM export), **YieldIQ** (preliminary yield). A fourth, **LayoutIQ** (auto layout + BOM), is built but admin-only.
 
 Solo founder (Mohammed Ismail Pasha, a working solar engineer, not a coder) builds this entirely through Claude. Started 2026-06-11 — moves fast, ships daily.
 
@@ -16,12 +16,12 @@ Single Streamlit Python app (`app.py` + `pages/*.py`), no separate backend — s
 
 1. `app.py` — entrypoint: auth gate, hidden native nav + hand-built sidebar, bfcache/token-refresh fixes. Read this first.
 2. `pages/project.py` — where users set up a project; the hub that hands off to every module.
-3. `pages/siteiq.py`, `pages/topoiq.py`, `pages/yieldiq.py` — the three live modules. Each is self-contained (~1,100–1,500 lines): fetch data → compute → render → build PDF.
+3. `pages/siteiq.py`, `pages/terrainiq.py`, `pages/yieldiq.py` — the three live modules. Each is self-contained (~1,100–1,500 lines): fetch data → compute → render → build PDF.
 4. `pages/_layoutiq.py` — admin-only (leading underscore hides it from nav; gated by `_ADMIN` emails in `app.py`).
 5. `pvmath_auth.py` — all auth, usage limits, project CRUD, Stripe link, OTP email.
 6. `pvmath_styles.py` — shared CSS injected on every page via `inject_styles()`.
 
-Dead code, ignore: root-level `topoiq.py`, `usage_tracker.py` (superseded, not imported anywhere).
+Dead code, ignore: root-level `terrainiq.py`, `usage_tracker.py` (superseded, not imported anywhere).
 
 ## The 8 things you must never break
 

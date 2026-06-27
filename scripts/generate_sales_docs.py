@@ -41,14 +41,14 @@ def build_pilot_agreement() -> Document:
             "Customer: [Company legal name], [Address], [Country], [Billing contact email]",
         ]),
         ("2. Service", [
-            "Access to the PVMath-Solar Site Intelligence Platform (SiteIQ, TopoIQ, YieldIQ) "
+            "Access to the PVMath-Solar Site Intelligence Platform (SiteIQ, TerrainIQ, YieldIQ) "
             "at siteiq.pvmath.com during Early Access.",
             "Outputs are screening-grade only — not bankable yield, not survey-grade terrain, "
             "not a substitute for LiDAR, PVsyst, or lender sign-off.",
         ]),
         ("3. Plan & limits", [
             "Plan: [ ] Professional (€149/month)  [ ] Developer (€499/month)",
-            "Professional: 75 analyses per calendar month, shared across SiteIQ, TopoIQ, and YieldIQ.",
+            "Professional: 75 analyses per calendar month, shared across SiteIQ, TerrainIQ, and YieldIQ.",
             "Developer: 300 analyses per calendar month, shared team pool (up to 5 seats).",
             "Limits reset on the 1st of each month (UTC). Unused analyses do not roll over.",
         ]),
@@ -93,7 +93,7 @@ def build_pilot_agreement() -> Document:
     doc.add_page_break()
     doc.add_heading("Deutsch — Kurzfassung (Referenz)", level=1)
     doc.add_paragraph(
-        "Pilot-Zugang zu PVMath (SiteIQ, TopoIQ, YieldIQ). Screening-Qualität, keine "
+        "Pilot-Zugang zu PVMath (SiteIQ, TerrainIQ, YieldIQ). Screening-Qualität, keine "
         "Bankfähigkeit. Professional: 75 Analysen/Monat gesamt. Developer: 300/Monat Team-Pool. "
         "Freischaltung nach Zahlungseingang. Bei UG-Gründung nahtlose Fortführung."
     )
@@ -190,9 +190,9 @@ update profiles set plan = 'developer', team_id = '<owner-uuid>' where id = '<te
 
 ## How limits work (Professional & Developer)
 
-- **Professional:** **75 total runs/month** across SiteIQ + TopoIQ + YieldIQ.
+- **Professional:** **75 total runs/month** across SiteIQ + TerrainIQ + YieldIQ.
 - **Developer:** **300 total runs/month** — **entire team shares one pool** (up to 5 seats).
-- Example: 60 TopoIQ + 15 SiteIQ = 75 → Professional paywall until next month.
+- Example: 60 TerrainIQ + 15 SiteIQ = 75 → Professional paywall until next month.
 - Enforced in app via `is_over_limit()` — no manual tracking needed.
 - Customer sees **X / limit** on **Overview** dashboard.
 

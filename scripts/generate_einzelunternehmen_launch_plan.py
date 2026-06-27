@@ -220,7 +220,7 @@ def build() -> Document:
     _bullet(
         doc,
         "Live modules: SiteIQ (rapid site screening — solar resource, terrain, flood, regulatory hints, "
-        "capacity, PDF reports), TopoIQ (terrain slope and CAD export), YieldIQ (preliminary yield screening). "
+        "capacity, PDF reports), TerrainIQ (terrain slope and CAD export), YieldIQ (preliminary yield screening). "
         "Roadmap: RevenueIQ, LayoutIQ, ProcureIQ, FieldIQ.",
     )
     _bullet(
@@ -259,7 +259,7 @@ def build() -> Document:
     _p(
         doc,
         "Leistungsumfang: Bereitstellung und Wartung der Online-Module SiteIQ (Solar- und "
-        "Standort-Screening inkl. PDF-Berichte), TopoIQ (Gelände-/Neigungsanalyse, CAD-Export) "
+        "Standort-Screening inkl. PDF-Berichte), TerrainIQ (Gelände-/Neigungsanalyse, CAD-Export) "
         "und YieldIQ (vorläufige Ertragsabschätzung); Abonnement-Vertrieb über pvmath.com und "
         "siteiq.pvmath.com; E-Mail-Support; Nutzung öffentlicher Geodaten (u. a. PVGIS, Copernicus).",
     )
@@ -367,7 +367,7 @@ def build() -> Document:
         doc,
         "EN: “PVMath SiteIQ screens utility-scale ground-mount sites in minutes — solar, terrain, "
         "and preliminary yield from open data. Fixed tilt, tracker, and Agri-PV. Free trial at siteiq.pvmath.com. "
-        "Professional is €149/month for 75 pooled analyses across SiteIQ, TopoIQ, and YieldIQ.”",
+        "Professional is €149/month for 75 pooled analyses across SiteIQ, TerrainIQ, and YieldIQ.”",
     )
     _p(
         doc,

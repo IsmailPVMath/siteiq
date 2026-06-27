@@ -1,4 +1,4 @@
-"""TopoIQ CAD/GIS export helpers — global UTM georef + local centroid packages."""
+"""TerrainIQ CAD/GIS export helpers — global UTM georef + local centroid packages."""
 
 from __future__ import annotations
 
@@ -59,7 +59,7 @@ def sanitize_topo_basename(project_name: str, fallback: str = "Project") -> str:
     slug = re.sub(r"[^\w\s\-]", "", slug, flags=re.UNICODE)
     slug = re.sub(r"[\s\-]+", "_", slug).strip("_")
     slug = slug[:60] or fallback
-    return f"TopoIQ_{slug}"
+    return f"TerrainIQ_{slug}"
 
 
 def utm_zone(lon: float) -> int:
@@ -148,7 +148,7 @@ def build_reference_json(
 ) -> bytes:
     unit_label = "US survey feet" if linear_units == "imperial_us_survey" else "meters"
     payload = {
-        "format": "TopoIQ_reference_v1",
+        "format": "TerrainIQ_reference_v1",
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "project_name": project_name or "Unnamed",
         "reference_point": {
@@ -350,7 +350,7 @@ def _append_landxml_site_boundaries(
 
         parcel = ET.SubElement(parcels, "Parcel", {
             "name": label,
-            "desc": "TopoIQ parcel linework — closed polyline",
+            "desc": "TerrainIQ parcel linework — closed polyline",
         })
         parcel_geom = ET.SubElement(parcel, "CoordGeom")
         parcel_line = ET.SubElement(parcel_geom, "IrregularLine")
@@ -358,7 +358,7 @@ def _append_landxml_site_boundaries(
 
         feature = ET.SubElement(plan_features, "PlanFeature", {
             "name": label,
-            "desc": "TopoIQ parcel linework for layout/CAD",
+            "desc": "TerrainIQ parcel linework for layout/CAD",
         })
         feature_geom = ET.SubElement(feature, "CoordGeom")
         feature_line = ET.SubElement(feature_geom, "IrregularLine")
@@ -429,7 +429,7 @@ def export_landxml_utm(
     surface = ET.SubElement(surfaces, "Surface", {
         "name": site_name,
         "desc": (
-            "TopoIQ satellite DEM — merged TIN, WGS84 UTM"
+            "TerrainIQ satellite DEM — merged TIN, WGS84 UTM"
             + (" (US survey feet)" if units == "imperial_us_survey" else " (meters)")
         ),
     })

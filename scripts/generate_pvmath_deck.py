@@ -14,13 +14,13 @@ if str(ROOT) not in sys.path:
 
 from pvmath_deck.builder import DeckBuilder
 from pvmath_deck.decks.sales_15 import build_sales_15
-from pvmath_deck.decks.topoiq_30 import build_topoiq_30
+from pvmath_deck.decks.terrainiq_30 import build_terrainiq_30
 
 DEFAULT_OUT = ROOT / "docs" / "decks"
 
 DECKS = {
     "sales-15": ("PVMath_Sales_15min.pptx", build_sales_15),
-    "topoiq-30": ("PVMath_TopoIQ_30min.pptx", build_topoiq_30),
+    "terrainiq-30": ("PVMath_TerrainIQ_30min.pptx", build_terrainiq_30),
 }
 
 

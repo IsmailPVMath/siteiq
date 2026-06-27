@@ -25,7 +25,7 @@ class TerrainRoute:
 
 
 def in_europe_bounds(lat: float, lon: float) -> bool:
-    """Broad EU screening bounds used across SiteIQ/TopoIQ."""
+    """Broad EU screening bounds used across SiteIQ/TerrainIQ."""
     return 34 <= lat <= 72 and -25 <= lon <= 45
 
 

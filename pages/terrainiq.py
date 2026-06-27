@@ -47,8 +47,8 @@ from pvmath_terrain_report import (
 from pvmath_geocode import format_coords, resolve_location_label
 from pvmath_yield import (
     fetch_yield_cross_ref_bundle,
-    yield_cross_ref_topoiq_html,
-    yield_cross_ref_topoiq_text,
+    yield_cross_ref_terrainiq_html,
+    yield_cross_ref_terrainiq_text,
 )
 from pvmath_topo_export import (
     build_reference_json,
@@ -240,7 +240,7 @@ def _render_topo_boundary_map(
 
 def _area_limit_message(area_ha: float) -> str:
     return (
-        f"Site boundary is {area_ha:,.0f} ha — TopoIQ supports sites up to "
+        f"Site boundary is {area_ha:,.0f} ha — TerrainIQ supports sites up to "
         f"{MAX_SITE_AREA_HA:,} ha. Draw or upload a smaller boundary, or "
         f"split the site into sections."
     )
@@ -475,8 +475,8 @@ elif not _has_proj:
     )
 
 _prev_page = st.session_state.get("_pvm_active_page")
-st.session_state["_pvm_active_page"] = "TopoIQ"
-if _prev_page != "TopoIQ":
+st.session_state["_pvm_active_page"] = "TerrainIQ"
+if _prev_page != "TerrainIQ":
     for _k in list(st.session_state.keys()):
         if _k.startswith("proj_map_"):
             st.session_state.pop(_k, None)
@@ -578,7 +578,7 @@ with left:
         else:
             st.caption("Map shows **enabled parcels from Project Setup** (read-only here).")
 
-        with st.container(key="topoiq_map_panel"):
+        with st.container(key="terrainiq_map_panel"):
             _map_data = _render_topo_boundary_map(
                 _boundaries,
                 height=430,
@@ -621,7 +621,7 @@ with left:
         grid_spacing = sc1.slider(
             "Analysis grid (m)", min_value=3, max_value=10, value=5, step=1,
             help="Default 5 m for layout work. Public DEM source depends on route; "
-                 "TopoIQ resamples to this spacing inside your boundary.",
+                 "TerrainIQ resamples to this spacing inside your boundary.",
         )
         contour_minor = sc2.slider("Minor contour (m)", min_value=0.1, max_value=2.0, value=0.5, step=0.1)
         contour_major = sc3.slider("Major contour (m)", min_value=0.5, max_value=10.0, value=1.0, step=0.5)
@@ -641,10 +641,10 @@ with left:
             st.error(_area_limit_message(_site_area_ha))
 
         _topo_user = st.session_state.get("pvm_user_id", "guest")
-        _topo_left = remaining(_topo_user, "topoiq")
+        _topo_left = remaining(_topo_user, "terrainiq")
 
-        if is_over_limit(_topo_user, "topoiq"):
-            show_paywall("TopoIQ")
+        if is_over_limit(_topo_user, "terrainiq"):
+            show_paywall("TerrainIQ")
         else:
             if _topo_left <= 1:
                 st.warning(f"⚠️ {_topo_left} free analysis remaining after this run.")
@@ -893,13 +893,13 @@ with right:
             f"@ GCR {GCR_SCREEN_LO:.2f}–{GCR_SCREEN_HI:.2f} (1P screening). "
             f"{capacity_footnote_global()}"
         )
-        st.caption(module_confidence_label("topoiq"))
+        st.caption(module_confidence_label("terrainiq"))
 
         with st.spinner("Fetching cross-module yield reference…"):
             _yield_xref = fetch_yield_cross_ref_bundle(lat_c, lon_c)
-        _yield_xref_txt = yield_cross_ref_topoiq_text(_yield_xref)
+        _yield_xref_txt = yield_cross_ref_terrainiq_text(_yield_xref)
         if _yield_xref_txt:
-            st.markdown(yield_cross_ref_topoiq_html(_yield_xref), unsafe_allow_html=True)
+            st.markdown(yield_cross_ref_terrainiq_html(_yield_xref), unsafe_allow_html=True)
 
         if _extras.get("cross_row_mean") is not None:
             st.caption(
@@ -997,7 +997,7 @@ with right:
                 mount_type=None,
                 boundary_provenance=_boundary_provenance(_boundaries, _proj),
                 prepared_by=prepared_by_line(),
-                module_confidence=module_confidence_label("topoiq"),
+                module_confidence=module_confidence_label("terrainiq"),
                 extras=_extras,
                 siteiq_run_cache=st.session_state.get("siteiq_run_cache"),
                 project_row_id=st.session_state.get("pvm_project_row_id"),

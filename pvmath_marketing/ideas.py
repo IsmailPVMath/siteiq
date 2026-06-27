@@ -63,7 +63,7 @@ IDEA_SEEDS: dict[str, list[tuple[str, str, str]]] = {
     ],
     "product": [
         ("SiteIQ PDF", "One report for internal gate.", "Solar + terrain + flags."),
-        ("TopoIQ ZIP", "LandXML + georef DXF + reference JSON.", "Download immediately after run."),
+        ("TerrainIQ ZIP", "LandXML + georef DXF + reference JSON.", "Download immediately after run."),
         ("YieldIQ four configs", "1P/2P × fixed/tracker.", "Compare at your GCR."),
         ("Project Setup once", "All modules inherit boundary.", "Stop re-entering coordinates."),
         ("Knowledge Centre", "Public engineering guides.", "SEO + sales enablement."),
@@ -71,12 +71,12 @@ IDEA_SEEDS: dict[str, list[tuple[str, str, str]]] = {
         ("Free tier", "5 runs per module monthly.", "Try on real boundary."),
         ("Professional tier", "50 runs + engineering manual.", "Teams in active pipelines."),
         ("Contour clip fix", "CAD exports respect parcel.", "No grid edge spikes."),
-        ("TopoIQ cross-row", "Tracker verdict review zones.", "Beyond mean slope."),
+        ("TerrainIQ cross-row", "Tracker verdict review zones.", "Beyond mean slope."),
         ("SiteIQ regulatory flags", "Country-aware pointers.", "Not legal advice."),
         ("Yield cross-ref", "Modules reference each other.", "Consistent location context."),
     ],
     "pain": [
-        ("Bad terrain late", "Slope surprise after option payment.", "TopoIQ before commitment."),
+        ("Bad terrain late", "Slope surprise after option payment.", "TerrainIQ before commitment."),
         ("Inconsistent yield", "Different GCR in every spreadsheet.", "YieldIQ normalises comparison."),
         ("KMZ-only handoff", "Civil redraws everything.", "CAD export package."),
         ("Portfolio chaos", "50 pins, no ranking method.", "SiteIQ + score conversation."),
@@ -93,7 +93,7 @@ IDEA_SEEDS: dict[str, list[tuple[str, str, str]]] = {
         ("Texas rolling site", "Mean slope good; cross-row flagged review.", "LiDAR scoped to problem zones."),
         ("Spain high GHI", "Resource strong; terrain screening still ran.", "Go with grading note."),
         ("Germany Agri-PV", "Lower density band applied.", "Regulatory checklist started."),
-        ("India pin screening", "No boundary yet; sparse terrain sample.", "TopoIQ confirmed after KMZ."),
+        ("India pin screening", "No boundary yet; sparse terrain sample.", "TerrainIQ confirmed after KMZ."),
         ("100 MWp config choice", "SAT 1P +17% vs fixed at screening GCR.", "PVsyst later for bankable."),
         ("EPC CAD workflow", "Georef LandXML in Civil 3D.", "SITE_BOUNDARY on correct layer."),
         ("Portfolio week", "12 sites screened; 3 advanced.", "Time saved vs manual pack."),
@@ -112,7 +112,7 @@ IDEA_SEEDS: dict[str, list[tuple[str, str, str]]] = {
         ("Parcel linework layer", "SITE_BOUNDARY in DXF.", "Not standalone boundary file."),
         ("Slope PDF map", "North arrow + scale.", "Client-ready terrain page."),
         ("Multi-parcel export", "Merged TIN warning.", "Continuous boundary tip."),
-        ("OpenTopoData vs GLO-30", "SiteIQ sparse vs TopoIQ confirmed.", "When to run TopoIQ."),
+        ("OpenTopoData vs GLO-30", "SiteIQ sparse vs TerrainIQ confirmed.", "When to run TerrainIQ."),
         ("Grid auto-coarsen", "Huge sites optional coarsen.", "Default 5 m for layout."),
         ("Gaussian smooth slopes", "DEM noise handling.", "Screening not survey."),
         ("Terrarium tiles", "AWS elevation source.", "Disclosed in docs."),
@@ -160,7 +160,7 @@ def _cta_for_category(cat_key: str) -> str:
         "product": f"Try free: {BRAND['app_url']}",
         "pain": f"Screen before survey spend: {BRAND['app_url']}",
         "case": f"Run your anonymised site: {BRAND['app_url']}",
-        "terrain": f"TopoIQ guide: {BRAND['guides']}landxml-dxf-solar.html",
+        "terrain": f"TerrainIQ guide: {BRAND['guides']}landxml-dxf-solar.html",
         "yield": f"YieldIQ on your coordinates: {BRAND['app_url']}",
         "economics": f"Compare plans: {BRAND['website']}#pricing",
     }
@@ -188,7 +188,7 @@ def build_100_ideas() -> list[dict]:
             full = (
                 f"{hook}\n\n{angle}\n\n"
                 f"{BRAND['name']} supports utility-scale ground-mount screening — "
-                f"SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.\n\n"
+                f"SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.\n\n"
                 f"{_cta_for_category(cat_key)}"
             )
             ideas.append({

@@ -1,6 +1,6 @@
 """
 pages/project.py — PVMath Project Setup Hub
-Shared project context for SiteIQ, TopoIQ, and YieldIQ.
+Shared project context for SiteIQ, TerrainIQ, and YieldIQ.
 Stores to st.session_state["pvm_project"].
 """
 
@@ -249,7 +249,7 @@ def _render_proj_boundary_manager():
         )
     else:
         st.caption(
-            "Site parcels pre-selected. TopoIQ and SiteIQ use checked boundaries."
+            "Site parcels pre-selected. TerrainIQ and SiteIQ use checked boundaries."
         )
 
     if hidden_n:
@@ -458,7 +458,7 @@ def _render_proj_map_fragment(is_full: bool, show_search: bool, coord_center):
     else:
         st.caption(
             "**Single-click** the map to place the site pin (search also drops a pin). "
-            "Boundary drawing and TopoIQ require **Full Mode** above."
+            "Boundary drawing and TerrainIQ require **Full Mode** above."
         )
         map_result = st_folium_pin_drop(
             m,
@@ -628,7 +628,7 @@ st.markdown("""
               letter-spacing:0.12em;color:#1d9e52;margin-bottom:0.3rem;">Project Setup</div>
   <h1 style="font-size:2rem;font-weight:800;color:#1a2e1a;margin:0 0 0.3rem 0;">📋 Project Setup</h1>
   <p style="color:#5a7a5a;font-size:1rem;margin:0;">
-    Enter project details once — SiteIQ, TopoIQ, and YieldIQ will use this context automatically.
+    Enter project details once — SiteIQ, TerrainIQ, and YieldIQ will use this context automatically.
   </p>
 </div>
 """, unsafe_allow_html=True)
@@ -701,7 +701,7 @@ if True:
           <p style="margin:0;font-size:0.84rem;color:#5a7a5a;line-height:1.5;">
             <strong>Single-click</strong> to drop a site pin — no boundary drawing in this mode.
             Enables <strong>SiteIQ</strong> and <strong>YieldIQ</strong>.
-            Switch to Full Mode for polygons and TopoIQ.</p>
+            Switch to Full Mode for polygons and TerrainIQ.</p>
         </div>
         """, unsafe_allow_html=True)
         if st.button("✓ Select Quick Mode" if is_q else "Select Quick Mode",
@@ -720,7 +720,7 @@ if True:
             🗺️ Full Mode — Site Boundary</h4>
           <p style="margin:0;font-size:0.84rem;color:#5a7a5a;line-height:1.5;">
             Draw the site boundary polygon. Enables <strong>all 3 modules</strong> including
-            <strong>TopoIQ</strong> terrain extraction. For engineering work.</p>
+            <strong>TerrainIQ</strong> terrain extraction. For engineering work.</p>
         </div>
         """, unsafe_allow_html=True)
         if st.button("✓ Select Full Mode" if is_f else "Select Full Mode",
@@ -964,14 +964,15 @@ if True:
             }
             from pvmath_topo_cache import boundary_fingerprint_from_boundaries
             _new_fp = boundary_fingerprint_from_boundaries(_bounds_save) if is_full else ""
-            _old_cache = st.session_state.get("pvm_project", {}).get("topoiq_cache")
+            _proj = st.session_state.get("pvm_project", {})
+            _old_cache = _proj.get("terrainiq_cache") or _proj.get("topoiq_cache")
             if (
                 _old_cache
                 and _new_fp
                 and _old_cache.get("boundary_fp") == _new_fp
                 and _old_cache.get("analysis_mode") == "parcels"
             ):
-                _proj_data["topoiq_cache"] = _old_cache
+                _proj_data["terrainiq_cache"] = _old_cache
             st.session_state["pvm_project"] = _proj_data
             st.session_state["proj_edit_mode"] = False
             clear_blank_project_flag(st.session_state)
@@ -1097,18 +1098,18 @@ if _saved.get("lat") is not None:
             st.switch_page("pages/yieldiq.py")
     with _nc3:
         if _is_quick:
-            _topo_lbl = "⛰️ TopoIQ — Full Mode only"
+            _topo_lbl = "⛰️ TerrainIQ — Full Mode only"
         elif not topo_ok:
-            _topo_lbl = "⛰️ TopoIQ — needs boundary"
+            _topo_lbl = "⛰️ TerrainIQ — needs boundary"
         else:
-            _topo_lbl = "⛰️ TopoIQ"
-        if st.button(_topo_lbl, use_container_width=True, disabled=not topo_ok, key="sb_topoiq"):
-            st.switch_page("pages/topoiq.py")
+            _topo_lbl = "⛰️ TerrainIQ"
+        if st.button(_topo_lbl, use_container_width=True, disabled=not topo_ok, key="sb_terrainiq"):
+            st.switch_page("pages/terrainiq.py")
 
     if _is_quick:
-        st.caption("TopoIQ is only available in Full Mode with a drawn site boundary.")
+        st.caption("TerrainIQ is only available in Full Mode with a drawn site boundary.")
     elif not topo_ok:
-        st.caption("TopoIQ requires a drawn site boundary. Update project below to add one.")
+        st.caption("TerrainIQ requires a drawn site boundary. Update project below to add one.")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # FOOTER
@@ -1116,7 +1117,7 @@ if _saved.get("lat") is not None:
 st.markdown("""
 <div style="margin-top:2rem;padding-top:1rem;border-top:1px solid #e0e8e0;
             font-size:0.78rem;color:#8a9a8a;text-align:center;">
-  Module 1 of 3 · SiteIQ &nbsp;·&nbsp; Module 2 of 3 · TopoIQ &nbsp;·&nbsp; Module 3 of 3 · YieldIQ<br>
+  Module 1 of 3 · SiteIQ &nbsp;·&nbsp; Module 2 of 3 · TerrainIQ &nbsp;·&nbsp; Module 3 of 3 · YieldIQ<br>
   PVMath-Solar Site Intelligence Platform · pvmath.com
 </div>
 """, unsafe_allow_html=True)

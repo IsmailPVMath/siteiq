@@ -10,7 +10,7 @@
 
 When a user defines a site boundary, PVMath should **automatically**:
 
-1. Pull base maps (OSM, satellite, DEM via TopoIQ)
+1. Pull base maps (OSM, satellite, DEM via TerrainIQ)
 2. Detect mapped constraints (roads, rail, buildings, water, forest, power lines)
 3. Apply configurable engineering setbacks
 4. Generate **buildable polygons**
@@ -58,7 +58,7 @@ This feeds LayoutIQ (realistic capacity), YieldIQ (shading context), and the PVM
 
 | Item | Status |
 |------|--------|
-| Merge TopoIQ slope mask into GIS buildable (not tracker-only) | Planned |
+| Merge TerrainIQ slope mask into GIS buildable (not tracker-only) | Planned |
 | Elevation / aspect overlays on constraint map | Planned |
 | DEM hillshade base layer | Planned |
 | Distance labels from boundary to nearest constraint | Planned |
@@ -103,7 +103,7 @@ Uses existing `pvmath_workflow/slope_restrictions.py` + `pvmath_topo_engine.py`.
 
 ## Architecture notes
 
-- **Do not copy Glint Solar** — PVMath differentiators: global DEM routing (EU/US/world), integrated LayoutIQ string geometry, TopoIQ authoritative terrain, unified PVMath score with terrain cap.
+- **Do not copy Glint Solar** — PVMath differentiators: global DEM routing (EU/US/world), integrated LayoutIQ string geometry, TerrainIQ authoritative terrain, unified PVMath score with terrain cap.
 - **OSM disclaimer** always shown — coverage gaps are common; setbacks are engineering assumptions.
 - **Overpass timeout** default 90s; endpoint timeout 120s (`PVMATH_GIS_TIMEOUT`).
 - Buildable computation reuses Shapely patterns from `api/routers/projects.py`.

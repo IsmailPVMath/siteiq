@@ -2,7 +2,7 @@
 PVMath Usage Tracker
 --------------------
 Tracks free-tier analysis attempts per user per app.
-Limit: 4 free analyses per app (SiteIQ and TopoIQ counted separately).
+Limit: 4 free analyses per app (SiteIQ and TerrainIQ counted separately).
 
 NOTE: Uses a local JSON file — works for MVP / local hosting.
 For Streamlit Cloud production, replace _load/_save with Supabase or

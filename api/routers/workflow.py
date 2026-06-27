@@ -90,7 +90,7 @@ def _tracker_slope_restrictions(body) -> list:
 
 
 def _lonlat_polys(boundary, boundaries):
-    """Normalize request points into a list of (lon, lat) rings for TopoIQ."""
+    """Normalize request points into a list of (lon, lat) rings for TerrainIQ."""
     polys = []
     for ring in boundaries or []:
         pts = [(p.lon, p.lat) for p in ring]
@@ -168,7 +168,7 @@ async def workflow_screen(
     """
     Unified workflow step 1 — solar, flood, regulatory, capacity.
 
-    No terrain slope here; TopoIQ is the only terrain source in the React workflow.
+    No terrain slope here; TerrainIQ is the only terrain source in the React workflow.
     """
     if user.access_token and is_over_limit(user.user_id, SCREEN_APP, user.access_token):
         raise HTTPException(status_code=429, detail=_limit_detail(user))
@@ -219,7 +219,7 @@ async def workflow_score(
     body: WorkflowScoreRequest,
     _user: AuthUser = Depends(get_current_user),
 ):
-    """Combine screening partial scores with TopoIQ terrain_score for the final PVMath score."""
+    """Combine screening partial scores with TerrainIQ terrain_score for the final PVMath score."""
     comps = body.score_components
     scored = unified_pvmath_score(
         solar_score=int(comps.get("solar", 55)),
@@ -234,7 +234,7 @@ async def workflow_score(
         components=scored["components"],
         verdict_detail=(
             "PVMath score blends the SiteIQ screening ratings (solar, flood, land, regulatory) "
-            f"with the authoritative TopoIQ terrain score ({body.terrain_score}/100). Terrain "
+            f"with the authoritative TerrainIQ terrain score ({body.terrain_score}/100). Terrain "
             "caps the overall score on challenging sites — strong solar cannot mask poor slope "
             "distribution. Capacity and yield are reported separately in LayoutIQ and YieldIQ."
         ),
@@ -453,7 +453,7 @@ async def workflow_terrain_mesh(
     body: WorkflowTerrainMeshRequest,
     _user: AuthUser = Depends(get_current_user),
 ):
-    """Coarse TopoIQ terrain mesh for browser-side 3D rendering."""
+    """Coarse TerrainIQ terrain mesh for browser-side 3D rendering."""
     polygons = _lonlat_polys(body.boundary, body.boundaries)
     if not polygons:
         raise HTTPException(status_code=400, detail="A site boundary is required for terrain mesh.")
@@ -489,7 +489,7 @@ async def workflow_pvmath_report_pdf(
     body: WorkflowPvmathReportRequest,
     _user: AuthUser = Depends(get_current_user),
 ):
-    """Unified A4 PDF: SiteIQ screening → TopoIQ → LayoutIQ → YieldIQ → overall score."""
+    """Unified A4 PDF: SiteIQ screening → TerrainIQ → LayoutIQ → YieldIQ → overall score."""
     loop = asyncio.get_running_loop()
     try:
         pdf_bytes = await asyncio.wait_for(

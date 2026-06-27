@@ -13,8 +13,8 @@ MODULES = {
         "time": "≤ 4 minutes typical",
         "data": "PVGIS JRC · OpenTopoData (EU-DEM / SRTM) · OpenStreetMap",
     },
-    "topoiq": {
-        "name": "TopoIQ",
+    "terrainiq": {
+        "name": "TerrainIQ",
         "tagline": "Screen terrain before you order the topo survey.",
         "purpose": "Copernicus GLO-30 terrain screening inside project boundary.",
         "inputs": "Boundary from Project Setup (draw or KMZ/KML) · analysis grid (default 5 m)",
@@ -46,7 +46,7 @@ PRICING = (
 )
 
 ROADMAP = [
-    ("Live", "SiteIQ · TopoIQ · YieldIQ"),
+    ("Live", "SiteIQ · TerrainIQ · YieldIQ"),
     ("Next", "RevenueIQ (EEG / tariff revenue) · LayoutIQ (auto layout + BOM)"),
     ("Future", "ProcureIQ · FieldIQ"),
 ]
@@ -67,7 +67,7 @@ MANUAL_WORKFLOW = [
 
 PVMATH_WORKFLOW = [
     "One project setup — location, boundary, country",
-    "SiteIQ → TopoIQ → YieldIQ share the same site context",
+    "SiteIQ → TerrainIQ → YieldIQ share the same site context",
     "Screening PDFs and CAD starter kit in minutes",
     "Consistent methodology and disclaimers built in",
 ]
@@ -94,7 +94,7 @@ TOPO_DEMO_STEPS = [
         "bullets": [
             "Create project name + country",
             "Upload KMZ or draw boundary on map",
-            "Confirm area (ha) — inherited by TopoIQ",
+            "Confirm area (ha) — inherited by TerrainIQ",
         ],
         "visual": "Screenshot: Project Setup boundary on map",
         "talk": "Emphasise one setup for all modules — no re-entry.",
@@ -106,7 +106,7 @@ TOPO_DEMO_STEPS = [
             "GLO-30 native ~30 m — honest resampling",
             "Select enabled parcels from KMZ layers",
         ],
-        "visual": "Screenshot: TopoIQ boundary manager + layer toggles",
+        "visual": "Screenshot: TerrainIQ boundary manager + layer toggles",
         "talk": "Explain screening grid vs survey-grade LiDAR.",
     },
     {
@@ -116,7 +116,7 @@ TOPO_DEMO_STEPS = [
             "Fixed tilt vs tracker engineering verdicts",
             "Review zones when cross-row grades exceed thresholds",
         ],
-        "visual": "Screenshot: TopoIQ slope map + metrics panel",
+        "visual": "Screenshot: TerrainIQ slope map + metrics panel",
         "talk": "Focus on tracker cross-row p95 — not just mean slope.",
     },
     {
@@ -145,9 +145,9 @@ SALES_DEMO_STEPS = [
         "visual": "Screenshot: SiteIQ suitability score + PDF",
     },
     {
-        "title": "TopoIQ — when boundary exists",
+        "title": "TerrainIQ — when boundary exists",
         "bullets": ["Full Mode boundary/KMZ", "Terrain verdict + exports", "CAD starter kit"],
-        "visual": "Screenshot: TopoIQ slope heatmap",
+        "visual": "Screenshot: TerrainIQ slope heatmap",
     },
     {
         "title": "YieldIQ — configuration compare",

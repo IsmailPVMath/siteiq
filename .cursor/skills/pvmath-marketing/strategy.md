@@ -47,7 +47,7 @@ Success metrics (track monthly):
 
 | Us | Typical alternative |
 |----|---------------------|
-| One Project Setup → SiteIQ + TopoIQ + YieldIQ | Disconnected GIS + Excel + manual PVsyst |
+| One Project Setup → SiteIQ + TerrainIQ + YieldIQ | Disconnected GIS + Excel + manual PVsyst |
 | Honest GLO-30 (~30 m) vs 5 m grid disclosure | Oversold “high-res DEM” |
 | LandXML/DXF + **SITE_BOUNDARY** parcel linework | KMZ-only handoff |
 | Cross-row slope for trackers | Mean slope only |
@@ -68,7 +68,7 @@ Screening → terrain → yield. Global. Freemium.
 
 **Level 2 — Module**  
 - SiteIQ: go/no-go PDF, PVMath Score (screening only)  
-- TopoIQ: terrain + CAD before LiDAR  
+- TerrainIQ: terrain + CAD before LiDAR  
 - YieldIQ: fixed vs tracker at your GCR  
 
 **Level 3 — Feature / guide**  
@@ -95,7 +95,7 @@ Never lead with Level 3 on cold audience; lead with pain (Level 1 hook) then Lev
 
 ## 6. Content pillars (rotate)
 
-1. **Terrain before LiDAR** — TopoIQ, CAD export  
+1. **Terrain before LiDAR** — TerrainIQ, CAD export  
 2. **Honest DEM** — GLO-30 native vs 5 m grid  
 3. **Tracker cross-row** — clearance / grading dialogue  
 4. **Portfolio screening** — SiteIQ, multiple sites  
@@ -121,7 +121,7 @@ LinkedIn / Guide / Email
         ↓
   Free account (5 runs/module)
         ↓
-  Habit: Project Setup + TopoIQ ZIP
+  Habit: Project Setup + TerrainIQ ZIP
         ↓
   Pro (50 runs, manual, support)
         ↓

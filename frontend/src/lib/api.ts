@@ -1,11 +1,11 @@
 import type { GateAnalyzeRequest, GateAnalyzeResponse, MeResponse } from "../types/gate";
 import type { ProjectSetupValidateResponse } from "../types/projectSetup";
 import type {
-  TopoIQAnalyzeRequest,
-  TopoIQAnalyzeResponse,
+  TerrainIQAnalyzeRequest,
+  TerrainIQAnalyzeResponse,
   YieldIQAnalyzeRequest,
   YieldIQAnalyzeResponse,
-} from "../types/topoiq";
+} from "../types/terrainiq";
 import type {
   WorkflowGisAnalysisRequest,
   WorkflowGisAnalysisResponse,
@@ -192,8 +192,8 @@ export function runGateAnalysis(token: string, body: GateAnalyzeRequest) {
   });
 }
 
-export function analyzeTopo(token: string, body: TopoIQAnalyzeRequest) {
-  return apiFetch<TopoIQAnalyzeResponse>("/api/v1/topoiq/analyze", token, {
+export function analyzeTopo(token: string, body: TerrainIQAnalyzeRequest) {
+  return apiFetch<TerrainIQAnalyzeResponse>("/api/v1/terrainiq/analyze", token, {
     method: "POST",
     body: JSON.stringify(body),
   });
@@ -406,10 +406,10 @@ async function downloadBlob(
   return res.blob();
 }
 
-export function topoReportPdf(token: string, body: TopoIQAnalyzeRequest) {
-  return downloadBlob("/api/v1/topoiq/report-pdf", token, body, "application/pdf");
+export function topoReportPdf(token: string, body: TerrainIQAnalyzeRequest) {
+  return downloadBlob("/api/v1/terrainiq/report-pdf", token, body, "application/pdf");
 }
 
-export function topoExportsZip(token: string, body: TopoIQAnalyzeRequest) {
-  return downloadBlob("/api/v1/topoiq/exports", token, body, "application/zip");
+export function topoExportsZip(token: string, body: TerrainIQAnalyzeRequest) {
+  return downloadBlob("/api/v1/terrainiq/exports", token, body, "application/zip");
 }

@@ -75,7 +75,7 @@ Provide 3 slogan options in main version; Variation A = shortest only; Variation
 
 **Problem:** [What was slow, expensive, or uncertain before screening]
 
-**Approach:** [SiteIQ / TopoIQ / YieldIQ — what was run, boundary vs pin]
+**Approach:** [SiteIQ / TerrainIQ / YieldIQ — what was run, boundary vs pin]
 
 **Outcome:** [Time saved, decision made, LiDAR deferred/ordered, config chosen]
 
@@ -118,7 +118,7 @@ Variation B: add one bullet list of export formats or metrics.
 | Try free | https://siteiq.pvmath.com |
 | Knowledge Centre | https://pvmath.com/guides/ |
 | Contact / upgrade | contact@pvmath.com |
-| TopoIQ CAD guide | https://pvmath.com/guides/landxml-dxf-solar.html |
+| TerrainIQ CAD guide | https://pvmath.com/guides/landxml-dxf-solar.html |
 | Screening vs survey | https://pvmath.com/guides/screening-vs-survey.html |
 
 ---

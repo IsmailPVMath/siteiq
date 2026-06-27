@@ -99,7 +99,7 @@ def run_gis_analysis(req: GisAnalysisRequest) -> Dict[str, Any]:
         "sources": ["OpenStreetMap Overpass", "PVMath buildable engine"],
         "disclaimer": constraints.get("disclaimer", ""),
         "note": (
-            "Terrain slope exclusions are computed separately in TopoIQ / LayoutIQ. "
+            "Terrain slope exclusions are computed separately in TerrainIQ / LayoutIQ. "
             "This analysis uses mapped OSM features with configurable setbacks."
         ),
     }

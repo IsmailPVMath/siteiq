@@ -20,7 +20,7 @@ def draft_siteiq(variant: int = 0) -> dict[str, str]:
     bodies = [
         f"""Most early-stage failures are visible before LiDAR — if you screen consistently.
 
-**SiteIQ** combines PVGIS solar resource, terrain sampling (or TopoIQ-confirmed GLO-30), flood heuristics, and country-aware regulatory pointers into one screening report and PDF.
+**SiteIQ** combines PVGIS solar resource, terrain sampling (or TerrainIQ-confirmed GLO-30), flood heuristics, and country-aware regulatory pointers into one screening report and PDF.
 
 Use the **PVMath Score** for portfolio ranking — a deterministic screening index, not a bankability rating.
 
@@ -48,14 +48,14 @@ Built by a solar engineer who got tired of rebuilding the same pre-feasibility p
     }
 
 
-def draft_topoiq(variant: int = 0) -> dict[str, str]:
+def draft_terrainiq(variant: int = 0) -> dict[str, str]:
     hooks = [
         "LiDAR is the right answer — but not on every site on day one.",
         "Civil asked for contours and parcel linework. The KMZ only had a boundary.",
         "Mean slope looked fine. Cross-row grade told a different story for trackers.",
     ]
     bodies = [
-        f"""**TopoIQ** turns your site boundary into screening-grade terrain: Copernicus GLO-30, **5 m layout grid** (native DEM ~30 m — we disclose both), slope maps, cross-row statistics for single-axis trackers, and engineering verdicts.
+        f"""**TerrainIQ** turns your site boundary into screening-grade terrain: Copernicus GLO-30, **5 m layout grid** (native DEM ~30 m — we disclose both), slope maps, cross-row statistics for single-axis trackers, and engineering verdicts.
 
 Export **LandXML**, georef **DXF** with **SITE_BOUNDARY** linework, and a terrain PDF — UTM + US Survey Feet for US projects.
 
@@ -66,9 +66,9 @@ Not pile schedules or cut/fill quantities — early constructability and CAD sta
 {BRAND['app_url']}""",
         f"""Before you order topo survey, ask: does mean slope hide rolling terrain?
 
-TopoIQ reports mean and max slope plus **cross-row** metrics for tracker screening — where clearance and grading conversations start.
+TerrainIQ reports mean and max slope plus **cross-row** metrics for tracker screening — where clearance and grading conversations start.
 
-{BRAND['name']} TopoIQ — terrain before LiDAR.""",
+{BRAND['name']} TerrainIQ — terrain before LiDAR.""",
     ]
     insights = [
         "Contour DXF lines are clipped to the site polygon — no rectangular grid artifacts in CAD.",
@@ -79,7 +79,7 @@ TopoIQ reports mean and max slope plus **cross-row** metrics for tracker screeni
         "hook": hooks[i],
         "body": bodies[i % len(bodies)],
         "insight": insights[i % len(insights)],
-        "soft_mention": f"{BRAND['name']} TopoIQ — from KMZ to CAD-ready screening outputs.",
+        "soft_mention": f"{BRAND['name']} TerrainIQ — from KMZ to CAD-ready screening outputs.",
     }
 
 
@@ -132,7 +132,7 @@ def draft_utility_problems(variant: int = 0) -> dict[str, str]:
 → Yield compared across inconsistent GCR assumptions  
 → LiDAR ordered before the site earns it  
 
-**PVMath** packages one project setup into **SiteIQ**, **TopoIQ**, and **YieldIQ** — screening-grade, engineer-written outputs.
+**PVMath** packages one project setup into **SiteIQ**, **TerrainIQ**, and **YieldIQ** — screening-grade, engineer-written outputs.
 
 {BRAND['tagline']} · {BRAND['website']}""",
         f"""Land acquisition optimises for hectares. Engineering optimises for constructability. Finance optimises for speed.
@@ -157,13 +157,13 @@ We built {BRAND['name']} for that gap — ground-mount only, global datasets, ho
 def draft_founder(variant: int = 0) -> dict[str, str]:
     hooks = [
         "Building PVMath alongside a full-time solar engineering job — weeknights and honest scope.",
-        "Every feature in SiteIQ, TopoIQ, and YieldIQ exists because a real screening step was painful.",
+        "Every feature in SiteIQ, TerrainIQ, and YieldIQ exists because a real screening step was painful.",
         "Shipping screening-grade outputs, not black-box scores — that was the product decision.",
     ]
     bodies = [
         f"""I'm {BRAND['founder']} — solar engineer, building **{BRAND['name']}** as a side project while working in utility-scale PV.
 
-Live today: **SiteIQ** (combined screening), **TopoIQ** (terrain + CAD exports), **YieldIQ** (configuration yield). One Project Setup, three modules.
+Live today: **SiteIQ** (combined screening), **TerrainIQ** (terrain + CAD exports), **YieldIQ** (configuration yield). One Project Setup, three modules.
 
 Recent focus: contour clipping for clean Civil 3D imports, Knowledge Centre for public engineering guides, Pro-tier customer manual — no proprietary formulas published.
 
@@ -193,7 +193,7 @@ If you screen utility-scale sites, I'd value your feedback on what we ship next.
 
 GENERATORS = {
     "siteiq-solar-site-screening": draft_siteiq,
-    "topoiq-terrain-slope-analysis": draft_topoiq,
+    "terrainiq-terrain-slope-analysis": draft_terrainiq,
     "yieldiq-preliminary-yield": draft_yieldiq,
     "utility-scale-development-problems": draft_utility_problems,
     "founder-build-in-public": draft_founder,

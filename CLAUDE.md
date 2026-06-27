@@ -25,14 +25,14 @@
 ## Live Assets
 | Asset | URL / target |
 |---|---|
-| **Production app** (SiteIQ + TopoIQ) | https://siteiq.pvmath.com · https://topoiq.pvmath.com |
+| **Production app** (SiteIQ + TerrainIQ) | https://siteiq.pvmath.com · https://topoiq.pvmath.com |
 | **Production Railway project** | `exemplary-balance` — deploys **`main`** only |
 | **Staging Railway project** | `cozy-enjoyment` — deploys **`staging`** branch |
 | GitHub repo | https://github.com/IsmailPVMath/siteiq |
 | Website (GitHub Pages) | https://pvmath.com → `index.html` on **`main`** |
 | Local dev folder | ~/Desktop/solarscout/ |
 
-**Production is frozen by default.** Only push to `main` when explicitly promoting a tested staging release. Day-to-day TopoIQ / app fixes go to **`staging`** first.
+**Production is frozen by default.** Only push to `main` when explicitly promoting a tested staging release. Day-to-day TerrainIQ / app fixes go to **`staging`** first.
 
 **Railway branch wiring** (Settings → Service → Source → Branch):
 | Railway project | Branch | Role |
@@ -47,11 +47,11 @@ Copy production env vars (Supabase, Brevo, etc.) into staging; use the same Supa
 |---|---|---|
 | A | @ | 185.199.111.153 (+ the other 3 GitHub Pages IPs — website) |
 | CNAME | siteiq | `<railway-generated>.up.railway.app` |
-| CNAME | topoiq | `<railway-generated>.up.railway.app` (different generated host, same underlying deployment) |
+| CNAME | terrainiq | `<railway-generated>.up.railway.app` (different generated host, same underlying deployment) |
 | CNAME | www | ismailpvmath.github.io |
-| TXT | _railway-verify.siteiq / _railway-verify.topoiq | Railway domain-verification tokens |
+| TXT | _railway-verify.siteiq / _railway-verify.terrainiq | Railway domain-verification tokens |
 
-These `siteiq`/`topoiq` CNAMEs are true reverse-proxy records (Railway terminates the connection directly) — no redirect, no stripped query strings.
+These `siteiq`/`terrainiq` CNAMEs are true reverse-proxy records (Railway terminates the connection directly) — no redirect, no stripped query strings.
 
 ---
 
@@ -59,7 +59,7 @@ These `siteiq`/`topoiq` CNAMEs are true reverse-proxy records (Railway terminate
 | # | Name | Status | Description |
 |---|---|---|---|
 | 1 | **SiteIQ** | ✅ Live | Rapid site screening — solar, terrain, flood, regulatory, capacity, PDF |
-| 2 | **TopoIQ** | ✅ Live | Terrain/slope analysis, CAD export (DXF/LandXML), PDF |
+| 2 | **TerrainIQ** | ✅ Live | Terrain/slope analysis, CAD export (DXF/LandXML), PDF |
 | 3 | **YieldIQ** | ✅ Live | Pre-layout yield estimation, PVGIS-based, PDF |
 | 4 | **RevenueIQ** | 🔜 Coming Soon | EEG / feed-in tariff revenue calculator, Agri-PV bonus |
 | 5 | **LayoutIQ** | 🔜 Admin-only | Auto layout + BOM generation — not public yet |
@@ -149,7 +149,7 @@ st.session_state["proj_pin_lat"] / ["proj_pin_lon"] / ["proj_pin_label"]
 reverse_geocode(lat, lon)  # status bar + saved as location_label on Save Project
 ```
 - **Quick Mode:** single-click pin — SiteIQ + YieldIQ only
-- **Full Mode:** draw polygon — enables TopoIQ; map in `@st.fragment` to avoid full-page dim while drawing
+- **Full Mode:** draw polygon — enables TerrainIQ; map in `@st.fragment` to avoid full-page dim while drawing
 
 ### Auth forms
 - Register + login wrapped in `st.form` — Enter submits
@@ -207,7 +207,7 @@ st.rerun()  # force map to redraw after geocoding
 cd ~/Desktop/solarscout
 git checkout staging
 git pull origin staging
-# … fix TopoIQ / app issues …
+# … fix TerrainIQ / app issues …
 git add -A && git commit -m "your message"
 git push origin staging
 # → Railway staging (cozy-enjoyment) auto-deploys
@@ -220,7 +220,7 @@ git checkout main
 git pull origin main
 git merge staging   # or cherry-pick specific commits
 git push origin main
-# → Railway production (exemplary-balance) auto-deploys siteiq / topoiq
+# → Railway production (exemplary-balance) auto-deploys siteiq / terrainiq
 ```
 
 ### Website (pvmath.com)

@@ -1,5 +1,5 @@
 """
-streamlit-folium Draw plugin — shared contract for Project Setup & TopoIQ.
+streamlit-folium Draw plugin — shared contract for Project Setup & TerrainIQ.
 
 REGRESSION GUARD (fixed 4× as of 2026-06): Do NOT subscribe to ``all_drawings`` or
 ``last_clicked`` while the Folium Draw polygon tool is active. Those events fire on
@@ -101,7 +101,7 @@ def drawing_to_polygon_latlon(drawing) -> Optional[list]:
 
 
 def drawing_to_polygon_lonlat(drawing) -> Optional[list]:
-    """Completed Draw polygon as [(lon, lat), ...] (TopoIQ)."""
+    """Completed Draw polygon as [(lon, lat), ...] (TerrainIQ)."""
     if not drawing or not isinstance(drawing, dict):
         return None
     geom = drawing.get("geometry", {})

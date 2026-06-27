@@ -9,4 +9,4 @@
 
 **CTA:** siteiq.pvmath.com
 
-**Hashtags:** #GroundMountSolar #SolarEPC #SiteIQ #TopoIQ #YieldIQ
+**Hashtags:** #GroundMountSolar #SolarEPC #SiteIQ #TerrainIQ #YieldIQ

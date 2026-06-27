@@ -22,7 +22,7 @@ Use this prompt in Cursor (or any LLM) to regenerate or extend PVMath `.pptx` de
 | Deck | Duration | Audience | Focus |
 |------|----------|----------|-------|
 | **sales-15** | ~15 min | EPC pre-sales, developers | All three modules + demo flow |
-| **topoiq-30** | ~30 min | Civil, layout, structural | GLO-30, metrics, PDF/CAD exports |
+| **terrainiq-30** | ~30 min | Civil, layout, structural | GLO-30, metrics, PDF/CAD exports |
 
 ## Slide requirements
 
@@ -41,24 +41,24 @@ python scripts/generate_pvmath_deck.py --all
 python scripts/generate_pvmath_deck.py --deck sales-15 --presenter "Your Name"
 ```
 
-Output: `docs/decks/PVMath_Sales_15min.pptx`, `docs/decks/PVMath_TopoIQ_30min.pptx`
+Output: `docs/decks/PVMath_Sales_15min.pptx`, `docs/decks/PVMath_TerrainIQ_30min.pptx`
 
 Edit slide content in:
 - `pvmath_deck/content.py` — facts, demo steps, Q&A
 - `pvmath_deck/decks/sales_15.py` — 15-min slide order
-- `pvmath_deck/decks/topoiq_30.py` — 30-min slide order
+- `pvmath_deck/decks/terrainiq_30.py` — 30-min slide order
 - `pvmath_deck/builder.py` — layouts and styling
 
 ## Manual LLM prompt template
 
 ```
-Generate speaker notes and bullet refinements for [sales-15 | topoiq-30].
+Generate speaker notes and bullet refinements for [sales-15 | terrainiq-30].
 
 Constraints:
 - PVMath green brand, ground-mount only
 - No invented stats or customer names
 - Include disclaimer: screening-grade, not bankable/survey-grade
-- Modules: SiteIQ (screening), TopoIQ (terrain + LandXML/DXF), YieldIQ (yield compare)
+- Modules: SiteIQ (screening), TerrainIQ (terrain + LandXML/DXF), YieldIQ (yield compare)
 
 Current slide: [paste title + bullets]
 
@@ -67,7 +67,7 @@ Return: refined bullets (max 6), speaker notes (60–90 sec), 2 Q&A pairs, image
 
 ## Assets to insert manually after generation
 
-- App screenshots (SiteIQ score, TopoIQ heatmap, YieldIQ chart)
+- App screenshots (SiteIQ score, TerrainIQ heatmap, YieldIQ chart)
 - Sample PDF cover from `assets/sample-siteiq-report.pdf`
 - Civil 3D LandXML import screenshot
 - Optional: export `assets/logo.svg` to PNG for cover if shape logo is insufficient

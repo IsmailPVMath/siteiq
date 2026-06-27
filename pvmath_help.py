@@ -13,14 +13,14 @@ def guide_url(slug: str) -> str:
 
 # slug → title, tooltip (one line), body (markdown, public-safe)
 HELP: dict[str, dict[str, str]] = {
-    # ── TopoIQ ──
+    # ── TerrainIQ ──
     "glo30": {
         "title": "Copernicus GLO-30 DEM",
         "slug": "glo30-and-5m-grid",
         "tooltip": "Global satellite elevation model — ~30 m native posting.",
         "body": (
             "Copernicus **GLO-30** is a free global digital elevation model with roughly "
-            "**30 m horizontal detail**. TopoIQ uses it for early terrain screening before "
+            "**30 m horizontal detail**. TerrainIQ uses it for early terrain screening before "
             "LiDAR or RTK survey.\n\n"
             "**Limitation:** Features smaller than ~30 m (ditches, berms, rows) may not appear. "
             "Vertical accuracy is typically ±1–3 m RMSE in open terrain."
@@ -71,7 +71,7 @@ HELP: dict[str, dict[str, str]] = {
     },
     "terrain_score": {
         "title": "Terrain score",
-        "slug": "topoiq-metrics",
+        "slug": "terrainiq-metrics",
         "tooltip": "Summary 0–100 terrain index for executives — screening only.",
         "body": (
             "The **Terrain Score** compresses slope and tracker-relevant metrics into one "
@@ -82,7 +82,7 @@ HELP: dict[str, dict[str, str]] = {
     },
     "terrain_verdict": {
         "title": "Engineering verdict",
-        "slug": "topoiq-metrics",
+        "slug": "terrainiq-metrics",
         "tooltip": "Qualitative suitability label for fixed tilt or tracker.",
         "body": (
             "The **engineering verdict** translates slope statistics into labels such as "
@@ -97,7 +97,7 @@ HELP: dict[str, dict[str, str]] = {
         "slug": "landxml-dxf-solar",
         "tooltip": "LandXML, DXF, CSV — screening-grade, download immediately.",
         "body": (
-            "TopoIQ exports a **CAD starter kit**: UTM LandXML surface, DXF contours with "
+            "TerrainIQ exports a **CAD starter kit**: UTM LandXML surface, DXF contours with "
             "**parcel linework** on layer SITE_BOUNDARY, and reference JSON.\n\n"
             "USA projects receive **US Survey Feet** in georef files. Imports are "
             "screening-grade — verify critical grades with survey before FEED."
@@ -143,7 +143,7 @@ HELP: dict[str, dict[str, str]] = {
         "body": (
             "The **overall verdict** summarizes SiteIQ findings (solar, terrain, flood "
             "heuristic, land use, regulatory flags) into a single recommendation tier.\n\n"
-            "Use alongside module-specific reports — TopoIQ for terrain detail, YieldIQ "
+            "Use alongside module-specific reports — TerrainIQ for terrain detail, YieldIQ "
             "for energy comparison."
         ),
     },

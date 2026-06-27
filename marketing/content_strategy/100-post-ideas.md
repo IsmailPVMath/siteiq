@@ -19,7 +19,7 @@ Copernicus posts at ~30 m. Your layout grid can be 5 m.
 
 Explain resampling vs sensor resolution before FEED.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Read the guide: https://pvmath.com/guides/
 
@@ -39,7 +39,7 @@ Mean slope flat. Trackers still need cross-row review.
 
 Link to cross-row p95 for SAT clearance talks.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Read the guide: https://pvmath.com/guides/
 
@@ -59,7 +59,7 @@ Screening answers go/no-go. Survey answers design.
 
 List what LiDAR and bankable yield still decide.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Read the guide: https://pvmath.com/guides/
 
@@ -79,7 +79,7 @@ Higher GCR increases DC density and row shading.
 
 Compare configs at same GCR in YieldIQ.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Read the guide: https://pvmath.com/guides/
 
@@ -99,7 +99,7 @@ Agri-PV uses lower MWp/ha bands by design.
 
 Dual-use is not standard ground-mount density.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Read the guide: https://pvmath.com/guides/
 
@@ -119,7 +119,7 @@ Portfolio index ≠ bankability.
 
 Use score for ranking; confirm with studies.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Read the guide: https://pvmath.com/guides/
 
@@ -139,7 +139,7 @@ US georef exports need imperial drawing import.
 
 No extra feet↔metre scaling after import.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Read the guide: https://pvmath.com/guides/
 
@@ -159,7 +159,7 @@ Elevation flags are not FEMA maps.
 
 Always confirm with local hydrology.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Read the guide: https://pvmath.com/guides/
 
@@ -179,7 +179,7 @@ SiteIQ and YieldIQ use different depth.
 
 Same coordinate, different loss assumptions.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Read the guide: https://pvmath.com/guides/
 
@@ -199,7 +199,7 @@ Boundary only is not a civil surface.
 
 LandXML + SITE_BOUNDARY linework workflow.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Read the guide: https://pvmath.com/guides/
 
@@ -219,7 +219,7 @@ SAT shading model differs from fixed at same GCR.
 
 Configuration choice before detailed layout.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Read the guide: https://pvmath.com/guides/
 
@@ -241,7 +241,7 @@ Order LiDAR when the site earns it.
 
 Shortlist with GLO-30 first.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 How does your team screen today? https://pvmath.com
 
@@ -261,7 +261,7 @@ Land and engineering use different tools.
 
 Standardise screening outputs.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 How does your team screen today? https://pvmath.com
 
@@ -281,7 +281,7 @@ DACH teams expect documented pre-feasibility.
 
 PDF + disclaimers matter.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 How does your team screen today? https://pvmath.com
 
@@ -301,7 +301,7 @@ High GHI does not remove terrain risk.
 
 Screen slope before option fees.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 How does your team screen today? https://pvmath.com
 
@@ -321,7 +321,7 @@ Fast pipelines still pay for skipped terrain.
 
 Global DEM + PVGIS screening.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 How does your team screen today? https://pvmath.com
 
@@ -341,7 +341,7 @@ SAT dominates where terrain allows.
 
 Cross-row metrics early.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 How does your team screen today? https://pvmath.com
 
@@ -361,7 +361,7 @@ Land use category changes the path.
 
 Regulatory flags as checklist.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 How does your team screen today? https://pvmath.com
 
@@ -381,7 +381,7 @@ Resource screening is table stakes.
 
 Differentiate on constructability data.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 How does your team screen today? https://pvmath.com
 
@@ -401,7 +401,7 @@ Early yield config reduces rework.
 
 Fixed vs tracker before BOM freeze.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 How does your team screen today? https://pvmath.com
 
@@ -421,7 +421,7 @@ Greenfield speed vs engineering rigour.
 
 Screening layer balances both.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 How does your team screen today? https://pvmath.com
 
@@ -441,7 +441,7 @@ Document screening methodology.
 
 Deterministic models beat black boxes.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 How does your team screen today? https://pvmath.com
 
@@ -463,7 +463,7 @@ Same pre-feasibility pack rebuilt too many times.
 
 Side project alongside EPC job.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Follow the build: https://pvmath.com
 
@@ -483,7 +483,7 @@ Shipping screening honesty over feature count.
 
 Ask EPCs what hurts next.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Follow the build: https://pvmath.com
 
@@ -503,7 +503,7 @@ We publish guides, not weights.
 
 Knowledge Centre over hype.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Follow the build: https://pvmath.com
 
@@ -523,7 +523,7 @@ Focus beats breadth for v1.
 
 Fixed, tracker, Agri-PV.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Follow the build: https://pvmath.com
 
@@ -543,7 +543,7 @@ Railway + Supabase + open datasets.
 
 Professional outputs on lean infra.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Follow the build: https://pvmath.com
 
@@ -563,7 +563,7 @@ Civil 3D import edge cases shaped exports.
 
 Contour clipping shipped.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Follow the build: https://pvmath.com
 
@@ -583,7 +583,7 @@ Customer docs without IP leak.
 
 Public vs internal split.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Follow the build: https://pvmath.com
 
@@ -603,7 +603,7 @@ RevenueIQ when it meets screening bar.
 
 Not before.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Follow the build: https://pvmath.com
 
@@ -623,7 +623,7 @@ Features from real project pain.
 
 Founder-led product.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Follow the build: https://pvmath.com
 
@@ -643,7 +643,7 @@ PVGIS + GLO-30 worldwide.
 
 Not DACH-only tooling.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Follow the build: https://pvmath.com
 
@@ -665,7 +665,7 @@ One report for internal gate.
 
 Solar + terrain + flags.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Try free: https://siteiq.pvmath.com
 
@@ -675,7 +675,7 @@ Try free: https://siteiq.pvmath.com
 
 ---
 
-### 34. TopoIQ ZIP
+### 34. TerrainIQ ZIP
 
 **Hook:** LandXML + georef DXF + reference JSON.
 
@@ -685,7 +685,7 @@ LandXML + georef DXF + reference JSON.
 
 Download immediately after run.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Try free: https://siteiq.pvmath.com
 
@@ -705,7 +705,7 @@ Try free: https://siteiq.pvmath.com
 
 Compare at your GCR.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Try free: https://siteiq.pvmath.com
 
@@ -725,7 +725,7 @@ All modules inherit boundary.
 
 Stop re-entering coordinates.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Try free: https://siteiq.pvmath.com
 
@@ -745,7 +745,7 @@ Public engineering guides.
 
 SEO + sales enablement.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Try free: https://siteiq.pvmath.com
 
@@ -765,7 +765,7 @@ Try free: https://siteiq.pvmath.com
 
 No 300-page PDF on homepage.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Try free: https://siteiq.pvmath.com
 
@@ -785,7 +785,7 @@ Try free: https://siteiq.pvmath.com
 
 Try on real boundary.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Try free: https://siteiq.pvmath.com
 
@@ -805,7 +805,7 @@ Try free: https://siteiq.pvmath.com
 
 Teams in active pipelines.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Try free: https://siteiq.pvmath.com
 
@@ -825,7 +825,7 @@ CAD exports respect parcel.
 
 No grid edge spikes.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Try free: https://siteiq.pvmath.com
 
@@ -835,7 +835,7 @@ Try free: https://siteiq.pvmath.com
 
 ---
 
-### 42. TopoIQ cross-row
+### 42. TerrainIQ cross-row
 
 **Hook:** Tracker verdict review zones.
 
@@ -845,7 +845,7 @@ Tracker verdict review zones.
 
 Beyond mean slope.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Try free: https://siteiq.pvmath.com
 
@@ -865,7 +865,7 @@ Country-aware pointers.
 
 Not legal advice.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Try free: https://siteiq.pvmath.com
 
@@ -885,9 +885,9 @@ Try free: https://siteiq.pvmath.com
 
 Slope surprise after option payment.
 
-TopoIQ before commitment.
+TerrainIQ before commitment.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Screen before survey spend: https://siteiq.pvmath.com
 
@@ -907,7 +907,7 @@ Different GCR in every spreadsheet.
 
 YieldIQ normalises comparison.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Screen before survey spend: https://siteiq.pvmath.com
 
@@ -927,7 +927,7 @@ Civil redraws everything.
 
 CAD export package.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Screen before survey spend: https://siteiq.pvmath.com
 
@@ -947,7 +947,7 @@ Screen before survey spend: https://siteiq.pvmath.com
 
 SiteIQ + score conversation.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Screen before survey spend: https://siteiq.pvmath.com
 
@@ -967,7 +967,7 @@ Executives want numbers engineers distrust.
 
 Deterministic screening.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Screen before survey spend: https://siteiq.pvmath.com
 
@@ -987,7 +987,7 @@ Rolling sites look flat.
 
 Cross-row p95.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Screen before survey spend: https://siteiq.pvmath.com
 
@@ -1007,7 +1007,7 @@ Budget burned on rejected sites.
 
 Screen first.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Screen before survey spend: https://siteiq.pvmath.com
 
@@ -1027,7 +1027,7 @@ Geometry miles from surface.
 
 Georef-only for map work.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Screen before survey spend: https://siteiq.pvmath.com
 
@@ -1047,7 +1047,7 @@ Screen before survey spend: https://siteiq.pvmath.com
 
 We disclose ~30 m native.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Screen before survey spend: https://siteiq.pvmath.com
 
@@ -1067,7 +1067,7 @@ Screening labelled as DNV.
 
 Honest yield limits.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Screen before survey spend: https://siteiq.pvmath.com
 
@@ -1087,7 +1087,7 @@ Disconnected parcels in one KMZ.
 
 TIN breaklines explained.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Screen before survey spend: https://siteiq.pvmath.com
 
@@ -1109,7 +1109,7 @@ Mean slope good; cross-row flagged review.
 
 LiDAR scoped to problem zones.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Run your anonymised site: https://siteiq.pvmath.com
 
@@ -1129,7 +1129,7 @@ Resource strong; terrain screening still ran.
 
 Go with grading note.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Run your anonymised site: https://siteiq.pvmath.com
 
@@ -1149,7 +1149,7 @@ Lower density band applied.
 
 Regulatory checklist started.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Run your anonymised site: https://siteiq.pvmath.com
 
@@ -1167,9 +1167,9 @@ Run your anonymised site: https://siteiq.pvmath.com
 
 No boundary yet; sparse terrain sample.
 
-TopoIQ confirmed after KMZ.
+TerrainIQ confirmed after KMZ.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Run your anonymised site: https://siteiq.pvmath.com
 
@@ -1189,7 +1189,7 @@ SAT 1P +17% vs fixed at screening GCR.
 
 PVsyst later for bankable.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Run your anonymised site: https://siteiq.pvmath.com
 
@@ -1209,7 +1209,7 @@ Georef LandXML in Civil 3D.
 
 SITE_BOUNDARY on correct layer.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Run your anonymised site: https://siteiq.pvmath.com
 
@@ -1229,7 +1229,7 @@ Run your anonymised site: https://siteiq.pvmath.com
 
 Time saved vs manual pack.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Run your anonymised site: https://siteiq.pvmath.com
 
@@ -1249,7 +1249,7 @@ PDF + honest limits.
 
 Screening framed correctly.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Run your anonymised site: https://siteiq.pvmath.com
 
@@ -1269,7 +1269,7 @@ US Survey Feet import.
 
 No scaling error.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Run your anonymised site: https://siteiq.pvmath.com
 
@@ -1291,11 +1291,11 @@ Free global DEM for screening.
 
 Limits documented.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
-TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
-**CTA:** TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+**CTA:** TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
 **Hashtags:** #CivilEngineering #TerrainAnalysis #SolarEPC
 
@@ -1311,11 +1311,11 @@ Finer graph paper, same photo.
 
 Layout-friendly contours.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
-TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
-**CTA:** TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+**CTA:** TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
 **Hashtags:** #CivilEngineering #TerrainAnalysis #SolarEPC
 
@@ -1331,11 +1331,11 @@ Green flat, red steep.
 
 Executive + engineering views.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
-TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
-**CTA:** TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+**CTA:** TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
 **Hashtags:** #CivilEngineering #TerrainAnalysis #SolarEPC
 
@@ -1351,11 +1351,11 @@ Fixed vs tracker labels.
 
 Review zones for SAT.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
-TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
-**CTA:** TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+**CTA:** TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
 **Hashtags:** #CivilEngineering #TerrainAnalysis #SolarEPC
 
@@ -1371,11 +1371,11 @@ Executive summary only.
 
 Read drivers table.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
-TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
-**CTA:** TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+**CTA:** TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
 **Hashtags:** #CivilEngineering #TerrainAnalysis #SolarEPC
 
@@ -1391,11 +1391,11 @@ Map-aligned surface.
 
 CoordinateSystem in file.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
-TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
-**CTA:** TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+**CTA:** TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
 **Hashtags:** #CivilEngineering #TerrainAnalysis #SolarEPC
 
@@ -1411,11 +1411,11 @@ Quick layout near origin.
 
 Not for geolocation.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
-TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
-**CTA:** TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+**CTA:** TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
 **Hashtags:** #CivilEngineering #TerrainAnalysis #SolarEPC
 
@@ -1431,11 +1431,11 @@ SITE_BOUNDARY in DXF.
 
 Not standalone boundary file.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
-TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
-**CTA:** TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+**CTA:** TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
 **Hashtags:** #CivilEngineering #TerrainAnalysis #SolarEPC
 
@@ -1451,11 +1451,11 @@ North arrow + scale.
 
 Client-ready terrain page.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
-TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
-**CTA:** TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+**CTA:** TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
 **Hashtags:** #CivilEngineering #TerrainAnalysis #SolarEPC
 
@@ -1471,11 +1471,11 @@ Merged TIN warning.
 
 Continuous boundary tip.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
-TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
-**CTA:** TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+**CTA:** TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
 **Hashtags:** #CivilEngineering #TerrainAnalysis #SolarEPC
 
@@ -1483,19 +1483,19 @@ TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
 ### 74. OpenTopoData vs GLO-30
 
-**Hook:** SiteIQ sparse vs TopoIQ confirmed.
+**Hook:** SiteIQ sparse vs TerrainIQ confirmed.
 
 **Full post:**
 
-SiteIQ sparse vs TopoIQ confirmed.
+SiteIQ sparse vs TerrainIQ confirmed.
 
-When to run TopoIQ.
+When to run TerrainIQ.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
-TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
-**CTA:** TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+**CTA:** TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
 **Hashtags:** #CivilEngineering #TerrainAnalysis #SolarEPC
 
@@ -1511,11 +1511,11 @@ Huge sites optional coarsen.
 
 Default 5 m for layout.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
-TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
-**CTA:** TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+**CTA:** TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
 **Hashtags:** #CivilEngineering #TerrainAnalysis #SolarEPC
 
@@ -1531,11 +1531,11 @@ DEM noise handling.
 
 Screening not survey.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
-TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
-**CTA:** TopoIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
+**CTA:** TerrainIQ guide: https://pvmath.com/guides/landxml-dxf-solar.html
 
 **Hashtags:** #CivilEngineering #TerrainAnalysis #SolarEPC
 
@@ -1553,7 +1553,7 @@ kWh/kWp/yr normalises sites.
 
 YieldIQ table output.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 YieldIQ on your coordinates: https://siteiq.pvmath.com
 
@@ -1573,7 +1573,7 @@ System efficiency index.
 
 Not standalone bankability.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 YieldIQ on your coordinates: https://siteiq.pvmath.com
 
@@ -1593,7 +1593,7 @@ Utilisation of nameplate.
 
 Latitude dependent.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 YieldIQ on your coordinates: https://siteiq.pvmath.com
 
@@ -1613,7 +1613,7 @@ Plane-of-array for mount type.
 
 PVGIS sourced.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 YieldIQ on your coordinates: https://siteiq.pvmath.com
 
@@ -1633,7 +1633,7 @@ PVGIS physics derate.
 
 Not flat percentage guess.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 YieldIQ on your coordinates: https://siteiq.pvmath.com
 
@@ -1653,7 +1653,7 @@ User assumption disclosed.
 
 Screening sensitivity.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 YieldIQ on your coordinates: https://siteiq.pvmath.com
 
@@ -1673,7 +1673,7 @@ SAT vs fixed same GCR.
 
 Early config dialogue.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 YieldIQ on your coordinates: https://siteiq.pvmath.com
 
@@ -1693,7 +1693,7 @@ Four configs compared.
 
 Density vs shading trade.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 YieldIQ on your coordinates: https://siteiq.pvmath.com
 
@@ -1713,7 +1713,7 @@ When boundary area known.
 
 Capacity × yield link.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 YieldIQ on your coordinates: https://siteiq.pvmath.com
 
@@ -1733,7 +1733,7 @@ Screening narrows config.
 
 Bankable model later.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 YieldIQ on your coordinates: https://siteiq.pvmath.com
 
@@ -1753,7 +1753,7 @@ PVGIS raddatabase note.
 
 Location consistent.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 YieldIQ on your coordinates: https://siteiq.pvmath.com
 
@@ -1773,7 +1773,7 @@ Total loss from PVGIS l_total.
 
 Not user subtotal alone.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 YieldIQ on your coordinates: https://siteiq.pvmath.com
 
@@ -1793,7 +1793,7 @@ YieldIQ on your coordinates: https://siteiq.pvmath.com
 
 Set client expectations.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 YieldIQ on your coordinates: https://siteiq.pvmath.com
 
@@ -1815,7 +1815,7 @@ Standard vs Agri-PV bands.
 
 Mount type matters.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Compare plans: https://pvmath.com#pricing
 
@@ -1835,7 +1835,7 @@ Screen before land payment.
 
 Risk reduction.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Compare plans: https://pvmath.com#pricing
 
@@ -1855,7 +1855,7 @@ Skip on rejected terrain.
 
 Direct savings.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Compare plans: https://pvmath.com#pricing
 
@@ -1875,7 +1875,7 @@ Rebuild pre-feasibility pack.
 
 Automation value.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Compare plans: https://pvmath.com#pricing
 
@@ -1895,7 +1895,7 @@ Rank before deep spend.
 
 Score as conversation tool.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Compare plans: https://pvmath.com#pricing
 
@@ -1915,7 +1915,7 @@ Config choice affects LCOE path.
 
 YieldIQ early compare.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Compare plans: https://pvmath.com#pricing
 
@@ -1935,7 +1935,7 @@ Terrain screening flags review.
 
 Civil budget contingency.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Compare plans: https://pvmath.com#pricing
 
@@ -1955,7 +1955,7 @@ After site shortlist.
 
 Screening supports list.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Compare plans: https://pvmath.com#pricing
 
@@ -1975,7 +1975,7 @@ Shared screening PDF.
 
 Less rework in DD.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Compare plans: https://pvmath.com#pricing
 
@@ -1995,7 +1995,7 @@ Screening ≠ bankable.
 
 Frame correctly.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Compare plans: https://pvmath.com#pricing
 
@@ -2015,7 +2015,7 @@ Future RevenueIQ module.
 
 Screening today.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Compare plans: https://pvmath.com#pricing
 

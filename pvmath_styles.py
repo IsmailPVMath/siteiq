@@ -228,7 +228,7 @@ header {{ visibility: hidden !important; }}
 /* ── Reduce top gap above page content ──
    Streamlit reserves ~6rem of top padding on the block-container to clear
    its native header bar — but that header is hidden above, so on every page
-   using inject_styles() (SiteIQ, TopoIQ, YieldIQ, Overview, Project, My
+   using inject_styles() (SiteIQ, TerrainIQ, YieldIQ, Overview, Project, My
    Projects) this left a large empty band before any real content, pushing
    everything down and forcing extra scrolling to reach it. Both selectors
    are kept since the block-container's data-testid changed across Streamlit

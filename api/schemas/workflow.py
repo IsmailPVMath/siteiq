@@ -42,7 +42,7 @@ class WorkflowScoreRequest(BaseModel):
         ...,
         ge=0,
         le=100,
-        description="TopoIQ terrain_score from terrain_drivers — authoritative terrain input.",
+        description="TerrainIQ terrain_score from terrain_drivers — authoritative terrain input.",
     )
 
 

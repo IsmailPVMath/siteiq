@@ -51,9 +51,9 @@ TOPICS_RUN = (
         "hashtags": HASHTAG_POOLS["general"],
     },
     {
-        "slug": "topoiq-terrain-slope-analysis",
-        "title": "TopoIQ terrain and slope analysis",
-        "module": "TopoIQ",
+        "slug": "terrainiq-terrain-slope-analysis",
+        "title": "TerrainIQ terrain and slope analysis",
+        "module": "TerrainIQ",
         "audience": "epc",
         "category": "Terrain and GIS topics",
         "hashtags": HASHTAG_POOLS["terrain"],

@@ -5,7 +5,7 @@ The content bot cycles `week_index = ISO_week % 12`. Each week = **2 LinkedIn po
 | Wk | Pillar | Tue — LinkedIn | Thu — LinkedIn | Guide CTA |
 |----|--------|----------------|----------------|-----------|
 | 0 | Workflow | One Project Setup → three modules | Why screening before survey | screening-vs-survey |
-| 1 | Terrain before LiDAR | KMZ to LandXML same day | TopoIQ before LiDAR budget | landxml-dxf-solar |
+| 1 | Terrain before LiDAR | KMZ to LandXML same day | TerrainIQ before LiDAR budget | landxml-dxf-solar |
 | 2 | Honest DEM | GLO-30 ~30 m native — say it | 5 m grid is layout output, not sensor | glo30-and-5m-grid |
 | 3 | Tracker cross-row | Mean slope lies on rolling sites | Cross-row p95 for SAT clearance | mean-slope-vs-cross-row |
 | 4 | CAD handoff | SITE_BOUNDARY in DXF + LandXML | US Survey Feet for US projects | landxml-dxf-solar |
@@ -14,7 +14,7 @@ The content bot cycles `week_index = ISO_week % 12`. Each week = **2 LinkedIn po
 | 7 | Screening vs survey | When LiDAR is worth it | What screening cannot decide | screening-vs-survey |
 | 8 | Regional DE | DACH screening workflow | EEG/regulatory as pointer not advice | siteiq-screening |
 | 9 | Regional ES/IN | High-resource sites still need terrain | Yield comparison before PVsyst | yieldiq-yield |
-| 10 | Case style | Problem → TopoIQ → LiDAR scoped | Problem → YieldIQ → config chosen | topoiq-metrics |
+| 10 | Case style | Problem → TerrainIQ → LiDAR scoped | Problem → YieldIQ → config chosen | terrainiq-metrics |
 | 11 | Platform | From site to system — tagline deep dive | Knowledge Centre + Pro manual | index |
 
 ## Format rotation (Thu alternates)

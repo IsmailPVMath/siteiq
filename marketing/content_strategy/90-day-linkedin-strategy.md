@@ -13,7 +13,7 @@ Build technical trust with utility-scale EPCs, developers, and civil teams in DE
 
 **PVMath** — Solar Site Intelligence Platform. **From site to system.**
 
-Live modules: SiteIQ (screening), TopoIQ (terrain + CAD), YieldIQ (configuration yield). Ground-mount only. Screening-grade outputs with explicit limits.
+Live modules: SiteIQ (screening), TerrainIQ (terrain + CAD), YieldIQ (configuration yield). Ground-mount only. Screening-grade outputs with explicit limits.
 
 ## Content mix (weekly)
 
@@ -46,7 +46,7 @@ python3 scripts/pvmath_marketing_bot.py init-library # one-time 100 ideas + 90d 
 ## Rules
 
 - No cut/fill or bankability claims unless product supports them
-- Always disclose GLO-30 ~30 m native vs 5 m grid when discussing TopoIQ
+- Always disclose GLO-30 ~30 m native vs 5 m grid when discussing TerrainIQ
 - Never publish proprietary score weights
 - Ground-mount scope only
 

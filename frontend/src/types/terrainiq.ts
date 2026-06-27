@@ -1,4 +1,4 @@
-export interface TopoIQAnalyzeRequest {
+export interface TerrainIQAnalyzeRequest {
   project_name: string;
   country: string;
   land_use: "Standard" | "Agri-PV";
@@ -19,7 +19,7 @@ export interface TerrainDrivers {
   why_bullets: Array<[TerrainDriverKind, string]>;
 }
 
-export interface TopoIQAnalyzeResponse {
+export interface TerrainIQAnalyzeResponse {
   project_name: string;
   country: string;
   land_use: string;

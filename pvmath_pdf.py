@@ -1,4 +1,4 @@
-"""Shared PDF helpers for SiteIQ, TopoIQ, and YieldIQ reports."""
+"""Shared PDF helpers for SiteIQ, TerrainIQ, and YieldIQ reports."""
 from __future__ import annotations
 
 import re
@@ -18,7 +18,7 @@ _EMOJI_PATTERN = re.compile(
 SITEIQ_DISCLAIMER_BODY = (
     "This report provides preliminary site screening for internal go/no-go and early "
     "client discussions only. Solar data from PVGIS JRC; terrain from satellite DEM "
-    "(indicative unless TopoIQ-confirmed); flood risk is an elevation heuristic, not "
+    "(indicative unless TerrainIQ-confirmed); flood risk is an elevation heuristic, not "
     "hydraulic modelling; regulatory flags are indicative OSM-based checks, not "
     "permitting diligence. PVMath does not claim bankability. A full engineering study, "
     "site survey, permitting review, and certified energy yield assessment are required "
@@ -47,7 +47,7 @@ SITEIQ_METRICS_ANNEXURE = [
     (
         "Max / Mean Slope",
         "Terrain steepness (% grade) from satellite DEM. Max slope uses sparse sample points "
-        "unless TopoIQ has been run on the project boundary (then mean and max from "
+        "unless TerrainIQ has been run on the project boundary (then mean and max from "
         "Copernicus GLO-30 grid). Indicative only — not survey-grade topography.",
     ),
     (
@@ -97,7 +97,7 @@ def strip_pdf_label(text: str) -> str:
 
 
 def format_siteiq_companion_note(siteiq_run_cache: dict | None) -> str:
-    """Rich SiteIQ companion text for TopoIQ PDF when screening cache exists."""
+    """Rich SiteIQ companion text for TerrainIQ PDF when screening cache exists."""
     if not siteiq_run_cache or not siteiq_run_cache.get("solar"):
         return (
             "Run SiteIQ on the same project for solar resource, flood risk, regulatory "
@@ -117,9 +117,9 @@ def format_siteiq_companion_note(siteiq_run_cache: dict | None) -> str:
 
     terrain = siteiq_run_cache.get("terrain") or {}
     if terrain.get("success"):
-        if terrain.get("topoiq_confirmed"):
+        if (terrain.get("terrainiq_confirmed") or terrain.get("topoiq_confirmed")):
             parts.append(
-                f"Terrain (TopoIQ-linked): mean slope {terrain.get('mean_slope_pct', 0):.1f}%, "
+                f"Terrain (TerrainIQ-linked): mean slope {terrain.get('mean_slope_pct', 0):.1f}%, "
                 f"max {terrain.get('max_slope_pct', 0):.1f}%."
             )
         elif terrain.get("mean_slope_pct") is not None:
@@ -273,7 +273,7 @@ def append_pdf_footer(
     muted_color,
     border_color,
 ):
-    """Unified PVMath report footer across SiteIQ, TopoIQ, and YieldIQ."""
+    """Unified PVMath report footer across SiteIQ, TerrainIQ, and YieldIQ."""
     story.append(Spacer(1, 0.4 * cm))
     story.append(HRFlowable(width="100%", thickness=1, color=border_color))
     story.append(Spacer(1, 0.2 * cm))

@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-TARGETS = [ROOT / "pages" / "project.py", ROOT / "pages" / "topoiq.py"]
+TARGETS = [ROOT / "pages" / "project.py", ROOT / "pages" / "terrainiq.py"]
 
 # Direct st_folium(... returned_objects=[... all_drawings ...]) in map pages
 BAD_RETURNED = re.compile(

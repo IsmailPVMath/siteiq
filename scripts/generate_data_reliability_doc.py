@@ -45,7 +45,7 @@ def build() -> Document:
 
     doc.add_heading("1. Executive summary", level=1)
     doc.add_paragraph(
-        "PVMath (SiteIQ, TopoIQ, YieldIQ) is a screening and workflow layer on top of "
+        "PVMath (SiteIQ, TerrainIQ, YieldIQ) is a screening and workflow layer on top of "
         "public scientific datasets that the solar industry already uses — principally "
         "PVGIS (EU JRC) for irradiance and yield, Copernicus GLO-30 (via AWS Terrarium "
         "tiles) and SRTM/EU-DEM (OpenTopoData) for terrain. PVMath does not host or "
@@ -75,7 +75,7 @@ def build() -> Document:
         ),
         (
             "Copernicus GLO-30 via AWS Terrarium",
-            "TopoIQ DEM, slope maps, CAD exports",
+            "TerrainIQ DEM, slope maps, CAD exports",
             "AWS open elevation tile CDN",
             "Single live source; partial tile failure tolerated; no mirror archive",
         ),
@@ -110,9 +110,9 @@ def build() -> Document:
     _bullets(doc, [
         "Solar / yield: PVGIS-ERA5 fallback implemented in production code when the "
         "preferred radiation database fails for a site.",
-        "TopoIQ: individual DEM tiles that fail or time out are skipped (nodata) rather "
+        "TerrainIQ: individual DEM tiles that fail or time out are skipped (nodata) rather "
         "than crashing the whole run; georeferencing is preserved.",
-        "TopoIQ → SiteIQ cache: after a successful TopoIQ run on a saved project boundary, "
+        "TerrainIQ → SiteIQ cache: after a successful TerrainIQ run on a saved project boundary, "
         "SiteIQ can reuse confirmed GLO-30 terrain from cache — repeat screening does not "
         "always need live tiles.",
         "PDF disclaimers: all modules label outputs as screening-grade, not survey or "
@@ -124,8 +124,8 @@ def build() -> Document:
     doc.add_heading("4. What we do not guarantee today", level=1)
     _bullets(doc, [
         "Third-party API uptime (PVGIS, AWS Terrarium, OpenTopoData, Nominatim).",
-        "Continuous availability of TopoIQ during a multi-day AWS elevation tile outage.",
-        "That cached terrain replaces the need for a fresh TopoIQ run when boundaries change.",
+        "Continuous availability of TerrainIQ during a multi-day AWS elevation tile outage.",
+        "That cached terrain replaces the need for a fresh TerrainIQ run when boundaries change.",
         "Enterprise SLA on data providers — only the PVMath application layer can be "
         "addressed in future enterprise contracts.",
     ])
@@ -135,7 +135,7 @@ def build() -> Document:
         "Honest customer answer:"
     )
     doc.add_paragraph(
-        "“PVMath stays online, but TopoIQ terrain extraction and any new analysis that "
+        "“PVMath stays online, but TerrainIQ terrain extraction and any new analysis that "
         "requires live Copernicus/AWS DEM tiles will fail or be incomplete until the tile "
         "service recovers. SiteIQ solar screening and YieldIQ may still work if PVGIS is "
         "available. PDFs and CAD files already downloaded remain with the customer. We do "
@@ -151,7 +151,7 @@ def build() -> Document:
     table2.rows[0].cells[1].text = "Professional / Developer (paid pilot)"
     paid_rows = [
         ("Same underlying open data", "Pooled analyses (75 / 300 per month), team seats"),
-        ("Manual PVGIS + GIS workflow", "Integrated SiteIQ + TopoIQ + YieldIQ pipeline"),
+        ("Manual PVGIS + GIS workflow", "Integrated SiteIQ + TerrainIQ + YieldIQ pipeline"),
         ("No support channel", "contact@pvmath.com, pilot agreement, manual activation"),
         ("—", "Saved projects, PDF reports, CAD/LandXML exports"),
     ]
@@ -164,7 +164,7 @@ def build() -> Document:
     doc.add_heading("7. Roadmap (direction — not live promises)", level=1)
     _bullets(doc, [
         "In-app status when PVGIS / tiles / OpenTopoData fail; retries with backoff.",
-        "Optional OpenTopoData fallback for TopoIQ when Terrarium is down (lower resolution, "
+        "Optional OpenTopoData fallback for TerrainIQ when Terrarium is down (lower resolution, "
         "analysis continues).",
         "Enterprise: SLA on PVMath platform availability and support response — not on JRC/AWS.",
         "Longer term: selective caching or licensed mirrors only if customer demand justifies cost.",
@@ -178,8 +178,8 @@ def build() -> Document:
         "project context on top. We are transparent that we do not control those APIs: if "
         "PVGIS or AWS elevation tiles have an outage, affected modules pause until they "
         "recover, the same as if you called those APIs yourself. What you pay for is "
-        "integrated screening across SiteIQ, TopoIQ, and YieldIQ, saved projects, PDF/CAD "
-        "outputs, and support — plus we already fall back solar to ERA5 and cache TopoIQ "
+        "integrated screening across SiteIQ, TerrainIQ, and YieldIQ, saved projects, PDF/CAD "
+        "outputs, and support — plus we already fall back solar to ERA5 and cache TerrainIQ "
         "terrain for reuse on the same boundary. Enterprise can include platform SLA and a "
         "defined response when third-party data is disrupted; we are not claiming to "
         "replace LiDAR survey or a private weather feed.”"

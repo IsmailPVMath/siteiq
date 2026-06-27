@@ -26,7 +26,7 @@ import streamlit as st
 # Screening-grade module confidence (SME review — builds trust in reports/UI).
 MODULE_CONFIDENCE = {
     "siteiq": 85,
-    "topoiq": 90,
+    "terrainiq": 90,
     "yieldiq": 80,
 }
 
@@ -648,7 +648,7 @@ def plan_limit_mode(plan: str) -> str:
 
 
 def get_total_usage(user_id: str) -> int:
-    """Sum of SiteIQ + TopoIQ + YieldIQ runs this calendar month."""
+    """Sum of SiteIQ + TerrainIQ + YieldIQ runs this calendar month."""
     return sum(get_usage(user_id, app) for app in USAGE_APPS)
 
 
@@ -706,7 +706,7 @@ def sidebar_plan_usage_html(user_id: str) -> str:
         return (
             f'<div style="font-size:0.72rem;color:#b8f5c8;line-height:1.45;margin:0.35rem 0 0.5rem;">'
             f'<span style="color:#4ade80;font-weight:700;">{plan}</span> · '
-            f'Free: {rem["siteiq"]} SiteIQ · {rem["topoiq"]} TopoIQ · {rem["yieldiq"]} YieldIQ left</div>'
+            f'Free: {rem["siteiq"]} SiteIQ · {rem["terrainiq"]} TerrainIQ · {rem["yieldiq"]} YieldIQ left</div>'
         )
     return (
         f'<div style="font-size:0.72rem;color:#b8f5c8;line-height:1.45;margin:0.35rem 0 0.5rem;">'
@@ -1511,7 +1511,7 @@ def render_auth_page(app_name: str | None = None):
         </svg>
         <span style="font-family:Inter,sans-serif;font-size:1.7rem;font-weight:800;color:#1a2e1a;letter-spacing:-0.04em;">PVMath</span>
       </a>
-      <div class="auth-logo-sub">Solar Site Intelligence &nbsp;·&nbsp; SiteIQ · TopoIQ · YieldIQ</div>
+      <div class="auth-logo-sub">Solar Site Intelligence &nbsp;·&nbsp; SiteIQ · TerrainIQ · YieldIQ</div>
       <div class="auth-free-note">Free tier: 10 project analyses/month · No credit card</div>
     </div>
     """, unsafe_allow_html=True)
@@ -1532,7 +1532,7 @@ def render_auth_page(app_name: str | None = None):
 
             st.markdown('<div class="auth-title">Create your account</div>', unsafe_allow_html=True)
             st.markdown(
-                '<div class="auth-sub">Your name appears on SiteIQ, YieldIQ, and TopoIQ reports. '
+                '<div class="auth-sub">Your name appears on SiteIQ, YieldIQ, and TerrainIQ reports. '
                 'Multiple words are fine (e.g.&nbsp;Maria Jose, Van der Berg).</div>',
                 unsafe_allow_html=True,
             )

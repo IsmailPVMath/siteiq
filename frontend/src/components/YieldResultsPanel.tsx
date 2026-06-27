@@ -1,4 +1,4 @@
-import type { YieldConfig, YieldIQAnalyzeResponse } from "../types/topoiq";
+import type { YieldConfig, YieldIQAnalyzeResponse } from "../types/terrainiq";
 
 const CONFIG_ORDER = ["1P Fixed", "2P Fixed", "1P Tracker", "2P Tracker"] as const;
 

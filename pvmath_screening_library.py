@@ -60,8 +60,8 @@ def get_verdict_from_score(score: int) -> str:
 
 
 def _slope_confidence_label(terrain: dict) -> str:
-    if terrain.get("topoiq_confirmed"):
-        return "High — TopoIQ GLO-30 grid confirmed"
+    if (terrain.get("terrainiq_confirmed") or terrain.get("topoiq_confirmed")):
+        return "High — TerrainIQ GLO-30 grid confirmed"
     if terrain.get("boundary_sampled"):
         return "Low — sparse OpenTopoData boundary sample"
     if terrain.get("success"):
@@ -120,11 +120,11 @@ def build_screening_record(
     spec_y = solar.get("annual_yield") if solar.get("success") else None
 
     max_slope = terrain.get("max_slope_pct") if terrain.get("success") else None
-    mean_slope = terrain.get("mean_slope_pct") if terrain.get("topoiq_confirmed") else None
+    mean_slope = terrain.get("mean_slope_pct") if (terrain.get("terrainiq_confirmed") or terrain.get("topoiq_confirmed")) else None
 
     data_sources = (
         "PVGIS JRC; OpenTopoData EU-DEM/SRTM"
-        + ("; TopoIQ Copernicus GLO-30" if terrain.get("topoiq_confirmed") else "")
+        + ("; TerrainIQ Copernicus GLO-30" if (terrain.get("terrainiq_confirmed") or terrain.get("topoiq_confirmed")) else "")
         + "; OpenStreetMap/Nominatim"
     )
 
@@ -145,7 +145,7 @@ def build_screening_record(
         "terrain": {
             k: terrain.get(k)
             for k in (
-                "topoiq_confirmed", "boundary_sampled", "sample_points",
+                "terrainiq_confirmed", "boundary_sampled", "sample_points",
                 "grid_m", "center_elev",
             )
         },

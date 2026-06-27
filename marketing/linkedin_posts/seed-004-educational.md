@@ -12,7 +12,7 @@ Higher GCR increases DC density and row shading.
 
 Compare configs at same GCR in YieldIQ.
 
-PVMath supports utility-scale ground-mount screening — SiteIQ, TopoIQ, YieldIQ. Screening-grade; confirm before FEED.
+PVMath supports utility-scale ground-mount screening — SiteIQ, TerrainIQ, YieldIQ. Screening-grade; confirm before FEED.
 
 Read the guide: https://pvmath.com/guides/
 

@@ -436,7 +436,7 @@ a {
   background: #fff;
 }
 
-.module-topoiq {
+.module-terrainiq {
   border-left: 4px solid #1565c0;
 }
 
@@ -1405,7 +1405,7 @@ a {
   padding: 0.5rem 0.75rem;
 }
 
-/* Terrain drivers block (parity with Streamlit TopoIQ) */
+/* Terrain drivers block (parity with Streamlit TerrainIQ) */
 .terrain-drivers {
   margin-top: 1rem;
   border: 1px solid var(--border, #e2e6e2);

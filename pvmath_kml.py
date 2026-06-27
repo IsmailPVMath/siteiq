@@ -1,4 +1,4 @@
-"""Shared KML/KMZ polygon extraction for Project Setup and TopoIQ."""
+"""Shared KML/KMZ polygon extraction for Project Setup and TerrainIQ."""
 import io
 import math
 import re

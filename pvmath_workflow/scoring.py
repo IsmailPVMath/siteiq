@@ -35,7 +35,7 @@ def unified_pvmath_score(
     land_score: int,
     regulatory_score: int,
 ) -> dict:
-    """Full PVMath score — terrain must come from TopoIQ, not screening."""
+    """Full PVMath score — terrain must come from TerrainIQ, not screening."""
     scores = {
         "solar": solar_score,
         "terrain": terrain_score,

@@ -1,4 +1,4 @@
-"""Pydantic schemas for TopoIQ API."""
+"""Pydantic schemas for TerrainIQ API."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, Field
 
 
-class TopoIQAnalyzeRequest(BaseModel):
+class TerrainIQAnalyzeRequest(BaseModel):
     project_name: str = Field(default="Terrain analysis", max_length=200)
     country: str = Field(default="", max_length=120)
     land_use: Literal["Standard", "Agri-PV"] = "Standard"
@@ -25,12 +25,12 @@ class TopoIQAnalyzeRequest(BaseModel):
     )
 
 
-class TopoIQVerdict(BaseModel):
+class TerrainIQVerdict(BaseModel):
     label: str
     detail: str
 
 
-class TopoIQAnalyzeResponse(BaseModel):
+class TerrainIQAnalyzeResponse(BaseModel):
     project_name: str
     country: str
     land_use: str
@@ -45,8 +45,8 @@ class TopoIQAnalyzeResponse(BaseModel):
     elevation: Dict[str, float]
     slope: Dict[str, Any]
     extras: Dict[str, Any]
-    verdict_fixed: TopoIQVerdict
-    verdict_tracker: TopoIQVerdict
+    verdict_fixed: TerrainIQVerdict
+    verdict_tracker: TerrainIQVerdict
     terrain_drivers: Dict[str, Any]
     contour_minor: float
     contour_major: float

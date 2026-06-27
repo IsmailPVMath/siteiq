@@ -723,7 +723,7 @@ if _area_ha and _area_ha > 0:
         '<div style="font-size:0.82rem;color:#7a6a2a;background:#fff8e1;'
         'border-left:3px solid #d4840a;border-radius:6px;padding:0.55rem 0.8rem;'
         'margin:0.5rem 0 0.9rem 0;">'
-        '⚠️ <strong>MWp capacity uses the screening GCR band</strong> (0.30–0.42) — same as SiteIQ / TopoIQ. '
+        '⚠️ <strong>MWp capacity uses the screening GCR band</strong> (0.30–0.42) — same as SiteIQ / TerrainIQ. '
         'GCR sliders above affect row-shading in the yield model only. '
         '<strong>Best configuration = highest MWh/yr</strong> (midpoint MWp × specific yield).<br>'
         f'<span style="color:#5a4a2a;">{capacity_all_configs_summary(_area_ha, _yiq_land_use)}</span>'

@@ -1,4 +1,4 @@
-"""TopoIQ analysis, report, and export endpoints."""
+"""TerrainIQ analysis, report, and export endpoints."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 from api.deps import get_current_user
-from api.schemas.topoiq import TopoIQAnalyzeRequest, TopoIQAnalyzeResponse
+from api.schemas.terrainiq import TerrainIQAnalyzeRequest, TerrainIQAnalyzeResponse
 from pvmath_geocode import resolve_location_label
 from pvmath_supabase import AuthUser, PLATFORM_APP, is_over_limit, usage_limit_detail
 from pvmath_terrain_report import (
@@ -38,9 +38,9 @@ from pvmath_topo_export import (
     sanitize_topo_basename,
     utm_grids_from_latlon,
 )
-from pvmath_yield import fetch_yield_cross_ref_bundle, yield_cross_ref_topoiq_text
+from pvmath_yield import fetch_yield_cross_ref_bundle, yield_cross_ref_terrainiq_text
 
-router = APIRouter(tags=["topoiq"])
+router = APIRouter(tags=["terrainiq"])
 
 TOPO_APP = PLATFORM_APP
 TOPO_TIMEOUT_SEC = int(os.environ.get("PVMATH_TOPO_TIMEOUT", "180"))
@@ -55,7 +55,7 @@ def _limit_detail(user: AuthUser) -> str:
 
 def _area_limit_message(area_ha: float) -> str:
     return (
-        f"Site boundary is {area_ha:,.0f} ha — TopoIQ supports up to {MAX_SITE_AREA_HA:,} ha. "
+        f"Site boundary is {area_ha:,.0f} ha — TerrainIQ supports up to {MAX_SITE_AREA_HA:,} ha. "
         "Draw or upload a smaller boundary, or split the site into sections."
     )
 
@@ -103,7 +103,7 @@ def _to_builtin(value: Any) -> Any:
     return value
 
 
-def _run_topo(body: TopoIQAnalyzeRequest) -> Dict[str, Any]:
+def _run_topo(body: TerrainIQAnalyzeRequest) -> Dict[str, Any]:
     polygons = _normalize_polygons(body.polygons)
     area_ha = boundaries_union_area_ha(polygons)
     if area_ha > MAX_SITE_AREA_HA:
@@ -118,13 +118,13 @@ def _run_topo(body: TopoIQAnalyzeRequest) -> Dict[str, Any]:
     )
 
 
-def _analysis_response(body: TopoIQAnalyzeRequest, analysis: Dict[str, Any]) -> TopoIQAnalyzeResponse:
+def _analysis_response(body: TerrainIQAnalyzeRequest, analysis: Dict[str, Any]) -> TerrainIQAnalyzeResponse:
     terrain_source = _to_builtin(analysis["terrain_source"])
     slope = _to_builtin(analysis["slope"])
     elevation = _to_builtin(analysis["elevation"])
     extras = _to_builtin(analysis["extras"])
     terrain_drivers = _to_builtin(analysis["terrain_drivers"])
-    return TopoIQAnalyzeResponse(
+    return TerrainIQAnalyzeResponse(
         project_name=body.project_name,
         country=body.country,
         land_use=body.land_use,
@@ -150,7 +150,7 @@ def _analysis_response(body: TopoIQAnalyzeRequest, analysis: Dict[str, Any]) -> 
     )
 
 
-def _build_topo_pdf(body: TopoIQAnalyzeRequest, analysis: Dict[str, Any]) -> bytes:
+def _build_topo_pdf(body: TerrainIQAnalyzeRequest, analysis: Dict[str, Any]) -> bytes:
     bbox = analysis["bbox"]
     X = analysis["X"]
     Y = analysis["Y"]
@@ -206,7 +206,7 @@ def _build_topo_pdf(body: TopoIQAnalyzeRequest, analysis: Dict[str, Any]) -> byt
         dem_zoom=int(analysis["dem_zoom"]),
         terrain_source=analysis["terrain_source"],
         terrain_source_used=str(analysis["terrain_source_used"]),
-        yield_cross_ref=yield_cross_ref_topoiq_text(yield_ref),
+        yield_cross_ref=yield_cross_ref_terrainiq_text(yield_ref),
     )
     pdf_bytes = generate_pdf_report(ctx)
     if not pdf_bytes:
@@ -214,9 +214,10 @@ def _build_topo_pdf(body: TopoIQAnalyzeRequest, analysis: Dict[str, Any]) -> byt
     return pdf_bytes
 
 
-@router.post("/topoiq/analyze", response_model=TopoIQAnalyzeResponse)
-async def analyze_topoiq(
-    body: TopoIQAnalyzeRequest,
+@router.post("/terrainiq/analyze", response_model=TerrainIQAnalyzeResponse)
+@router.post("/topoiq/analyze", response_model=TerrainIQAnalyzeResponse, include_in_schema=False)
+async def analyze_terrainiq(
+    body: TerrainIQAnalyzeRequest,
     user: AuthUser = Depends(get_current_user),
 ):
     if user.access_token and is_over_limit(user.user_id, TOPO_APP, user.access_token):
@@ -231,7 +232,7 @@ async def analyze_topoiq(
     except asyncio.TimeoutError:
         raise HTTPException(
             status_code=504,
-            detail=f"TopoIQ analysis timed out after {TOPO_TIMEOUT_SEC}s. Try a smaller area or coarser grid.",
+            detail=f"TerrainIQ analysis timed out after {TOPO_TIMEOUT_SEC}s. Try a smaller area or coarser grid.",
         )
     except ValueError as exc:
         detail = str(exc)
@@ -252,9 +253,9 @@ async def analyze_topoiq(
             raise HTTPException(status_code=422, detail="No elevation data inside boundary. Check polygon location.")
         if detail == "DEM_FETCH_FAILED":
             raise HTTPException(status_code=502, detail="Could not fetch terrain DEM tiles for this boundary.")
-        raise HTTPException(status_code=500, detail=f"TopoIQ analysis failed: {detail}")
+        raise HTTPException(status_code=500, detail=f"TerrainIQ analysis failed: {detail}")
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"TopoIQ analysis failed: {exc}") from exc
+        raise HTTPException(status_code=500, detail=f"TerrainIQ analysis failed: {exc}") from exc
 
     return _analysis_response(body, analysis)
 
@@ -280,9 +281,10 @@ def _render_slope_png(analysis: Dict[str, Any]) -> bytes:
     return buf.getvalue()
 
 
-@router.post("/topoiq/slope-map")
-async def topoiq_slope_map(
-    body: TopoIQAnalyzeRequest,
+@router.post("/terrainiq/slope-map")
+@router.post("/topoiq/slope-map", include_in_schema=False)
+async def terrainiq_slope_map(
+    body: TerrainIQAnalyzeRequest,
     _user: AuthUser = Depends(get_current_user),
 ):
     loop = asyncio.get_running_loop()
@@ -298,7 +300,7 @@ async def topoiq_slope_map(
     except asyncio.TimeoutError:
         raise HTTPException(
             status_code=504,
-            detail=f"TopoIQ slope map timed out after {TOPO_TIMEOUT_SEC}s.",
+            detail=f"TerrainIQ slope map timed out after {TOPO_TIMEOUT_SEC}s.",
         )
     except ValueError as exc:
         detail = str(exc)
@@ -312,9 +314,9 @@ async def topoiq_slope_map(
                 status_code=503,
                 detail="Slope map rendering is unavailable on this server (SciPy/Matplotlib missing).",
             )
-        raise HTTPException(status_code=500, detail=f"TopoIQ slope map failed: {detail}")
+        raise HTTPException(status_code=500, detail=f"TerrainIQ slope map failed: {detail}")
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"TopoIQ slope map failed: {exc}") from exc
+        raise HTTPException(status_code=500, detail=f"TerrainIQ slope map failed: {exc}") from exc
 
     return StreamingResponse(
         io.BytesIO(png_bytes),
@@ -323,9 +325,10 @@ async def topoiq_slope_map(
     )
 
 
-@router.post("/topoiq/report-pdf")
-async def topoiq_report_pdf(
-    body: TopoIQAnalyzeRequest,
+@router.post("/terrainiq/report-pdf")
+@router.post("/topoiq/report-pdf", include_in_schema=False)
+async def terrainiq_report_pdf(
+    body: TerrainIQAnalyzeRequest,
     _user: AuthUser = Depends(get_current_user),
 ):
     loop = asyncio.get_running_loop()
@@ -341,7 +344,7 @@ async def topoiq_report_pdf(
     except asyncio.TimeoutError:
         raise HTTPException(
             status_code=504,
-            detail=f"TopoIQ report generation timed out after {TOPO_TIMEOUT_SEC}s.",
+            detail=f"TerrainIQ report generation timed out after {TOPO_TIMEOUT_SEC}s.",
         )
     except ValueError as exc:
         detail = str(exc)
@@ -349,11 +352,11 @@ async def topoiq_report_pdf(
             raise HTTPException(status_code=422, detail="Boundary too large for selected grid spacing.")
         raise HTTPException(status_code=422, detail=detail)
     except RuntimeError as exc:
-        raise HTTPException(status_code=500, detail=f"TopoIQ report generation failed: {exc}")
+        raise HTTPException(status_code=500, detail=f"TerrainIQ report generation failed: {exc}")
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"TopoIQ report generation failed: {exc}") from exc
+        raise HTTPException(status_code=500, detail=f"TerrainIQ report generation failed: {exc}") from exc
 
-    safe = _safe_name(body.project_name, "topoiq_report")
+    safe = _safe_name(body.project_name, "terrainiq_report")
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
@@ -361,9 +364,10 @@ async def topoiq_report_pdf(
     )
 
 
-@router.post("/topoiq/exports")
-async def topoiq_exports(
-    body: TopoIQAnalyzeRequest,
+@router.post("/terrainiq/exports")
+@router.post("/topoiq/exports", include_in_schema=False)
+async def terrainiq_exports(
+    body: TerrainIQAnalyzeRequest,
     _user: AuthUser = Depends(get_current_user),
 ):
     loop = asyncio.get_running_loop()
@@ -375,7 +379,7 @@ async def topoiq_exports(
     except asyncio.TimeoutError:
         raise HTTPException(
             status_code=504,
-            detail=f"TopoIQ export preparation timed out after {TOPO_TIMEOUT_SEC}s.",
+            detail=f"TerrainIQ export preparation timed out after {TOPO_TIMEOUT_SEC}s.",
         )
     except ValueError as exc:
         detail = str(exc)
@@ -390,7 +394,7 @@ async def topoiq_exports(
             raise HTTPException(status_code=422, detail="No elevation data inside boundary.")
         if detail == "DEM_FETCH_FAILED":
             raise HTTPException(status_code=502, detail="Could not fetch terrain DEM tiles.")
-        raise HTTPException(status_code=500, detail=f"TopoIQ export preparation failed: {detail}")
+        raise HTTPException(status_code=500, detail=f"TerrainIQ export preparation failed: {detail}")
 
     bbox = analysis["bbox"]
     X = analysis["X"]
@@ -478,11 +482,11 @@ async def topoiq_exports(
             dxf_georef=dxf_georef,
         )
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"TopoIQ export generation failed: {exc}") from exc
+        raise HTTPException(status_code=500, detail=f"TerrainIQ export generation failed: {exc}") from exc
 
-    safe = _safe_name(body.project_name, "topoiq_exports")
+    safe = _safe_name(body.project_name, "terrainiq_exports")
     return StreamingResponse(
         io.BytesIO(zip_bytes),
         media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="{safe}_topoiq_exports.zip"'},
+        headers={"Content-Disposition": f'attachment; filename="{safe}_terrainiq_exports.zip"'},
     )

@@ -1,4 +1,4 @@
-"""TopoIQ → SiteIQ confirmed terrain cache (Option B)."""
+"""TerrainIQ → SiteIQ confirmed terrain cache (Option B)."""
 from __future__ import annotations
 
 import hashlib
@@ -40,7 +40,7 @@ def boundary_fingerprint_from_project(project: dict) -> str:
 
 
 def fingerprint_from_latlon_polys(polys: list) -> str:
-    """Hash analysis polygons as [[lat, lon], ...] rings (TopoIQ run boundary)."""
+    """Hash analysis polygons as [[lat, lon], ...] rings (TerrainIQ run boundary)."""
     parts = []
     for poly in polys:
         if not poly or len(poly) < 3:
@@ -97,7 +97,12 @@ def build_topo_cache(
 
 
 def get_topo_cache(session_state, project: dict) -> Optional[dict]:
-    cache = session_state.get("topoiq_run_cache") or (project or {}).get("topoiq_cache")
+    cache = (
+        session_state.get("terrainiq_run_cache")
+        or session_state.get("topoiq_run_cache")
+        or (project or {}).get("terrainiq_cache")
+        or (project or {}).get("topoiq_cache")
+    )
     if isinstance(cache, dict) and cache.get("mean_slope_pct") is not None:
         return cache
     return None
@@ -120,10 +125,11 @@ def topo_cache_valid_for_siteiq(
 
 
 def terrain_from_topo_cache(cache: dict) -> dict:
-    """SiteIQ-compatible terrain dict from a TopoIQ run cache."""
+    """SiteIQ-compatible terrain dict from a TerrainIQ run cache."""
     return {
         "success": True,
-        "topoiq_confirmed": True,
+        "terrainiq_confirmed": True,
+        "topoiq_confirmed": True,  # legacy alias for saved project payloads
         "boundary_sampled": False,
         "center_elev": cache.get("center_elev"),
         "mean_slope_pct": cache.get("mean_slope_pct"),
@@ -157,9 +163,9 @@ def resolve_terrain_for_siteiq(
 
 
 def persist_topo_cache(cache: dict, session_state, *, user_id: str = "", save_fn=None) -> None:
-    session_state["topoiq_run_cache"] = cache
+    session_state["terrainiq_run_cache"] = cache
     proj = dict(session_state.get("pvm_project") or {})
-    proj["topoiq_cache"] = cache
+    proj["terrainiq_cache"] = cache
     session_state["pvm_project"] = proj
     row_id = session_state.get("pvm_project_row_id")
     if user_id and row_id and save_fn:

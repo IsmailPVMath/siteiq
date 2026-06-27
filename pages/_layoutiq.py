@@ -53,7 +53,7 @@ if _ctx["latlons"]:
     st.success(
         f"Project boundary loaded ({_ctx['source']}) — "
         f"{len(_ctx['latlons'])} vertices"
-        + (" · TopoIQ data on file" if _ctx["has_topoiq"] else "")
+        + (" · TerrainIQ data on file" if _ctx["has_terrainiq"] else "")
     )
 else:
     st.caption("No saved boundary — upload or paste below, or save a Full Mode project first.")

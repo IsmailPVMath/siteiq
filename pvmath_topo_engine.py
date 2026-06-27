@@ -1,4 +1,4 @@
-"""Framework-agnostic TopoIQ terrain engine shared by API and Streamlit."""
+"""Framework-agnostic TerrainIQ terrain engine shared by API and Streamlit."""
 
 from __future__ import annotations
 

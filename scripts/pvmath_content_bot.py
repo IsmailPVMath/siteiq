@@ -23,14 +23,14 @@ DRAFTS = ROOT / "marketing" / "drafts"
 CALENDAR = [
     {
         "pillar": "Workflow",
-        "tue": "One Project Setup → SiteIQ, TopoIQ, YieldIQ on the same boundary",
+        "tue": "One Project Setup → SiteIQ, TerrainIQ, YieldIQ on the same boundary",
         "thu": "Screening vs survey — what you can decide in week one",
         "guide": "screening-vs-survey",
     },
     {
         "pillar": "Terrain before LiDAR",
         "tue": "KMZ arrives Monday — LandXML/DXF screening package same day",
-        "thu": "TopoIQ before you commit LiDAR budget on every greenfield site",
+        "thu": "TerrainIQ before you commit LiDAR budget on every greenfield site",
         "guide": "landxml-dxf-solar",
     },
     {
@@ -83,9 +83,9 @@ CALENDAR = [
     },
     {
         "pillar": "Case study style",
-        "tue": "Anonymised: KMZ → TopoIQ → LiDAR scoped to 40 ha problem area",
+        "tue": "Anonymised: KMZ → TerrainIQ → LiDAR scoped to 40 ha problem area",
         "thu": "Anonymised: YieldIQ chose SAT 1P over fixed at screening GCR",
-        "guide": "topoiq-metrics",
+        "guide": "terrainiq-metrics",
     },
     {
         "pillar": "Platform",
@@ -137,7 +137,7 @@ Soft CTA: 15-min call or free trial at siteiq.pvmath.com
 **Brief:** {slot['tue']}
 
 - Audience: EPC / project developer / civil engineer  
-- Module focus: infer from brief (SiteIQ / TopoIQ / YieldIQ / platform)  
+- Module focus: infer from brief (SiteIQ / TerrainIQ / YieldIQ / platform)  
 - CTA: Knowledge Centre link above OR siteiq.pvmath.com  
 - Include screening-grade disclaimer if discussing outputs  
 

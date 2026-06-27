@@ -26,7 +26,7 @@ _PROJECT_STATE_KEYS = (
     "map_lon",
     "last_map_search",
     "siteiq_run_cache",
-    "topoiq_run_cache",
+    "terrainiq_run_cache",
     "siteiq_project_name",
     "siteiq_country",
     "siteiq_lat",
@@ -67,7 +67,7 @@ def _pop_boundary_widget_keys(session_state) -> None:
 
 
 def clear_module_project_state(session_state, *, blank: bool = False) -> None:
-    """Drop per-project module state (SiteIQ / TopoIQ / Project Setup maps)."""
+    """Drop per-project module state (SiteIQ / TerrainIQ / Project Setup maps)."""
     for key in _PROJECT_STATE_KEYS:
         session_state.pop(key, None)
     _pop_boundary_widget_keys(session_state)
