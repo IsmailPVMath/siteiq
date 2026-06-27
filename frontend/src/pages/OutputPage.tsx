@@ -256,6 +256,7 @@ export function OutputPage({
   );
   const [layoutPortrait, setLayoutPortrait] = useState<"all" | "1" | "2" | "3" | "4">("2");
   const [layoutRowAlignment, setLayoutRowAlignment] = useState<RowAlignment>("horizontal");
+  const [showRowNumbers, setShowRowNumbers] = useState(false);
   const [layoutCustomGcr, setLayoutCustomGcr] = useState("");
   const [layoutCustomPitch, setLayoutCustomPitch] = useState("");
   const [moduleH, setModuleH] = useState(input?.module_h ?? DEFAULT_LAYOUT_CONFIG.module_h);
@@ -2407,7 +2408,16 @@ export function OutputPage({
                         <LayoutPreviewMap
                           center={{ lat: result.coordinates.lat, lon: result.coordinates.lon }}
                           layoutGeoJson={layoutDetail.geojson}
+                          showRowNumbers={showRowNumbers}
                         />
+                        <label className="checkbox-field layout-bifacial">
+                          <input
+                            type="checkbox"
+                            checked={showRowNumbers}
+                            onChange={(e) => setShowRowNumbers(e.target.checked)}
+                          />
+                          Show row numbers (zoom in to read)
+                        </label>
                         <p className="module-note">
                           Preview: {layoutDetail.total_rows.toLocaleString()} rows ·{" "}
                           {layoutDetail.total_modules.toLocaleString()} modules (blue strings on

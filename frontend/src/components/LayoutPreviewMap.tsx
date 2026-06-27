@@ -7,24 +7,28 @@ import { googleHybridLayer } from "../lib/mapTiles";
 interface Props {
   center: { lat: number; lon: number };
   layoutGeoJson: GeoJSON.GeoJSON | null;
+  showRowNumbers?: boolean;
 }
 
 // Row numbers only become readable once individual rows are a few px apart.
 // Below this zoom they collapse into an unreadable strip, so we hide them.
 const ROW_LABEL_MIN_ZOOM = 18;
 
-export function LayoutPreviewMap({ center, layoutGeoJson }: Props) {
+export function LayoutPreviewMap({ center, layoutGeoJson, showRowNumbers = false }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layoutLayerRef = useRef<L.GeoJSON | null>(null);
   const labelLayerRef = useRef<L.LayerGroup | null>(null);
   const labelPointsRef = useRef<{ lat: number; lon: number; n: number }[]>([]);
+  const showRowNumbersRef = useRef(showRowNumbers);
+  showRowNumbersRef.current = showRowNumbers;
 
   function refreshLabels() {
     const map = mapRef.current;
     const group = labelLayerRef.current;
     if (!map || !group) return;
     group.clearLayers();
+    if (!showRowNumbersRef.current) return;
     if (map.getZoom() < ROW_LABEL_MIN_ZOOM) return;
     for (const p of labelPointsRef.current) {
       L.marker([p.lat, p.lon], {
@@ -32,8 +36,9 @@ export function LayoutPreviewMap({ center, layoutGeoJson }: Props) {
         keyboard: false,
         icon: L.divIcon({
           className: "pv-row-number",
-          html: String(p.n),
-          iconSize: undefined,
+          html: `<span>${p.n}</span>`,
+          iconSize: [0, 0],
+          iconAnchor: [0, 0],
         }),
       }).addTo(group);
     }
@@ -152,7 +157,7 @@ export function LayoutPreviewMap({ center, layoutGeoJson }: Props) {
       map.fitBounds(bounds, { padding: [20, 20] });
     }
     refreshLabels();
-  }, [layoutGeoJson]);
+  }, [layoutGeoJson, showRowNumbers]);
 
   return <div ref={containerRef} className="layout-preview-map" aria-label="Layout preview map" />;
 }
