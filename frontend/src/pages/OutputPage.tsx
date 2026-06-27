@@ -1694,27 +1694,68 @@ export function OutputPage({
           const monthly = (result.solar as Record<string, unknown>)?.monthly_ghi;
           if (!Array.isArray(monthly) || monthly.length !== 12) return null;
           const vals = monthly.map((v) => Number(v) || 0);
-          const max = Math.max(...vals, 1);
-          const months = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+          const dataMax = Math.max(...vals, 1);
+          const annual = vals.reduce((s, v) => s + v, 0);
+          const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+          // "Nice" axis maximum + tick step so the Y scale lands on round numbers.
+          const niceCeil = (x: number) => {
+            const exp = Math.floor(Math.log10(x));
+            const base = Math.pow(10, exp);
+            const f = x / base;
+            const nf = f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10;
+            return nf * base;
+          };
+          const axisMax = niceCeil(dataMax);
+          const TICKS = 4;
+          const step = axisMax / TICKS;
+          const ticks = Array.from({ length: TICKS + 1 }, (_, i) => axisMax - i * step);
+
           return (
             <div className="ghi-section">
               <h3 className="setup-subhead">Monthly GHI (kWh/m²)</h3>
-              <div className="yield-month-chart" role="img" aria-label="Monthly global horizontal irradiation">
-                {vals.map((val, i) => (
-                  <div className="yield-month-col" key={i}>
-                    <div className="yield-month-bar-track">
-                      <div
-                        className="yield-month-bar"
-                        style={{ height: `${(val / max) * 100}%` }}
-                        title={`${months[i]}: ${val.toFixed(0)} kWh/m²`}
-                      />
-                    </div>
-                    <span className="yield-month-label">{months[i]}</span>
+              <div
+                className="ghi-chart"
+                role="img"
+                aria-label={`Monthly global horizontal irradiation. Annual total ${annual.toFixed(0)} kilowatt hours per square metre.`}
+              >
+                <div className="ghi-yaxis">
+                  <span className="ghi-yaxis-title">kWh/m²</span>
+                  <div className="ghi-yaxis-ticks">
+                    {ticks.map((t) => (
+                      <span className="ghi-ytick" key={t}>
+                        {t.toFixed(0)}
+                      </span>
+                    ))}
                   </div>
-                ))}
+                </div>
+                <div className="ghi-plot">
+                  <div className="ghi-gridlines">
+                    {ticks.map((t) => (
+                      <div className="ghi-gridline" key={t} />
+                    ))}
+                  </div>
+                  <div className="ghi-bars">
+                    {vals.map((val, i) => (
+                      <div className="ghi-col" key={i}>
+                        <div className="ghi-bar-track">
+                          <span className="ghi-bar-value">{val.toFixed(0)}</span>
+                          <div
+                            className="ghi-bar"
+                            style={{ height: `${(val / axisMax) * 100}%` }}
+                            title={`${months[i]}: ${val.toFixed(0)} kWh/m²`}
+                          />
+                        </div>
+                        <span className="ghi-xlabel">{months[i]}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <span className="ghi-xaxis-title">Month</span>
+                </div>
               </div>
               <p className="hint">
-                Global horizontal irradiation per month at this location (PVGIS).
+                Global horizontal irradiation per month at this location (PVGIS). Annual
+                total ≈ {annual.toFixed(0)} kWh/m²/yr (sum of monthly values).
               </p>
             </div>
           );

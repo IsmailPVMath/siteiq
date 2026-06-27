@@ -1170,15 +1170,90 @@ a {
   margin-top: 1rem;
 }
 
-.yield-month-chart {
+/* Monthly GHI chart — axed bar chart with Y scale + gridlines */
+.ghi-chart {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.ghi-yaxis {
+  display: flex;
+  align-items: stretch;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.ghi-yaxis-title {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  align-self: center;
+  padding-bottom: 1.1rem;
+}
+
+.ghi-yaxis-ticks {
+  height: 180px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  text-align: right;
+  min-width: 2.2rem;
+}
+
+.ghi-ytick {
+  font-size: 0.68rem;
+  color: var(--muted);
+  line-height: 1;
+  transform: translateY(-50%);
+}
+
+.ghi-ytick:first-child {
+  transform: translateY(-0.34rem);
+}
+
+.ghi-ytick:last-child {
+  transform: translateY(0.34rem);
+}
+
+.ghi-plot {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.ghi-gridlines {
+  position: absolute;
+  inset: 0 0 1.1rem 0;
+  height: 180px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.ghi-gridline {
+  border-top: 1px dashed var(--border);
+  height: 0;
+}
+
+.ghi-bars {
+  position: relative;
   display: flex;
   align-items: flex-end;
   gap: 0.35rem;
-  height: 140px;
-  padding: 0.5rem 0 0;
+  height: 180px;
+  border-left: 1.5px solid var(--border);
+  border-bottom: 1.5px solid var(--border);
 }
 
-.yield-month-col {
+.ghi-col {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -1187,7 +1262,8 @@ a {
   height: 100%;
 }
 
-.yield-month-bar-track {
+.ghi-bar-track {
+  position: relative;
   flex: 1;
   width: 100%;
   display: flex;
@@ -1195,15 +1271,37 @@ a {
   justify-content: center;
 }
 
-.yield-month-bar {
-  width: 70%;
+.ghi-bar {
+  width: 68%;
   min-height: 2px;
   background: linear-gradient(to top, var(--accent-dark), var(--accent));
   border-radius: 3px 3px 0 0;
+  transition: height 0.3s ease;
 }
 
-.yield-month-label {
-  font-size: 0.72rem;
+.ghi-bar-value {
+  position: absolute;
+  top: -1.05rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--accent-dark);
+  white-space: nowrap;
+}
+
+.ghi-xlabel {
+  font-size: 0.66rem;
+  color: var(--muted);
+  transform: translateY(0.1rem);
+}
+
+.ghi-xaxis-title {
+  display: block;
+  text-align: center;
+  margin-top: 0.4rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--muted);
 }
 
