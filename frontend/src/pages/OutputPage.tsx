@@ -1942,9 +1942,12 @@ export function OutputPage({
               water, forests, and transmission lines — with engineering setbacks applied to
               compute buildable area. No extra input required.
             </p>
-            {gisBusy && !gisResult ? (
-              <p className="hint">Detecting site constraints and computing buildable area…</p>
-            ) : null}
+            {gisBusy && !gisResult
+              ? renderModuleRunning(
+                  "Detecting site constraints",
+                  "Querying OpenStreetMap for roads, buildings, water, and transmission lines, then computing the buildable area. This can take up to a minute for large or dense sites.",
+                )
+              : null}
             {gisError ? <div className="error-banner">{gisError}</div> : null}
             {gisResult?.success ? (
               <>
