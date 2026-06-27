@@ -113,6 +113,7 @@ def build_layout_detail(
     road_mode: str = "auto",
     road_preset: str = "sat_auto",
     allow_partial_strings: bool = False,
+    row_alignment: str = "horizontal",
 ) -> Dict[str, Any]:
     n_portrait, tracker, label = _config_from_key(config_key)
     polys = _normalize_polys(boundary, boundaries)
@@ -178,6 +179,7 @@ def build_layout_detail(
             ref_lat=ref_lat,
             ref_lon=ref_lon,
             allow_partial_strings=allow_partial_strings,
+            row_alignment=row_alignment,
             **grid_kwargs,
         )
         if layout:

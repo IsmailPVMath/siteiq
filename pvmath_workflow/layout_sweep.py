@@ -102,6 +102,7 @@ def run_layout_sweep(
     include_bom: bool = False,
     mount_filter: str = "all",
     portrait_filter: Optional[List[int]] = None,
+    row_alignment: str = "horizontal",
     allow_partial_strings: bool = False,
 ) -> Dict[str, Any]:
     """
@@ -227,6 +228,7 @@ def run_layout_sweep(
                     ref_lat=ref_lat,
                     ref_lon=ref_lon,
                     allow_partial_strings=allow_partial_strings,
+                    row_alignment=row_alignment,
                     **grid_kwargs,
                 )
                 if layout:
@@ -289,6 +291,7 @@ def run_layout_sweep(
                     ref_lat=ref_lat,
                     ref_lon=ref_lon,
                     allow_partial_strings=allow_partial_strings,
+                    row_alignment=row_alignment,
                     **grid_kwargs,
                 )
                 if single:

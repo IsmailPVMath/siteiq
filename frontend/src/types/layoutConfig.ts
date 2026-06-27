@@ -1,4 +1,5 @@
 export type RoadMode = "auto" | "manual" | "off";
+export type RowAlignment = "horizontal" | "boundary";
 
 export interface LayoutElectricalConfig {
   module_h?: number;

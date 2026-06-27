@@ -33,6 +33,7 @@ import {
   ROAD_PRESETS,
   layoutPayloadFrom,
   type RoadMode,
+  type RowAlignment,
 } from "../types/layoutConfig";
 import type { TerrainIQAnalyzeRequest, TerrainIQAnalyzeResponse, YieldIQAnalyzeResponse } from "../types/terrainiq";
 import type {
@@ -254,6 +255,7 @@ export function OutputPage({
     "Fixed Tilt",
   );
   const [layoutPortrait, setLayoutPortrait] = useState<"all" | "1" | "2" | "3" | "4">("2");
+  const [layoutRowAlignment, setLayoutRowAlignment] = useState<RowAlignment>("horizontal");
   const [layoutCustomGcr, setLayoutCustomGcr] = useState("");
   const [layoutCustomPitch, setLayoutCustomPitch] = useState("");
   const [moduleH, setModuleH] = useState(input?.module_h ?? DEFAULT_LAYOUT_CONFIG.module_h);
@@ -385,9 +387,10 @@ export function OutputPage({
         rows_per_block: rowsPerBlock,
         block_gap_m: blockGapM,
         allow_partial_strings: allowPartialStrings,
+        row_alignment: layoutRowAlignment,
       };
     }
-    return { ...base, azimuth: azimuthDeg, allow_partial_strings: allowPartialStrings };
+    return { ...base, azimuth: azimuthDeg, allow_partial_strings: allowPartialStrings, row_alignment: layoutRowAlignment };
   }
 
   const buildableMask = useFullBoundary
@@ -1396,6 +1399,24 @@ export function OutputPage({
                 <p className="hint sidebar-hint">
                   Pick one portrait to keep the sweep fast on large sites. Use Compare only when you
                   need to weigh portraits side by side.
+                </p>
+              </div>
+              <div className="field">
+                <label htmlFor="layout-row-align">Row alignment</label>
+                <select
+                  id="layout-row-align"
+                  value={layoutRowAlignment}
+                  onChange={(e) => setLayoutRowAlignment(e.target.value as RowAlignment)}
+                >
+                  <option value="horizontal">
+                    Horizontal from south — uniform row lines (recommended for large SAT)
+                  </option>
+                  <option value="boundary">Along PV area boundary — fill irregular edges</option>
+                </select>
+                <p className="hint sidebar-hint">
+                  Horizontal rows share a south fence line and give realistic capacity on angled
+                  sites. Boundary mode packs into every pocket along the parcel edge and can
+                  overstate MWp.
                 </p>
               </div>
               <div className="field">

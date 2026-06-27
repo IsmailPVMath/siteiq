@@ -122,6 +122,10 @@ class WorkflowLayoutSweepRequest(BaseModel):
         default=None,
         description="Limit sweep to specific module-portrait counts (e.g. [1] or [2]). None sweeps all portraits for the mount.",
     )
+    row_alignment: Literal["horizontal", "boundary"] = Field(
+        default="horizontal",
+        description="horizontal = uniform rows from south/west fence; boundary = pack along parcel edge pockets.",
+    )
     allow_partial_strings: bool = Field(
         default=False,
         description="Place half-strings (≥50% modules) at row ends when space remains; otherwise stop at last complete string.",
@@ -163,6 +167,10 @@ class WorkflowLayoutDetailRequest(BaseModel):
     tracker_slope_limit_pct: float = Field(default=6.0, ge=0.5, le=30.0)
     slope_restriction_grid_m: float = Field(default=20.0, ge=5.0, le=100.0)
     allow_partial_strings: bool = Field(default=False)
+    row_alignment: Literal["horizontal", "boundary"] = Field(
+        default="horizontal",
+        description="horizontal = uniform rows from south/west fence; boundary = pack along parcel edge pockets.",
+    )
 
 
 class WorkflowLayoutDetailResponse(BaseModel):

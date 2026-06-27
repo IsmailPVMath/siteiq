@@ -1,5 +1,5 @@
 import type * as GeoJSON from "geojson";
-import type { LayoutElectricalConfig } from "./layoutConfig";
+import type { LayoutElectricalConfig, RowAlignment } from "./layoutConfig";
 
 export type WorkflowStep = "input" | "processing" | "output" | "projects";
 
@@ -126,6 +126,7 @@ export interface WorkflowLayoutSweepRequest extends LayoutElectricalConfig {
   custom_pitch_m?: number;
   mount_filter?: "all" | "fixed" | "sat";
   portrait_filter?: number[];
+  row_alignment?: RowAlignment;
   azimuth?: number;
   allow_partial_strings?: boolean;
 }

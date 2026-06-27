@@ -397,6 +397,7 @@ def run_layout(
     west_fence_x: float | None = None,
     rotate_origin: tuple[float, float] | None = None,
     allow_partial_strings: bool = False,
+    row_alignment: str = "horizontal",
 ):
     """
     Sweep row bands across a rotated boundary polygon on a shared site grid.
@@ -407,6 +408,12 @@ def run_layout(
     When ``grid_y_origin``, ``south_fence_x`` / ``west_fence_x``, and
     ``rotate_origin`` are supplied (multi-parcel coordinated layout), every
     parcel shares the same row pitch lines and south/west fence alignment.
+
+    ``row_alignment``:
+    - ``horizontal`` — one buildable row length per pitch band, measured from
+      the south (SAT) or west (fixed) fence; industry default for large sites.
+    - ``boundary`` — pack strings into every polygon pocket along the parcel
+      edge (can overstate capacity on angled or concave boundaries).
     """
     is_tracker = mounting_type == "sat"
     use_blocks = rows_per_block > 0 and block_gap_m > 0
@@ -447,7 +454,28 @@ def run_layout(
     rows_in_block = 0
 
     while y + row_ns <= maxy + 1e-6:
-        segments = _row_band_segments(poly_rot, y, row_ns)
+        if row_alignment == "boundary":
+            segments = _row_band_segments(poly_rot, y, row_ns)
+        else:
+            cy = y + row_ns / 2
+            avail_len = _available_row_length(
+                poly_rot,
+                south_fence_x=parcel_south if is_tracker else None,
+                west_fence_x=parcel_west if not is_tracker else None,
+                cy=cy,
+                is_tracker=is_tracker,
+            )
+            if avail_len < module_w * modules_per_string * 0.5:
+                y += pitch
+                rows_in_block += 1
+                if use_blocks and rows_in_block >= rows_per_block:
+                    y += block_gap_m
+                    rows_in_block = 0
+                continue
+            if is_tracker:
+                segments = [(parcel_south - avail_len, parcel_south)]
+            else:
+                segments = [(parcel_west, parcel_west + avail_len)]
         if not segments:
             y += pitch
             rows_in_block += 1

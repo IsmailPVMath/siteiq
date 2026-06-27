@@ -332,6 +332,7 @@ async def workflow_layout_sweep(
                     road_preset=body.road_preset,
                     mount_filter=body.mount_filter,
                     portrait_filter=body.portrait_filter,
+                    row_alignment=body.row_alignment,
                     allow_partial_strings=body.allow_partial_strings,
                 ),
             ),
@@ -386,6 +387,7 @@ def _layout_detail_payload(body: WorkflowLayoutDetailRequest):
         road_mode=body.road_mode,
         road_preset=body.road_preset,
         allow_partial_strings=body.allow_partial_strings,
+        row_alignment=body.row_alignment,
     )
 
 
