@@ -278,6 +278,10 @@ export function OutputPage({
       ? (input as { azimuth?: number }).azimuth!
       : 180,
   );
+  const AZIMUTH_PRESETS = [180, 90, 135, 225, 270];
+  const [azimuthCustom, setAzimuthCustom] = useState<boolean>(
+    !AZIMUTH_PRESETS.includes(azimuthDeg),
+  );
   const [rowsPerBlock, setRowsPerBlock] = useState(
     input?.rows_per_block ?? DEFAULT_LAYOUT_CONFIG.rows_per_block,
   );
@@ -1335,8 +1339,15 @@ export function OutputPage({
                 </label>
                 <select
                   id="layout-azimuth"
-                  value={azimuthDeg}
-                  onChange={(e) => setAzimuthDeg(Number(e.target.value))}
+                  value={azimuthCustom ? "custom" : String(azimuthDeg)}
+                  onChange={(e) => {
+                    if (e.target.value === "custom") {
+                      setAzimuthCustom(true);
+                    } else {
+                      setAzimuthCustom(false);
+                      setAzimuthDeg(Number(e.target.value));
+                    }
+                  }}
                 >
                   <option value={180}>
                     {mountFilter === "sat" ? "180° — N–S axis (default)" : "180° — due south (optimal)"}
@@ -1345,11 +1356,27 @@ export function OutputPage({
                   <option value={135}>135° — south-east</option>
                   <option value={225}>225° — south-west</option>
                   <option value={270}>270° — west</option>
+                  <option value="custom">Custom angle…</option>
                 </select>
+                {azimuthCustom ? (
+                  <input
+                    type="number"
+                    className="layout-azimuth-custom"
+                    min="0"
+                    max="360"
+                    step="1"
+                    value={azimuthDeg}
+                    placeholder="0–360°"
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      setAzimuthDeg(Math.min(360, Math.max(0, v || 0)));
+                    }}
+                  />
+                ) : null}
                 <p className="hint sidebar-hint">
                   {mountFilter === "sat"
-                    ? "Trackers default to a North–South axis (rotating E→W). Change only if the parcel forces a skewed axis."
-                    : "Fixed tilt defaults to due-south facing at PVGIS optimal tilt. Adjust azimuth for skewed parcels."}
+                    ? "Trackers default to a North–South axis (rotating E→W). Pick a preset or enter a custom axis azimuth (0–360°) to align with the parcel."
+                    : "Fixed tilt defaults to due-south facing at PVGIS optimal tilt. Pick a preset or enter a custom azimuth (0–360°) for skewed parcels."}
                 </p>
               </div>
               <details className="sidebar-advanced" open>

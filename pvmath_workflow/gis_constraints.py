@@ -35,6 +35,44 @@ DEFAULT_SETBACKS_M: Dict[str, float] = {
     "transmission_lines": 100.0,
 }
 
+# Road setbacks are measured from the OSM centerline (OSM ways are zero-width
+# centerlines). The effective buffer therefore has to cover BOTH half of the
+# carriageway width AND the legal building-prohibition zone from the road edge.
+# Reference: German FStrG §9 Anbauverbotszone — 40 m from a Bundesautobahn and
+# 20 m from a Bundesstraße edge; other countries are broadly comparable. These
+# screening defaults = approx. half-carriageway + regulatory offset and act as a
+# floor (the user-set "roads" setback can only push them higher, never lower).
+ROAD_CLASS_SETBACKS_M: Dict[str, float] = {
+    "motorway": 50.0,        # autobahn: ~13 m half dual-carriageway + ~40 m zone
+    "motorway_link": 40.0,
+    "trunk": 30.0,           # Bundesstraße / expressway: ~10 m + ~20 m zone
+    "trunk_link": 25.0,
+    "primary": 25.0,
+    "primary_link": 20.0,
+    "secondary": 18.0,
+    "secondary_link": 15.0,
+    "tertiary": 12.0,
+    "tertiary_link": 10.0,
+    "unclassified": 8.0,
+    "residential": 8.0,
+    "living_street": 6.0,
+    "service": 6.0,
+    "track": 5.0,
+    "path": 5.0,
+    "footway": 5.0,
+    "cycleway": 5.0,
+}
+
+
+def road_setback_for(highway: str, floor: float = 0.0) -> float:
+    """Effective centerline buffer for a road of the given OSM ``highway`` class.
+
+    Returns ``max(floor, class_default)`` so a user-raised generic road setback
+    still applies, but a major road never drops below its regulatory default.
+    """
+    cls = (highway or "").strip().lower()
+    return max(float(floor or 0.0), ROAD_CLASS_SETBACKS_M.get(cls, 5.0))
+
 
 def _way_geom(element: dict) -> Optional[Any]:
     coords = element.get("geometry") or []

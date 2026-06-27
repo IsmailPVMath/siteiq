@@ -8,7 +8,11 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 from shapely.geometry import mapping, shape
 from shapely.ops import unary_union
 
-from pvmath_workflow.gis_constraints import DEFAULT_SETBACKS_M, LAYER_STYLES
+from pvmath_workflow.gis_constraints import (
+    DEFAULT_SETBACKS_M,
+    LAYER_STYLES,
+    road_setback_for,
+)
 
 
 def _meters_to_deg(meters: float, lat: float) -> float:
@@ -67,6 +71,37 @@ def _fc_to_geoms(fc: dict) -> List[Any]:
     return geoms
 
 
+def _road_exclusion(fc: dict, road_floor: float, lat: float):
+    """Buffer each road feature by its class-specific setback (from centerline).
+
+    OSM roads are zero-width centerlines, so a major road needs a buffer wide
+    enough to clear both the carriageway and its regulatory building-prohibition
+    zone — see ROAD_CLASS_SETBACKS_M. Mixing road classes in a single union
+    buffer would apply one flat distance to all of them, which is what let
+    panels sit on a motorway.
+    """
+    if not fc or fc.get("type") != "FeatureCollection":
+        return None, 0.0
+    buffered_list: List[Any] = []
+    max_setback = 0.0
+    for feat in fc.get("features") or []:
+        try:
+            g = shape(feat.get("geometry"))
+        except Exception:
+            continue
+        if g.is_empty:
+            continue
+        highway = ((feat.get("properties") or {}).get("highway") or "")
+        setback = road_setback_for(highway, road_floor)
+        max_setback = max(max_setback, setback)
+        b = _buffer_geom(g, setback, lat)
+        if b is not None and not b.is_empty:
+            buffered_list.append(b)
+    if not buffered_list:
+        return None, 0.0
+    return unary_union(buffered_list), max_setback
+
+
 def compute_buildable_area(
     rings: Sequence[Sequence[Tuple[float, float]]],
     constraint_layers: Dict[str, dict],
@@ -108,16 +143,26 @@ def compute_buildable_area(
     summary: List[dict] = []
 
     for category, fc in (constraint_layers or {}).items():
-        setback = setbacks.get(category, 0.0)
-        if setback <= 0:
-            continue
-        geoms = _fc_to_geoms(fc)
-        if not geoms:
-            continue
-        union = unary_union(geoms)
-        buffered = _buffer_geom(union, setback, lat)
-        if buffered is None or buffered.is_empty:
-            continue
+        # Roads use per-feature, class-aware setbacks (motorway ≫ field track),
+        # buffered from the centerline so the carriageway + regulatory zone is
+        # cleared. Every other category uses a single flat setback.
+        if category == "roads":
+            road_floor = setbacks.get("roads", 0.0)
+            geoms = _fc_to_geoms(fc)
+            buffered, setback = _road_exclusion(fc, road_floor, lat)
+            if buffered is None or buffered.is_empty:
+                continue
+        else:
+            setback = setbacks.get(category, 0.0)
+            if setback <= 0:
+                continue
+            geoms = _fc_to_geoms(fc)
+            if not geoms:
+                continue
+            union = unary_union(geoms)
+            buffered = _buffer_geom(union, setback, lat)
+            if buffered is None or buffered.is_empty:
+                continue
         try:
             clipped = buffered.intersection(site)
         except Exception:

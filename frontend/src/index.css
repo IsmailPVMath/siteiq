@@ -1932,6 +1932,10 @@ body.sb-resizing .results-resizer::before {
   min-width: 0;
 }
 
+.layout-azimuth-custom {
+  margin-top: 0.4rem;
+}
+
 .results-main .module-card:first-child {
   margin-top: 0;
 }
