@@ -110,7 +110,7 @@ def _limit_detail(user: AuthUser) -> str:
     return usage_limit_detail(plan)
 
 
-GIS_TIMEOUT_SEC = int(os.environ.get("PVMATH_GIS_TIMEOUT", "120"))
+GIS_TIMEOUT_SEC = int(os.environ.get("PVMATH_GIS_TIMEOUT", "180"))
 
 
 @router.post("/workflow/gis-analysis", response_model=WorkflowGisAnalysisResponse)

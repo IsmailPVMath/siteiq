@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Iterable, Sequence, Tuple
+from typing import Any, Sequence, Tuple
 
 import requests
 
 USER_AGENT = "PVMath/1.0 (pvmath.com; contact@pvmath.com)"
-OVERPASS_URL = "https://overpass-api.de/api/interpreter"
-DEFAULT_TIMEOUT_SEC = 90
+OVERPASS_URLS = (
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+)
+OVERPASS_URL = OVERPASS_URLS[0]
+DEFAULT_TIMEOUT_SEC = 60
+RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -57,15 +63,35 @@ def overpass_query(
     *,
     timeout_sec: int = DEFAULT_TIMEOUT_SEC,
 ) -> list[dict[str, Any]]:
-    resp = requests.post(
-        OVERPASS_URL,
-        data={"data": query},
-        headers={"User-Agent": USER_AGENT},
-        timeout=timeout_sec + 10,
+    errors: list[str] = []
+    for url in OVERPASS_URLS:
+        try:
+            resp = requests.post(
+                url,
+                data={"data": query},
+                headers={"User-Agent": USER_AGENT},
+                timeout=timeout_sec + 10,
+            )
+            if resp.status_code in RETRYABLE_STATUS_CODES:
+                errors.append(f"{url}: HTTP {resp.status_code}")
+                continue
+            resp.raise_for_status()
+            payload = resp.json()
+            return payload.get("elements") or []
+        except requests.Timeout:
+            errors.append(f"{url}: timed out after {timeout_sec}s")
+        except requests.HTTPError as exc:
+            detail = (exc.response.text or "").strip()[:300] if exc.response is not None else str(exc)
+            errors.append(f"{url}: HTTP {exc.response.status_code if exc.response is not None else 'error'} {detail}")
+            if exc.response is not None and exc.response.status_code not in RETRYABLE_STATUS_CODES:
+                break
+        except requests.RequestException as exc:
+            errors.append(f"{url}: {exc}")
+
+    raise RuntimeError(
+        "OpenStreetMap Overpass did not return constraints. "
+        "Tried public Overpass mirrors; last errors: " + " | ".join(errors[-3:])
     )
-    resp.raise_for_status()
-    payload = resp.json()
-    return payload.get("elements") or []
 
 
 def build_site_constraint_query(
@@ -89,7 +115,7 @@ def build_site_constraint_query(
   way["railway"]({area_filter});
   way["building"]({area_filter});
   way["natural"="water"]({area_filter});
-  way["waterway"~"^(river|stream|canal|ditch)$"]({area_filter});
+  way["waterway"~"^(river|stream|canal)$"]({area_filter});
   way["landuse"="forest"]({area_filter});
   way["natural"="wood"]({area_filter});
   way["power"="line"]({area_filter});

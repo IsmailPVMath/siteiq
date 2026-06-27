@@ -134,7 +134,7 @@ def _feature_collection(features: List[dict]) -> dict:
 def fetch_site_constraints(
     rings: Sequence[Sequence[Tuple[float, float]]],
     *,
-    timeout_sec: int = 90,
+    timeout_sec: int = 60,
 ) -> Dict[str, Any]:
     """
     Query OSM for constraint features inside the site polygon.
