@@ -98,7 +98,7 @@ def list_projects(user: AuthUser = Depends(get_current_user)):
         timeout=15,
     )
     if r.status_code != 200:
-        raise HTTPException(status_code=500, detail="Could not list projects")
+        raise HTTPException(status_code=500, detail=_supabase_error_detail(r, "Could not list projects"))
     return r.json()
 
 
