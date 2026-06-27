@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Copernicus GLO-30 is ~30 m native resolution. TerrainIQ's 5 m grid is a layout-friendly resample — not new sensor detail." />
-  <title>GLO-30 vs 5 m grid — PVMath Knowledge Centre</title>
+  <meta name="description" content="TerrainIQ resamples region-routed DEM (EEA-10, 3DEP, FABDEM, GLO-30 fallback) to a 5 m layout grid — native posting and grid spacing are different." />
+  <title>Native DEM vs 5 m grid — PVMath Knowledge Centre</title>
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -16,17 +16,26 @@
     <div class="nav-links">
       <a href="/">Home</a>
       <a href="index.html">Knowledge Centre</a>
-      <a href="https://siteiq.pvmath.com" class="nav-cta">Try TerrainIQ →</a>
+      <a href="https://app.pvmath.com" class="nav-cta">Try TerrainIQ →</a>
     </div>
   </nav>
 
   <div class="wrap">
     <p class="breadcrumb"><a href="index.html">Knowledge Centre</a> / TerrainIQ</p>
-    <h1>Copernicus GLO-30 vs the 5 m output grid</h1>
-    <p class="lead">Two different numbers — native DEM posting and analysis grid spacing — are often confused. Both matter for honest screening.</p>
+    <h1>Native DEM posting vs the 5 m output grid</h1>
+    <p class="lead">Two different numbers — source DEM resolution and analysis grid spacing — are often confused. Both matter for honest screening.</p>
 
     <article>
-      <h2>What GLO-30 actually provides</h2>
+      <h2>Region-routed DEM sources</h2>
+      <p>
+        TerrainIQ does not use one global dataset everywhere. It routes by location —
+        see <a href="regional-dem-routing.html">Regional DEM routing</a> for EEA-10,
+        USGS 3DEP, FABDEM, and GLO-30 fallback. Native posting is typically
+        <strong>~10 m</strong> (Europe, USA where available) or <strong>~30 m</strong>
+        (global FABDEM / GLO-30).
+      </p>
+
+      <h2>What GLO-30 provides (fallback)</h2>
       <p>
         <strong>Copernicus DEM GLO-30</strong> is a global elevation model with roughly
         <strong>30 m horizontal posting</strong> at the equator. It is the standard free
@@ -45,13 +54,14 @@
       </p>
       <p>
         Resampling to 5 m makes contours and DXF linework smoother for layout review. It does
-        <strong>not</strong> mean the satellite measured elevation every 5 m. Think of finer
-        graph paper drawn over the same ~30 m photograph.
+        <strong>not</strong> mean elevation was measured every 5 m. Think of finer graph paper
+        drawn over the same ~10–30 m source photograph.
       </p>
 
       <div class="callout callout-warn">
         <strong>Common mistake:</strong> Assuming a 5 m export resolves ditches, berms, or
-        field rows that are smaller than ~30 m. Those features may not appear until survey-grade data.
+        field rows smaller than the native DEM posting (~10–30 m). Those features may not
+        appear until survey-grade data.
       </div>
 
       <h2>When to coarsen the grid</h2>
@@ -63,6 +73,7 @@
 
       <h2>Next steps</h2>
       <ul>
+        <li><a href="regional-dem-routing.html">Regional DEM routing (EEA, FABDEM, 3DEP)</a></li>
         <li><a href="mean-slope-vs-cross-row.html">Mean slope vs cross-row slope</a></li>
         <li><a href="screening-vs-survey.html">When to commission LiDAR or RTK</a></li>
       </ul>

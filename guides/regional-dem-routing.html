@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="TerrainIQ routes to the best public DEM per location — Copernicus EEA-10 in Europe, USGS 3DEP in the USA, FABDEM globally, GLO-30 fallback." />
+  <title>Regional DEM routing — PVMath Knowledge Centre</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="guides.css">
+</head>
+<body>
+  <nav>
+    <a class="nav-logo" href="/">PVMath</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="index.html">Knowledge Centre</a>
+      <a href="https://app.pvmath.com" class="nav-cta">Try TerrainIQ →</a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <p class="breadcrumb"><a href="index.html">Knowledge Centre</a> / TerrainIQ</p>
+    <h1>Regional DEM routing — EEA, 3DEP, FABDEM &amp; GLO-30</h1>
+    <p class="lead">TerrainIQ picks the best free public elevation source for your coordinates — not one global dataset for every site.</p>
+
+    <article>
+      <h2>How routing works</h2>
+      <p>
+        When you run TerrainIQ, PVMath checks your site location and selects a
+        <strong>region-routed DEM</strong>. All sources are resampled to the same
+        <strong>5 m analysis grid</strong> inside your boundary — see
+        <a href="glo30-and-5m-grid.html">GLO-30 vs 5 m grid</a> for why grid spacing
+        and native posting are different numbers.
+      </p>
+
+      <h2>Europe — Copernicus EEA-10</h2>
+      <p>
+        <strong>EEA-10</strong> (~10 m posting) is preferred for sites in the European
+        screening bounds (34–72°N, −25–45°E). It generally gives sharper slope signals
+        than global 30 m products for early civil review.
+      </p>
+      <p>
+        If EEA-10 tiles are unavailable for a location, TerrainIQ falls back to
+        <strong>Copernicus GLO-30</strong>.
+      </p>
+
+      <h2>USA — USGS 3DEP</h2>
+      <p>
+        <strong>USGS 3DEP</strong> (~10 m where available) is the default route for
+        United States coordinates. Coverage and quality vary by tile — some areas still
+        resolve to coarser public data.
+      </p>
+
+      <h2>Rest of world — FABDEM</h2>
+      <p>
+        <strong>FABDEM</strong> (bare-earth style, ~30 m) is the global default outside
+        Europe and the USA. It reduces vegetation/building bias compared with raw DSM
+        surfaces — useful for ground-mount screening where canopy matters.
+      </p>
+      <p>
+        <strong>GLO-30</strong> remains the global fallback when the preferred source
+        cannot be fetched.
+      </p>
+
+      <div class="callout callout-warn">
+        <strong>Screening-grade only.</strong> All public DEMs are pre-survey tools.
+        Commission LiDAR or RTK before FEED, pile design, or cut/fill quantities.
+      </div>
+
+      <h2>What you see in the app</h2>
+      <ul>
+        <li><strong>terrain_source_used</strong> — which dataset was actually applied</li>
+        <li><strong>Terrain PDF disclaimer</strong> — native posting and routing notes</li>
+        <li><strong>reference.json</strong> — export metadata for CAD handoff</li>
+      </ul>
+
+      <h2>Related articles</h2>
+      <ul>
+        <li><a href="glo30-and-5m-grid.html">Native DEM posting vs 5 m output grid</a></li>
+        <li><a href="terrainiq-metrics.html">Terrain scores &amp; engineering verdicts</a></li>
+        <li><a href="screening-vs-survey.html">When to upgrade to survey-grade</a></li>
+      </ul>
+    </article>
+  </div>
+
+  <footer>
+    <p>© PVMath · <a href="index.html">Knowledge Centre</a></p>
+  </footer>
+</body>
+</html>

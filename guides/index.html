@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="PVMath Knowledge Centre — engineering guides for ground-mount solar screening with SiteIQ, TerrainIQ, and YieldIQ." />
+  <meta name="description" content="PVMath Knowledge Centre — engineering guides for ground-mount solar screening with SiteIQ, TerrainIQ, LayoutIQ, and YieldIQ." />
   <title>Knowledge Centre — PVMath</title>
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,7 +16,7 @@
     <div class="nav-links">
       <a href="/">Home</a>
       <a href="index.html">Knowledge Centre</a>
-      <a href="https://siteiq.pvmath.com" class="nav-cta">Try PVMath →</a>
+      <a href="https://app.pvmath.com" class="nav-cta">Try PVMath →</a>
     </div>
   </nav>
 
@@ -34,10 +34,15 @@
     </div>
 
     <div class="card-grid">
+      <a class="guide-card" href="regional-dem-routing.html">
+        <span class="guide-tag">TerrainIQ</span>
+        <h3>Regional DEM routing — EEA, FABDEM, 3DEP</h3>
+        <p>Best public elevation source per location; GLO-30 fallback. Not one global dataset.</p>
+      </a>
       <a class="guide-card" href="glo30-and-5m-grid.html">
         <span class="guide-tag">TerrainIQ</span>
-        <h3>GLO-30 vs 5 m output grid</h3>
-        <p>Why satellite DEM native resolution differs from your analysis grid spacing.</p>
+        <h3>Native DEM vs 5 m output grid</h3>
+        <p>Why satellite posting (~10–30 m) differs from your 5 m analysis grid spacing.</p>
       </a>
       <a class="guide-card" href="mean-slope-vs-cross-row.html">
         <span class="guide-tag">TerrainIQ</span>
@@ -57,12 +62,17 @@
       <a class="guide-card" href="siteiq-screening.html">
         <span class="guide-tag">SiteIQ</span>
         <h3>Understanding SiteIQ screening</h3>
-        <p>Solar resource, terrain, flood flags, regulatory pointers, and the PVMath Score.</p>
+        <p>Solar resource, GIS buildable area, flood flags, regulatory pointers, and PVMath Score.</p>
+      </a>
+      <a class="guide-card" href="layoutiq-auto-layout.html">
+        <span class="guide-tag">LayoutIQ</span>
+        <h3>LayoutIQ — auto layout &amp; capacity</h3>
+        <p>Fixed tilt or tracker rows on buildable area — pitch, GCR, 3D preview, DXF export.</p>
       </a>
       <a class="guide-card" href="yieldiq-yield.html">
         <span class="guide-tag">YieldIQ</span>
-        <h3>YieldIQ — yield, PR &amp; GCR</h3>
-        <p>Comparing fixed tilt and tracker configurations with PVGIS-based screening.</p>
+        <h3>YieldIQ — yield on your layout</h3>
+        <p>PVGIS yield for your LayoutIQ mount — specific yield, PR, and capacity factor.</p>
       </a>
       <a class="guide-card" href="screening-vs-survey.html">
         <span class="guide-tag">All modules</span>
@@ -73,7 +83,7 @@
   </div>
 
   <footer>
-    <p>© PVMath · <a href="/">pvmath.com</a> · <a href="https://siteiq.pvmath.com">Open app</a></p>
+    <p>© PVMath · <a href="/">pvmath.com</a> · <a href="https://app.pvmath.com">Open app</a></p>
   </footer>
 </body>
 </html>

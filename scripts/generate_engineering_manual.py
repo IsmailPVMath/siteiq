@@ -31,10 +31,10 @@ VERSION = "1.0"
 MANUAL_DATE = "June 2026"
 
 PUBLIC_CALC_REDACTION = (
-    "Computed inside PVMath using industry-standard solar and terrain methods on Copernicus "
-    "GLO-30, PVGIS, and disclosed loss assumptions. Proprietary weighting, thresholds, and "
-    "implementation constants are not published in this edition. Use in-app help and the "
-    "Knowledge Centre at pvmath.com/guides for interpretation."
+    "Computed inside PVMath using industry-standard solar and terrain methods on region-routed "
+    "public DEM (EEA-10, USGS 3DEP, FABDEM, GLO-30 fallback), PVGIS, and disclosed loss assumptions. "
+    "Proprietary weighting, thresholds, and implementation constants are not published in this edition. "
+    "Use in-app help and the Knowledge Centre at pvmath.com/guides for interpretation."
 )
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -123,7 +123,7 @@ def _add_cover(doc: Document, *, public: bool):
     doc.add_paragraph()
     sub = doc.add_paragraph()
     sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = sub.add_run("SiteIQ  ·  TerrainIQ  ·  YieldIQ")
+    r = sub.add_run("SiteIQ  ·  TerrainIQ  ·  LayoutIQ  ·  YieldIQ")
     _set_run_font(r, size=16, color=(26, 46, 26))
     doc.add_paragraph()
     meta = doc.add_paragraph()

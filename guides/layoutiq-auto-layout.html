@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="LayoutIQ auto-packs fixed-tilt or tracker rows on your buildable area with GIS setbacks, DC capacity, and 3D preview — one step in the unified PVMath workflow." />
+  <title>LayoutIQ auto layout — PVMath Knowledge Centre</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="guides.css">
+</head>
+<body>
+  <nav>
+    <a class="nav-logo" href="/">PVMath</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="index.html">Knowledge Centre</a>
+      <a href="https://app.pvmath.com" class="nav-cta">Try LayoutIQ →</a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <p class="breadcrumb"><a href="index.html">Knowledge Centre</a> / LayoutIQ</p>
+    <h1>LayoutIQ — auto layout on your buildable area</h1>
+    <p class="lead">Pick mount type, pitch, and GCR — PVMath packs rows inside GIS setbacks and feeds YieldIQ automatically.</p>
+
+    <article>
+      <h2>What LayoutIQ does</h2>
+      <p>
+        <strong>LayoutIQ</strong> turns your site boundary (or SiteIQ buildable polygon)
+        into a packed row layout for early capacity and energy screening. You choose:
+      </p>
+      <ul>
+        <li><strong>Mount type</strong> — Fixed Tilt or Single-Axis Tracker (chosen here, not in Project Setup)</li>
+        <li><strong>Portrait count</strong> — 1P–4P fixed or 1P/2P tracker</li>
+        <li><strong>Pitch &amp; GCR</strong> — row spacing and ground coverage</li>
+        <li><strong>Optimization mode</strong> — balanced, high-energy, land-optimized, or custom</li>
+      </ul>
+
+      <h2>GIS setbacks applied</h2>
+      <p>
+        When SiteIQ GIS analysis has run, LayoutIQ can pack rows on the
+        <strong>buildable area</strong> — roads, buildings, water, and other OSM-detected
+        constraints are already buffered. You can also use the full boundary if you
+        prefer to ignore exclusions for an early sketch.
+      </p>
+
+      <h2>Key outputs</h2>
+      <ul>
+        <li><strong>DC capacity &amp; module count</strong> — from packed rows on the polygon</li>
+        <li><strong>Layout sweep table</strong> — compare mount/portrait/GCR combinations</li>
+        <li><strong>3D terrain + layout preview</strong> — rows on the TerrainIQ DEM surface</li>
+        <li><strong>DXF export</strong> — row linework for CAD overlay (screening-grade)</li>
+        <li><strong>BOM CSV</strong> — module and row counts in the project ZIP</li>
+      </ul>
+
+      <h2>Feeds YieldIQ</h2>
+      <p>
+        YieldIQ runs on your <strong>selected LayoutIQ configuration</strong> — mount type,
+        GCR, and losses — so energy results match the layout you picked, not a generic
+        four-config comparison table.
+      </p>
+
+      <div class="callout">
+        <strong>Workflow order:</strong> Project Setup → SiteIQ → TerrainIQ →
+        <strong>LayoutIQ</strong> → YieldIQ → PVMath Report / ZIP. One login at
+        <a href="https://app.pvmath.com">app.pvmath.com</a>.
+      </div>
+
+      <h2>Related articles</h2>
+      <ul>
+        <li><a href="siteiq-screening.html">SiteIQ screening &amp; GIS buildable area</a></li>
+        <li><a href="yieldiq-yield.html">YieldIQ on your chosen layout</a></li>
+        <li><a href="landxml-dxf-solar.html">Terrain &amp; layout CAD exports</a></li>
+      </ul>
+    </article>
+  </div>
+
+  <footer>
+    <p>© PVMath · <a href="index.html">Knowledge Centre</a></p>
+  </footer>
+</body>
+</html>

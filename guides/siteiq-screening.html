@@ -16,7 +16,7 @@
     <div class="nav-links">
       <a href="/">Home</a>
       <a href="index.html">Knowledge Centre</a>
-      <a href="https://siteiq.pvmath.com" class="nav-cta">Try SiteIQ →</a>
+      <a href="https://app.pvmath.com" class="nav-cta">Try SiteIQ →</a>
     </div>
   </nav>
 
@@ -29,7 +29,8 @@
       <h2>What SiteIQ evaluates</h2>
       <ul>
         <li><strong>Solar resource</strong> — GHI and configuration-aware yield proxies from PVGIS (JRC)</li>
-        <li><strong>Terrain</strong> — sparse pin sampling or TerrainIQ-confirmed GLO-30 when available</li>
+        <li><strong>Terrain</strong> — sparse pin sampling or TerrainIQ-confirmed regional DEM when available</li>
+        <li><strong>GIS buildable area</strong> — OSM constraints, setbacks, and buildable % (Full Mode with boundary)</li>
         <li><strong>Flood indicator</strong> — elevation-based heuristic, not official flood mapping</li>
         <li><strong>Land use</strong> — Standard ground mount vs Agri-PV (dual use) density assumptions</li>
         <li><strong>Regulatory flags</strong> — country-aware checklist pointers (not legal advice)</li>
@@ -46,8 +47,8 @@
       <h2>Overall site verdict</h2>
       <p>
         The overall verdict summarizes combined findings into a plain-language recommendation
-        tier. Use it with module-specific depth: run <strong>TerrainIQ</strong> for terrain detail
-        and <strong>YieldIQ</strong> for configuration-level energy comparison.
+        tier. Use it with module-specific depth: run <strong>TerrainIQ</strong> for terrain detail,
+        <strong>LayoutIQ</strong> for packed capacity, and <strong>YieldIQ</strong> for energy on your layout.
       </p>
 
       <h2>Capacity &amp; land use</h2>
@@ -64,7 +65,8 @@
 
       <h2>Related articles</h2>
       <ul>
-        <li><a href="yieldiq-yield.html">YieldIQ configuration comparison</a></li>
+        <li><a href="layoutiq-auto-layout.html">LayoutIQ auto layout</a></li>
+        <li><a href="yieldiq-yield.html">YieldIQ on your layout</a></li>
         <li><a href="screening-vs-survey.html">Screening vs survey-grade</a></li>
       </ul>
     </article>
