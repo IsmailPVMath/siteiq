@@ -99,12 +99,13 @@ def _display_name(full_name: str) -> str:
     parts = [p.strip() for p in (full_name or "").split("/") if p.strip()]
     if not parts:
         return "Unnamed"
+    if len(parts) >= 2 and _UNNAMED_RE.search(parts[-1]):
+        m = re.search(r"\((\d+)\)", parts[-1])
+        return f"Parcel {m.group(1)}" if m else "Parcel 1"
     for i, part in enumerate(parts):
         if _SITE_LABEL_RE.search(part):
             tail = parts[i:]
             return " / ".join(tail[-2:]) if len(tail) > 2 else " / ".join(tail)
-    if len(parts) >= 2 and _UNNAMED_RE.search(parts[-1]):
-        return f"{parts[-2]} / {parts[-1]}"
     return parts[-1]
 
 

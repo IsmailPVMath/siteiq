@@ -2103,13 +2103,30 @@ body.sb-resizing .results-resizer::before {
   margin-bottom: 0.5rem;
 }
 
+.parcel-manager-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
 .parcel-groups {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  max-height: 280px;
+  gap: 0.55rem;
+  max-height: min(58vh, 460px);
   overflow-y: auto;
-  padding-right: 0.15rem;
+  padding-right: 0.3rem;
+  scrollbar-gutter: stable;
+}
+
+.parcel-groups::-webkit-scrollbar {
+  width: 8px;
+}
+
+.parcel-groups::-webkit-scrollbar-thumb {
+  background: #c3d6cb;
+  border-radius: 4px;
 }
 
 .parcel-group {
@@ -2143,7 +2160,7 @@ body.sb-resizing .results-resizer::before {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.3rem 0.55rem;
+  padding: 0.4rem 0.6rem;
   border: none;
   border-radius: 0;
   border-bottom: 1px solid #edf2ef;

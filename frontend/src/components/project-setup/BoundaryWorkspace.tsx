@@ -41,6 +41,8 @@ interface Props {
   onRemoveParcel: (id: string) => void;
   onRemoveGroup: (group: string) => void;
   onClearBoundary: () => void;
+  onExpandAllGroups: () => void;
+  onCollapseAllGroups: () => void;
 }
 
 export function BoundaryWorkspace({
@@ -72,6 +74,8 @@ export function BoundaryWorkspace({
   onRemoveParcel,
   onRemoveGroup,
   onClearBoundary,
+  onExpandAllGroups,
+  onCollapseAllGroups,
 }: Props) {
   const uploadOpt = INPUT_METHOD_OPTIONS.find((o) => o.id === inputMethod);
   const isUpload = ["kml", "kmz", "geojson"].includes(inputMethod);
@@ -102,9 +106,17 @@ export function BoundaryWorkspace({
                 <strong>
                   {enabledCount}/{draft.geometry.parcels.length} parcels selected
                 </strong>
-                <button className="btn btn-ghost btn-sm" type="button" onClick={onClearBoundary}>
-                  Clear
-                </button>
+                <div className="parcel-manager-actions">
+                  <button className="btn btn-ghost btn-sm" type="button" onClick={onExpandAllGroups}>
+                    Expand all
+                  </button>
+                  <button className="btn btn-ghost btn-sm" type="button" onClick={onCollapseAllGroups}>
+                    Collapse all
+                  </button>
+                  <button className="btn btn-ghost btn-sm" type="button" onClick={onClearBoundary}>
+                    Clear
+                  </button>
+                </div>
               </div>
               <div className="parcel-groups">
                 {parcelGroups.map((grp) => {

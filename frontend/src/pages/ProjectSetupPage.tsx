@@ -68,6 +68,21 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const lastGeocodedRef = useRef<string>("");
 
+  function defaultCollapsedForParcels(parcels: SetupParcel[]) {
+    const groups = Array.from(new Set(parcels.map((p) => p.layer_group || "Other")));
+    return Object.fromEntries(groups.map((g, i) => [g, i > 0]));
+  }
+
+  function expandAllGroups() {
+    const groups = Array.from(new Set(draft.geometry.parcels.map((p) => p.layer_group || "Other")));
+    setCollapsedGroups(Object.fromEntries(groups.map((g) => [g, false])));
+  }
+
+  function collapseAllGroups() {
+    const groups = Array.from(new Set(draft.geometry.parcels.map((p) => p.layer_group || "Other")));
+    setCollapsedGroups(Object.fromEntries(groups.map((g) => [g, true])));
+  }
+
   useEffect(() => {
     if (!initialProjectId) return;
     setProjectId(initialProjectId);
@@ -229,6 +244,7 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
         const parcels = geoJsonToParcels(geo, file.name.replace(/\.[^.]+$/, ""));
         if (!parcels.length) throw new Error("No polygon found in GeoJSON");
         dispatch({ type: "set_parcels", parcels });
+        setCollapsedGroups(defaultCollapsedForParcels(parcels));
         dispatch({ type: "set_input_method", input_method: "geojson" });
         const best = parcels.reduce((a, b) => (b.coords.length > a.coords.length ? b : a));
         const clat = best.coords.reduce((s, p) => s + p.lat, 0) / best.coords.length;
@@ -262,6 +278,7 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
         incoming.reduce((a, b) => (b.area_ha > a.area_ha ? b : a)).enabled = true;
       }
       dispatch({ type: "set_parcels", parcels: incoming });
+      setCollapsedGroups(defaultCollapsedForParcels(incoming));
       dispatch({ type: "set_input_method", input_method: "kml" });
       applyPick(parsed.lat, parsed.lon);
       if (!draft.project_info.name || draft.project_info.name === "New project") {
@@ -495,8 +512,11 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
                     },
                   },
                 });
+                setCollapsedGroups({});
                 setHint("Boundary cleared.");
               }}
+              onExpandAllGroups={expandAllGroups}
+              onCollapseAllGroups={collapseAllGroups}
             />
 
             <AdvancedProjectOptions
