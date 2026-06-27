@@ -335,6 +335,12 @@ export function deleteProject(token: string, id: string) {
   });
 }
 
+export function deleteAllProjects(token: string) {
+  return apiFetch<{ success: boolean; deleted: number }>("/api/v1/projects", token, {
+    method: "DELETE",
+  });
+}
+
 export function computeBuildableArea(
   token: string,
   body: {

@@ -3304,9 +3304,30 @@ textarea {
 }
 
 .my-projects-count {
-  margin: 0 0 0.75rem;
+  margin: 0;
   font-size: 0.85rem;
   color: var(--muted);
+}
+
+.my-projects-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.my-projects-delete-all {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.65rem;
+}
+
+.my-projects-delete-all .hint {
+  margin: 0;
+  font-size: 0.82rem;
 }
 
 .my-projects-empty {

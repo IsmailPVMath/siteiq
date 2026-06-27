@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { deleteProject, listProjects, type ProjectRecord } from "../lib/api";
+import { deleteAllProjects, deleteProject, listProjects, type ProjectRecord } from "../lib/api";
 
 function projectMeta(row: ProjectRecord) {
   const d = row.project_data ?? ({} as ProjectRecord["project_data"]);
@@ -45,6 +45,8 @@ export function MyProjectsPage({ token, onOpenProject, onNewProject }: Props) {
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState("");
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
+  const [deleteAllBusy, setDeleteAllBusy] = useState(false);
 
   async function load() {
     setBusy(true);
@@ -71,6 +73,21 @@ export function MyProjectsPage({ token, onOpenProject, onNewProject }: Props) {
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Delete failed");
+    }
+  }
+
+  async function handleDeleteAll() {
+    setDeleteAllBusy(true);
+    setError("");
+    try {
+      await deleteAllProjects(token);
+      setConfirmDeleteAll(false);
+      setConfirmDeleteId("");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Delete all failed");
+    } finally {
+      setDeleteAllBusy(false);
     }
   }
 
@@ -106,9 +123,47 @@ export function MyProjectsPage({ token, onOpenProject, onNewProject }: Props) {
         </div>
       ) : (
         <>
-          <p className="my-projects-count">
-            {rows.length} project{rows.length !== 1 ? "s" : ""}
-          </p>
+          <div className="my-projects-toolbar">
+            <p className="my-projects-count">
+              {rows.length} project{rows.length !== 1 ? "s" : ""}
+            </p>
+            {confirmDeleteAll ? (
+              <div className="my-projects-delete-all">
+                <span className="hint">
+                  Delete all {rows.length} project{rows.length !== 1 ? "s" : ""}? This cannot be
+                  undone.
+                </span>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  type="button"
+                  disabled={deleteAllBusy}
+                  onClick={() => setConfirmDeleteAll(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-ghost btn-sm my-project-delete"
+                  type="button"
+                  disabled={deleteAllBusy}
+                  onClick={() => void handleDeleteAll()}
+                >
+                  {deleteAllBusy ? "Deleting…" : "Confirm delete all"}
+                </button>
+              </div>
+            ) : (
+              <button
+                className="btn btn-ghost btn-sm my-project-delete"
+                type="button"
+                disabled={deleteAllBusy}
+                onClick={() => {
+                  setConfirmDeleteId("");
+                  setConfirmDeleteAll(true);
+                }}
+              >
+                Delete all
+              </button>
+            )}
+          </div>
           <div className="my-projects-grid">
             {rows.map((row) => {
               const meta = projectMeta(row);

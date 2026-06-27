@@ -220,6 +220,23 @@ def update_project(
     return rows[0]
 
 
+@router.delete("/projects")
+def delete_all_projects(user: AuthUser = Depends(get_current_user)):
+    r = requests.delete(
+        _project_base(),
+        params={"user_id": f"eq.{user.user_id}", "select": "id"},
+        headers={**db_hdr(user.access_token), "Prefer": "return=representation"},
+        timeout=60,
+    )
+    if r.status_code not in (200, 204):
+        raise HTTPException(
+            status_code=500,
+            detail=_supabase_error_detail(r, "Could not delete projects"),
+        )
+    rows = r.json() if r.status_code == 200 else []
+    return {"success": True, "deleted": len(rows) if isinstance(rows, list) else 0}
+
+
 @router.delete("/projects/{project_id}")
 def delete_project(project_id: str, user: AuthUser = Depends(get_current_user)):
     r = requests.delete(
