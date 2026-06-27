@@ -605,26 +605,6 @@ a {
   overflow: hidden;
 }
 
-.pv-row-number {
-  background: transparent !important;
-  border: none !important;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-}
-
-.pv-row-number span {
-  display: inline-block;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
-  color: #ffffff;
-  text-shadow: 0 0 2px #000, 0 0 2px #000, 0 0 2px #000;
-  white-space: nowrap;
-  transform: translate(3px, -50%);
-}
-
 .terrain-3d-wrap {
   margin-top: 1rem;
 }

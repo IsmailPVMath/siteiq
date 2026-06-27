@@ -443,40 +443,29 @@ def run_layout(
     poly_rot = shp_rotate(poly_inset, rot_angle, origin=origin)
     minx, miny, maxx, maxy = poly_rot.bounds
 
-    parcel_south = south_fence_x if south_fence_x is not None else maxx
-    parcel_west = west_fence_x if west_fence_x is not None else minx
-
     y = grid_y_origin if grid_y_origin is not None else _snap_y_origin(miny, pitch)
     rows_data: list[dict[str, Any]] = []
     rows_polys: list[Polygon] = []
-    axis_lines: list[Any] = []
     string_polys: list[Polygon] = []
     string_row_local_idx: list[int] = []
     rows_in_block = 0
 
     while y + row_ns <= maxy + 1e-6:
+        band_segments = _row_band_segments(poly_rot, y, row_ns)
         if row_alignment == "boundary":
-            segments = _row_band_segments(poly_rot, y, row_ns)
+            # Follow every polygon pocket along the edge (fragments concave sites).
+            segments = band_segments
         else:
-            cy = y + row_ns / 2
-            avail_len = _available_row_length(
-                poly_rot,
-                south_fence_x=parcel_south if is_tracker else None,
-                west_fence_x=parcel_west if not is_tracker else None,
-                cy=cy,
-                is_tracker=is_tracker,
-            )
-            if avail_len < module_w * modules_per_string * 0.5:
-                y += pitch
-                rows_in_block += 1
-                if use_blocks and rows_in_block >= rows_per_block:
-                    y += block_gap_m
-                    rows_in_block = 0
-                continue
-            if is_tracker:
-                segments = [(parcel_south - avail_len, parcel_south)]
+            # Horizontal: one uniform run per pitch band, spanning the band's
+            # actual east-west extent. Strings that fall in interior gaps (ponds,
+            # cut-outs) are removed later by clipping, so rows stay on a single
+            # aligned grid instead of fragmenting into offset pockets.
+            if band_segments:
+                outer_min = min(s[0] for s in band_segments)
+                outer_max = max(s[1] for s in band_segments)
+                segments = [(outer_min, outer_max)]
             else:
-                segments = [(parcel_west, parcel_west + avail_len)]
+                segments = []
         if not segments:
             y += pitch
             rows_in_block += 1
@@ -568,17 +557,6 @@ def run_layout(
                         string_row_local_idx.append(row_local_idx)
 
             n_mod = whole_strings * modules_per_string + partial_modules
-            # Center axis (torque-tube / fixed-tilt centreline) through the row,
-            # extended 0.1 m at each end so it stays visible past the modules.
-            if is_tracker:
-                ax_x0 = seg_max - actual_len
-                ax_x1 = seg_max
-            else:
-                ax_x0 = seg_min
-                ax_x1 = seg_min + actual_len
-            cy_axis = y + row_ns / 2.0
-            axis_rot = LineString([(ax_x0 - 0.1, cy_axis), (ax_x1 + 0.1, cy_axis)])
-            axis_lines.append(shp_rotate(axis_rot, -rot_angle, origin=origin))
             rows_data.append(
                 {
                     "n_modules": n_mod,
@@ -605,7 +583,6 @@ def run_layout(
     return {
         "rows_data": rows_data,
         "rows_polys": rows_polys,
-        "axis_lines": axis_lines,
         "string_polys": string_polys,
         "string_row_local_idx": string_row_local_idx,
         "poly_m": poly_m,

@@ -7,42 +7,12 @@ import { googleHybridLayer } from "../lib/mapTiles";
 interface Props {
   center: { lat: number; lon: number };
   layoutGeoJson: GeoJSON.GeoJSON | null;
-  showRowNumbers?: boolean;
 }
 
-// Row numbers only become readable once individual rows are a few px apart.
-// Below this zoom they collapse into an unreadable strip, so we hide them.
-const ROW_LABEL_MIN_ZOOM = 18;
-
-export function LayoutPreviewMap({ center, layoutGeoJson, showRowNumbers = false }: Props) {
+export function LayoutPreviewMap({ center, layoutGeoJson }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layoutLayerRef = useRef<L.GeoJSON | null>(null);
-  const labelLayerRef = useRef<L.LayerGroup | null>(null);
-  const labelPointsRef = useRef<{ lat: number; lon: number; n: number }[]>([]);
-  const showRowNumbersRef = useRef(showRowNumbers);
-  showRowNumbersRef.current = showRowNumbers;
-
-  function refreshLabels() {
-    const map = mapRef.current;
-    const group = labelLayerRef.current;
-    if (!map || !group) return;
-    group.clearLayers();
-    if (!showRowNumbersRef.current) return;
-    if (map.getZoom() < ROW_LABEL_MIN_ZOOM) return;
-    for (const p of labelPointsRef.current) {
-      L.marker([p.lat, p.lon], {
-        interactive: false,
-        keyboard: false,
-        icon: L.divIcon({
-          className: "pv-row-number",
-          html: `<span>${p.n}</span>`,
-          iconSize: [0, 0],
-          iconAnchor: [0, 0],
-        }),
-      }).addTo(group);
-    }
-  }
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -52,8 +22,6 @@ export function LayoutPreviewMap({ center, layoutGeoJson, showRowNumbers = false
     );
     googleHybridLayer().addTo(map);
     mapRef.current = map;
-    labelLayerRef.current = L.layerGroup().addTo(map);
-    map.on("zoomend", refreshLabels);
     let raf = 0;
     const ro = new ResizeObserver(() => {
       window.cancelAnimationFrame(raf);
@@ -63,11 +31,9 @@ export function LayoutPreviewMap({ center, layoutGeoJson, showRowNumbers = false
     return () => {
       window.cancelAnimationFrame(raf);
       ro.disconnect();
-      map.off("zoomend", refreshLabels);
       map.remove();
       mapRef.current = null;
       layoutLayerRef.current = null;
-      labelLayerRef.current = null;
     };
   }, []);
 
@@ -84,8 +50,6 @@ export function LayoutPreviewMap({ center, layoutGeoJson, showRowNumbers = false
       layoutLayerRef.current.remove();
       layoutLayerRef.current = null;
     }
-    labelPointsRef.current = [];
-    labelLayerRef.current?.clearLayers();
     if (!layoutGeoJson) return;
 
     const isCollection = layoutGeoJson.type === "FeatureCollection";
@@ -93,18 +57,7 @@ export function LayoutPreviewMap({ center, layoutGeoJson, showRowNumbers = false
       isCollection &&
       layoutGeoJson.features.some((f) => f.properties?.kind === "pv_module");
 
-    if (isCollection) {
-      for (const f of layoutGeoJson.features) {
-        if (f.properties?.kind === "pv_axis_label" && f.geometry?.type === "Point") {
-          const [lon, lat] = f.geometry.coordinates as [number, number];
-          labelPointsRef.current.push({ lat, lon, n: f.properties.row_number });
-        }
-      }
-    }
-
     layoutLayerRef.current = L.geoJSON(layoutGeoJson as GeoJSON.GeoJsonObject, {
-      // Row-number points are rendered separately (zoom-gated) — skip here.
-      filter: (feature) => feature.properties?.kind !== "pv_axis_label",
       style: (feature) => {
         const kind = feature?.properties?.kind;
         if (kind === "pv_module") {
@@ -114,9 +67,6 @@ export function LayoutPreviewMap({ center, layoutGeoJson, showRowNumbers = false
             fillOpacity: 0.88,
             weight: 0.35,
           };
-        }
-        if (kind === "pv_axis") {
-          return { color: "#6b7280", weight: 0.8, opacity: 0.85 };
         }
         if (kind === "pv_row") {
           if (hasModules) {
@@ -146,8 +96,6 @@ export function LayoutPreviewMap({ center, layoutGeoJson, showRowNumbers = false
           layer.bindTooltip(`Row ${row}: ${modules} modules`, { sticky: true });
         } else if (kind === "buildable_parcel") {
           layer.bindTooltip("Buildable parcel", { sticky: true });
-        } else if (kind === "pv_axis") {
-          layer.bindTooltip(`Row ${feature.properties.row_number} axis`, { sticky: true });
         }
       },
     }).addTo(map);
@@ -156,8 +104,7 @@ export function LayoutPreviewMap({ center, layoutGeoJson, showRowNumbers = false
     if (bounds.isValid()) {
       map.fitBounds(bounds, { padding: [20, 20] });
     }
-    refreshLabels();
-  }, [layoutGeoJson, showRowNumbers]);
+  }, [layoutGeoJson]);
 
   return <div ref={containerRef} className="layout-preview-map" aria-label="Layout preview map" />;
 }
