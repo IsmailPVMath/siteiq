@@ -6,6 +6,8 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 import requests
 
+from pvmath_auth import sign_in
+from pvmath_otp import resend_signup_otp, start_signup_otp, verify_signup_otp
 from pvmath_supabase import auth_hdr, sb_url
 
 router = APIRouter(tags=["auth"])
@@ -22,18 +24,39 @@ class RefreshRequest(BaseModel):
 
 class SignupRequest(BaseModel):
     email: str = Field(min_length=3, max_length=200)
-    password: str = Field(min_length=6, max_length=200)
+    password: str = Field(min_length=8, max_length=200)
     first_name: str = Field(default="", max_length=80)
     last_name: str = Field(default="", max_length=80)
+
+
+class SignupOtpRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=200)
+    code: str = Field(min_length=6, max_length=6)
+
+
+class SignupResendRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=200)
 
 
 def _normalize_name_part(name: str) -> str:
     return " ".join(name.strip().split())
 
 
+def _session_response(data: dict, email: str) -> dict:
+    return {
+        "access_token": data["access_token"],
+        "refresh_token": data.get("refresh_token", ""),
+        "expires_at": data.get("expires_at", 0),
+        "user": {
+            "id": data.get("user", {}).get("id", data.get("user_id", "")),
+            "email": data.get("user", {}).get("email", email),
+        },
+    }
+
+
 @router.post("/auth/signup")
 def signup(body: SignupRequest):
-    """Create a SiteIQ account (same Supabase project as Streamlit)."""
+    """Create a SiteIQ account and email a one-time verification code."""
     payload: dict = {"email": body.email.strip(), "password": body.password}
     fn = _normalize_name_part(body.first_name)
     ln = _normalize_name_part(body.last_name)
@@ -63,28 +86,78 @@ def signup(body: SignupRequest):
         )
         raise HTTPException(status_code=400, detail=str(msg))
 
-    if data.get("access_token"):
-        return {
-            "access_token": data["access_token"],
-            "refresh_token": data.get("refresh_token", ""),
-            "expires_at": data.get("expires_at", 0),
-            "user": {
-                "id": data.get("user", {}).get("id", ""),
-                "email": data.get("user", {}).get("email", body.email.strip()),
-            },
-            "email_confirmation_required": False,
-        }
+    user = data.get("user") or {}
+    user_id = user.get("id") or data.get("id") or ""
+    email = user.get("email") or data.get("email") or body.email.strip()
+    otp_result = start_signup_otp(
+        email,
+        access_token=data.get("access_token", ""),
+        refresh_token=data.get("refresh_token", ""),
+        expires_at=data.get("expires_at", 0),
+        user_id=user_id,
+        password=body.password,
+    )
+    if not otp_result.get("success"):
+        raise HTTPException(
+            status_code=503,
+            detail=otp_result.get("error", "Could not send verification email"),
+        )
 
     return {
-        "access_token": "",
-        "refresh_token": "",
-        "expires_at": 0,
-        "user": {
-            "id": data.get("id") or data.get("user", {}).get("id", ""),
-            "email": data.get("email") or body.email.strip(),
-        },
+        "otp_required": True,
+        "email": email,
         "email_confirmation_required": True,
     }
+
+
+@router.post("/auth/signup/verify")
+def signup_verify(body: SignupOtpRequest):
+    """Verify signup OTP and return a Supabase session."""
+    result = verify_signup_otp(body.email, body.code)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error", "Invalid code"))
+
+    email = body.email.strip()
+    access = result.get("access_token", "")
+    refresh = result.get("refresh_token", "")
+    expires_at = result.get("expires_at", 0)
+    user_id = result.get("user_id", "")
+
+    if not access:
+        login = sign_in(email, result.get("password", ""))
+        if not login.get("success"):
+            raise HTTPException(status_code=400, detail="Verified but login failed — contact support.")
+        user = login.get("user", {})
+        return _session_response(
+            {
+                "access_token": login.get("access_token", ""),
+                "refresh_token": login.get("refresh_token", ""),
+                "expires_at": 0,
+                "user": user,
+                "user_id": user.get("id", user_id),
+            },
+            email,
+        )
+
+    return _session_response(
+        {
+            "access_token": access,
+            "refresh_token": refresh,
+            "expires_at": expires_at,
+            "user": {"id": user_id, "email": email},
+            "user_id": user_id,
+        },
+        email,
+    )
+
+
+@router.post("/auth/signup/resend")
+def signup_resend(body: SignupResendRequest):
+    """Resend signup verification code."""
+    result = resend_signup_otp(body.email)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error", "Could not resend code"))
+    return {"success": True}
 
 
 @router.post("/auth/login")

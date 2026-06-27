@@ -1085,11 +1085,10 @@ def render_auth_page(app_name: str | None = None):
 
     # ── OTP verification screen ────────────────────────────────
     if st.session_state.get("pvm_otp_state") == "pending":
-        _otp_email    = st.session_state.get("pvm_otp_email", "")
-        _otp_pass     = st.session_state.get("pvm_otp_password", "")
-        _otp_code     = st.session_state.get("pvm_otp_code", "")
-        _otp_expiry   = st.session_state.get("pvm_otp_expiry", 0)
-        _otp_attempts = st.session_state.get("pvm_otp_attempts", 0)
+        from pvmath_otp import resend_signup_otp, verify_signup_otp
+
+        _otp_email = st.session_state.get("pvm_otp_email", "")
+        _otp_pass  = st.session_state.get("pvm_otp_password", "")
 
         # Re-apply minimal styles (sidebar hidden, fonts, bg)
         st.markdown("""
@@ -1150,87 +1149,68 @@ def render_auth_page(app_name: str | None = None):
             </div>
             """, unsafe_allow_html=True)
 
-            if time.time() > _otp_expiry:
-                st.error("Code expired.")
-                if st.button("Send new code →", key="btn_otp_regen"):
-                    _new = generate_otp()
-                    st.session_state["pvm_otp_code"]     = _new
-                    st.session_state["pvm_otp_expiry"]   = time.time() + 600
-                    st.session_state["pvm_otp_attempts"] = 0
-                    with st.spinner("Sending…"):
-                        send_otp_email(_otp_email, _new)
-                    st.success("New code sent!")
-                    st.rerun()
-            elif _otp_attempts >= 5:
-                st.error("Too many incorrect attempts. Request a new code.")
-                if st.button("Send new code →", key="btn_otp_regen_b"):
-                    _new = generate_otp()
-                    st.session_state["pvm_otp_code"]     = _new
-                    st.session_state["pvm_otp_expiry"]   = time.time() + 600
-                    st.session_state["pvm_otp_attempts"] = 0
-                    with st.spinner("Sending…"):
-                        send_otp_email(_otp_email, _new)
-                    st.success("New code sent!")
-                    st.rerun()
-            else:
-                otp_input = st.text_input(
-                    "Verification code", key="otp_input_field",
-                    placeholder="• • • • • •", max_chars=6
-                )
+            otp_input = st.text_input(
+                "Verification code", key="otp_input_field",
+                placeholder="• • • • • •", max_chars=6
+            )
 
-                cola, colb = st.columns(2)
-                with cola:
-                    if st.button("Verify →", key="btn_otp_verify"):
-                        if otp_input.strip() == _otp_code:
-                            # Use pre-stored token from auto-confirm, or sign in fresh
-                            _pre_token = st.session_state.get("pvm_otp_token", "")
-                            _pre_uid   = st.session_state.get("pvm_otp_uid", "")
-                            if _pre_token and _pre_uid:
+            cola, colb = st.columns(2)
+            with cola:
+                if st.button("Verify →", key="btn_otp_verify"):
+                    verified = verify_signup_otp(_otp_email, otp_input.strip())
+                    if verified.get("success"):
+                        _pre_token = (
+                            verified.get("access_token")
+                            or st.session_state.get("pvm_otp_token", "")
+                        )
+                        _pre_uid = (
+                            verified.get("user_id")
+                            or st.session_state.get("pvm_otp_uid", "")
+                        )
+                        if _pre_token and _pre_uid:
+                            for k in ["pvm_otp_state", "pvm_otp_email", "pvm_otp_password",
+                                      "pvm_otp_token", "pvm_otp_uid"]:
+                                st.session_state.pop(k, None)
+                            st.session_state["pvm_user_id"]      = _pre_uid
+                            _apply_user_fields({"email": _otp_email})
+                            st.session_state["pvm_access_token"] = _pre_token
+                            if verified.get("refresh_token"):
+                                st.session_state["pvm_refresh_token"] = verified["refresh_token"]
+                                st.query_params["s"] = verified["refresh_token"]
+                            refresh_user_profile()
+                            st.rerun()
+                        else:
+                            with st.spinner("Verified! Logging in…"):
+                                result = sign_in(_otp_email, _otp_pass)
+                            if result["success"]:
                                 for k in ["pvm_otp_state", "pvm_otp_email", "pvm_otp_password",
-                                          "pvm_otp_code", "pvm_otp_expiry", "pvm_otp_attempts",
                                           "pvm_otp_token", "pvm_otp_uid"]:
                                     st.session_state.pop(k, None)
-                                st.session_state["pvm_user_id"]      = _pre_uid
-                                _apply_user_fields({"email": _otp_email})
-                                st.session_state["pvm_access_token"] = _pre_token
-                                refresh_user_profile()
+                                st.session_state["pvm_user_id"]      = result["user"].get("id")
+                                _apply_user_fields(result["user"])
+                                st.session_state["pvm_access_token"] = result.get("access_token", "")
+                                if result.get("refresh_token"):
+                                    st.session_state["pvm_refresh_token"] = result["refresh_token"]
+                                    st.query_params["s"] = result["refresh_token"]
                                 st.rerun()
                             else:
-                                with st.spinner("Verified! Logging in…"):
-                                    result = sign_in(_otp_email, _otp_pass)
-                                if result["success"]:
-                                    for k in ["pvm_otp_state", "pvm_otp_email",
-                                              "pvm_otp_password", "pvm_otp_code",
-                                              "pvm_otp_expiry", "pvm_otp_attempts"]:
-                                        st.session_state.pop(k, None)
-                                    st.session_state["pvm_user_id"]      = result["user"].get("id")
-                                    _apply_user_fields(result["user"])
-                                    st.session_state["pvm_access_token"] = result.get("access_token", "")
-                                    if result.get("refresh_token"):
-                                        st.session_state["pvm_refresh_token"] = result["refresh_token"]
-                                        st.query_params["s"] = result["refresh_token"]
-                                    st.rerun()
-                                else:
-                                    st.error("Login error — please contact support.")
-                        else:
-                            st.session_state["pvm_otp_attempts"] += 1
-                            left = 5 - st.session_state["pvm_otp_attempts"]
-                            st.error(f"Incorrect code. {left} attempt(s) remaining.")
-                with colb:
-                    if st.button("Resend code", key="btn_otp_resend"):
-                        _new = generate_otp()
-                        st.session_state["pvm_otp_code"]     = _new
-                        st.session_state["pvm_otp_expiry"]   = time.time() + 600
-                        st.session_state["pvm_otp_attempts"] = 0
-                        with st.spinner("Sending…"):
-                            send_otp_email(_otp_email, _new)
+                                st.error("Login error — please contact support.")
+                    else:
+                        st.error(verified.get("error", "Incorrect code."))
+            with colb:
+                if st.button("Resend code", key="btn_otp_resend"):
+                    with st.spinner("Sending…"):
+                        resent = resend_signup_otp(_otp_email)
+                    if resent.get("success"):
                         st.success("New code sent!")
-                        st.rerun()
+                    else:
+                        st.error(resent.get("error", "Could not resend code."))
+                    st.rerun()
 
             st.markdown("<div style='margin-top:0.8rem;'></div>", unsafe_allow_html=True)
             if st.button("← Back to login", key="btn_otp_back"):
                 for k in ["pvm_otp_state", "pvm_otp_email", "pvm_otp_password",
-                          "pvm_otp_code", "pvm_otp_expiry", "pvm_otp_attempts",
+                          "pvm_otp_token", "pvm_otp_uid",
                           "pvm_user_id", "pvm_email", "pvm_access_token"]:
                     st.session_state.pop(k, None)
                 st.rerun()
@@ -1569,32 +1549,29 @@ def render_auth_page(app_name: str | None = None):
                     st.error("Passwords do not match.")
                 else:
                     with st.spinner("Creating your account…"):
+                        from pvmath_otp import start_signup_otp
                         result = sign_up(reg_email, reg_pass, reg_first, reg_last)
                     if result["success"]:
-                        # OTP disabled — Brevo not yet activated. Re-enable once confirmed.
-                        # Direct login using token from Supabase auto-confirm.
-                        if result.get("access_token"):
-                            st.session_state["pvm_user_id"]      = result["user"].get("id")
-                            _apply_user_fields(result["user"], email=reg_email)
-                            if not user_display_name():
-                                st.session_state["pvm_display_name"] = (
-                                    f"{reg_first} {reg_last}".strip()
-                                )
-                            st.session_state["pvm_access_token"] = result["access_token"]
-                            if result.get("refresh_token"):
-                                st.session_state["pvm_refresh_token"] = result["refresh_token"]
-                                st.query_params["s"] = result["refresh_token"]
+                        user = result.get("user") or {}
+                        user_id = user.get("id", "")
+                        otp_result = start_signup_otp(
+                            reg_email,
+                            access_token=result.get("access_token", ""),
+                            refresh_token=result.get("refresh_token", ""),
+                            expires_at=0,
+                            user_id=user_id,
+                            password=reg_pass,
+                        )
+                        if not otp_result.get("success"):
+                            st.error(f"Account created but email failed: {otp_result.get('error', 'Unknown error')}")
                         else:
-                            # Fallback: sign in with password
-                            _r = sign_in(reg_email, reg_pass)
-                            if _r["success"]:
-                                st.session_state["pvm_user_id"]      = _r["user"].get("id")
-                                _apply_user_fields(_r["user"])
-                                st.session_state["pvm_access_token"] = _r.get("access_token", "")
-                                if _r.get("refresh_token"):
-                                    st.session_state["pvm_refresh_token"] = _r["refresh_token"]
-                                    st.query_params["s"] = _r["refresh_token"]
-                        st.rerun()
+                            st.session_state["pvm_otp_state"]    = "pending"
+                            st.session_state["pvm_otp_email"]    = reg_email
+                            st.session_state["pvm_otp_password"] = reg_pass
+                            if result.get("access_token") and user_id:
+                                st.session_state["pvm_otp_token"] = result["access_token"]
+                                st.session_state["pvm_otp_uid"]   = user_id
+                            st.rerun()
                     else:
                         err = result.get("error", "")
                         if "already registered" in err.lower() or "already been registered" in err.lower():
@@ -1632,18 +1609,18 @@ def render_auth_page(app_name: str | None = None):
                             st.query_params["s"] = result["refresh_token"]
                         st.rerun()
                     elif result.get("error") == "email_not_confirmed":
-                        # Shouldn't happen with email confirmation disabled,
-                        # but handle gracefully — send them an OTP to verify
-                        _otp = generate_otp()
-                        st.session_state["pvm_otp_state"]    = "pending"
-                        st.session_state["pvm_otp_email"]    = login_email
-                        st.session_state["pvm_otp_password"] = login_pass
-                        st.session_state["pvm_otp_code"]     = _otp
-                        st.session_state["pvm_otp_expiry"]   = time.time() + 600
-                        st.session_state["pvm_otp_attempts"] = 0
-                        with st.spinner("Sending verification code…"):
-                            send_otp_email(login_email, _otp)
-                        st.rerun()
+                        from pvmath_otp import start_signup_otp
+                        otp_result = start_signup_otp(
+                            login_email,
+                            password=login_pass,
+                        )
+                        if otp_result.get("success"):
+                            st.session_state["pvm_otp_state"]    = "pending"
+                            st.session_state["pvm_otp_email"]    = login_email
+                            st.session_state["pvm_otp_password"] = login_pass
+                            st.rerun()
+                        else:
+                            st.error(otp_result.get("error", "Could not send verification code."))
                     else:
                         st.error("Incorrect email or password.")
 

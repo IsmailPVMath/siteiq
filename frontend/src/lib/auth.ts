@@ -44,7 +44,7 @@ export async function signUp(
   password: string,
   firstName = "",
   lastName = "",
-): Promise<{ session: AuthSession | null; emailConfirmationRequired: boolean }> {
+): Promise<{ session: AuthSession | null; otpRequired: boolean; email: string }> {
   let res: Response;
   try {
     res = await fetch(`${API_URL}/api/v1/auth/signup`, {
@@ -69,8 +69,12 @@ export async function signUp(
     throw new Error(String(msg));
   }
 
+  if (data.otp_required) {
+    return { session: null, otpRequired: true, email: data.email || email.trim() };
+  }
+
   if (!data.access_token) {
-    return { session: null, emailConfirmationRequired: Boolean(data.email_confirmation_required) };
+    return { session: null, otpRequired: false, email: email.trim() };
   }
 
   const session: AuthSession = {
@@ -81,7 +85,53 @@ export async function signUp(
     expires_at: data.expires_at ?? 0,
   };
   saveSession(session);
-  return { session, emailConfirmationRequired: false };
+  return { session, otpRequired: false, email: session.email };
+}
+
+export async function verifySignupOtp(email: string, code: string): Promise<AuthSession> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/v1/auth/signup/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ email: email.trim(), code: code.trim() }),
+    });
+  } catch {
+    throw new Error("Could not reach verification service.");
+  }
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.access_token) {
+    const msg = data.detail || data.message || "Invalid verification code";
+    throw new Error(String(msg));
+  }
+
+  const session: AuthSession = {
+    access_token: data.access_token,
+    refresh_token: data.refresh_token ?? "",
+    email: data.user?.email ?? email.trim(),
+    user_id: data.user?.id ?? "",
+    expires_at: data.expires_at ?? 0,
+  };
+  saveSession(session);
+  return session;
+}
+
+export async function resendSignupOtp(email: string): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/v1/auth/signup/resend`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ email: email.trim() }),
+    });
+  } catch {
+    throw new Error("Could not reach verification service.");
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(String(data.detail || "Could not resend code"));
+  }
 }
 
 export async function signInWithPassword(

@@ -234,6 +234,59 @@ export function BoundaryWorkspace({
 
       {inputMethod === "map" ? (
         <div className="input-method-panel">
+          <div className="field">
+            <label htmlFor="map-search">Search city or address</label>
+            <div className="paste-row">
+              <input
+                id="map-search"
+                value={searchQ}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder="e.g. Regensburg, Germany"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    onSearch();
+                  }
+                }}
+              />
+              <button className="btn btn-ghost" type="button" onClick={onSearch} disabled={busy}>
+                Go
+              </button>
+            </div>
+            {searchResults.length > 0 ? (
+              <ul className="search-results">
+                {searchResults.map((r) => (
+                  <li key={`${r.lat}-${r.lon}-${r.label}`}>
+                    <button type="button" onClick={() => onPickSearch(r)}>
+                      {r.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+          <div className="grid-2">
+            <div className="field">
+              <label htmlFor="map-lat">Latitude</label>
+              <input
+                id="map-lat"
+                type="number"
+                step="any"
+                value={draft.location.lat}
+                onChange={(e) => onLatLonChange(Number(e.target.value), draft.location.lon)}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="map-lon">Longitude</label>
+              <input
+                id="map-lon"
+                type="number"
+                step="any"
+                value={draft.location.lon}
+                onChange={(e) => onLatLonChange(draft.location.lat, Number(e.target.value))}
+              />
+            </div>
+          </div>
           <div className="paste-row">
             <select
               value={drawMode}
