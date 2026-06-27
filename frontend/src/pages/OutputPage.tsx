@@ -279,10 +279,16 @@ export function OutputPage({
       ? (input as { azimuth?: number }).azimuth!
       : 180,
   );
-  const AZIMUTH_PRESETS = [180, 90, 135, 225, 270];
-  const [azimuthCustom, setAzimuthCustom] = useState<boolean>(
-    !AZIMUTH_PRESETS.includes(azimuthDeg),
-  );
+  const FIXED_AZIMUTH_PRESETS = [90, 135, 225, 270];
+  const TRACKER_AZIMUTH_PRESETS = [180, 90, 135, 225, 270];
+  const [azimuthCustom, setAzimuthCustom] = useState<boolean>(() => {
+    const saved =
+      typeof (input as { azimuth?: number } | null)?.azimuth === "number"
+        ? (input as { azimuth?: number }).azimuth!
+        : 180;
+    if (saved === 180) return false;
+    return !FIXED_AZIMUTH_PRESETS.includes(saved) && !TRACKER_AZIMUTH_PRESETS.includes(saved);
+  });
   const [rowsPerBlock, setRowsPerBlock] = useState(
     input?.rows_per_block ?? DEFAULT_LAYOUT_CONFIG.rows_per_block,
   );
@@ -932,6 +938,13 @@ export function OutputPage({
   const mountFilter: "all" | "fixed" | "sat" =
     layoutMountType === "Single-Axis Tracker" ? "sat" : "fixed";
 
+  const azimuthSelectValue =
+    azimuthCustom
+      ? "custom"
+      : mountFilter === "fixed" && azimuthDeg === 180
+        ? "optimal"
+        : String(azimuthDeg);
+
   const overallScore = finalScore?.pvmath_score;
   const overallReady = overallScore != null;
   const topoGridTooLarge = topoError ? isTopoGridTooLarge(topoError) : false;
@@ -1337,23 +1350,30 @@ export function OutputPage({
               </label>
               <div className="field">
                 <label htmlFor="layout-azimuth">
-                  {mountFilter === "sat" ? "Tracker axis azimuth" : "Array azimuth"}
+                  {mountFilter === "sat" ? "Tracker axis azimuth" : "Array orientation"}
                 </label>
                 <select
                   id="layout-azimuth"
-                  value={azimuthCustom ? "custom" : String(azimuthDeg)}
+                  value={azimuthSelectValue}
                   onChange={(e) => {
-                    if (e.target.value === "custom") {
+                    const value = e.target.value;
+                    if (value === "custom") {
                       setAzimuthCustom(true);
-                    } else {
-                      setAzimuthCustom(false);
-                      setAzimuthDeg(Number(e.target.value));
+                      return;
                     }
+                    setAzimuthCustom(false);
+                    if (value === "optimal") {
+                      setAzimuthDeg(180);
+                      return;
+                    }
+                    setAzimuthDeg(Number(value));
                   }}
                 >
-                  <option value={180}>
-                    {mountFilter === "sat" ? "180° — N–S axis (default)" : "180° — due south (optimal)"}
-                  </option>
+                  {mountFilter === "fixed" ? (
+                    <option value="optimal">Optimal tilt (due south · PVGIS)</option>
+                  ) : (
+                    <option value={180}>180° — N–S axis (default)</option>
+                  )}
                   <option value={90}>90° — east</option>
                   <option value={135}>135° — south-east</option>
                   <option value={225}>225° — south-west</option>
@@ -1378,7 +1398,7 @@ export function OutputPage({
                 <p className="hint sidebar-hint">
                   {mountFilter === "sat"
                     ? "Trackers default to a North–South axis (rotating E→W). Pick a preset or enter a custom axis azimuth (0–360°) to align with the parcel."
-                    : "Fixed tilt defaults to due-south facing at PVGIS optimal tilt. Pick a preset or enter a custom azimuth (0–360°) for skewed parcels."}
+                    : "Default uses PVGIS optimal tilt on a due-south array (180°). Choose another compass bearing or enter a custom azimuth for skewed parcels."}
                 </p>
               </div>
               <details className="sidebar-advanced" open>
