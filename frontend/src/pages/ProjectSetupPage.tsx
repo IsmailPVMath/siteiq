@@ -71,6 +71,7 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
   useEffect(() => {
     if (!initialProjectId) return;
     setProjectId(initialProjectId);
+    if (initial) return;
     void (async () => {
       setBusy(true);
       try {
@@ -85,7 +86,7 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialProjectId, token]);
+  }, [initialProjectId, token, initial]);
 
   const validation = useMemo(() => validateDraft(draft), [draft]);
   const rings = useMemo(() => effectiveRings(draft), [draft]);
@@ -281,8 +282,7 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
     if (method === "map") setDrawMode("site");
   }
 
-  function submitNow() {
-    void saveProjectDraft();
+  async function submitNow() {
     const next = {
       ...draft,
       assumptions: {
@@ -290,10 +290,11 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
         tracker_string_options: parseTrackerStringOptions(trackerStringOptions),
       },
     };
+    await saveProjectDraft();
     onSubmit(draftToGateRequest(next));
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!validation.valid) {
       setHint(validation.issues.find((i) => i.level === "error")?.message || "Fix errors before continuing.");
@@ -303,16 +304,13 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
       setShowBoundaryModal(true);
       return;
     }
-    submitNow();
+    await submitNow();
   }
 
   useEffect(() => {
     void loadProjects(false);
-    if (initialProjectId) {
-      void loadSelectedProject(initialProjectId);
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialProjectId]);
+  }, []);
 
   // Auto reverse-geocode whenever the location changes — fill country/state/city
   // so the user never has to type administrative details manually.

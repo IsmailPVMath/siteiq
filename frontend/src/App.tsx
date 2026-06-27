@@ -6,9 +6,10 @@ import { MyProjectsPage } from "./pages/MyProjectsPage";
 import { ProjectSetupPage } from "./pages/ProjectSetupPage";
 import { OutputPage } from "./pages/OutputPage";
 import { ProcessingPage } from "./pages/ProcessingPage";
-import { fetchMe, getProject, runWorkflowScreen, setTokenRefresher } from "./lib/api";
+import { fetchMe, getProject, runWorkflowScreen, setTokenRefresher, createProject, updateProject } from "./lib/api";
 import { draftToGateRequest, projectRecordToDraft } from "./lib/projectSetup";
 import {
+  persistWorkflowProject,
   restoreWorkflowFromRecord,
   type WorkflowRestore,
 } from "./lib/workflowSave";
@@ -42,6 +43,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<WorkflowScreenResponse | null>(null);
   const [outputModule, setOutputModule] = useState<OutputModuleStage>("screen");
+  const [workflowDepth, setWorkflowDepth] = useState<OutputModuleStage>("screen");
   const sessionRef = useRef<AuthSession | null>(null);
 
   sessionRef.current = session;
@@ -141,6 +143,7 @@ export default function App() {
     setEditingProjectId("");
     setStep("input");
     setOutputModule("screen");
+    setWorkflowDepth("screen");
     setError("");
   }
 
@@ -150,9 +153,39 @@ export default function App() {
     setEditingProjectId("");
     setWorkflowRestore(null);
     setOutputModule("screen");
+    setWorkflowDepth("screen");
     setError("");
     setStep("input");
   }
+
+  function noteWorkflowDepth(stage: OutputModuleStage) {
+    const order: OutputModuleStage[] = ["screen", "topo", "layout", "yield"];
+    setWorkflowDepth((prev) =>
+      order.indexOf(stage) > order.indexOf(prev) ? stage : prev,
+    );
+  }
+
+  const mergeWorkflowRestore = useCallback(
+    (patch: Partial<WorkflowRestore>) => {
+      if (!lastInput || !result) return;
+      setWorkflowRestore((prev) => {
+        const base: WorkflowRestore = prev ?? {
+          projectId: editingProjectId,
+          input: lastInput,
+          screening: result,
+          lastStage: "screen",
+        };
+        return {
+          ...base,
+          ...patch,
+          projectId: patch.projectId ?? base.projectId ?? editingProjectId,
+          input: patch.input ?? base.input,
+          screening: patch.screening ?? base.screening,
+        };
+      });
+    },
+    [lastInput, result, editingProjectId],
+  );
 
   function openProjects() {
     setError("");
@@ -172,6 +205,7 @@ export default function App() {
         setLastInput(restored.input);
         setResult(restored.screening);
         setOutputModule(restored.lastStage);
+        setWorkflowDepth(restored.lastStage);
         setWorkflowRestore(restored);
         setStep("output");
       } else {
@@ -202,26 +236,57 @@ export default function App() {
   }, [step, outputModule]);
 
   const pipelineUnlocked = useMemo((): PipelineStage[] => {
-    if (step === "projects" || step === "input") return ["setup"];
+    if (step === "projects") return ["setup"];
+    if (step === "input") {
+      if (!result) return ["setup"];
+      const stages: PipelineStage[] = ["setup", "siteiq"];
+      if (workflowDepth !== "screen" || workflowRestore?.topo) stages.push("terrainiq");
+      if (workflowDepth === "layout" || workflowDepth === "yield") stages.push("layoutiq");
+      if (workflowDepth === "yield") stages.push("yieldiq");
+      return stages;
+    }
     if (step === "processing") return ["setup", "siteiq"];
     return ["setup", "siteiq", "terrainiq", "layoutiq", "yieldiq"];
-  }, [step]);
+  }, [step, result, workflowDepth, workflowRestore?.topo]);
 
   const pipelineCompleted = useMemo((): Partial<Record<PipelineStage, boolean>> => {
-    if (step === "projects" || step === "input") return {};
+    if (step === "projects") return {};
+    if (step === "input") {
+      if (!result) return {};
+      return {
+        setup: true,
+        siteiq: true,
+        terrainiq: workflowDepth !== "screen" || Boolean(workflowRestore?.topo),
+        layoutiq: workflowDepth === "layout" || workflowDepth === "yield",
+        yieldiq: workflowDepth === "yield",
+      };
+    }
     if (step === "processing") return { setup: true };
     return {
       setup: true,
       siteiq: true,
-      terrainiq: outputModule !== "screen",
-      layoutiq: outputModule === "layout" || outputModule === "yield",
-      yieldiq: outputModule === "yield",
+      terrainiq:
+        workflowDepth !== "screen" || outputModule !== "screen" || Boolean(workflowRestore?.topo),
+      layoutiq:
+        workflowDepth === "layout" ||
+        workflowDepth === "yield" ||
+        outputModule === "layout" ||
+        outputModule === "yield",
+      yieldiq: workflowDepth === "yield" || outputModule === "yield",
     };
-  }, [step, outputModule]);
+  }, [step, outputModule, workflowDepth, workflowRestore?.topo]);
 
   function handlePipelineNavigate(stage: PipelineStage) {
     if (stage === "setup") {
       setStep("input");
+      return;
+    }
+    if (step === "input" && result) {
+      const mod = outputModuleFromPipeline(stage);
+      if (mod) {
+        setStep("output");
+        setOutputModule(mod);
+      }
       return;
     }
     if (step !== "output") return;
@@ -236,7 +301,9 @@ export default function App() {
     setLastInput(body);
     setError("");
     setResult(null);
+    setWorkflowRestore(null);
     setOutputModule("screen");
+    setWorkflowDepth("screen");
     setStep("processing");
     try {
       const data = await runWorkflowScreen(token, {
@@ -249,7 +316,29 @@ export default function App() {
         country: body.country,
       });
       setResult(data);
+      setLastInput(body);
+      setWorkflowRestore({
+        projectId: editingProjectId,
+        input: body,
+        screening: data,
+        lastStage: "screen",
+      });
       await loadProfile(token);
+      if (editingProjectId) {
+        try {
+          await persistWorkflowProject(
+            token,
+            editingProjectId,
+            body,
+            data,
+            "screen",
+            createProject,
+            updateProject,
+          );
+        } catch {
+          // Non-fatal — user can still save manually.
+        }
+      }
       setStep("output");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Screening failed");
@@ -327,6 +416,8 @@ export default function App() {
             setEditingProjectId(id);
             setWorkflowRestore((prev) => (prev ? { ...prev, projectId: id } : prev));
           }}
+          onWorkflowDepth={noteWorkflowDepth}
+          onWorkflowPersist={mergeWorkflowRestore}
         />
       ) : null}
     </AppShell>

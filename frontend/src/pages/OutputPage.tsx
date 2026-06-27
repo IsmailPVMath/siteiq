@@ -5,7 +5,7 @@ import {
   analyzeTopo,
   analyzeYield,
   createProject,
-  partialUpdateProject,
+  updateProject,
   reverseGeocode,
   topoExportsZip,
   topoReportPdf,
@@ -18,7 +18,10 @@ import {
   workflowScore,
   workflowTerrainMesh,
 } from "../lib/api";
-import { buildWorkflowSavePayload } from "../lib/workflowSave";
+import {
+  persistWorkflowProject,
+  type WorkflowRestore,
+} from "../lib/workflowSave";
 import { ConstraintAnalysisMap } from "../components/ConstraintAnalysisMap";
 import { LayoutPreviewMap } from "../components/LayoutPreviewMap";
 import { YieldResultsPanel } from "../components/YieldResultsPanel";
@@ -59,6 +62,8 @@ interface Props {
   initialFinalScore?: WorkflowScoreResponse | null;
   initialGisSetbacks?: Record<string, number> | null;
   onProjectIdChange?: (id: string) => void;
+  onWorkflowDepth?: (stage: OutputModuleStage) => void;
+  onWorkflowPersist?: (patch: Partial<WorkflowRestore>) => void;
 }
 
 function metric(label: string, rating?: string, detail?: string, extra?: string) {
@@ -173,6 +178,8 @@ export function OutputPage({
   initialFinalScore = null,
   initialGisSetbacks = null,
   onProjectIdChange,
+  onWorkflowDepth,
+  onWorkflowPersist,
 }: Props) {
   const activeStage = activeModule;
   const setActiveStage = onModuleChange;
@@ -219,6 +226,7 @@ export function OutputPage({
   const [topoGridM, setTopoGridM] = useState(5);
   const [topoAllowCoarsen, setTopoAllowCoarsen] = useState(true);
   const topoAutoRan = useRef(Boolean(initialTopo));
+  const autoSaveBusy = useRef(false);
   const yieldAutoRan = useRef(false);
   const [topoPdfBusy, setTopoPdfBusy] = useState(false);
   const [topoZipBusy, setTopoZipBusy] = useState(false);
@@ -543,6 +551,8 @@ export function OutputPage({
       if (overrides?.allow_coarsen != null) setTopoAllowCoarsen(overrides.allow_coarsen);
       await refreshFinalScore(topo);
       void fetchTopoMesh();
+      onWorkflowDepth?.("topo");
+      autoSaveWorkflow("topo");
     } catch (err) {
       setTopoError(err instanceof Error ? err.message : "TerrainIQ analysis failed");
     } finally {
@@ -568,33 +578,59 @@ export function OutputPage({
     }
   }
 
-  async function handleSaveProject() {
-    if (!input) return;
+  async function persistWorkflow(options?: { silent?: boolean; stage?: OutputModuleStage }) {
+    if (!input) return null;
+    const stage = options?.stage ?? activeStage;
     setSaveBusy(true);
-    setSaveMsg("");
+    if (!options?.silent) setSaveMsg("");
     try {
-      const payload = buildWorkflowSavePayload(
+      const id = await persistWorkflowProject(
+        token,
+        projectId || undefined,
         input,
         result,
-        activeStage,
-        topoResult,
-        finalScore,
-        Object.keys(gisSetbacks).length ? gisSetbacks : null,
+        stage,
+        createProject,
+        updateProject,
+        {
+          topo: topoResult,
+          finalScore,
+          gisSetbacks: Object.keys(gisSetbacks).length ? gisSetbacks : null,
+        },
       );
-      const row = projectId
-        ? await partialUpdateProject(token, projectId, {
-            name: payload.name,
-            workflow: payload.workflow,
-          })
-        : await createProject(token, payload);
-      setProjectId(row.id);
-      onProjectIdChange?.(row.id);
-      setSaveMsg("Project saved — resume from My projects.");
+      setProjectId(id);
+      onProjectIdChange?.(id);
+      onWorkflowPersist?.({
+        projectId: id,
+        lastStage: stage,
+        topo: topoResult,
+        finalScore,
+        gisSetbacks: Object.keys(gisSetbacks).length ? gisSetbacks : null,
+      });
+      if (!options?.silent) {
+        setSaveMsg("Project saved — resume from My projects.");
+      }
+      return id;
     } catch (err) {
-      setSaveMsg(err instanceof Error ? err.message : "Save failed");
+      if (!options?.silent) {
+        setSaveMsg(err instanceof Error ? err.message : "Save failed");
+      }
+      return null;
     } finally {
       setSaveBusy(false);
     }
+  }
+
+  function autoSaveWorkflow(stage: OutputModuleStage) {
+    if (autoSaveBusy.current) return;
+    autoSaveBusy.current = true;
+    void persistWorkflow({ silent: true, stage }).finally(() => {
+      autoSaveBusy.current = false;
+    });
+  }
+
+  async function handleSaveProject() {
+    await persistWorkflow();
   }
 
   useEffect(() => {
@@ -661,16 +697,30 @@ export function OutputPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeStage, topoPayload, topoResult, topoBusy, gisBusy]);
 
+  useEffect(() => {
+    if (initialTopo) onWorkflowDepth?.("topo");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function proceedToTopo() {
     setActiveStage("topo");
+    onWorkflowDepth?.("topo");
+    onWorkflowPersist?.({ lastStage: "topo", topo: topoResult, finalScore, gisSetbacks: Object.keys(gisSetbacks).length ? gisSetbacks : null });
+    autoSaveWorkflow("topo");
   }
 
   function proceedToLayout() {
     setActiveStage("layout");
+    onWorkflowDepth?.("layout");
+    onWorkflowPersist?.({ lastStage: "layout", topo: topoResult, finalScore, gisSetbacks: Object.keys(gisSetbacks).length ? gisSetbacks : null });
+    autoSaveWorkflow("layout");
   }
 
   function proceedToYield() {
     setActiveStage("yield");
+    onWorkflowDepth?.("yield");
+    onWorkflowPersist?.({ lastStage: "yield", topo: topoResult, finalScore, gisSetbacks: Object.keys(gisSetbacks).length ? gisSetbacks : null });
+    autoSaveWorkflow("yield");
   }
 
   function goBackStage() {

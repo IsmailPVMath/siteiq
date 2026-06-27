@@ -48,6 +48,35 @@ export function buildWorkflowSavePayload(
   };
 }
 
+/** Persist full project geometry + workflow snapshots (not workflow-only partial patch). */
+export async function persistWorkflowProject(
+  token: string,
+  projectId: string | undefined,
+  input: GateAnalyzeRequest,
+  screening: WorkflowScreenResponse,
+  lastStage: OutputModuleStage,
+  createProject: (token: string, body: ProjectPayload) => Promise<ProjectRecord>,
+  updateProject: (token: string, id: string, body: ProjectPayload) => Promise<ProjectRecord>,
+  extras?: {
+    topo?: TerrainIQAnalyzeResponse | null;
+    finalScore?: WorkflowScoreResponse | null;
+    gisSetbacks?: Record<string, number> | null;
+  },
+): Promise<string> {
+  const payload = buildWorkflowSavePayload(
+    input,
+    screening,
+    lastStage,
+    extras?.topo,
+    extras?.finalScore,
+    extras?.gisSetbacks,
+  );
+  const row = projectId
+    ? await updateProject(token, projectId, payload)
+    : await createProject(token, payload);
+  return row.id;
+}
+
 export function restoreWorkflowFromRecord(row: ProjectRecord): WorkflowRestore | null {
   const wf = (row.project_data?.workflow ?? {}) as Record<string, unknown>;
   const screening = wf.screening_snapshot as WorkflowScreenResponse | undefined;
