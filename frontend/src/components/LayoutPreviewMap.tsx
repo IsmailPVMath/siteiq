@@ -9,10 +9,35 @@ interface Props {
   layoutGeoJson: GeoJSON.GeoJSON | null;
 }
 
+// Row numbers only become readable once individual rows are a few px apart.
+// Below this zoom they collapse into an unreadable strip, so we hide them.
+const ROW_LABEL_MIN_ZOOM = 18;
+
 export function LayoutPreviewMap({ center, layoutGeoJson }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layoutLayerRef = useRef<L.GeoJSON | null>(null);
+  const labelLayerRef = useRef<L.LayerGroup | null>(null);
+  const labelPointsRef = useRef<{ lat: number; lon: number; n: number }[]>([]);
+
+  function refreshLabels() {
+    const map = mapRef.current;
+    const group = labelLayerRef.current;
+    if (!map || !group) return;
+    group.clearLayers();
+    if (map.getZoom() < ROW_LABEL_MIN_ZOOM) return;
+    for (const p of labelPointsRef.current) {
+      L.marker([p.lat, p.lon], {
+        interactive: false,
+        keyboard: false,
+        icon: L.divIcon({
+          className: "pv-row-number",
+          html: String(p.n),
+          iconSize: undefined,
+        }),
+      }).addTo(group);
+    }
+  }
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -22,6 +47,8 @@ export function LayoutPreviewMap({ center, layoutGeoJson }: Props) {
     );
     googleHybridLayer().addTo(map);
     mapRef.current = map;
+    labelLayerRef.current = L.layerGroup().addTo(map);
+    map.on("zoomend", refreshLabels);
     let raf = 0;
     const ro = new ResizeObserver(() => {
       window.cancelAnimationFrame(raf);
@@ -31,9 +58,11 @@ export function LayoutPreviewMap({ center, layoutGeoJson }: Props) {
     return () => {
       window.cancelAnimationFrame(raf);
       ro.disconnect();
+      map.off("zoomend", refreshLabels);
       map.remove();
       mapRef.current = null;
       layoutLayerRef.current = null;
+      labelLayerRef.current = null;
     };
   }, []);
 
@@ -50,26 +79,27 @@ export function LayoutPreviewMap({ center, layoutGeoJson }: Props) {
       layoutLayerRef.current.remove();
       layoutLayerRef.current = null;
     }
+    labelPointsRef.current = [];
+    labelLayerRef.current?.clearLayers();
     if (!layoutGeoJson) return;
 
+    const isCollection = layoutGeoJson.type === "FeatureCollection";
     const hasModules =
-      layoutGeoJson.type === "FeatureCollection" &&
+      isCollection &&
       layoutGeoJson.features.some((f) => f.properties?.kind === "pv_module");
 
-    layoutLayerRef.current = L.geoJSON(layoutGeoJson as GeoJSON.GeoJsonObject, {
-      pointToLayer: (feature, latlng) => {
-        if (feature.properties?.kind === "pv_axis_label") {
-          return L.marker(latlng, {
-            interactive: false,
-            icon: L.divIcon({
-              className: "pv-row-number",
-              html: String(feature.properties.row_number ?? ""),
-              iconSize: [0, 0],
-            }),
-          });
+    if (isCollection) {
+      for (const f of layoutGeoJson.features) {
+        if (f.properties?.kind === "pv_axis_label" && f.geometry?.type === "Point") {
+          const [lon, lat] = f.geometry.coordinates as [number, number];
+          labelPointsRef.current.push({ lat, lon, n: f.properties.row_number });
         }
-        return L.circleMarker(latlng, { radius: 0, opacity: 0, fillOpacity: 0 });
-      },
+      }
+    }
+
+    layoutLayerRef.current = L.geoJSON(layoutGeoJson as GeoJSON.GeoJsonObject, {
+      // Row-number points are rendered separately (zoom-gated) — skip here.
+      filter: (feature) => feature.properties?.kind !== "pv_axis_label",
       style: (feature) => {
         const kind = feature?.properties?.kind;
         if (kind === "pv_module") {
@@ -121,6 +151,7 @@ export function LayoutPreviewMap({ center, layoutGeoJson }: Props) {
     if (bounds.isValid()) {
       map.fitBounds(bounds, { padding: [20, 20] });
     }
+    refreshLabels();
   }, [layoutGeoJson]);
 
   return <div ref={containerRef} className="layout-preview-map" aria-label="Layout preview map" />;
