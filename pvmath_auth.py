@@ -1004,7 +1004,7 @@ def _render_reset_password_form(access_token: str, refresh_token: str):
 
 
 # ── Auth UI ───────────────────────────────────────────────────
-def render_auth_page(app_name: str = "PVMath"):
+def render_auth_page(app_name: str | None = None):
     """
     Renders a full-page login / register UI.
     Returns True if user is authenticated, False otherwise.

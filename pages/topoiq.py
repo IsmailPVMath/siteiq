@@ -291,7 +291,7 @@ st.markdown("""
         background: linear-gradient(135deg, #1565c0, #42a5f5);
         display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
-    .pvmath-app-name { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; color: #0d1a0d; }
+    .pvmath-app-name { font-size: 1.05rem; font-weight: 800; letter-spacing: -0.02em; color: #0d1a0d; line-height: 1.3; }
     .pvmath-app-sub  { font-size: 0.88rem; color: #4a6a8a; font-weight: 600; }
     .pvmath-tagline  { font-size: 0.97rem; color: #1a2a4a; margin-top: 0.15rem; font-weight: 500; line-height: 1.6; }
 
@@ -404,10 +404,10 @@ st.markdown("""
     <i class="fa-solid fa-mountain" style="color:#fff;font-size:1.1rem;"></i>
   </div>
   <div>
-    <div style="display:flex;align-items:baseline;gap:0.5rem;">
-      <span class="pvmath-app-name">TopoIQ</span>
-      <span class="pvmath-app-sub">by PVMath</span>
+    <div style="display:flex;align-items:baseline;gap:0.5rem;flex-wrap:wrap;">
+      <span class="pvmath-app-name">PVMath-Solar Site Intelligence Platform</span>
     </div>
+    <div class="pvmath-tagline">From site to system.</div>
     <div class="pvmath-tagline">Tracker-aware terrain screening from routed free DEM sources — slope, cross-row grades, and client-ready PDFs before you order LiDAR.</div>
   </div>
 </div>

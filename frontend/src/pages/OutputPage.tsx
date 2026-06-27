@@ -1,3 +1,4 @@
+import { COMPANY_NAME } from "../lib/brand";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
@@ -579,7 +580,7 @@ export function OutputPage({
       (result.coordinates
         ? `${result.coordinates.lat.toFixed(3)}°, ${result.coordinates.lon.toFixed(3)}°`
         : "");
-    document.title = where ? `${name} · ${where} — SiteIQ` : `${name} — SiteIQ`;
+    document.title = where ? `${name} · ${where} — ${COMPANY_NAME}` : `${name} — ${COMPANY_NAME}`;
   }, [result.project_name, input?.project_name, locationLabel, result.coordinates]);
 
   useEffect(() => {

@@ -41,7 +41,7 @@ def build_pilot_agreement() -> Document:
             "Customer: [Company legal name], [Address], [Country], [Billing contact email]",
         ]),
         ("2. Service", [
-            "Access to the PVMath Solar Site Intelligence Platform (SiteIQ, TopoIQ, YieldIQ) "
+            "Access to the PVMath-Solar Site Intelligence Platform (SiteIQ, TopoIQ, YieldIQ) "
             "at siteiq.pvmath.com during Early Access.",
             "Outputs are screening-grade only — not bankable yield, not survey-grade terrain, "
             "not a substitute for LiDAR, PVsyst, or lender sign-off.",

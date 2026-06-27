@@ -7,7 +7,7 @@
 
 ## One-line summary
 
-**Unified SiteIQ Platform** at **app.pvmath.com** (React + FastAPI): one guided workflow from coordinates/boundary through screening, terrain, layout, and yield. **Per-project analysis billing** (10 / 50 / 250 / unlimited per month). **Stripe not live** — manual Supabase activation. **Streamlit legacy** (`siteiq` / `topoiq` subdomains) still in repo; primary product is the React app.
+**Unified PVMath-Solar Site Intelligence Platform** at **app.pvmath.com** (React + FastAPI): one guided workflow from coordinates/boundary through screening, terrain, layout, and yield. **Per-project analysis billing** (10 / 50 / 250 / unlimited per month). **Stripe not live** — manual Supabase activation. **Streamlit legacy** (`siteiq` / `topoiq` subdomains) still in repo; primary product is the React app.
 
 ---
 
@@ -32,7 +32,7 @@
 
 | Asset | URL | Host | Status |
 |-------|-----|------|--------|
-| **SiteIQ Platform (primary)** | [app.pvmath.com](https://app.pvmath.com) | Cloudflare Pages (`frontend/`) | ✅ Production |
+| **PVMath-Solar Site Intelligence Platform (primary)** | [app.pvmath.com](https://app.pvmath.com) | Cloudflare Pages (`frontend/`) | ✅ Production |
 | **API** | [api.pvmath.com](https://api.pvmath.com) | Railway (`api/`, FastAPI) | ✅ Production |
 | **Marketing site** | [pvmath.com](https://pvmath.com) | GitHub Pages (`index.html` on `main`) | ✅ Production |
 | Streamlit (legacy) | siteiq.pvmath.com, topoiq.pvmath.com | Railway (`app.py`) | ⚠️ Retained — not primary; retire when comfortable |
@@ -104,7 +104,7 @@ Recent stack (newest first): `be7a53a` per-project pricing + legal · `3fbd72a` 
 - **Mount type** — selected in **LayoutIQ**, not Project Setup (SiteIQ / TerrainIQ are mount-agnostic)
 - **YieldIQ** — runs automatically when proceeding to Yield step
 - **3D terrain** — viewer with fixed-tilt legs + axis gizmo; GLB export removed from UI
-- **Tab title** — project name + location in workflow; `SiteIQ by PVMath` on auth/setup
+- **Tab title** — project name + location in workflow; `PVMath-Solar Site Intelligence Platform` on auth/setup
 - **Account sidebar** — shows project analyses used (pooled `platform` counter)
 - **Settings / Manage membership** — name, plan, team invites, upgrade contact
 

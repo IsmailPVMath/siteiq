@@ -1117,6 +1117,6 @@ st.markdown("""
 <div style="margin-top:2rem;padding-top:1rem;border-top:1px solid #e0e8e0;
             font-size:0.78rem;color:#8a9a8a;text-align:center;">
   Module 1 of 3 · SiteIQ &nbsp;·&nbsp; Module 2 of 3 · TopoIQ &nbsp;·&nbsp; Module 3 of 3 · YieldIQ<br>
-  PVMath — Solar Site Intelligence · pvmath.com
+  PVMath-Solar Site Intelligence Platform · pvmath.com
 </div>
 """, unsafe_allow_html=True)

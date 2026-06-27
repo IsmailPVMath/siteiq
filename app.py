@@ -10,8 +10,10 @@ from pvmath_auth import (
 )
 from pvmath_team import render_membership_panel, render_team_invite_banner
 
+from pvmath_brand import PRODUCT_NAME
+
 st.set_page_config(
-    page_title="PVMath — Solar Site Intelligence",
+    page_title=PRODUCT_NAME,
     page_icon="assets/logo-192.png",
     layout="wide",
     initial_sidebar_state="expanded",

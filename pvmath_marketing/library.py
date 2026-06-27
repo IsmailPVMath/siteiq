@@ -139,7 +139,7 @@ Build technical trust with utility-scale EPCs, developers, and civil teams in DE
 
 ## Positioning
 
-**PVMath** — Solar Site Intelligence Platform. **From site to system.**
+**PVMath** — PVMath-Solar Site Intelligence Platform. **From site to system.**
 
 Live modules: SiteIQ (screening), TopoIQ (terrain + CAD), YieldIQ (configuration yield). Ground-mount only. Screening-grade outputs with explicit limits.
 

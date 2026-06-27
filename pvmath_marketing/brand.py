@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from pvmath_brand import COMPANY_NAME, PRODUCT_NAME, TAGLINE
+
 BRAND = {
-    "name": "PVMath",
-    "tagline": "From site to system.",
-    "platform": "Solar Site Intelligence Platform",
+    "name": COMPANY_NAME,
+    "tagline": TAGLINE,
+    "platform": PRODUCT_NAME,
+    "product_name": PRODUCT_NAME,
     "founder": "Ismail Pasha",
     "app_url": "https://siteiq.pvmath.com",
     "website": "https://pvmath.com",

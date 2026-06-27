@@ -10,7 +10,7 @@ This is the single source of truth for how the app is built, deployed, and what 
 
 ## 1. What this is
 
-**SiteIQ by PVMath** — Solar Site Intelligence Platform for ground-mount solar (Fixed Tilt + Single-Axis Tracker, Standard + Agri-PV). No rooftop/carport/floating/BIPV.
+**PVMath-Solar Site Intelligence Platform** for ground-mount solar (Fixed Tilt + Single-Axis Tracker, Standard + Agri-PV). No rooftop/carport/floating/BIPV.
 
 Three modules are **live and public:** SiteIQ, TopoIQ, YieldIQ. LayoutIQ is **admin-only** (in progress).
 

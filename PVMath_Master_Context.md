@@ -6,7 +6,7 @@
 
 ## 1. Executive Summary
 
-**What PVMath is:** SiteIQ by PVMath is a Solar Site Intelligence Platform for **ground-mount solar only** — Fixed Tilt and Single-Axis Tracker, Standard and Agri-PV (dual-use). No rooftop, carport, floating, or BIPV.
+**What PVMath is:** PVMath-Solar Site Intelligence Platform for **ground-mount solar only** — Fixed Tilt and Single-Axis Tracker, Standard and Agri-PV (dual-use). No rooftop, carport, floating, or BIPV.
 
 **Mission:** Automate the slow, manual parts of solar project development — from first site coordinates to actionable engineering data — turning what used to take days into a screening that takes minutes.
 

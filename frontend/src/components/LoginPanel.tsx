@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { PRODUCT_NAME, TAGLINE } from "../lib/brand";
 import {
   requestPasswordReset,
   signInWithPassword,
@@ -89,8 +90,8 @@ export function LoginPanel({ onSignedIn }: Props) {
 
   return (
     <div className="card auth-card" style={{ maxWidth: 420, margin: "3rem auto" }}>
-      <h2>SiteIQ by PVMath</h2>
-      <p className="hint">From site to system. Log in or create a free account.</p>
+      <h2>{PRODUCT_NAME}</h2>
+      <p className="hint">{TAGLINE} Log in or create a free account.</p>
 
       <div className="auth-tabs" role="tablist">
         <button

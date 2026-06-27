@@ -208,7 +208,7 @@ def build() -> Document:
     _p(
         doc,
         "PVMath operates a B2B software-as-a-service (SaaS) platform for utility-scale "
-        "ground-mounted photovoltaic projects. The product brand is SiteIQ by PVMath "
+        "ground-mounted photovoltaic projects. The product brand is PVMath-Solar Site Intelligence Platform "
         "(tagline: “From site to system.”).",
     )
     _bullet(doc, "Target customers: solar EPCs, project developers, and engineering firms worldwide")

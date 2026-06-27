@@ -4,7 +4,7 @@ Read this in 15 minutes, then go build. For full depth on anything here, see `PV
 
 ## What this is
 
-SiteIQ by PVMath — a solar site intelligence platform for **ground-mount solar only** (Fixed Tilt + Single-Axis Tracker, Standard + Agri-PV). Three modules are live: **SiteIQ** (site screening), **TopoIQ** (terrain/DEM export), **YieldIQ** (preliminary yield). A fourth, **LayoutIQ** (auto layout + BOM), is built but admin-only.
+PVMath-Solar Site Intelligence Platform — a solar site intelligence platform for **ground-mount solar only** (Fixed Tilt + Single-Axis Tracker, Standard + Agri-PV). Three modules are live: **SiteIQ** (site screening), **TopoIQ** (terrain/DEM export), **YieldIQ** (preliminary yield). A fourth, **LayoutIQ** (auto layout + BOM), is built but admin-only.
 
 Solo founder (Mohammed Ismail Pasha, a working solar engineer, not a coder) builds this entirely through Claude. Started 2026-06-11 — moves fast, ships daily.
 

@@ -102,7 +102,7 @@ st.markdown("""
         background: linear-gradient(135deg, #1a5c2e, #1d9e52);
         display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
-    .pvmath-app-name { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; color: #0d1a0d; }
+    .pvmath-app-name { font-size: 1.05rem; font-weight: 800; letter-spacing: -0.02em; color: #0d1a0d; line-height: 1.3; }
     .pvmath-app-sub  { font-size: 0.88rem; color: #4a6a4a; font-weight: 600; }
     .pvmath-tagline  { font-size: 0.97rem; color: #2a4a2a; margin-top: 0.15rem; font-weight: 500; line-height: 1.6; }
 
@@ -281,11 +281,10 @@ st.markdown("""
     <i class="fa-solid fa-solar-panel" style="color:#fff;font-size:1.1rem;"></i>
   </div>
   <div>
-    <div style="display:flex;align-items:baseline;gap:0.5rem;">
-      <span class="pvmath-app-name">SiteIQ</span>
-      <span class="pvmath-app-sub">by PVMath</span>
+    <div style="display:flex;align-items:baseline;gap:0.5rem;flex-wrap:wrap;">
+      <span class="pvmath-app-name">PVMath-Solar Site Intelligence Platform</span>
     </div>
-    <div class="pvmath-tagline">Solar Site Intelligence Platform — fast pre-screening for utility-scale projects</div>
+    <div class="pvmath-tagline">From site to system.</div>
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -2432,4 +2431,4 @@ with right:
                 f'</div>',
                 unsafe_allow_html=True,
             )
-        st.caption("Data: PVGIS JRC · EU-DEM / SRTM via OpenTopoData · OpenStreetMap  |  SiteIQ by PVMath — Module 1 of 3 · pvmath.com")
+        st.caption("Data: PVGIS JRC · EU-DEM / SRTM via OpenTopoData · OpenStreetMap  |  PVMath-Solar Site Intelligence Platform — SiteIQ · pvmath.com")
