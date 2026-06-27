@@ -224,7 +224,6 @@
     /* ── SECTIONS ── */
     section { padding: var(--section-y) var(--section-x); }
     #preview { padding: var(--section-y-compact) var(--section-x); background: var(--card); border-top: 1px solid var(--border); }
-    #data-accuracy { padding: var(--section-y-compact) var(--section-x) 1.25rem; background: var(--bg2); border-top: 1px solid var(--border); }
     #reviews { padding: 1.25rem var(--section-x) var(--section-y); background: var(--bg2); }
     .section-label { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--green); margin-bottom: 0.8rem; }
     .section-title { font-size: clamp(1.8rem, 3vw, 2.6rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 1rem; }
@@ -469,33 +468,6 @@
     .faq-item[open] summary { border-bottom: 1px solid var(--border); }
     .faq-item p { font-size: var(--text-sm); color: var(--muted); line-height: var(--leading); margin: 0; padding: 1rem 1.4rem 1.25rem; }
 
-    /* ── DATA ACCURACY (progressive disclosure) ── */
-    .accuracy-details { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-    .accuracy-details summary {
-      font-size: var(--text-body); font-weight: 700; padding: 1.15rem 1.4rem; cursor: pointer;
-      list-style: none; color: var(--text);
-      display: flex; align-items: center; justify-content: space-between; gap: 1.25rem; flex-wrap: wrap;
-    }
-    .accuracy-details summary::-webkit-details-marker { display: none; }
-    .accuracy-details summary::after {
-      content: 'Show methodology ↓'; float: none; flex-shrink: 0;
-      font-size: var(--text-body); font-weight: 700;
-      background: var(--green-lt); color: var(--green-dk);
-      padding: 0.55rem 1.15rem; border-radius: 8px;
-      border: 1.5px solid rgba(29,158,82,.28); white-space: nowrap;
-    }
-    .accuracy-details[open] summary::after { content: 'Hide ↑'; }
-    .accuracy-details[open] summary { border-bottom: 1px solid var(--border); }
-    .accuracy-details-body { padding: 1.25rem 1.4rem 1.4rem; }
-    .accuracy-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
-    .accuracy-card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; }
-    .accuracy-card-title { font-size: var(--text-sm); font-weight: 800; margin-bottom: 0.55rem; }
-    .accuracy-card p { font-size: var(--text-sm); color: var(--muted); line-height: var(--leading); margin: 0; }
-    .accuracy-card.warn { background: #fff8e6; border-color: #f0b429; }
-    .accuracy-card.warn .accuracy-card-title { color: #7a4f00; }
-    .accuracy-card.warn p { color: #7a4f00; }
-    @media (max-width: 900px) { .accuracy-grid { grid-template-columns: 1fr; } }
-
     /* ── WORKFLOW (progressive disclosure) ── */
     .workflow-details { background: var(--card); border: 1.5px solid var(--border); border-radius: 14px; overflow: hidden; }
     .workflow-details summary {
@@ -667,7 +639,6 @@
       .stat-lbl, .stats-bar-lbl { font-size: 1rem; }
       .footer-bottom { font-size: var(--text-sm); }
       .footer-col a { padding: 0.35rem 0; min-height: 44px; display: flex; align-items: center; }
-      .accuracy-details summary::after,
       .workflow-details summary::after {
         min-height: 44px; display: inline-flex; align-items: center;
         padding: 0.65rem 1.15rem;
@@ -1230,31 +1201,6 @@
   </div>
 </section>
 
-<!-- ── DATA ACCURACY ── -->
-<section id="data-accuracy">
-  <div class="container">
-    <details class="accuracy-details">
-      <summary data-i18n="accuracy.summary">Data sources &amp; accuracy &mdash; PVGIS, region-routed DEM, YieldIQ limits</summary>
-      <div class="accuracy-details-body">
-        <div class="accuracy-grid">
-          <div class="accuracy-card">
-            <div class="accuracy-card-title" style="color:var(--green-dk);">PVGIS &mdash; EC Joint Research Centre</div>
-            <p>EU Commission irradiance database (SARAH / ERA5). GHI uncertainty ~5&ndash;8% at P50. Same source used in bankable pre-feasibility globally.</p>
-          </div>
-          <div class="accuracy-card">
-            <div class="accuracy-card-title" style="color:#1565c0;">TerrainIQ &mdash; Region-Routed DEM</div>
-            <p>Best public DEM per location: <strong>Copernicus EEA-10</strong> (Europe, ~10 m), <strong>USGS 3DEP</strong> (USA, ~10 m), <strong>FABDEM</strong> bare-earth (global, ~30 m), Copernicus GLO-30 fallback. Resampled to a <strong>5 m</strong> layout grid &mdash; not RTK survey.</p>
-          </div>
-          <div class="accuracy-card warn">
-            <div class="accuracy-card-title">&#9888; YieldIQ &mdash; Know the Limits</div>
-            <p>PVGIS with simplified shading. Typical uncertainty vs. bankable: <strong>&plusmn;8&ndash;15%</strong>. Internal go/no-go only.</p>
-          </div>
-        </div>
-      </div>
-    </details>
-  </div>
-</section>
-
 <!-- ── EARLY ACCESS / FEEDBACK ── -->
 <section id="reviews">
   <div class="container">
@@ -1654,7 +1600,6 @@ var T = {
     'faq.a5':'Yes — for early layout. TerrainIQ delivers a UTM LandXML surface and DXF contours with parcel linework from your boundary. Screening-grade public DEM — verify critical grades with survey before FEED.',
     'faq.q4':'Who is PVMath built for?',
     'faq.a4':'Solar EPCs, developers, and engineering firms screening utility-scale ground mount globally. Fixed tilt and tracker, standard and Agri-PV.',
-    'accuracy.summary':'Data sources & accuracy — PVGIS, region-routed DEM, YieldIQ limits',
     'about.label':'About PVMath','about.title':'From the field.<br>Not a desk.',
     'about.p1':'Founded by a solar engineering expert with hands-on utility-scale experience — trackers, terrain, site design, and EPC delivery worldwide.',
     'about.p2':'Built for problems that cost project hours — not boardroom features.',
@@ -1797,7 +1742,6 @@ var T = {
     'faq.a5':'Ja — für frühes Layout. TerrainIQ liefert UTM-LandXML-Oberfläche und DXF-Höhenlinien mit Parcel-Linework aus Ihrer Grenze. Screening-öffentliches DEM — kritische Neigungen vor FEED vermessungsseitig prüfen.',
     'faq.q4':'Für wen ist PVMath gebaut?',
     'faq.a4':'Solar-EPCs, Entwickler und Ingenieurbüros für Utility-Scale-Freifläche weltweit. Festaufständerung und Tracker, Standard und Agri-PV.',
-    'accuracy.summary':'Datenquellen & Genauigkeit — PVGIS, regionales DEM, YieldIQ-Grenzen',
     'about.label':'Über PVMath','about.title':'Aus der Praxis.<br>Nicht vom Schreibtisch.',
     'about.p1':'Gegründet von einem Solaringenieur mit Utility-Scale-Erfahrung — Tracker, Gelände, Standortplanung und EPC weltweit.',
     'about.p2':'Für Probleme, die Projektstunden kosten — nicht für Konferenzraum-Features.',
