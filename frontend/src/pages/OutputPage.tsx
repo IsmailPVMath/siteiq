@@ -253,6 +253,7 @@ export function OutputPage({
   const [layoutMountType, setLayoutMountType] = useState<"Fixed Tilt" | "Single-Axis Tracker">(
     "Fixed Tilt",
   );
+  const [layoutPortrait, setLayoutPortrait] = useState<"all" | "1" | "2" | "3" | "4">("2");
   const [layoutCustomGcr, setLayoutCustomGcr] = useState("");
   const [layoutCustomPitch, setLayoutCustomPitch] = useState("");
   const [moduleH, setModuleH] = useState(input?.module_h ?? DEFAULT_LAYOUT_CONFIG.module_h);
@@ -838,6 +839,7 @@ export function OutputPage({
         lat: result.coordinates.lat,
         bifacial: layoutBifacial,
         mount_filter: mountFilter,
+        ...(layoutPortrait !== "all" ? { portrait_filter: [Number(layoutPortrait)] } : {}),
         ...layoutApiParams(),
       };
       if (layoutOptimization === "custom") {
@@ -1352,9 +1354,11 @@ export function OutputPage({
                 <select
                   id="layout-mount-type"
                   value={layoutMountType}
-                  onChange={(e) =>
-                    setLayoutMountType(e.target.value as "Fixed Tilt" | "Single-Axis Tracker")
-                  }
+                  onChange={(e) => {
+                    const next = e.target.value as "Fixed Tilt" | "Single-Axis Tracker";
+                    setLayoutMountType(next);
+                    setLayoutPortrait(next === "Single-Axis Tracker" ? "1" : "2");
+                  }}
                 >
                   <option value="Fixed Tilt">Fixed Tilt</option>
                   <option value="Single-Axis Tracker">Single-Axis Tracker</option>
@@ -1362,6 +1366,36 @@ export function OutputPage({
                 <p className="hint sidebar-hint">
                   Choose here — SiteIQ and TerrainIQ run mount-agnostic; layout and yield use this
                   selection.
+                </p>
+              </div>
+              <div className="field">
+                <label htmlFor="layout-portrait">Modules in portrait (per table)</label>
+                <select
+                  id="layout-portrait"
+                  value={layoutPortrait}
+                  onChange={(e) =>
+                    setLayoutPortrait(e.target.value as "all" | "1" | "2" | "3" | "4")
+                  }
+                >
+                  {mountFilter === "sat" ? (
+                    <>
+                      <option value="1">1P — single row (lighter, faster)</option>
+                      <option value="2">2P — stacked pair</option>
+                      <option value="all">Compare 1P & 2P (slower)</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="1">1P — single row (lighter, faster)</option>
+                      <option value="2">2P — two-high</option>
+                      <option value="3">3P — three-high</option>
+                      <option value="4">4P — four-high</option>
+                      <option value="all">Compare 1P–4P (slower)</option>
+                    </>
+                  )}
+                </select>
+                <p className="hint sidebar-hint">
+                  Pick one portrait to keep the sweep fast on large sites. Use Compare only when you
+                  need to weigh portraits side by side.
                 </p>
               </div>
               <div className="field">
@@ -2146,11 +2180,17 @@ export function OutputPage({
         ) : (
           <>
             <p className="hint">
-              {mountFilter === "sat"
-                ? "Showing the layout sweep for Single-Axis Tracker (1P and 2P) — the mount you chose in Project setup. To compare Fixed Tilt, change Mounting in Project setup."
-                : mountFilter === "fixed"
-                  ? "Showing the layout sweep for Fixed Tilt (1P–4P) — the mount you chose in Project setup. To compare Single-Axis Tracker, change Mounting in Project setup."
-                  : "Sweeps Fixed Tilt 1P–4P and Single-Axis Tracker 1P–2P across industry pitch/GCR bands."}
+              {(() => {
+                const mountLabel =
+                  mountFilter === "sat" ? "Single-Axis Tracker" : "Fixed Tilt";
+                const portraitLabel =
+                  layoutPortrait === "all"
+                    ? mountFilter === "sat"
+                      ? "1P & 2P"
+                      : "1P–4P"
+                    : `${layoutPortrait}P`;
+                return `Showing the layout sweep for ${mountLabel} (${portraitLabel}) — set Mounting and portrait in the LayoutIQ panel on the left.`;
+              })()}
             </p>
             {!topoResult ? (
               <p className="module-note">TerrainIQ should finish first — layout uses your boundary polygon.</p>

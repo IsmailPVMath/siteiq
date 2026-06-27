@@ -49,7 +49,7 @@ router = APIRouter(tags=["workflow"])
 
 SCREEN_APP = PLATFORM_APP
 SCREEN_TIMEOUT_SEC = int(os.environ.get("PVMATH_GATE_TIMEOUT", "150"))
-LAYOUT_TIMEOUT_SEC = int(os.environ.get("PVMATH_LAYOUT_TIMEOUT", "120"))
+LAYOUT_TIMEOUT_SEC = int(os.environ.get("PVMATH_LAYOUT_TIMEOUT", "240"))
 
 
 def _latlon_polys(boundary, boundaries):
@@ -331,6 +331,7 @@ async def workflow_layout_sweep(
                     road_mode=body.road_mode,
                     road_preset=body.road_preset,
                     mount_filter=body.mount_filter,
+                    portrait_filter=body.portrait_filter,
                     allow_partial_strings=body.allow_partial_strings,
                 ),
             ),

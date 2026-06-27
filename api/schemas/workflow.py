@@ -118,6 +118,10 @@ class WorkflowLayoutSweepRequest(BaseModel):
         default="all",
         description="Limit sweep to the mount type chosen in project setup.",
     )
+    portrait_filter: Optional[List[int]] = Field(
+        default=None,
+        description="Limit sweep to specific module-portrait counts (e.g. [1] or [2]). None sweeps all portraits for the mount.",
+    )
     allow_partial_strings: bool = Field(
         default=False,
         description="Place half-strings (≥50% modules) at row ends when space remains; otherwise stop at last complete string.",

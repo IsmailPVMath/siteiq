@@ -101,6 +101,7 @@ def run_layout_sweep(
     inv_ac_kw: float = 100.0,
     include_bom: bool = False,
     mount_filter: str = "all",
+    portrait_filter: Optional[List[int]] = None,
     allow_partial_strings: bool = False,
 ) -> Dict[str, Any]:
     """
@@ -156,6 +157,8 @@ def run_layout_sweep(
         if mount_filter == "sat" and not tracker:
             continue
         if mount_filter == "fixed" and tracker:
+            continue
+        if portrait_filter and n_portrait not in portrait_filter:
             continue
         row_ns = _row_ns_m(module_h, module_w, n_portrait, tracker)
         mount_type = "sat" if tracker else "fixed_tilt"
