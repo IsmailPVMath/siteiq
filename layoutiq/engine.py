@@ -541,14 +541,8 @@ def run_layout(
                 segments = []
         if ew_road_bands:
             segments = _split_segments_by_roads(segments, ew_road_bands)
-        if not segments:
-            y += pitch
-            rows_in_block += 1
-            if use_blocks and rows_in_block >= rows_per_block:
-                y += block_gap_m
-                rows_in_block = 0
-            continue
 
+        rows_before = len(rows_data)
         for seg_min, seg_max in segments:
             avail_len = seg_max - seg_min
             if avail_len < module_w * modules_per_string * 0.5:
@@ -643,11 +637,19 @@ def run_layout(
                 }
             )
 
+        # Advance one pitch slot. When N-S roads are enabled the road skips a
+        # whole number of pitch slots, so every tracker stays on the uniform
+        # pitch grid — centre spacing is always a multiple of pitch (e.g.
+        # 7, 7, 14, 7, 7, 14 …), never an off-grid value. Only bands that
+        # actually placed trackers count toward a block, so empty bands outside
+        # the buildable area never trigger a road.
         y += pitch
-        rows_in_block += 1
-        if use_blocks and rows_in_block >= rows_per_block:
-            y += block_gap_m
-            rows_in_block = 0
+        if use_blocks and len(rows_data) > rows_before:
+            rows_in_block += 1
+            if rows_in_block >= rows_per_block:
+                road_slots = max(1, math.ceil(block_gap_m / pitch))
+                y += road_slots * pitch
+                rows_in_block = 0
 
     if not rows_data:
         return None

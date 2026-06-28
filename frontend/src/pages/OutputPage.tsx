@@ -1814,9 +1814,13 @@ export function OutputPage({
                       </div>
                     </div>
                     <p className="hint sidebar-hint">
-                      N-S roads run between tracker columns (gap every N rows). E-W roads cross the
-                      tracker length (gap every N strings) and line up across the field. Set strings/
-                      block to 0 to skip E-W roads.
+                      Roads keep every tracker on the uniform pitch grid: a road skips whole pitch
+                      slots, so spacing stays a multiple of the pitch (e.g. 7, 7, 14 m) — never an
+                      off-grid gap. The metres you enter set the minimum road width (rounded up to
+                      the next whole slot). With no roads the pitch is constant across the whole PV
+                      area. N-S roads run between tracker columns (every N rows); E-W roads cross the
+                      tracker length (every N strings) and line up across the field. Set rows/block
+                      or strings/block to 0 to skip that road.
                     </p>
                   </>
                 ) : null}
