@@ -1,0 +1,221 @@
+"""Unified PVMath project intelligence PDF — SiteIQ + TerrainIQ + YieldIQ."""
+
+from __future__ import annotations
+
+import io
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Sequence
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.units import cm
+from reportlab.platypus import HRFlowable, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+from pvmath_brand import PRODUCT_NAME
+from pvmath_geocode import format_coords, resolve_location_label
+from pvmath_pdf import SITEIQ_DISCLAIMER_BODY, append_siteiq_metrics_annexure
+from pvmath_reports.common import ACCENT, ACCENT_HDR, BORDER, DARK, MUTED, base_styles, lp, module_banner, section_hdr
+from pvmath_reports.siteiq_section import build_siteiq_flowables
+from pvmath_reports.terrain_section import build_terrain_section_flowables
+from pvmath_reports.yieldiq_section import build_yieldiq_flowables
+from pvmath_terrain_report import FIXED_THRESHOLDS, TRACKER_THRESHOLDS
+
+
+def _project_summary_flowables(
+    *,
+    project_name: str,
+    country: str,
+    location_label: str,
+    lat: Optional[float],
+    lon: Optional[float],
+    land_use: str,
+    mount_type: str,
+    area_ha: float,
+    capacity_mwp: str,
+    pvmath_score: Optional[int],
+    verdict: str,
+) -> List:
+    st = base_styles()
+    loc_line = location_label or (
+        resolve_location_label(lat, lon, country=country) if lat is not None and lon is not None else "—"
+    )
+    coord = format_coords(lat, lon) if lat is not None and lon is not None else "—"
+    score_line = f"{pvmath_score}/100 — {verdict}" if pvmath_score is not None else verdict or "—"
+
+    rows = [
+        [lp("Project", st["lbl"]), lp(project_name or "—", st["body"])],
+        [lp("Location", st["lbl"]), lp(loc_line, st["body"])],
+        [lp("Country", st["lbl"]), lp(country or "—", st["body"])],
+        [lp("Coordinates", st["lbl"]), lp(coord, st["body"])],
+        [lp("Site area", st["lbl"]), lp(f"{area_ha:,.1f} ha" if area_ha else "—", st["body"])],
+        [lp("Land use", st["lbl"]), lp(land_use or "—", st["body"])],
+        [lp("Mounting", st["lbl"]), lp(mount_type or "—", st["body"])],
+        [lp("Est. DC capacity", st["lbl"]), lp(capacity_mwp or "—", st["body"])],
+        [lp("PVMath score", st["lbl"]), lp(score_line, st["body"])],
+        [lp("Generated", st["lbl"]), lp(datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"), st["body"])],
+    ]
+    tbl = Table(rows, colWidths=[4.2 * cm, 12.8 * cm])
+    tbl.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#e8f5ee")),
+        ("BOX", (0, 0), (-1, -1), 0.6, ACCENT),
+        ("INNERGRID", (0, 0), (-1, -1), 0.3, BORDER),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+    ]))
+    return [
+        module_banner(
+            "PVMath — Project Intelligence Report",
+            "SiteIQ · TerrainIQ · YieldIQ",
+            st,
+        ),
+        Spacer(1, 0.35 * cm),
+        section_hdr("PROJECT SUMMARY", st),
+        Spacer(1, 0.15 * cm),
+        tbl,
+        Spacer(1, 0.4 * cm),
+    ]
+
+
+def _annex_flowables() -> List:
+    st = base_styles()
+    story: List = [
+        PageBreak(),
+        section_hdr("DISCLAIMERS & REFERENCE", st),
+        Spacer(1, 0.2 * cm),
+        lp(SITEIQ_DISCLAIMER_BODY, st["muted"]),
+        Spacer(1, 0.35 * cm),
+    ]
+    append_siteiq_metrics_annexure(
+        story,
+        accent_color="#1d9e52",
+        muted_color="#5a7a5a",
+        border_color="#d4e8d4",
+        dark_color="#1a2e1a",
+    )
+    story.append(Spacer(1, 0.25 * cm))
+    story.append(Paragraph(
+        "<b>Verdict scale:</b> Excellent &gt; Very Good &gt; Good &gt; Acceptable &gt; Challenging &gt; Critical",
+        ParagraphStyle("vscale", parent=st["muted"], fontSize=8, leading=11),
+    ))
+    story.append(Spacer(1, 0.2 * cm))
+    for title, rows in (("Fixed Tilt slope thresholds", FIXED_THRESHOLDS), ("Tracker slope thresholds", TRACKER_THRESHOLDS)):
+        story.append(lp(title, st["h3"]))
+        data = [["Rating", "Threshold", "Interpretation"]] + [list(r) for r in rows]
+        t = Table(data, colWidths=[3.5 * cm, 3 * cm, 10.5 * cm])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), ACCENT_HDR),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("GRID", (0, 0), (-1, -1), 0.3, BORDER),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 0.15 * cm))
+    story += [
+        Spacer(1, 0.3 * cm),
+        HRFlowable(width="100%", thickness=0.5, color=BORDER),
+        Spacer(1, 0.2 * cm),
+        lp(
+            f"Generated by {PRODUCT_NAME} | For professional use only. "
+            "Data: PVGIS (JRC), routed public DEM, OpenStreetMap.",
+            st["muted"],
+        ),
+    ]
+    return story
+
+
+def build_unified_pvmath_report_pdf(
+    *,
+    project_name: str,
+    country: str = "",
+    lat: float | None = None,
+    lon: float | None = None,
+    land_use: str = "Standard",
+    mount_type: str = "Fixed Tilt",
+    area_ha: float = 0.0,
+    location_label: str = "",
+    screening: Optional[Dict[str, Any]] = None,
+    topo: Optional[Dict[str, Any]] = None,
+    score: Optional[Dict[str, Any]] = None,
+    yield_result: Optional[Dict[str, Any]] = None,
+    boundaries: Optional[Sequence[Sequence[Any]]] = None,
+    **_kwargs,
+) -> bytes:
+    """A4 unified report: summary → SiteIQ → TerrainIQ → YieldIQ → disclaimers."""
+    scr = screening or {}
+    cap = scr.get("capacity") or {}
+    capacity_mwp = str(cap.get("mwp_range") or "—")
+    if not area_ha:
+        try:
+            area_ha = float(cap.get("area_ha") or 0)
+        except (TypeError, ValueError):
+            area_ha = 0.0
+    if topo and not area_ha:
+        try:
+            area_ha = float(topo.get("area_ha") or 0)
+        except (TypeError, ValueError):
+            pass
+
+    pvmath_score = (score or {}).get("pvmath_score")
+    verdict = (score or {}).get("verdict") or ""
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        leftMargin=1.8 * cm,
+        rightMargin=1.8 * cm,
+        topMargin=1.6 * cm,
+        bottomMargin=1.6 * cm,
+    )
+
+    story: List = []
+    story += _project_summary_flowables(
+        project_name=project_name,
+        country=country,
+        location_label=location_label,
+        lat=lat,
+        lon=lon,
+        land_use=land_use,
+        mount_type=mount_type,
+        area_ha=area_ha,
+        capacity_mwp=capacity_mwp,
+        pvmath_score=int(pvmath_score) if pvmath_score is not None else None,
+        verdict=str(verdict),
+    )
+
+    if lat is not None and lon is not None:
+        story += build_siteiq_flowables(
+            screening=scr,
+            topo=topo,
+            score=score,
+            country=country,
+            land_use=land_use,
+            mount_type=mount_type,
+            lat=lat,
+            lon=lon,
+        )
+
+    if lat is not None and lon is not None:
+        story += build_terrain_section_flowables(
+            topo,
+            project_name=project_name,
+            country=country,
+            location_label=location_label,
+            lat=lat,
+            lon=lon,
+            land_use=land_use,
+            mount_type=mount_type,
+            boundaries=boundaries,
+        )
+
+    story += build_yieldiq_flowables(yield_result=yield_result, area_ha=area_ha)
+    story += _annex_flowables()
+
+    doc.build(story)
+    return buf.getvalue()

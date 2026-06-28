@@ -297,6 +297,10 @@ class WorkflowPvmathReportRequest(BaseModel):
     lat: Optional[float] = Field(default=None, ge=-90, le=90)
     lon: Optional[float] = Field(default=None, ge=-180, le=180)
     land_use: str = Field(default="Standard", max_length=40)
+    mount_type: str = Field(default="Fixed Tilt", max_length=40)
+    area_ha: float = Field(default=0.0, ge=0)
+    boundary: Optional[List[BoundaryPoint]] = None
+    boundaries: Optional[List[List[BoundaryPoint]]] = None
     screening: Optional[Dict[str, Any]] = None
     topo: Optional[Dict[str, Any]] = None
     score: Optional[Dict[str, Any]] = None

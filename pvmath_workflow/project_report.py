@@ -31,6 +31,7 @@ from layoutiq.tracker_styles import TRACKER_UNIT_STYLES
 from layoutiq.tracker_units import build_tracker_unit_polys, count_tracker_units_by_size
 from pvmath_geocode import pdf_escape
 from pvmath_pdf import SITEIQ_DISCLAIMER_BODY
+from pvmath_reports.unified_report import build_unified_pvmath_report_pdf
 from pvmath_workflow.layout_detail import build_layout_detail, export_layout_dxf
 
 
@@ -85,183 +86,33 @@ def build_pvmath_report_pdf(
     lat: float | None = None,
     lon: float | None = None,
     land_use: str = "Standard",
+    mount_type: str = "Fixed Tilt",
+    area_ha: float = 0.0,
+    location_label: str = "",
     screening: Optional[Dict[str, Any]] = None,
     topo: Optional[Dict[str, Any]] = None,
     score: Optional[Dict[str, Any]] = None,
     layout_row: Optional[Dict[str, Any]] = None,
     yield_result: Optional[Dict[str, Any]] = None,
     selected_yield_mwh: Optional[float] = None,
+    boundaries: Optional[List[List[Any]]] = None,
 ) -> bytes:
-    """A4 PVMath report: SiteIQ → TerrainIQ → LayoutIQ → YieldIQ → overall score."""
-    buf = io.BytesIO()
-    doc = SimpleDocTemplate(
-        buf,
-        pagesize=A4,
-        leftMargin=1.8 * cm,
-        rightMargin=1.8 * cm,
-        topMargin=1.6 * cm,
-        bottomMargin=1.6 * cm,
+    """A4 unified PVMath report — rich SiteIQ, TerrainIQ, and YieldIQ sections."""
+    return build_unified_pvmath_report_pdf(
+        project_name=project_name,
+        country=country,
+        lat=lat,
+        lon=lon,
+        land_use=land_use,
+        mount_type=mount_type,
+        area_ha=area_ha,
+        location_label=location_label,
+        screening=screening,
+        topo=topo,
+        score=score,
+        yield_result=yield_result,
+        boundaries=boundaries,
     )
-    st = _styles()
-    story: list = []
-
-    hdr = Table(
-        [[
-            _lp("PVMath — Project Intelligence Report", st["white"]),
-            _lp("SiteIQ · TerrainIQ · LayoutIQ · YieldIQ", ParagraphStyle(
-                "hs", parent=st["muted"], fontSize=8, textColor=colors.HexColor("#d4e8d4"), alignment=TA_RIGHT,
-            )),
-        ]],
-        colWidths=["58%", "42%"],
-    )
-    hdr.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#1d9e52")),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING", (0, 0), (-1, -1), 12),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
-        ("LEFTPADDING", (0, 0), (-1, -1), 14),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 14),
-    ]))
-    story += [hdr, Spacer(1, 0.35 * cm)]
-
-    meta_rows = [
-        ["Project", project_name or "—"],
-        ["Country", country or "—"],
-        ["Coordinates", f"{lat:.5f}, {lon:.5f}" if lat is not None and lon is not None else "—"],
-        ["Land use", land_use],
-        ["Generated", datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")],
-    ]
-    story.append(_section_table([["Field", "Value"]] + meta_rows, [4 * cm, 13 * cm]))
-    story.append(Spacer(1, 0.4 * cm))
-
-    # ── SiteIQ ──────────────────────────────────────────────────────────────
-    story.append(_lp("1. SiteIQ — Site screening", st["h2"]))
-    scr = screening or {}
-    solar = scr.get("solar") or {}
-    flood = scr.get("flood") or {}
-    grid = scr.get("grid") or {}
-    reg = scr.get("regulatory") or {}
-    nearest = grid.get("nearest") or {}
-    grid_detail = grid.get("detail") or "—"
-    if grid.get("found") and nearest:
-        grid_detail = (
-            f"{nearest.get('name', 'Substation')} · {grid.get('distance_km')} km"
-            + (f" · {nearest.get('voltage')}" if nearest.get("voltage") else "")
-        )
-    site_rows = [
-        ["Metric", "Rating", "Detail"],
-        ["Solar", solar.get("rating", "—"), solar.get("detail", "—")],
-        ["Flood", flood.get("risk", "—"), flood.get("detail", "—")],
-        ["Grid proximity", grid.get("rating", "—"), grid_detail],
-        ["Regulatory", reg.get("status", "—"), reg.get("note", "—")],
-    ]
-    story.append(_section_table(site_rows, [3.5 * cm, 3 * cm, 10.5 * cm]))
-    if scr.get("terrain_note"):
-        story.append(Spacer(1, 0.15 * cm))
-        story.append(_lp(str(scr["terrain_note"]), st["muted"]))
-
-    # ── TerrainIQ ──────────────────────────────────────────────────────────────
-    story.append(PageBreak())
-    story.append(_lp("2. TerrainIQ — Terrain analysis", st["h2"]))
-    if topo:
-        elev = topo.get("elevation") or {}
-        slope = topo.get("slope") or {}
-        vf = topo.get("verdict_fixed") or {}
-        vt = topo.get("verdict_tracker") or {}
-        topo_rows = [
-            ["Metric", "Value"],
-            ["Elevation range", f"{elev.get('z_min', '—')} – {elev.get('z_max', '—')} m"],
-            ["Mean slope", f"{slope.get('mean', '—')}%"],
-            ["Max slope", f"{slope.get('max', '—')}%"],
-            [">5% area", f"{slope.get('pct_over5', '—')}%"],
-            [">10% area", f"{slope.get('pct_over10', '—')}%"],
-            ["Terrain source", str(topo.get("terrain_source_used", "—"))],
-            ["Fixed Tilt verdict", f"{vf.get('label', '—')} — {vf.get('detail', '')}"],
-            ["Tracker verdict", f"{vt.get('label', '—')} — {vt.get('detail', '')}"],
-        ]
-        story.append(_section_table(topo_rows, [5 * cm, 12 * cm]))
-    else:
-        story.append(_lp("TerrainIQ not run — draw a site boundary and run terrain analysis.", st["muted"]))
-
-    # ── LayoutIQ ────────────────────────────────────────────────────────────
-    story.append(Spacer(1, 0.5 * cm))
-    story.append(_lp("3. LayoutIQ — Selected configuration", st["h2"]))
-    if layout_row and layout_row.get("success"):
-        lr = layout_row
-        lay_rows = [
-            ["Parameter", "Value"],
-            ["Configuration", lr.get("label", "—")],
-            ["Pitch", f"{lr.get('pitch_m')} m"],
-            ["GCR", f"{lr.get('gcr')}"],
-            ["DC capacity", f"{lr.get('dc_kwp', 0):,.1f} kWp"],
-            ["Modules", f"{lr.get('total_modules', 0):,}"],
-            ["Rows", str(lr.get("total_rows", "—"))],
-            ["MW/ha", str(lr.get("mw_per_ha", "—"))],
-        ]
-        story.append(_section_table(lay_rows, [5 * cm, 12 * cm]))
-        story.append(Spacer(1, 0.15 * cm))
-        story.append(_lp(
-            "Detailed layout drawing, BOM, and DXF are included in the Project Package download.",
-            st["muted"],
-        ))
-    else:
-        story.append(_lp("No layout row selected — run LayoutIQ sweep and select a configuration.", st["muted"]))
-
-    # ── YieldIQ ─────────────────────────────────────────────────────────────
-    story.append(Spacer(1, 0.5 * cm))
-    story.append(_lp("4. YieldIQ — Energy yield", st["h2"]))
-    if yield_result and yield_result.get("configs"):
-        if selected_yield_mwh is not None:
-            story.append(_lp(
-                f"Selected layout estimate: {selected_yield_mwh:,.0f} MWh/yr (preliminary).",
-                st["body"],
-            ))
-            story.append(Spacer(1, 0.2 * cm))
-        y_rows = [["Configuration", "Specific yield (kWh/kWp/yr)", "PR %", "GCR"]]
-        for _key, cfg in yield_result["configs"].items():
-            y_rows.append([
-                cfg.get("display_name", _key),
-                f"{float(cfg.get('spec_y', 0)):.0f}",
-                f"{float(cfg.get('pr', 0)):.1f}" if cfg.get("pr") is not None else "—",
-                f"{float(cfg.get('gcr', 0)):.2f}",
-            ])
-        story.append(_section_table(y_rows, [6 * cm, 5.5 * cm, 2.5 * cm, 3 * cm]))
-        if yield_result.get("disclosure"):
-            story.append(Spacer(1, 0.15 * cm))
-            story.append(_lp(str(yield_result["disclosure"]), st["muted"]))
-    else:
-        story.append(_lp("YieldIQ not run — select a layout row and run yield analysis.", st["muted"]))
-
-    # ── Overall score ───────────────────────────────────────────────────────
-    story.append(Spacer(1, 0.5 * cm))
-    story.append(_lp("5. Overall PVMath score", st["h2"]))
-    if score and score.get("pvmath_score") is not None:
-        story.append(_lp(
-            f"Score: {score['pvmath_score']} — {score.get('verdict', '')}",
-            ParagraphStyle("sc", parent=st["h3"], fontSize=11, textColor=colors.HexColor("#157a40")),
-        ))
-        story.append(_lp(score.get("verdict_detail", ""), st["body"]))
-    else:
-        story.append(_lp(
-            "Overall score requires TerrainIQ terrain on a defined site boundary.",
-            st["muted"],
-        ))
-
-    story += [
-        Spacer(1, 0.6 * cm),
-        HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#d4e8d4")),
-        Spacer(1, 0.25 * cm),
-        _lp(SITEIQ_DISCLAIMER_BODY, st["muted"]),
-        Spacer(1, 0.2 * cm),
-        _lp(
-            f"Generated by {PRODUCT_NAME} | For professional use only. "
-            "Data: PVGIS (JRC), routed public DEM, OpenStreetMap.",
-            st["muted"],
-        ),
-    ]
-
-    doc.build(story)
-    return buf.getvalue()
 
 
 def _merged_layout_for_drawing(detail: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -591,6 +442,8 @@ def build_project_package_zip(
     lat: float | None = None,
     lon: float | None = None,
     land_use: str = "Standard",
+    mount_type: str = "Fixed Tilt",
+    area_ha: float = 0.0,
     boundaries: List[List[List[float]]],
     config_key: str,
     pitch_m: float,
@@ -671,22 +524,15 @@ def build_project_package_zip(
         lat=lat,
         lon=lon,
         land_use=land_use,
+        mount_type=mount_type,
+        area_ha=area_ha,
+        location_label=location_label,
         screening=screening,
         topo=topo,
         score=score,
-        layout_row=layout_row or {
-            "success": True,
-            "label": detail.get("label"),
-            "pitch_m": detail.get("pitch_m"),
-            "gcr": detail.get("gcr"),
-            "dc_kwp": detail.get("dc_kwp"),
-            "total_modules": detail.get("total_modules"),
-            "total_rows": detail.get("total_rows"),
-            "mw_per_ha": detail.get("mw_per_ha"),
-            "dc_mwp": detail.get("dc_mwp"),
-        },
         yield_result=yield_result,
         selected_yield_mwh=selected_yield_mwh,
+        boundaries=boundaries,
     )
     a3_pdf = build_layout_a3_pdf(
         project_name=project_name,

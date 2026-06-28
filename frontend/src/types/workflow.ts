@@ -252,6 +252,10 @@ export interface WorkflowPvmathReportRequest {
   lat?: number;
   lon?: number;
   land_use?: string;
+  mount_type?: string;
+  area_ha?: number;
+  boundary?: { lat: number; lon: number }[];
+  boundaries?: { lat: number; lon: number }[][];
   screening?: Record<string, unknown>;
   topo?: Record<string, unknown> | null;
   score?: Record<string, unknown> | null;

@@ -1125,6 +1125,191 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
     return buf.getvalue()
 
 
+def build_terrain_unified_flowables(ctx: dict, usable: float | None = None) -> list:
+    """
+    TerrainIQ body for unified PVMath report: slope map, metrics, verdict cards,
+    slope distribution, threshold reference. No cover, project summary, or module footer.
+    """
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.platypus import KeepTogether, Paragraph, Spacer, Table, TableStyle
+
+    W, _ = A4
+    if usable is None:
+        usable = W - 32 * mm
+
+    MID_BLUE = colors.HexColor("#1565c0")
+    MUTED = colors.HexColor("#666666")
+    hdr_style = ParagraphStyle(
+        "hdr_u", fontName="Helvetica-Bold", fontSize=10.5,
+        textColor=MID_BLUE, spaceBefore=5, spaceAfter=3,
+    )
+    hdr_tight = ParagraphStyle(
+        "hdr_t_u", parent=hdr_style, spaceBefore=0, spaceAfter=2,
+    )
+    body_style = ParagraphStyle(
+        "body_u", fontName="Helvetica", fontSize=9,
+        textColor=colors.HexColor("#333333"), leading=13,
+    )
+    cap_style = ParagraphStyle(
+        "cap_u", fontName="Helvetica", fontSize=7.5,
+        textColor=MUTED, alignment=1, leading=10,
+    )
+    LIGHT_BG = colors.HexColor("#f0f4f8")
+
+    story: list = []
+
+    map_parts = [Paragraph("Slope Map", hdr_style)]
+    slope_img = _img_flowable(ctx.get("slope_img_buf"), usable)
+    if slope_img:
+        map_parts.append(slope_img)
+        map_parts.append(Spacer(1, 1.5 * mm))
+        map_parts.append(Paragraph(
+            "Figure 1 — Slope (%) over satellite basemap. Green &lt;3%, red &gt;10%. "
+            "North arrow and scale bar shown.",
+            cap_style,
+        ))
+    story.append(KeepTogether(map_parts))
+    story.append(Spacer(1, 4 * mm))
+
+    z_min = round(ctx["z_min"])
+    z_max = round(ctx["z_max"])
+    z_rng = round(ctx["z_range"])
+    mean_s = round(ctx["mean_slope"], 1)
+    max_s = round(ctx["max_slope"], 1)
+    p5 = round(ctx["pct_over5"], 1)
+    p10 = round(ctx["pct_over10"], 1)
+    ha5 = ctx.get("ha_over5", 0)
+    ha10 = ctx.get("ha_over10", 0)
+
+    metrics = [
+        ["Parameter", "Value", "Notes"],
+        ["Min elevation", f"{z_min} m", "Lowest grid point in boundary"],
+        ["Max elevation", f"{z_max} m", "Highest grid point in boundary"],
+        ["Elevation range", f"{z_rng} m", "Relief across site (DEM accuracy ±1–3 m)"],
+        ["Mean slope", f"{mean_s}%", "Average gradient magnitude"],
+        ["Max slope (point)", f"{max_s}%", "Steepest single grid cell"],
+        ["Area > 5% slope", f"{p5}%", f"≈{ha5:.1f} ha · cumulative footprint above threshold"],
+        ["Area > 10% slope", f"{p10}%", f"≈{ha10:.1f} ha · max point {max_s}% may be a small sliver"],
+    ]
+    m_tbl = Table(metrics, colWidths=[48 * mm, 28 * mm, usable - 76 * mm])
+    m_tbl.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("BACKGROUND", (0, 0), (-1, 0), MID_BLUE),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
+        ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#cccccc")),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("ALIGN", (1, 1), (1, -1), "CENTER"),
+    ]))
+    story.append(KeepTogether([Paragraph("Terrain Metrics", hdr_tight), m_tbl]))
+    story.append(Spacer(1, 4 * mm))
+
+    ex = ctx.get("extras") or {}
+    if ex.get("cross_row_mean") is not None:
+        dir_rows = [
+            ["Metric", "Value", "Notes"],
+            ["Mean cross-row slope", f"{ex['cross_row_mean']:.1f}%", "E–W grade vs N–S tracker rows"],
+            ["95th %ile cross-row", f"{ex['cross_row_p95']:.1f}%", "Tracker clearance / backtracking risk"],
+            ["Mean along-row slope", f"{ex['along_row_mean']:.1f}%", "Grade along row direction"],
+            ["Area cross-row > 3%", f"{ex['pct_cross_over_3']:.1f}%", "Tracker excellent threshold"],
+            ["Area cross-row > 6%", f"{ex['pct_cross_over_6']:.1f}%", "Tracker acceptable threshold"],
+            ["Dominant aspect", ex.get("dominant_aspect", "—"), "Direction of steepest descent"],
+        ]
+        d_tbl = Table(dir_rows, colWidths=[48 * mm, 28 * mm, usable - 76 * mm])
+        d_tbl.setStyle(TableStyle([
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("BACKGROUND", (0, 0), (-1, 0), MID_BLUE),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
+            ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#cccccc")),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        story.append(KeepTogether([Paragraph("Slope Direction (Tracker Screening)", hdr_tight), d_tbl]))
+        story.append(Spacer(1, 4 * mm))
+
+    slope_bins = ctx.get("slope_bins")
+    if slope_bins:
+        bin_labels = ["0% – 2.5%", "2.5% – 5%", "5% – 7.5%", "7.5% – 10%", "&gt; 10%"]
+        bin_colors = [
+            (colors.HexColor("#1b5e20"), colors.white),
+            (colors.HexColor("#66bb6a"), colors.white),
+            (colors.HexColor("#d4e157"), colors.HexColor("#1a1a1a")),
+            (colors.HexColor("#ffa726"), colors.HexColor("#1a1a1a")),
+            (colors.HexColor("#c62828"), colors.white),
+        ]
+        bins_data = [["Slope range", "% of site area"]]
+        for lbl, pct in zip(bin_labels, slope_bins):
+            bins_data.append([Paragraph(lbl, body_style), f"{round(pct, 1)}%"])
+        bins_tbl = Table(bins_data, colWidths=[usable * 0.58, usable * 0.42])
+        bs = [
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("BACKGROUND", (0, 0), (-1, 0), MID_BLUE),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#cccccc")),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("ALIGN", (1, 1), (1, -1), "CENTER"),
+        ]
+        for i, (bg, fg) in enumerate(bin_colors, start=1):
+            bs.append(("BACKGROUND", (1, i), (1, i), bg))
+            bs.append(("TEXTCOLOR", (1, i), (1, i), fg))
+        bins_tbl.setStyle(TableStyle(bs))
+        story.append(KeepTogether([Paragraph("Slope Distribution", hdr_tight), bins_tbl]))
+        story.append(Spacer(1, 4 * mm))
+
+    story.append(Paragraph("Engineering Verdict", hdr_style))
+    vf = ctx.get("verdict_fixed") or ("—", "")
+    vt = ctx.get("verdict_tracker") or ("—", "")
+    half = (usable - 4 * mm) / 2
+    v_dual = Table([[
+        _verdict_box(vf[0], vf[1], half, "Fixed Tilt"),
+        _verdict_box(vt[0], vt[1], half, "Single-Axis Tracker"),
+    ]], colWidths=[half, half])
+    v_dual.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (0, 0), 0),
+        ("RIGHTPADDING", (1, 0), (1, 0), 0),
+    ]))
+    story.append(v_dual)
+    story.append(Spacer(1, 2 * mm))
+    story.append(Paragraph(
+        "<i>Both mounting systems assessed from the same DEM slope data. "
+        "Cross-row metrics above apply to tracker screening.</i>",
+        ParagraphStyle("vnote_u", fontSize=8, textColor=MUTED, leading=11),
+    ))
+    _append_terrain_drivers_section(story, ctx, usable, hdr_style, body_style)
+    story.append(Spacer(1, 4 * mm))
+
+    story.append(Paragraph("Slope Threshold Reference", hdr_style))
+    ft_data = [["Fixed tilt", "Threshold", "Interpretation"]] + list(FIXED_THRESHOLDS)
+    tr_data = [["Single-axis tracker", "Threshold", "Interpretation"]] + list(TRACKER_THRESHOLDS)
+    for _label, rows in (("Fixed Tilt", ft_data), ("Tracker", tr_data)):
+        t = Table(rows, colWidths=[usable * 0.28, usable * 0.18, usable * 0.54])
+        t.setStyle(TableStyle([
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e8eaf6")),
+            ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#cccccc")),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 2 * mm))
+
+    return story
+
+
 def build_report_context(
     *,
     project_name, country, location_label,

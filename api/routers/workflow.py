@@ -648,7 +648,8 @@ async def workflow_pvmath_report_pdf(
     body: WorkflowPvmathReportRequest,
     _user: AuthUser = Depends(get_current_user),
 ):
-    """Unified A4 PDF: SiteIQ screening → TerrainIQ → LayoutIQ → YieldIQ → overall score."""
+    """Unified A4 PDF: SiteIQ → TerrainIQ → YieldIQ with charts and verdict cards."""
+    polys = _latlon_polys(body.boundary, body.boundaries)
     loop = asyncio.get_running_loop()
     try:
         pdf_bytes = await asyncio.wait_for(
@@ -661,12 +662,16 @@ async def workflow_pvmath_report_pdf(
                     lat=body.lat,
                     lon=body.lon,
                     land_use=body.land_use,
+                    mount_type=body.mount_type,
+                    area_ha=body.area_ha,
+                    location_label=body.location_label,
                     screening=body.screening,
                     topo=body.topo,
                     score=body.score,
                     layout_row=body.layout_row,
                     yield_result=body.yield_result,
                     selected_yield_mwh=body.selected_yield_mwh,
+                    boundaries=polys,
                 ),
             ),
             timeout=LAYOUT_TIMEOUT_SEC,
@@ -713,6 +718,8 @@ async def workflow_project_package(
                     lat=body.lat,
                     lon=body.lon,
                     land_use=body.land_use,
+                    mount_type=body.mount_type,
+                    area_ha=body.area_ha,
                     boundaries=polys,
                     restriction_polygons=restrictions,
                     config_key=body.config_key,
