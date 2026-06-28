@@ -1,5 +1,7 @@
 # Cursor Brief — Rebuild the Unified PVMath Report
 
+> **Status: DONE (29 Jun 2026)** — Shipped on `main` in commits `921f314`, `ef463c3`, `e05faf7`. Implementation: `pvmath_reports/` package. See `PVMath/STATUS.md` for handoff.
+
 Paste this whole brief into Cursor as the task prompt.
 
 ---
