@@ -138,6 +138,7 @@ def build_terrain_section_flowables(
     land_use: str,
     mount_type: str,
     boundaries: Optional[Sequence[Sequence[Any]]] = None,
+    slope_img_png: Optional[bytes] = None,
 ) -> List:
     st = base_styles()
     if not topo:
@@ -148,7 +149,11 @@ def build_terrain_section_flowables(
             lp("TerrainIQ not run — draw a site boundary and run terrain analysis.", st["muted"]),
         ]
 
-    slope_buf = _try_slope_map_buf(boundaries, topo)
+    if slope_img_png:
+        slope_buf = io.BytesIO(slope_img_png)
+        slope_buf.seek(0)
+    else:
+        slope_buf = _try_slope_map_buf(boundaries, topo)
     ctx = topo_to_report_context(
         topo,
         project_name=project_name,
@@ -160,7 +165,12 @@ def build_terrain_section_flowables(
         mount_type=mount_type,
         slope_img_buf=slope_buf,
     )
-    body = build_terrain_unified_flowables(ctx)
+    body = build_terrain_unified_flowables(
+        ctx,
+        accent="#157a40",
+        header_bg="#e8f5ee",
+        row_bg="#f5f7f5",
+    )
     header = [section_hdr("TerrainIQ — Terrain analysis", st), Spacer(1, 3 * mm)]
     if body:
         return [

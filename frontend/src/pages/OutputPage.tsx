@@ -1218,7 +1218,7 @@ export function OutputPage({
       lon: result.coordinates.lon,
       land_use: input?.land_use || "Standard",
       mount_type: selectedLayoutRow?.mount_type || layoutMountType || input?.mount_type || "Fixed Tilt",
-      area_ha: input?.area_ha || result.capacity?.area_ha || 0,
+      area_ha: input?.area_ha || Number(result.capacity?.area_ha ?? 0) || 0,
       boundaries,
       screening: result as unknown as Record<string, unknown>,
       topo: topoResult as unknown as Record<string, unknown> | null,
@@ -1226,6 +1226,8 @@ export function OutputPage({
       layout_row: selectedLayoutRow,
       yield_result: yieldResult as unknown as Record<string, unknown> | null,
       selected_yield_mwh: selectedAnnualMwh,
+      selected_config_key: selectedYieldConfigKey,
+      selected_dc_kwp: selectedLayoutRow?.dc_kwp ?? null,
       location_label: locationLabel || "",
     };
   }

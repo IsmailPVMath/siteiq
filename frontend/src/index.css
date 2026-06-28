@@ -1353,6 +1353,16 @@ a {
   white-space: nowrap;
 }
 
+/* YieldIQ monthly specific-yield bars use a solar-market blue to
+   visually distinguish energy yield from SiteIQ's green irradiation. */
+.yield-month-bar {
+  background: linear-gradient(to top, #0d47a1, #2e8bdc);
+}
+
+.ghi-bar-track:has(.yield-month-bar) .ghi-bar-value {
+  color: #1565c0;
+}
+
 .ghi-xlabel {
   font-size: 0.66rem;
   color: var(--muted);

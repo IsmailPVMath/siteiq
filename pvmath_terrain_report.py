@@ -1125,10 +1125,20 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
     return buf.getvalue()
 
 
-def build_terrain_unified_flowables(ctx: dict, usable: float | None = None) -> list:
+def build_terrain_unified_flowables(
+    ctx: dict,
+    usable: float | None = None,
+    *,
+    accent: str | None = None,
+    header_bg: str | None = None,
+    row_bg: str | None = None,
+) -> list:
     """
     TerrainIQ body for unified PVMath report: slope map, metrics, verdict cards,
     slope distribution, threshold reference. No cover, project summary, or module footer.
+
+    Color params default to the standalone TopoIQ blue theme; the unified PVMath
+    report passes brand green for cross-module visual consistency.
     """
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
@@ -1140,7 +1150,8 @@ def build_terrain_unified_flowables(ctx: dict, usable: float | None = None) -> l
     if usable is None:
         usable = W - 32 * mm
 
-    MID_BLUE = colors.HexColor("#1565c0")
+    MID_BLUE = colors.HexColor(accent) if accent else colors.HexColor("#1565c0")
+    THRESH_BG = colors.HexColor(header_bg) if header_bg else colors.HexColor("#e8eaf6")
     MUTED = colors.HexColor("#666666")
     hdr_style = ParagraphStyle(
         "hdr_u", fontName="Helvetica-Bold", fontSize=10.5,
@@ -1157,7 +1168,7 @@ def build_terrain_unified_flowables(ctx: dict, usable: float | None = None) -> l
         "cap_u", fontName="Helvetica", fontSize=7.5,
         textColor=MUTED, alignment=1, leading=10,
     )
-    LIGHT_BG = colors.HexColor("#f0f4f8")
+    LIGHT_BG = colors.HexColor(row_bg) if row_bg else colors.HexColor("#f0f4f8")
 
     story: list = []
 
@@ -1299,7 +1310,7 @@ def build_terrain_unified_flowables(ctx: dict, usable: float | None = None) -> l
         t.setStyle(TableStyle([
             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
             ("FONTSIZE", (0, 0), (-1, -1), 8),
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e8eaf6")),
+            ("BACKGROUND", (0, 0), (-1, 0), THRESH_BG),
             ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#cccccc")),
             ("TOPPADDING", (0, 0), (-1, -1), 3),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 3),

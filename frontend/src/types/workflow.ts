@@ -262,6 +262,8 @@ export interface WorkflowPvmathReportRequest {
   layout_row?: LayoutSweepRow | null;
   yield_result?: Record<string, unknown> | null;
   selected_yield_mwh?: number | null;
+  selected_config_key?: string | null;
+  selected_dc_kwp?: number | null;
   location_label?: string;
   drawn_by?: string;
   revision?: string;

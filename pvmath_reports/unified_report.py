@@ -20,6 +20,7 @@ from pvmath_reports.siteiq_section import build_siteiq_flowables
 from pvmath_reports.terrain_section import build_terrain_section_flowables
 from pvmath_reports.yieldiq_section import build_yieldiq_flowables
 from pvmath_terrain_report import FIXED_THRESHOLDS, TRACKER_THRESHOLDS
+from pvmath_workflow.scoring import unified_pvmath_score, yield_subscore
 
 
 def _project_summary_flowables(
@@ -33,15 +34,12 @@ def _project_summary_flowables(
     mount_type: str,
     area_ha: float,
     capacity_mwp: str,
-    pvmath_score: Optional[int],
-    verdict: str,
 ) -> List:
     st = base_styles()
     loc_line = location_label or (
         resolve_location_label(lat, lon, country=country) if lat is not None and lon is not None else "—"
     )
     coord = format_coords(lat, lon) if lat is not None and lon is not None else "—"
-    score_line = f"{pvmath_score}/100 — {verdict}" if pvmath_score is not None else verdict or "—"
 
     rows = [
         [lp("Project", st["lbl"]), lp(project_name or "—", st["body"])],
@@ -52,7 +50,6 @@ def _project_summary_flowables(
         [lp("Land use", st["lbl"]), lp(land_use or "—", st["body"])],
         [lp("Mounting", st["lbl"]), lp(mount_type or "—", st["body"])],
         [lp("Est. DC capacity", st["lbl"]), lp(capacity_mwp or "—", st["body"])],
-        [lp("PVMath score", st["lbl"]), lp(score_line, st["body"])],
         [lp("Generated", st["lbl"]), lp(datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"), st["body"])],
     ]
     tbl = Table(rows, colWidths=[4.2 * cm, 12.8 * cm])
@@ -77,6 +74,90 @@ def _project_summary_flowables(
         tbl,
         Spacer(1, 0.4 * cm),
     ]
+
+
+_SCORE_ROWS = [
+    ("Solar resource", "solar"),
+    ("Terrain", "terrain"),
+    ("Flood risk", "flood"),
+    ("Land use", "land"),
+    ("Grid / regulatory", "regulatory"),
+    ("Energy yield", "yield"),
+]
+
+
+def _verdict_palette(verdict: str):
+    v = (verdict or "").upper()
+    if any(x in v for x in ("EXCELLENT", "VERY GOOD", "GOOD")):
+        return ACCENT, colors.HexColor("#e8f5ee")
+    if "ACCEPTABLE" in v or "MODERATE" in v or "CHALLENGING" in v:
+        return colors.HexColor("#f59e0b"), colors.HexColor("#fef9c3")
+    return colors.HexColor("#dc2626"), colors.HexColor("#fee2e2")
+
+
+def _pvmath_score_flowables(result: Dict[str, Any]) -> List:
+    """Final aggregate PVMath score — placed last, after all module sections."""
+    st = base_styles()
+    overall = result.get("pvmath_score")
+    verdict = str(result.get("verdict") or "")
+    components = result.get("components") or {}
+    v_color, v_bg = _verdict_palette(verdict)
+
+    story: List = [
+        *module_divider(),
+        section_hdr("PVMATH SCORE", st),
+        Spacer(1, 0.15 * cm),
+        lp(
+            "Composite score across SiteIQ, TerrainIQ and YieldIQ. Terrain caps the "
+            "result on challenging sites; energy yield refines it where available.",
+            st["muted"],
+        ),
+        Spacer(1, 0.2 * cm),
+    ]
+
+    big = Table([[
+        Paragraph(
+            f"<b>{overall if overall is not None else '—'}</b>"
+            f"<font size=11>/100</font>",
+            ParagraphStyle("bigscore", fontSize=30, fontName="Helvetica-Bold",
+                           textColor=v_color, leading=32),
+        ),
+        Paragraph(
+            f"<b>{verdict or '—'}</b>",
+            ParagraphStyle("bigverdict", fontSize=15, fontName="Helvetica-Bold",
+                           textColor=v_color, leading=19),
+        ),
+    ]], colWidths=[5 * cm, 12 * cm])
+    big.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), v_bg),
+        ("BOX", (0, 0), (-1, -1), 1.5, v_color),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 12),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
+        ("LEFTPADDING", (0, 0), (-1, -1), 14),
+    ]))
+    story.append(big)
+    story.append(Spacer(1, 0.3 * cm))
+
+    rows = [[lp("Factor", st["white"]), lp("Score", st["white"])]]
+    for label, key in _SCORE_ROWS:
+        val = components.get(key)
+        if val is None and key == "yield":
+            continue
+        rows.append([lp(label, st["body"]), lp(f"{int(val)}/100" if val is not None else "—", st["body"])])
+    bt = Table(rows, colWidths=[12.5 * cm, 4.5 * cm])
+    bt.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), ACCENT),
+        ("GRID", (0, 0), (-1, -1), 0.5, BORDER),
+        ("ALIGN", (1, 0), (1, -1), "CENTER"),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f5f7f5")]),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+    ]))
+    story.append(bt)
+    story.append(Spacer(1, 0.35 * cm))
+    return story
 
 
 def _annex_flowables() -> List:
@@ -143,10 +224,13 @@ def build_unified_pvmath_report_pdf(
     topo: Optional[Dict[str, Any]] = None,
     score: Optional[Dict[str, Any]] = None,
     yield_result: Optional[Dict[str, Any]] = None,
+    selected_config_key: Optional[str] = None,
+    selected_dc_kwp: Optional[float] = None,
     boundaries: Optional[Sequence[Sequence[Any]]] = None,
+    slope_img_png: Optional[bytes] = None,
     **_kwargs,
 ) -> bytes:
-    """A4 unified report: summary → SiteIQ → TerrainIQ → YieldIQ → disclaimers."""
+    """A4 unified report: summary → SiteIQ → TerrainIQ → YieldIQ → PVMath score → disclaimers."""
     scr = screening or {}
     cap = scr.get("capacity") or {}
     capacity_mwp = str(cap.get("mwp_range") or "—")
@@ -161,8 +245,7 @@ def build_unified_pvmath_report_pdf(
         except (TypeError, ValueError):
             pass
 
-    pvmath_score = (score or {}).get("pvmath_score")
-    verdict = (score or {}).get("verdict") or ""
+    final_score = _compute_final_score(score, scr, yield_result, selected_config_key)
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -185,8 +268,6 @@ def build_unified_pvmath_report_pdf(
         mount_type=mount_type,
         area_ha=area_ha,
         capacity_mwp=capacity_mwp,
-        pvmath_score=int(pvmath_score) if pvmath_score is not None else None,
-        verdict=str(verdict),
     )
 
     if lat is not None and lon is not None:
@@ -212,10 +293,78 @@ def build_unified_pvmath_report_pdf(
             land_use=land_use,
             mount_type=mount_type,
             boundaries=boundaries,
+            slope_img_png=slope_img_png,
         )
 
-    story += build_yieldiq_flowables(yield_result=yield_result, area_ha=area_ha)
+    story += build_yieldiq_flowables(
+        yield_result=yield_result,
+        mount_type=mount_type,
+        selected_config_key=selected_config_key,
+        selected_dc_kwp=selected_dc_kwp,
+    )
+
+    if final_score:
+        story += _pvmath_score_flowables(final_score)
     story += _annex_flowables()
 
     doc.build(story)
     return buf.getvalue()
+
+
+def _selected_or_best_config(
+    yield_result: Optional[Dict[str, Any]],
+    selected_config_key: Optional[str],
+) -> Optional[Dict[str, Any]]:
+    if not yield_result:
+        return None
+    configs = yield_result.get("configs") or {}
+    if not configs:
+        return None
+    if selected_config_key and selected_config_key in configs:
+        return configs[selected_config_key]
+    best, best_sy = None, -1.0
+    for cfg in configs.values():
+        try:
+            sy = float(cfg.get("spec_y") or 0)
+        except (TypeError, ValueError):
+            sy = 0.0
+        if sy > best_sy:
+            best_sy, best = sy, cfg
+    return best
+
+
+def _compute_final_score(
+    score: Optional[Dict[str, Any]],
+    screening: Dict[str, Any],
+    yield_result: Optional[Dict[str, Any]],
+    selected_config_key: Optional[str],
+) -> Optional[Dict[str, Any]]:
+    """Aggregate PVMath score that also factors energy yield, computed last."""
+    comps = dict((score or {}).get("components") or {})
+    if not comps:
+        sc = screening.get("score_components") or {}
+        comps = {
+            "solar": sc.get("solar"),
+            "terrain": sc.get("terrain"),
+            "flood": sc.get("flood"),
+            "land": sc.get("land"),
+            "regulatory": sc.get("regulatory") or sc.get("grid"),
+        }
+    needed = ("solar", "terrain", "flood", "land", "regulatory")
+    if any(comps.get(k) is None for k in needed):
+        # Not enough to recompute — fall back to the app-provided score as-is.
+        if score and score.get("pvmath_score") is not None:
+            return score
+        return None
+
+    cfg = _selected_or_best_config(yield_result, selected_config_key)
+    y_score = yield_subscore(cfg.get("spec_y"), cfg.get("cf")) if cfg else None
+
+    return unified_pvmath_score(
+        solar_score=int(comps["solar"]),
+        terrain_score=int(comps["terrain"]),
+        flood_score=int(comps["flood"]),
+        land_score=int(comps["land"]),
+        regulatory_score=int(comps["regulatory"]),
+        yield_score=y_score,
+    )

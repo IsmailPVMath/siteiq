@@ -307,6 +307,8 @@ class WorkflowPvmathReportRequest(BaseModel):
     layout_row: Optional[Dict[str, Any]] = None
     yield_result: Optional[Dict[str, Any]] = None
     selected_yield_mwh: Optional[float] = None
+    selected_config_key: Optional[str] = Field(default=None, max_length=40)
+    selected_dc_kwp: Optional[float] = Field(default=None, ge=0)
     location_label: str = Field(default="", max_length=200)
     drawn_by: str = Field(default="PVMath LayoutIQ", max_length=120)
     revision: str = Field(default="R0", max_length=24)

@@ -80,6 +80,43 @@ def _merge_latlon_polys(*groups):
     return merged
 
 
+def _render_slope_png(polys, topo) -> bytes | None:
+    """Render the TerrainIQ slope-map PNG from boundary rings, mirroring the
+    standalone /terrainiq report path so the unified report shows the same map.
+
+    Returns PNG bytes or None when boundaries are absent / rendering fails.
+    """
+    if not polys:
+        return None
+    try:
+        from pvmath_terrain_report import render_slope_map_png
+        from pvmath_topo_engine import run_topo_analysis
+
+        lonlat = [[(float(p[1]), float(p[0])) for p in ring] for ring in polys if len(ring) >= 3]
+        if not lonlat:
+            return None
+        grid_m = 0.0
+        try:
+            grid_m = float((topo or {}).get("grid_m_used") or 0)
+        except (TypeError, ValueError):
+            grid_m = 0.0
+        analysis = run_topo_analysis(lonlat, grid_m=grid_m or 10.0, allow_coarsen=True)
+        bbox = analysis["bbox"]
+        meta = analysis.get("terrain_source") or {}
+        buf = render_slope_map_png(
+            analysis["X"], analysis["Y"], analysis["Z"],
+            float(analysis["grid_m_used"]),
+            float(bbox["south"]), float(bbox["north"]),
+            float(bbox["west"]), float(bbox["east"]),
+            polygon_list=analysis["polygons"],
+            terrain_source_used=str(analysis.get("terrain_source_used", "")),
+            terrain_disclaimer=str(meta.get("disclaimer", "")),
+        )
+        return buf.getvalue() if buf else None
+    except Exception:
+        return None
+
+
 def _rings_latlon_to_geojson(rings: list) -> dict | None:
     features = []
     for ring in rings or []:
@@ -650,6 +687,7 @@ async def workflow_pvmath_report_pdf(
 ):
     """Unified A4 PDF: SiteIQ → TerrainIQ → YieldIQ with charts and verdict cards."""
     polys = _latlon_polys(body.boundary, body.boundaries)
+    slope_png = _render_slope_png(polys, body.topo)
     loop = asyncio.get_running_loop()
     try:
         pdf_bytes = await asyncio.wait_for(
@@ -671,7 +709,10 @@ async def workflow_pvmath_report_pdf(
                     layout_row=body.layout_row,
                     yield_result=body.yield_result,
                     selected_yield_mwh=body.selected_yield_mwh,
+                    selected_config_key=body.selected_config_key,
+                    selected_dc_kwp=body.selected_dc_kwp,
                     boundaries=polys,
+                    slope_img_png=slope_png,
                 ),
             ),
             timeout=LAYOUT_TIMEOUT_SEC,

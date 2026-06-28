@@ -95,7 +95,10 @@ def build_pvmath_report_pdf(
     layout_row: Optional[Dict[str, Any]] = None,
     yield_result: Optional[Dict[str, Any]] = None,
     selected_yield_mwh: Optional[float] = None,
+    selected_config_key: Optional[str] = None,
+    selected_dc_kwp: Optional[float] = None,
     boundaries: Optional[List[List[Any]]] = None,
+    slope_img_png: Optional[bytes] = None,
 ) -> bytes:
     """A4 unified PVMath report — rich SiteIQ, TerrainIQ, and YieldIQ sections."""
     return build_unified_pvmath_report_pdf(
@@ -111,7 +114,10 @@ def build_pvmath_report_pdf(
         topo=topo,
         score=score,
         yield_result=yield_result,
+        selected_config_key=selected_config_key,
+        selected_dc_kwp=selected_dc_kwp,
         boundaries=boundaries,
+        slope_img_png=slope_img_png,
     )
 
 
