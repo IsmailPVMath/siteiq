@@ -24,6 +24,7 @@ import {
 } from "../lib/workflowSave";
 import { ConstraintAnalysisMap } from "../components/ConstraintAnalysisMap";
 import { LayoutPreviewMap } from "../components/LayoutPreviewMap";
+import { NumberField } from "../components/NumberField";
 import { YieldResultsPanel } from "../components/YieldResultsPanel";
 import { SlopeTopMap } from "../components/SlopeTopMap";
 import { Terrain3DView } from "../components/Terrain3DView";
@@ -49,6 +50,16 @@ import type {
   WorkflowTerrainMeshResponse,
 } from "../types/workflow";
 import type * as GeoJSON from "geojson";
+
+// Realistic global PV module / slope bounds (utility-scale, 2026 market survey).
+// Largest mass-production modules are ~2.4-2.5 m long and ~1.3-1.34 m wide
+// (Trina Vertex, Jinko Tiger Neo, Canadian Solar large-format). Caps are set a
+// little above that to flag decimal-point mistakes (e.g. 2384 instead of 2.384)
+// without rejecting any real module. Steepest SAT terrain in the market is ~36%
+// (≈20°), so slope is capped there.
+const MODULE_H_RANGE = { min: 0.5, max: 3.0 }; // module length (m)
+const MODULE_W_RANGE = { min: 0.3, max: 1.6 }; // module width (m)
+const SLOPE_MAX_PCT = 36;
 
 interface Props {
   token: string;
@@ -362,8 +373,24 @@ export function OutputPage({
     return parsed.length ? parsed : DEFAULT_LAYOUT_CONFIG.tracker_string_options;
   }
 
-  function layoutApiParams() {
-    const base = layoutPayloadFrom({
+  const moduleHWarning =
+    moduleH < MODULE_H_RANGE.min || moduleH > MODULE_H_RANGE.max
+      ? `Please check the dimension you entered — module length is normally ${MODULE_H_RANGE.min}–${MODULE_H_RANGE.max} m (you entered ${moduleH} m).`
+      : "";
+  const moduleWWarning =
+    moduleW < MODULE_W_RANGE.min || moduleW > MODULE_W_RANGE.max
+      ? `Please check the dimension you entered — module width is normally ${MODULE_W_RANGE.min}–${MODULE_W_RANGE.max} m (you entered ${moduleW} m).`
+      : "";
+  const slopeWarning =
+    excludeTrackerSlope && trackerSlopeLimit > SLOPE_MAX_PCT
+      ? `Max buildable SAT slope in the market is about ${SLOPE_MAX_PCT}% (≈20°). Please lower the slope limit.`
+      : "";
+
+  function layoutInputError(): string {
+    return moduleHWarning || moduleWWarning || slopeWarning || "";
+  }
+
+  function layoutApiParams() {    const base = layoutPayloadFrom({
       module_h: moduleH,
       module_w: moduleW,
       module_wp: moduleWp,
@@ -828,6 +855,12 @@ export function OutputPage({
 
   async function handleLayoutSweep() {
     if (!hasBoundary) return;
+    const inputError = layoutInputError();
+    if (inputError) {
+      setActiveStage("layout");
+      setLayoutError(inputError);
+      return;
+    }
     setActiveStage("layout");
     setLayoutBusy(true);
     setLayoutError("");
@@ -1511,58 +1544,59 @@ export function OutputPage({
                 <div className="grid-2 layout-custom-row">
                   <div className="field">
                     <label htmlFor="out-module-wp">Module Wp</label>
-                    <input
+                    <NumberField
                       id="out-module-wp"
-                      type="number"
-                      min="200"
-                      max="1000"
+                      min={200}
+                      max={1000}
                       value={moduleWp}
-                      onChange={(e) => setModuleWp(Number(e.target.value))}
+                      onChange={setModuleWp}
                     />
                   </div>
                   <div className="field">
                     <label htmlFor="out-mps">Modules / string</label>
-                    <input
+                    <NumberField
                       id="out-mps"
-                      type="number"
-                      min="8"
-                      max="50"
+                      min={8}
+                      max={50}
                       value={modulesPerString}
-                      onChange={(e) => setModulesPerString(Number(e.target.value))}
+                      onChange={setModulesPerString}
                     />
                   </div>
                 </div>
                 <div className="grid-2 layout-custom-row">
                   <div className="field">
                     <label htmlFor="out-mod-h">Height (m)</label>
-                    <input
+                    <NumberField
                       id="out-mod-h"
-                      type="number"
                       step="0.001"
                       value={moduleH}
-                      onChange={(e) => setModuleH(Number(e.target.value))}
+                      onChange={setModuleH}
                     />
                   </div>
                   <div className="field">
                     <label htmlFor="out-mod-w">Width (m)</label>
-                    <input
+                    <NumberField
                       id="out-mod-w"
-                      type="number"
                       step="0.001"
                       value={moduleW}
-                      onChange={(e) => setModuleW(Number(e.target.value))}
+                      onChange={setModuleW}
                     />
                   </div>
                 </div>
+                {moduleHWarning ? (
+                  <p className="field-warning">{moduleHWarning}</p>
+                ) : null}
+                {moduleWWarning ? (
+                  <p className="field-warning">{moduleWWarning}</p>
+                ) : null}
                 <div className="field">
                   <label htmlFor="out-string-gap">String gap (m)</label>
-                  <input
+                  <NumberField
                     id="out-string-gap"
-                    type="number"
                     step="0.05"
-                    min="0"
+                    min={0}
                     value={interStringGap}
-                    onChange={(e) => setInterStringGap(Number(e.target.value))}
+                    onChange={setInterStringGap}
                   />
                 </div>
                 {mountFilter !== "fixed" ? (
@@ -1579,13 +1613,12 @@ export function OutputPage({
                       </div>
                       <div className="field">
                         <label htmlFor="out-max-tracker">Max tracker m</label>
-                        <input
+                        <NumberField
                           id="out-max-tracker"
-                          type="number"
-                          min="20"
-                          max="500"
+                          min={20}
+                          max={500}
                           value={maxTrackerLength}
-                          onChange={(e) => setMaxTrackerLength(Number(e.target.value))}
+                          onChange={setMaxTrackerLength}
                         />
                       </div>
                     </div>
@@ -1599,17 +1632,19 @@ export function OutputPage({
                     </label>
                     <div className="field">
                       <label htmlFor="out-slope-limit">SAT slope limit (%)</label>
-                      <input
+                      <NumberField
                         id="out-slope-limit"
-                        type="number"
                         step="0.5"
-                        min="0.5"
-                        max="30"
+                        min={0.5}
+                        max={SLOPE_MAX_PCT}
                         value={trackerSlopeLimit}
-                        onChange={(e) => setTrackerSlopeLimit(Number(e.target.value))}
+                        onChange={setTrackerSlopeLimit}
                         disabled={!excludeTrackerSlope}
                       />
                     </div>
+                    {slopeWarning ? (
+                      <p className="field-warning">{slopeWarning}</p>
+                    ) : null}
                   </>
                 ) : null}
                 {restrictionPolygons.length ? (
