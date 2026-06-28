@@ -174,11 +174,11 @@ export function AdvancedProjectOptions({
             if (id !== "custom") {
               const p = roadParamsFromPreset(id);
               onAssumptionsChange({
-                road_repeat_m: p.road_repeat_m,
-                block_gap_m: p.block_gap_m,
-                rows_per_block: p.rows_per_block,
                 cols_per_block: p.cols_per_block,
                 ew_gap_m: p.ew_gap_m,
+                rows_per_block: p.rows_per_block,
+                ns_gap_1_m: p.ns_gap_1_m,
+                block_gap_m: p.block_gap_m,
               });
             }
           }}
@@ -191,40 +191,92 @@ export function AdvancedProjectOptions({
         </select>
       </div>
       {a.road_preset === "custom" ? (
-        <div className="grid-2">
-          <div className="field">
-            <label htmlFor="road-repeat">Array depth between N-S roads (m)</label>
-            <input
-              id="road-repeat"
-              type="number"
-              step="5"
-              min="0"
-              value={a.road_repeat_m ?? ""}
-              onChange={(e) =>
-                onAssumptionsChange({
-                  road_repeat_m: e.target.value ? Number(e.target.value) : undefined,
-                })
-              }
-              placeholder="100"
-            />
+        <>
+          <div className="grid-2">
+            <div className="field">
+              <label htmlFor="cols-per-block">Columns before E-W gap</label>
+              <input
+                id="cols-per-block"
+                type="number"
+                step="1"
+                min="0"
+                value={a.cols_per_block ?? ""}
+                onChange={(e) =>
+                  onAssumptionsChange({
+                    cols_per_block: e.target.value ? Number(e.target.value) : undefined,
+                  })
+                }
+                placeholder="50"
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="ew-gap">E-W gap / road (m)</label>
+              <input
+                id="ew-gap"
+                type="number"
+                step="0.5"
+                min="0"
+                value={a.ew_gap_m ?? ""}
+                onChange={(e) =>
+                  onAssumptionsChange({
+                    ew_gap_m: e.target.value ? Number(e.target.value) : undefined,
+                  })
+                }
+                placeholder="6"
+              />
+            </div>
           </div>
           <div className="field">
-            <label htmlFor="block-gap">N-S access gap (m)</label>
+            <label htmlFor="rows-per-block">Pitch bands before N-S road</label>
             <input
-              id="block-gap"
+              id="rows-per-block"
               type="number"
-              step="0.5"
+              step="1"
               min="0"
-              value={a.block_gap_m ?? ""}
+              value={a.rows_per_block ?? ""}
               onChange={(e) =>
                 onAssumptionsChange({
-                  block_gap_m: e.target.value ? Number(e.target.value) : undefined,
+                  rows_per_block: e.target.value ? Number(e.target.value) : undefined,
                 })
               }
-              placeholder="5"
+              placeholder="16"
             />
           </div>
-        </div>
+          <div className="grid-2">
+            <div className="field">
+              <label htmlFor="ns-gap-1">First N-S gap (m)</label>
+              <input
+                id="ns-gap-1"
+                type="number"
+                step="0.1"
+                min="0"
+                value={a.ns_gap_1_m ?? ""}
+                onChange={(e) =>
+                  onAssumptionsChange({
+                    ns_gap_1_m: e.target.value ? Number(e.target.value) : undefined,
+                  })
+                }
+                placeholder="0.6"
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="block-gap">Second N-S gap / road (m)</label>
+              <input
+                id="block-gap"
+                type="number"
+                step="0.5"
+                min="0"
+                value={a.block_gap_m ?? ""}
+                onChange={(e) =>
+                  onAssumptionsChange({
+                    block_gap_m: e.target.value ? Number(e.target.value) : undefined,
+                  })
+                }
+                placeholder="5"
+              />
+            </div>
+          </div>
+        </>
       ) : null}
     </details>
   );

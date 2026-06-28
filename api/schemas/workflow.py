@@ -108,14 +108,24 @@ class WorkflowLayoutSweepRequest(BaseModel):
     tracker_string_options: List[int] = Field(default_factory=lambda: [8, 7, 6, 5])
     max_tracker_length_m: float = Field(default=260.0, gt=0, le=500.0)
     rows_per_block: int = Field(default=0, ge=0, le=200)
-    block_gap_m: float = Field(default=0.0, ge=0, le=30.0)
-    road_repeat_m: float = Field(
+    block_gap_m: float = Field(
         default=0.0,
         ge=0,
-        le=500.0,
-        description="Array depth (m along pitch) between N-S roads; each band fills full E-W width.",
+        le=30.0,
+        description="Second N-S gap / road width (m) at north block end.",
     )
-    cols_per_block: int = Field(default=0, ge=0, le=200)
+    ns_gap_1_m: float = Field(
+        default=0.0,
+        ge=0,
+        le=30.0,
+        description="First N-S gap (m) at north block end, before second gap.",
+    )
+    cols_per_block: int = Field(
+        default=0,
+        ge=0,
+        le=500,
+        description="Tracker columns at constant pitch before E-W gap.",
+    )
     ew_gap_m: float = Field(default=0.0, ge=0, le=30.0)
     road_mode: Literal["auto", "manual", "off"] = Field(default="off")
     road_preset: str = Field(default="no_roads", max_length=32)
@@ -168,14 +178,24 @@ class WorkflowLayoutDetailRequest(BaseModel):
     tracker_string_options: List[int] = Field(default_factory=lambda: [8, 7, 6, 5])
     max_tracker_length_m: float = Field(default=260.0, gt=0, le=500.0)
     rows_per_block: int = Field(default=0, ge=0, le=200)
-    block_gap_m: float = Field(default=0.0, ge=0, le=30.0)
-    road_repeat_m: float = Field(
+    block_gap_m: float = Field(
         default=0.0,
         ge=0,
-        le=500.0,
-        description="Array depth (m along pitch) between N-S roads; each band fills full E-W width.",
+        le=30.0,
+        description="Second N-S gap / road width (m) at north block end.",
     )
-    cols_per_block: int = Field(default=0, ge=0, le=200)
+    ns_gap_1_m: float = Field(
+        default=0.0,
+        ge=0,
+        le=30.0,
+        description="First N-S gap (m) at north block end, before second gap.",
+    )
+    cols_per_block: int = Field(
+        default=0,
+        ge=0,
+        le=500,
+        description="Tracker columns at constant pitch before E-W gap.",
+    )
     ew_gap_m: float = Field(default=0.0, ge=0, le=30.0)
     road_mode: Literal["auto", "manual", "off"] = Field(default="off")
     road_preset: str = Field(default="no_roads", max_length=32)
@@ -262,14 +282,24 @@ class WorkflowProjectPackageRequest(WorkflowPvmathReportRequest):
     tracker_string_options: List[int] = Field(default_factory=lambda: [8, 7, 6, 5])
     max_tracker_length_m: float = Field(default=260.0, gt=0, le=500.0)
     rows_per_block: int = Field(default=0, ge=0, le=200)
-    block_gap_m: float = Field(default=0.0, ge=0, le=30.0)
-    road_repeat_m: float = Field(
+    block_gap_m: float = Field(
         default=0.0,
         ge=0,
-        le=500.0,
-        description="Array depth (m along pitch) between N-S roads; each band fills full E-W width.",
+        le=30.0,
+        description="Second N-S gap / road width (m) at north block end.",
     )
-    cols_per_block: int = Field(default=0, ge=0, le=200)
+    ns_gap_1_m: float = Field(
+        default=0.0,
+        ge=0,
+        le=30.0,
+        description="First N-S gap (m) at north block end, before second gap.",
+    )
+    cols_per_block: int = Field(
+        default=0,
+        ge=0,
+        le=500,
+        description="Tracker columns at constant pitch before E-W gap.",
+    )
     ew_gap_m: float = Field(default=0.0, ge=0, le=30.0)
     road_mode: Literal["auto", "manual", "off"] = Field(default="off")
     road_preset: str = Field(default="no_roads", max_length=32)

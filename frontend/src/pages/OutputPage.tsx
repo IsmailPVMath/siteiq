@@ -295,7 +295,7 @@ export function OutputPage({
   const [azimuthCustom, setAzimuthCustom] = useState<boolean>(layoutInit.azimuth_custom);
   const [rowsPerBlock, setRowsPerBlock] = useState(layoutInit.rows_per_block);
   const [blockGapM, setBlockGapM] = useState(layoutInit.block_gap_m);
-  const [roadRepeatM, setRoadRepeatM] = useState(layoutInit.road_repeat_m);
+  const [nsGap1M, setNsGap1M] = useState(layoutInit.ns_gap_1_m);
   const [colsPerBlock, setColsPerBlock] = useState(layoutInit.cols_per_block);
   const [ewGapM, setEwGapM] = useState(layoutInit.ew_gap_m);
   const [reportBusy, setReportBusy] = useState(false);
@@ -373,11 +373,11 @@ export function OutputPage({
 
   function applyRoadPresetToState(id: string) {
     const p = roadParamsFromPreset(id);
-    setRoadRepeatM(p.road_repeat_m ?? 0);
-    setBlockGapM(p.block_gap_m ?? 0);
-    setRowsPerBlock(p.rows_per_block ?? 0);
     setColsPerBlock(p.cols_per_block ?? 0);
     setEwGapM(p.ew_gap_m ?? 0);
+    setRowsPerBlock(p.rows_per_block ?? 0);
+    setNsGap1M(p.ns_gap_1_m ?? 0);
+    setBlockGapM(p.block_gap_m ?? 0);
   }
 
   function buildLayoutIQSnapshot(): LayoutIQSnapshot {
@@ -404,7 +404,7 @@ export function OutputPage({
       road_preset: roadPreset,
       rows_per_block: rowsPerBlock,
       block_gap_m: blockGapM,
-      road_repeat_m: roadRepeatM,
+      ns_gap_1_m: nsGap1M,
       cols_per_block: colsPerBlock,
       ew_gap_m: ewGapM,
       azimuth_deg: azimuthDeg,
@@ -427,7 +427,7 @@ export function OutputPage({
       road_preset: roadPreset,
       rows_per_block: rowsPerBlock,
       block_gap_m: blockGapM,
-      road_repeat_m: roadRepeatM,
+      ns_gap_1_m: nsGap1M,
       cols_per_block: colsPerBlock,
       ew_gap_m: ewGapM,
       exclude_tracker_slope: excludeTrackerSlope,
@@ -439,9 +439,9 @@ export function OutputPage({
         azimuth: azimuthDeg,
         road_mode: "manual" as RoadMode,
         road_preset: "custom",
-        rows_per_block: roadRepeatM > 0 ? 0 : rowsPerBlock,
+        rows_per_block: rowsPerBlock,
         block_gap_m: blockGapM,
-        road_repeat_m: roadRepeatM,
+        ns_gap_1_m: nsGap1M,
         cols_per_block: colsPerBlock,
         ew_gap_m: ewGapM,
         allow_partial_strings: allowPartialStrings,
@@ -1764,8 +1764,8 @@ export function OutputPage({
                 </div>
                 {roadMode === "auto" ? (
                   <p className="hint sidebar-hint">
-                    Full east–west pitch bands at constant pitch; N-S maintenance road every 100 m
-                    array depth, then 5 m gap.
+                    Constant pitch; E-W gap after 50 columns (6 m); N-S gaps 0.6 + 5 m
+                    after 16 full-width pitch bands.
                   </p>
                 ) : (
                   <div className="field">
@@ -1794,76 +1794,83 @@ export function OutputPage({
                     </select>
                   </div>
                 )}
-                {roadPreset === "custom" ? (
+                {roadPreset === "custom" || roadMode === "auto" ? (
                   <>
                     <p className="hint sidebar-hint">
-                      Each block fills the full east–west width at constant pitch; the N-S road
-                      follows the array depth you set (not adjacent tracker columns).
+                      PVCase-style: trackers at constant pitch; E-W gap after N columns; at the
+                      north end of each block, first then second N-S gap before the next band row.
                     </p>
                     <div className="grid-2 layout-custom-row">
                       <div className="field">
-                        <label htmlFor="out-road-repeat">Array depth between N-S roads (m)</label>
-                        <NumberField
-                          id="out-road-repeat"
-                          step="5"
-                          min={0}
-                          value={roadRepeatM}
-                          onChange={setRoadRepeatM}
-                        />
-                      </div>
-                      <div className="field">
-                        <label htmlFor="out-block-gap">N-S road gap (m)</label>
-                        <NumberField
-                          id="out-block-gap"
-                          step="0.5"
-                          min={0}
-                          value={blockGapM}
-                          onChange={setBlockGapM}
-                        />
-                      </div>
-                    </div>
-                    {roadRepeatM <= 0 ? (
-                      <div className="field">
-                        <label htmlFor="out-rows-block">Pitch bands / block (legacy)</label>
-                        <NumberField
-                          id="out-rows-block"
-                          min={1}
-                          value={rowsPerBlock}
-                          onChange={setRowsPerBlock}
-                        />
-                      </div>
-                    ) : null}
-                    <div className="grid-2 layout-custom-row">
-                      <div className="field">
-                        <label htmlFor="out-cols-block">Strings / block (E-W road)</label>
+                        <label htmlFor="out-cols-block">Columns before E-W gap</label>
                         <NumberField
                           id="out-cols-block"
                           min={0}
                           value={colsPerBlock}
                           onChange={setColsPerBlock}
+                          disabled={roadMode === "auto"}
                         />
                       </div>
                       <div className="field">
-                        <label htmlFor="out-ew-gap">E-W road gap (m)</label>
+                        <label htmlFor="out-ew-gap">E-W gap / road (m)</label>
                         <NumberField
                           id="out-ew-gap"
                           step="0.5"
                           min={0}
                           value={ewGapM}
                           onChange={setEwGapM}
+                          disabled={roadMode === "auto"}
+                        />
+                      </div>
+                    </div>
+                    <div className="field">
+                      <label htmlFor="out-rows-block">Pitch bands before N-S road</label>
+                      <NumberField
+                        id="out-rows-block"
+                        min={0}
+                        value={rowsPerBlock}
+                        onChange={setRowsPerBlock}
+                        disabled={roadMode === "auto"}
+                      />
+                    </div>
+                    <div className="grid-2 layout-custom-row">
+                      <div className="field">
+                        <label htmlFor="out-ns-gap-1">First N-S gap (m)</label>
+                        <NumberField
+                          id="out-ns-gap-1"
+                          step="0.1"
+                          min={0}
+                          value={nsGap1M}
+                          onChange={setNsGap1M}
+                          disabled={roadMode === "auto"}
+                        />
+                      </div>
+                      <div className="field">
+                        <label htmlFor="out-block-gap">Second N-S gap / road (m)</label>
+                        <NumberField
+                          id="out-block-gap"
+                          step="0.5"
+                          min={0}
+                          value={blockGapM}
+                          onChange={setBlockGapM}
+                          disabled={roadMode === "auto"}
                         />
                       </div>
                     </div>
                     <p className="hint sidebar-hint">
-                      Roads keep every tracker on the uniform pitch grid: a road skips whole pitch
-                      slots, so spacing stays a multiple of the pitch (e.g. 7, 7, 14 m) — never an
-                      off-grid gap. The metres you enter set the minimum road width (rounded up to
-                      the next whole slot). With no roads the pitch is constant across the whole PV
-                      area. N-S roads run between tracker columns (every N rows); E-W roads cross the
-                      tracker length (every N strings) and line up across the field. Set rows/block
-                      or strings/block to 0 to skip that road.
+                      Set columns or pitch bands to 0 to skip that road type. Gaps snap to whole
+                      pitch slots so tracker spacing stays on-grid.
                     </p>
                   </>
+                ) : roadPreset !== "no_roads" ? (
+                  <p className="hint sidebar-hint">
+                    {colsPerBlock > 0
+                      ? `E-W: ${colsPerBlock} columns → ${ewGapM} m gap. `
+                      : ""}
+                    {rowsPerBlock > 0
+                      ? `N-S: ${rowsPerBlock} bands → ${nsGap1M} + ${blockGapM} m gaps.`
+                      : ""}
+                  </p>
                 ) : null}
               </details>
               {layoutOptimization === "custom" ? (
