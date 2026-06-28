@@ -412,6 +412,7 @@ export default function App() {
           initialTopo={workflowRestore?.topo ?? null}
           initialFinalScore={workflowRestore?.finalScore ?? null}
           initialGisSetbacks={workflowRestore?.gisSetbacks ?? null}
+          initialLayoutSettings={workflowRestore?.layoutSettings ?? null}
           onProjectIdChange={(id) => {
             setEditingProjectId(id);
             setWorkflowRestore((prev) => (prev ? { ...prev, projectId: id } : prev));

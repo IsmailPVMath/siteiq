@@ -22,6 +22,7 @@ import {
   persistWorkflowProject,
   type WorkflowRestore,
 } from "../lib/workflowSave";
+import { mergeLayoutIQSnapshot, type LayoutIQSnapshot } from "../lib/layoutIQSettings";
 import { ConstraintAnalysisMap } from "../components/ConstraintAnalysisMap";
 import { LayoutPreviewMap } from "../components/LayoutPreviewMap";
 import { NumberField } from "../components/NumberField";
@@ -73,6 +74,7 @@ interface Props {
   initialTopo?: TerrainIQAnalyzeResponse | null;
   initialFinalScore?: WorkflowScoreResponse | null;
   initialGisSetbacks?: Record<string, number> | null;
+  initialLayoutSettings?: LayoutIQSnapshot | null;
   onProjectIdChange?: (id: string) => void;
   onWorkflowDepth?: (stage: OutputModuleStage) => void;
   onWorkflowPersist?: (patch: Partial<WorkflowRestore>) => void;
@@ -189,12 +191,14 @@ export function OutputPage({
   initialTopo = null,
   initialFinalScore = null,
   initialGisSetbacks = null,
+  initialLayoutSettings = null,
   onProjectIdChange,
   onWorkflowDepth,
   onWorkflowPersist,
 }: Props) {
   const activeStage = activeModule;
   const setActiveStage = onModuleChange;
+  const layoutInit = useRef(mergeLayoutIQSnapshot(initialLayoutSettings, input)).current;
 
   const SIDEBAR_MIN = 240;
   const SIDEBAR_MAX = 560;
@@ -252,75 +256,46 @@ export function OutputPage({
   const [layoutError, setLayoutError] = useState("");
   const [layoutSweep, setLayoutSweep] = useState<WorkflowLayoutSweepResponse | null>(null);
   const [layoutFilter, setLayoutFilter] = useState<string>("all");
-  const [selectedLayoutRow, setSelectedLayoutRow] = useState<LayoutSweepRow | null>(null);
+  const [selectedLayoutRow, setSelectedLayoutRow] = useState<LayoutSweepRow | null>(
+    layoutInit.selected_layout_row,
+  );
   const [layoutDetailBusy, setLayoutDetailBusy] = useState(false);
   const [layoutDxfBusy, setLayoutDxfBusy] = useState(false);
   const [layoutDetail, setLayoutDetail] = useState<WorkflowLayoutDetailResponse | null>(null);
   const [terrain3DBusy, setTerrain3DBusy] = useState(false);
   const [terrain3D, setTerrain3D] = useState<WorkflowTerrainMeshResponse | null>(null);
-  const [layoutOptimization, setLayoutOptimization] = useState<LayoutOptimizationMode>("balanced");
-  const [layoutLandCost, setLayoutLandCost] = useState<LayoutLandCost>("auto");
-  const [layoutBifacial, setLayoutBifacial] = useState(false);
-  const [allowPartialStrings, setAllowPartialStrings] = useState(false);
+  const [layoutOptimization, setLayoutOptimization] = useState<LayoutOptimizationMode>(
+    layoutInit.optimization_mode,
+  );
+  const [layoutLandCost, setLayoutLandCost] = useState<LayoutLandCost>(layoutInit.land_cost);
+  const [layoutBifacial, setLayoutBifacial] = useState(layoutInit.bifacial);
+  const [allowPartialStrings, setAllowPartialStrings] = useState(layoutInit.allow_partial_strings);
   const [layoutMountType, setLayoutMountType] = useState<"Fixed Tilt" | "Single-Axis Tracker">(
-    "Fixed Tilt",
+    layoutInit.mount_type,
   );
-  const [layoutPortrait, setLayoutPortrait] = useState<"all" | "1" | "2" | "3" | "4">("2");
-  const [layoutRowAlignment, setLayoutRowAlignment] = useState<RowAlignment>("horizontal");
-  const [layoutCustomGcr, setLayoutCustomGcr] = useState("");
-  const [layoutCustomPitch, setLayoutCustomPitch] = useState("");
-  const [moduleH, setModuleH] = useState(input?.module_h ?? DEFAULT_LAYOUT_CONFIG.module_h);
-  const [moduleW, setModuleW] = useState(input?.module_w ?? DEFAULT_LAYOUT_CONFIG.module_w);
-  const [moduleWp, setModuleWp] = useState(input?.module_wp ?? DEFAULT_LAYOUT_CONFIG.module_wp);
-  const [modulesPerString, setModulesPerString] = useState(
-    input?.modules_per_string ?? DEFAULT_LAYOUT_CONFIG.modules_per_string,
+  const [layoutPortrait, setLayoutPortrait] = useState<"all" | "1" | "2" | "3" | "4">(
+    layoutInit.portrait,
   );
-  const [interStringGap, setInterStringGap] = useState(
-    input?.inter_string_gap_m ?? DEFAULT_LAYOUT_CONFIG.inter_string_gap_m,
-  );
-  const [trackerStringOptions, setTrackerStringOptions] = useState(
-    (input?.tracker_string_options ?? DEFAULT_LAYOUT_CONFIG.tracker_string_options).join(","),
-  );
-  const [maxTrackerLength, setMaxTrackerLength] = useState(
-    input?.max_tracker_length_m ?? DEFAULT_LAYOUT_CONFIG.max_tracker_length_m,
-  );
-  const [excludeTrackerSlope, setExcludeTrackerSlope] = useState(
-    input?.exclude_tracker_slope ?? DEFAULT_LAYOUT_CONFIG.exclude_tracker_slope,
-  );
-  const [trackerSlopeLimit, setTrackerSlopeLimit] = useState(
-    input?.tracker_slope_limit_pct ?? DEFAULT_LAYOUT_CONFIG.tracker_slope_limit_pct,
-  );
-  const [roadMode, setRoadMode] = useState<RoadMode>(
-    input?.road_mode ?? DEFAULT_LAYOUT_CONFIG.road_mode,
-  );
-  const [roadPreset, setRoadPreset] = useState(
-    input?.road_preset ?? DEFAULT_LAYOUT_CONFIG.road_preset,
-  );
-  const [azimuthDeg, setAzimuthDeg] = useState<number>(
-    typeof (input as { azimuth?: number } | null)?.azimuth === "number"
-      ? (input as { azimuth?: number }).azimuth!
-      : 180,
-  );
-  const FIXED_AZIMUTH_PRESETS = [90, 135, 225, 270];
-  const TRACKER_AZIMUTH_PRESETS = [180, 90, 135, 225, 270];
-  const [azimuthCustom, setAzimuthCustom] = useState<boolean>(() => {
-    const saved =
-      typeof (input as { azimuth?: number } | null)?.azimuth === "number"
-        ? (input as { azimuth?: number }).azimuth!
-        : 180;
-    if (saved === 180) return false;
-    return !FIXED_AZIMUTH_PRESETS.includes(saved) && !TRACKER_AZIMUTH_PRESETS.includes(saved);
-  });
-  const [rowsPerBlock, setRowsPerBlock] = useState(
-    input?.rows_per_block ?? DEFAULT_LAYOUT_CONFIG.rows_per_block,
-  );
-  const [blockGapM, setBlockGapM] = useState(
-    input?.block_gap_m ?? DEFAULT_LAYOUT_CONFIG.block_gap_m,
-  );
-  const [colsPerBlock, setColsPerBlock] = useState(
-    input?.cols_per_block ?? DEFAULT_LAYOUT_CONFIG.cols_per_block,
-  );
-  const [ewGapM, setEwGapM] = useState(input?.ew_gap_m ?? DEFAULT_LAYOUT_CONFIG.ew_gap_m);
+  const [layoutRowAlignment, setLayoutRowAlignment] = useState<RowAlignment>(layoutInit.row_alignment);
+  const [layoutCustomGcr, setLayoutCustomGcr] = useState(layoutInit.custom_gcr);
+  const [layoutCustomPitch, setLayoutCustomPitch] = useState(layoutInit.custom_pitch);
+  const [moduleH, setModuleH] = useState(layoutInit.module_h);
+  const [moduleW, setModuleW] = useState(layoutInit.module_w);
+  const [moduleWp, setModuleWp] = useState(layoutInit.module_wp);
+  const [modulesPerString, setModulesPerString] = useState(layoutInit.modules_per_string);
+  const [interStringGap, setInterStringGap] = useState(layoutInit.inter_string_gap_m);
+  const [trackerStringOptions, setTrackerStringOptions] = useState(layoutInit.tracker_string_options);
+  const [maxTrackerLength, setMaxTrackerLength] = useState(layoutInit.max_tracker_length_m);
+  const [excludeTrackerSlope, setExcludeTrackerSlope] = useState(layoutInit.exclude_tracker_slope);
+  const [trackerSlopeLimit, setTrackerSlopeLimit] = useState(layoutInit.tracker_slope_limit_pct);
+  const [roadMode, setRoadMode] = useState<RoadMode>(layoutInit.road_mode);
+  const [roadPreset, setRoadPreset] = useState(layoutInit.road_preset);
+  const [azimuthDeg, setAzimuthDeg] = useState<number>(layoutInit.azimuth_deg);
+  const [azimuthCustom, setAzimuthCustom] = useState<boolean>(layoutInit.azimuth_custom);
+  const [rowsPerBlock, setRowsPerBlock] = useState(layoutInit.rows_per_block);
+  const [blockGapM, setBlockGapM] = useState(layoutInit.block_gap_m);
+  const [colsPerBlock, setColsPerBlock] = useState(layoutInit.cols_per_block);
+  const [ewGapM, setEwGapM] = useState(layoutInit.ew_gap_m);
   const [reportBusy, setReportBusy] = useState(false);
   const [packageBusy, setPackageBusy] = useState(false);
   const [exportError, setExportError] = useState("");
@@ -346,7 +321,7 @@ export function OutputPage({
     [input?.restriction_polygons],
   );
   const hasBoundary = boundaries.length > 0;
-  const [useFullBoundary, setUseFullBoundary] = useState(false);
+  const [useFullBoundary, setUseFullBoundary] = useState(layoutInit.use_full_boundary);
   const gisExcludedRings = useMemo(
     () => geoJsonToLatLonRings(gisResult?.excluded_area_geojson ?? null),
     [gisResult?.excluded_area_geojson],
@@ -392,6 +367,39 @@ export function OutputPage({
 
   function layoutInputError(): string {
     return moduleHWarning || moduleWWarning || slopeWarning || "";
+  }
+
+  function buildLayoutIQSnapshot(): LayoutIQSnapshot {
+    return {
+      optimization_mode: layoutOptimization,
+      land_cost: layoutLandCost,
+      bifacial: layoutBifacial,
+      allow_partial_strings: allowPartialStrings,
+      mount_type: layoutMountType,
+      portrait: layoutPortrait,
+      row_alignment: layoutRowAlignment,
+      custom_gcr: layoutCustomGcr,
+      custom_pitch: layoutCustomPitch,
+      module_h: moduleH,
+      module_w: moduleW,
+      module_wp: moduleWp,
+      modules_per_string: modulesPerString,
+      inter_string_gap_m: interStringGap,
+      tracker_string_options: trackerStringOptions,
+      max_tracker_length_m: maxTrackerLength,
+      exclude_tracker_slope: excludeTrackerSlope,
+      tracker_slope_limit_pct: trackerSlopeLimit,
+      road_mode: roadMode,
+      road_preset: roadPreset,
+      rows_per_block: rowsPerBlock,
+      block_gap_m: blockGapM,
+      cols_per_block: colsPerBlock,
+      ew_gap_m: ewGapM,
+      azimuth_deg: azimuthDeg,
+      azimuth_custom: azimuthCustom,
+      use_full_boundary: useFullBoundary,
+      selected_layout_row: selectedLayoutRow,
+    };
   }
 
   function layoutApiParams() {
@@ -636,19 +644,22 @@ export function OutputPage({
           topo: topoResult,
           finalScore,
           gisSetbacks: Object.keys(gisSetbacks).length ? gisSetbacks : null,
+          layoutSettings: buildLayoutIQSnapshot(),
         },
       );
       setProjectId(id);
       onProjectIdChange?.(id);
+      const layoutSettings = buildLayoutIQSnapshot();
       onWorkflowPersist?.({
         projectId: id,
         lastStage: stage,
         topo: topoResult,
         finalScore,
         gisSetbacks: Object.keys(gisSetbacks).length ? gisSetbacks : null,
+        layoutSettings,
       });
       if (!options?.silent) {
-        setSaveMsg("Project saved — resume from My projects.");
+        setSaveMsg("Project saved — LayoutIQ settings and progress restored from My projects.");
       }
       return id;
     } catch (err) {
@@ -672,6 +683,45 @@ export function OutputPage({
   async function handleSaveProject() {
     await persistWorkflow();
   }
+
+  // Keep LayoutIQ settings in parent workflow state while editing (survives step navigation).
+  useEffect(() => {
+    if (!onWorkflowPersist) return;
+    const timer = window.setTimeout(() => {
+      onWorkflowPersist({ layoutSettings: buildLayoutIQSnapshot() });
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [
+    onWorkflowPersist,
+    layoutOptimization,
+    layoutLandCost,
+    layoutBifacial,
+    allowPartialStrings,
+    layoutMountType,
+    layoutPortrait,
+    layoutRowAlignment,
+    layoutCustomGcr,
+    layoutCustomPitch,
+    moduleH,
+    moduleW,
+    moduleWp,
+    modulesPerString,
+    interStringGap,
+    trackerStringOptions,
+    maxTrackerLength,
+    excludeTrackerSlope,
+    trackerSlopeLimit,
+    roadMode,
+    roadPreset,
+    rowsPerBlock,
+    blockGapM,
+    colsPerBlock,
+    ewGapM,
+    azimuthDeg,
+    azimuthCustom,
+    useFullBoundary,
+    selectedLayoutRow,
+  ]);
 
   useEffect(() => {
     if (projectIdProp) setProjectId(projectIdProp);

@@ -3,6 +3,11 @@ import type { ProjectPayload, ProjectRecord } from "./api";
 import type { GateAnalyzeRequest } from "../types/gate";
 import type { TerrainIQAnalyzeResponse } from "../types/terrainiq";
 import type { OutputModuleStage, WorkflowScoreResponse, WorkflowScreenResponse } from "../types/workflow";
+import {
+  layoutIQToWorkflowFields,
+  parseLayoutIQSnapshot,
+  type LayoutIQSnapshot,
+} from "./layoutIQSettings";
 
 export interface WorkflowRestore {
   projectId: string;
@@ -12,6 +17,7 @@ export interface WorkflowRestore {
   topo?: TerrainIQAnalyzeResponse | null;
   finalScore?: WorkflowScoreResponse | null;
   gisSetbacks?: Record<string, number> | null;
+  layoutSettings?: LayoutIQSnapshot | null;
 }
 
 export function slimTopoSnapshot(topo: TerrainIQAnalyzeResponse | null | undefined): Record<string, unknown> | null {
@@ -30,19 +36,23 @@ export function buildWorkflowSavePayload(
   topo?: TerrainIQAnalyzeResponse | null,
   finalScore?: WorkflowScoreResponse | null,
   gisSetbacks?: Record<string, number> | null,
+  layoutSettings?: LayoutIQSnapshot | null,
 ): ProjectPayload {
   const draft = gateRequestToDraft(input);
   if (screening.project_name) draft.project_info.name = screening.project_name;
   const base = draftToProjectPayload(draft);
+  const layoutFields = layoutSettings ? layoutIQToWorkflowFields(layoutSettings) : {};
   return {
     ...base,
     workflow: {
       ...base.workflow,
+      ...layoutFields,
       last_stage: lastStage,
       screening_snapshot: screening as unknown as Record<string, unknown>,
       topo_snapshot: slimTopoSnapshot(topo),
       final_score_snapshot: (finalScore ?? null) as unknown as Record<string, unknown> | null,
       gis_setbacks_m: gisSetbacks ?? null,
+      layout_settings_snapshot: (layoutSettings ?? null) as unknown as Record<string, unknown> | null,
       saved_at: new Date().toISOString(),
     },
   };
@@ -61,6 +71,7 @@ export async function persistWorkflowProject(
     topo?: TerrainIQAnalyzeResponse | null;
     finalScore?: WorkflowScoreResponse | null;
     gisSetbacks?: Record<string, number> | null;
+    layoutSettings?: LayoutIQSnapshot | null;
   },
 ): Promise<string> {
   const payload = buildWorkflowSavePayload(
@@ -70,6 +81,7 @@ export async function persistWorkflowProject(
     extras?.topo,
     extras?.finalScore,
     extras?.gisSetbacks,
+    extras?.layoutSettings,
   );
   const row = projectId
     ? await updateProject(token, projectId, payload)
@@ -91,5 +103,6 @@ export function restoreWorkflowFromRecord(row: ProjectRecord): WorkflowRestore |
     topo: (wf.topo_snapshot as TerrainIQAnalyzeResponse | null) ?? null,
     finalScore: (wf.final_score_snapshot as WorkflowScoreResponse | null) ?? null,
     gisSetbacks: (wf.gis_setbacks_m as Record<string, number> | null) ?? null,
+    layoutSettings: parseLayoutIQSnapshot(wf.layout_settings_snapshot),
   };
 }
