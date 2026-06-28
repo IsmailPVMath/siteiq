@@ -1454,6 +1454,36 @@ a {
   }
 }
 
+/* Centered "Saving…" overlay — informational, does not block interaction */
+.saving-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.saving-overlay-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1.4rem 2rem;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(29, 158, 82, 0.25);
+  border-radius: 14px;
+  box-shadow: 0 12px 36px rgba(20, 95, 52, 0.18);
+  font-weight: 600;
+  color: var(--accent-dark);
+}
+
+.saving-overlay-card .processing-spinner {
+  width: 2.2rem;
+  height: 2.2rem;
+}
+
 /* Results two-pane: left controls sidebar, right results */
 .results-shell {
   display: grid;

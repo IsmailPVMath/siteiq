@@ -1537,6 +1537,14 @@ export function OutputPage({
           : ({ "--results-sb-w": `${sidebarWidth}px` } as React.CSSProperties)
       }
     >
+      {saveBusy ? (
+        <div className="saving-overlay" role="status" aria-live="polite">
+          <div className="saving-overlay-card">
+            <div className="processing-spinner" aria-hidden />
+            <span>Saving…</span>
+          </div>
+        </div>
+      ) : null}
       {activeStage !== "screen" ? (
       <aside className="results-sidebar">
         <div className="sidebar-project">
@@ -1728,10 +1736,8 @@ export function OutputPage({
                   </option>
                 </select>
                 <p className="hint sidebar-hint">
-                  Aligned snaps every row to one shared string grid, so trackers line up
-                  string-for-string across the whole field — clean, road-friendly, slightly lower
-                  MWp. Non-aligned fills each pocket to its own edge for maximum capacity with
-                  ragged, staggered ends.
+                  Aligned: shared string grid, clean rows, slightly lower MWp. Non-aligned: fills
+                  each pocket fully for max capacity, ragged ends.
                 </p>
               </div>
               <div className="field">
@@ -1817,8 +1823,8 @@ export function OutputPage({
                 ) : null}
                 <p className="hint sidebar-hint">
                   {mountFilter === "sat"
-                    ? "Trackers default to a North–South axis (rotating E→W). Pick a preset or enter a custom axis azimuth (0–360°) to align with the parcel."
-                    : "Default uses PVGIS optimal tilt on a due-south array (180°). Choose another compass bearing or enter a custom azimuth for skewed parcels."}
+                    ? "N–S axis (rotates E→W). Pick a preset or custom azimuth to match the parcel."
+                    : "PVGIS optimal tilt, due south (180°). Pick a bearing or custom angle for skewed parcels."}
                 </p>
               </div>
               <details className="sidebar-advanced" open>
@@ -1959,8 +1965,8 @@ export function OutputPage({
                 </label>
                 {ignoreSoftConstraints && !useFullBoundary && gisResult?.success ? (
                   <p className="hint sidebar-hint">
-                    Roads, water, buildings, and transmission setbacks still apply. Forest/wood
-                    zones are treated as clearable for early automated packing.
+                    Roads, water, buildings &amp; line setbacks still apply; only forest/wood is
+                    cleared.
                   </p>
                 ) : null}
                 <label className="checkbox-field">
@@ -1972,8 +1978,8 @@ export function OutputPage({
                   Drop tiny isolated tracker islands
                 </label>
                 <p className="hint sidebar-hint">
-                  Removes disconnected pockets with fewer than 3 tracker units (or 4 fixed-tilt
-                  strings) — avoids lone SS4-style stubs. Fine-tune in CAD/DXF export if needed.
+                  Drops pockets under 3 tracker units (4 fixed-tilt strings). Fine-tune later in
+                  CAD/DXF.
                 </p>
                 <div className="layout-road-tab-row">
                   <button
