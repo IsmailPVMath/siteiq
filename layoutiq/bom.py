@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import math
 
+from layoutiq.tracker_units import tracker_unit_bom_lines
+
 
 def compute_bom(
     layout: dict,
@@ -33,7 +35,7 @@ def compute_bom(
     mw_per_ha = round(dc_kwp / 1000 / layout["area_ha"], 3) if layout["area_ha"] else 0
     mod_per_ha = round(total_mod / layout["area_ha"], 0) if layout["area_ha"] else 0
 
-    return {
+    bom = {
         "DC Capacity": f"{dc_kwp:,.1f} kWp",
         "AC Capacity (est.)": f"{ac_kw:,.0f} kW",
         "DC:AC Ratio": str(dc_ac),
@@ -52,3 +54,7 @@ def compute_bom(
         "Module Clamps (est.)": f"{total_clamps:,}",
         "DC String Cable (est.)": f"{dc_cable_m:,} m",
     }
+    unit_lines = tracker_unit_bom_lines(layout)
+    if unit_lines:
+        bom = {**bom, **unit_lines}
+    return bom

@@ -10,6 +10,7 @@ import {
   topoExportsZip,
   topoReportPdf,
   workflowGisAnalysis,
+  workflowImportLayoutDxf,
   workflowLayoutDetail,
   workflowLayoutDxf,
   workflowLayoutSweep,
@@ -279,6 +280,9 @@ export function OutputPage({
     layoutInit.selected_layout_row,
   );
   const [layoutDetailBusy, setLayoutDetailBusy] = useState(false);
+  const [layoutImportBusy, setLayoutImportBusy] = useState(false);
+  const [layoutImported, setLayoutImported] = useState(false);
+  const dxfInputRef = useRef<HTMLInputElement>(null);
   const [layoutDxfBusy, setLayoutDxfBusy] = useState(false);
   const [layoutDetail, setLayoutDetail] = useState<WorkflowLayoutDetailResponse | null>(null);
   const [terrain3DBusy, setTerrain3DBusy] = useState(false);
@@ -986,6 +990,62 @@ export function OutputPage({
     if (loadPreview) void handleLayoutDetail(row);
   }
 
+  function layoutConfigKey(): string {
+    const tracker = layoutMountType === "Single-Axis Tracker";
+    const portrait =
+      layoutPortrait === "all" ? (tracker ? "1" : "2") : layoutPortrait;
+    return `${tracker ? "SAT" : "FT"}_${portrait}P`;
+  }
+
+  function layoutRowFromDetail(detail: WorkflowLayoutDetailResponse): LayoutSweepRow {
+    return {
+      config_key: detail.config_key,
+      label: detail.label,
+      mount_type: detail.mount_type,
+      n_portrait: detail.n_portrait,
+      pitch_m: detail.pitch_m,
+      gcr: detail.gcr,
+      success: true,
+      total_modules: detail.total_modules,
+      total_rows: detail.total_rows,
+      area_ha: detail.area_ha,
+      dc_kwp: detail.dc_kwp,
+      dc_mwp: detail.dc_mwp ?? undefined,
+      mw_per_ha: detail.mw_per_ha,
+    };
+  }
+
+  async function handleImportLayoutDxf(file: File) {
+    setLayoutImportBusy(true);
+    setLayoutError("");
+    try {
+      const pitch =
+        Number(layoutCustomPitch) || selectedLayoutRow?.pitch_m || 6.5;
+      const detail = await workflowImportLayoutDxf(token, {
+        file,
+        ref_lat: result.coordinates.lat,
+        ref_lon: result.coordinates.lon,
+        config_key: layoutConfigKey(),
+        pitch_m: pitch,
+        module_wp: moduleWp,
+        modules_per_string: modulesPerString,
+        tracker_string_options: trackerStringOptions,
+        project_name: result.project_name || input?.project_name || "Imported layout",
+      });
+      setLayoutDetail(detail);
+      setLayoutImported(true);
+      const row = layoutRowFromDetail(detail);
+      setSelectedLayoutRow(row);
+      setYieldResult(null);
+      onModuleChange("yield");
+      autoSaveWorkflow("layout");
+    } catch (err) {
+      setLayoutError(err instanceof Error ? err.message : "DXF import failed");
+    } finally {
+      setLayoutImportBusy(false);
+    }
+  }
+
   async function handleLayoutSweep() {
     if (!hasBoundary) return;
     const inputError = layoutInputError();
@@ -1566,6 +1626,39 @@ export function OutputPage({
         {activeStage === "layout" ? (
         <div className="sidebar-group">
           <h3>LayoutIQ strategy</h3>
+          <div className="layout-import-block">
+            <input
+              ref={dxfInputRef}
+              type="file"
+              accept=".dxf"
+              className="sr-only"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleImportLayoutDxf(file);
+                e.target.value = "";
+              }}
+            />
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm btn-block"
+              disabled={layoutImportBusy || !hasBoundary}
+              onClick={() => dxfInputRef.current?.click()}
+            >
+              {layoutImportBusy ? "Importing DXF…" : "Import layout DXF"}
+            </button>
+            <p className="hint sidebar-hint">
+              Upload a metric DXF with string rectangles (PV_MODULE) or coloured tracker unit
+              layers (PV_8S … PV_1S). PVMath groups strings into rigid tracker boxes, then you can
+              run YieldIQ on the imported DC capacity.
+            </p>
+            {layoutImported && layoutDetail ? (
+              <p className="module-note">
+                Imported: {layoutDetail.total_modules.toLocaleString()} modules ·{" "}
+                {layoutDetail.total_tracker_units?.toLocaleString() ?? layoutDetail.total_rows}{" "}
+                tracker units · {layoutDetail.dc_kwp.toLocaleString()} kWp
+              </p>
+            ) : null}
+          </div>
           {!hasBoundary ? (
             <p className="hint sidebar-hint">Boundary required for layout generation.</p>
           ) : (

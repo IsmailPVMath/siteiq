@@ -62,10 +62,20 @@ export function LayoutPreviewMap({ center, layoutGeoJson }: Props) {
         const kind = feature?.properties?.kind;
         if (kind === "pv_module") {
           return {
-            color: "#1d4ed8",
-            fillColor: "#3b82f6",
-            fillOpacity: 0.88,
-            weight: 0.35,
+            color: "#93c5fd",
+            fillColor: "#bfdbfe",
+            fillOpacity: 0.45,
+            weight: 0.25,
+          };
+        }
+        if (kind === "tracker_unit") {
+          const fill = (feature?.properties?.fill as string) || "#2563eb";
+          const stroke = (feature?.properties?.stroke as string) || "#1e40af";
+          return {
+            color: stroke,
+            fillColor: fill,
+            fillOpacity: 0.72,
+            weight: 1.4,
           };
         }
         if (kind === "pv_row") {
@@ -90,6 +100,9 @@ export function LayoutPreviewMap({ center, layoutGeoJson }: Props) {
           const idx = feature.properties.string_index;
           const mps = feature.properties.modules_per_string;
           layer.bindTooltip(`String ${idx} · ${mps} modules`, { sticky: true });
+        } else if (kind === "tracker_unit") {
+          const label = feature.properties.unit_label || `${feature.properties.unit_strings}S`;
+          layer.bindTooltip(`Tracker ${label}`, { sticky: true });
         } else if (kind === "pv_row" && !hasModules) {
           const row = feature.properties.row_index;
           const modules = feature.properties.n_modules;

@@ -255,6 +255,8 @@ class WorkflowLayoutDetailResponse(BaseModel):
     gcr: float
     total_modules: int
     total_rows: int
+    total_strings: Optional[int] = None
+    total_tracker_units: Optional[int] = None
     area_ha: float
     dc_kwp: float
     dc_mwp: Optional[float] = None

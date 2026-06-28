@@ -279,6 +279,7 @@ def _merged_layout_for_drawing(detail: Dict[str, Any]) -> Optional[Dict[str, Any
     for lay in layouts:
         merged["rows_polys"].extend(lay.get("rows_polys") or [])
         merged["rows_data"].extend(lay.get("rows_data") or [])
+        merged.setdefault("tracker_unit_polys", []).extend(lay.get("tracker_unit_polys") or [])
     return merged
 
 

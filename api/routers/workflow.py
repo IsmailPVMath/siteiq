@@ -7,7 +7,7 @@ import io
 import os
 from functools import partial
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 
 from api.deps import get_current_user
@@ -39,6 +39,7 @@ from pvmath_supabase import (
 )
 from pvmath_workflow.buildable_engine import compute_layout_exclusion_rings
 from pvmath_workflow.gis_analysis import GisAnalysisRequest, run_gis_analysis
+from pvmath_workflow.imported_layout import build_imported_layout_detail
 from pvmath_workflow.layout_detail import build_layout_detail, export_layout_dxf
 from pvmath_workflow.layout_matrix import run_fixed_tilt_layout_matrix
 from pvmath_workflow.layout_sweep import run_layout_sweep
@@ -53,6 +54,7 @@ router = APIRouter(tags=["workflow"])
 SCREEN_APP = PLATFORM_APP
 SCREEN_TIMEOUT_SEC = int(os.environ.get("PVMATH_GATE_TIMEOUT", "150"))
 LAYOUT_TIMEOUT_SEC = int(os.environ.get("PVMATH_LAYOUT_TIMEOUT", "240"))
+_MAX_DXF_BYTES = 16 * 1024 * 1024
 
 
 def _latlon_polys(boundary, boundaries):
@@ -480,6 +482,73 @@ async def workflow_layout_detail(
         raise HTTPException(status_code=500, detail=f"Layout detail failed: {exc}") from exc
 
     data.pop("layout", None)
+    data.pop("layouts", None)
+    return WorkflowLayoutDetailResponse(**data)
+
+
+@router.post("/workflow/layout-import-dxf", response_model=WorkflowLayoutDetailResponse)
+async def workflow_layout_import_dxf(
+    file: UploadFile = File(...),
+    ref_lat: float = Form(...),
+    ref_lon: float = Form(...),
+    config_key: str = Form(default="SAT_2P"),
+    pitch_m: float = Form(default=6.5),
+    module_wp: int = Form(default=550),
+    modules_per_string: int = Form(default=28),
+    tracker_string_options: str = Form(default="8,7,6,5,4,3"),
+    project_name: str = Form(default="Imported layout"),
+    _user: AuthUser = Depends(get_current_user),
+):
+    """
+    Import an external layout DXF (metric local coordinates).
+
+    Strings on PV_MODULE layers are grouped into coloured 8S–1S tracker unit
+    rectangles. Layers PV_8S … PV_1S are read directly. Reference lat/lon anchors
+    the local DXF origin to the project site for map overlay and YieldIQ.
+    """
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(status_code=400, detail="Empty DXF file")
+    if len(raw) > _MAX_DXF_BYTES:
+        raise HTTPException(status_code=413, detail="DXF file too large (max 16 MB)")
+
+    options = []
+    for part in tracker_string_options.replace(" ", "").split(","):
+        if part.isdigit() and int(part) > 0:
+            options.append(int(part))
+    if not options:
+        options = [8, 7, 6, 5, 4, 3]
+
+    loop = asyncio.get_running_loop()
+    try:
+        data = await asyncio.wait_for(
+            loop.run_in_executor(
+                None,
+                partial(
+                    build_imported_layout_detail,
+                    raw,
+                    config_key=config_key,
+                    pitch_m=pitch_m,
+                    ref_lat=ref_lat,
+                    ref_lon=ref_lon,
+                    module_wp=module_wp,
+                    modules_per_string=modules_per_string,
+                    tracker_string_options=options,
+                    project_name=project_name,
+                ),
+            ),
+            timeout=LAYOUT_TIMEOUT_SEC,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=f"DXF import timed out after {LAYOUT_TIMEOUT_SEC}s.",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"DXF import failed: {exc}") from exc
+
     data.pop("layouts", None)
     return WorkflowLayoutDetailResponse(**data)
 

@@ -173,6 +173,35 @@ export function workflowLayoutDetail(token: string, body: WorkflowLayoutDetailRe
   });
 }
 
+export interface LayoutImportDxfParams {
+  file: File;
+  ref_lat: number;
+  ref_lon: number;
+  config_key?: string;
+  pitch_m?: number;
+  module_wp?: number;
+  modules_per_string?: number;
+  tracker_string_options?: string;
+  project_name?: string;
+}
+
+export function workflowImportLayoutDxf(token: string, params: LayoutImportDxfParams) {
+  const form = new FormData();
+  form.append("file", params.file);
+  form.append("ref_lat", String(params.ref_lat));
+  form.append("ref_lon", String(params.ref_lon));
+  form.append("config_key", params.config_key ?? "SAT_2P");
+  form.append("pitch_m", String(params.pitch_m ?? 6.5));
+  form.append("module_wp", String(params.module_wp ?? 550));
+  form.append("modules_per_string", String(params.modules_per_string ?? 28));
+  form.append("tracker_string_options", params.tracker_string_options ?? "8,7,6,5,4,3");
+  form.append("project_name", params.project_name ?? "Imported layout");
+  return apiFetch<WorkflowLayoutDetailResponse>("/api/v1/workflow/layout-import-dxf", token, {
+    method: "POST",
+    body: form,
+  });
+}
+
 export function workflowLayoutDxf(token: string, body: WorkflowLayoutDetailRequest) {
   return downloadBlob("/api/v1/workflow/layout-dxf", token, body, "application/dxf");
 }

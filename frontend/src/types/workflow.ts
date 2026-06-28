@@ -213,6 +213,8 @@ export interface WorkflowLayoutDetailResponse {
   gcr: number;
   total_modules: number;
   total_rows: number;
+  total_strings?: number;
+  total_tracker_units?: number;
   area_ha: number;
   dc_kwp: number;
   dc_mwp?: number;

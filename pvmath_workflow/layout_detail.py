@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from layoutiq.coords import xy_to_latlon
 from layoutiq.defaults import layout_params
 from layoutiq.engine import run_layout, site_layout_grid
+from layoutiq.tracker_units import build_tracker_unit_polys
 
 try:
     import ezdxf
@@ -194,6 +195,7 @@ def build_layout_detail(
             **grid_kwargs,
         )
         if layout:
+            layout["tracker_unit_polys"] = build_tracker_unit_polys(layout)
             layouts.append(layout)
     if not layouts:
         raise ValueError("No layout rows fit for this configuration and pitch")
@@ -234,6 +236,24 @@ def build_layout_detail(
                         "modules_per_string": layout["modules_per_string"],
                         "n_modules": layout["modules_per_string"],
                         "row_index": row_index_base + local_row_idx + 1,
+                    },
+                )
+            )
+        for unit in layout.get("tracker_unit_polys") or []:
+            style = unit.get("style") or {}
+            features.append(
+                _polygon_feature(
+                    unit["poly"],
+                    ref_lat,
+                    ref_lon,
+                    {
+                        "kind": "tracker_unit",
+                        "unit_strings": unit["unit_strings"],
+                        "unit_label": style.get("label", f"{unit['unit_strings']}S"),
+                        "fill": style.get("fill"),
+                        "stroke": style.get("stroke"),
+                        "row_index": unit.get("row_index"),
+                        "unit_index": unit.get("unit_index"),
                     },
                 )
             )
@@ -323,14 +343,28 @@ def export_layout_dxf(detail: Dict[str, Any], project_name: str = "LayoutIQ") ->
     msp = doc.modelspace()
     doc.layers.add("SITE_BOUNDARY", color=5)
     doc.layers.add("SETBACK_INSET", color=8)
+    doc.layers.add("PV_MODULE", color=140)
     doc.layers.add("PV_ROWS", color=3)
     doc.layers.add("LABELS", color=7)
 
+    from layoutiq.tracker_styles import TRACKER_UNIT_STYLES
+
+    for n, style in TRACKER_UNIT_STYLES.items():
+        doc.layers.add(style["dxf_layer"], color=style["dxf_color"])
+
     for layout in layouts:
+        if not layout.get("tracker_unit_polys"):
+            layout["tracker_unit_polys"] = build_tracker_unit_polys(layout)
         _add_polyline(msp, layout["poly_m"], "SITE_BOUNDARY")
         _add_polyline(msp, layout["poly_inset"], "SETBACK_INSET")
-        for poly in layout["rows_polys"]:
-            _add_polyline(msp, poly, "PV_ROWS")
+        for spoly in layout.get("string_polys") or []:
+            _add_polyline(msp, spoly, "PV_MODULE")
+        for unit in layout.get("tracker_unit_polys") or []:
+            layer = (unit.get("style") or {}).get("dxf_layer", "PV_ROWS")
+            _add_polyline(msp, unit["poly"], layer)
+        if not layout.get("tracker_unit_polys"):
+            for poly in layout.get("rows_polys") or []:
+                _add_polyline(msp, poly, "PV_ROWS")
 
     summary = (
         f"{project_name} | {detail['label']} | Pitch {detail['pitch_m']} m | "
