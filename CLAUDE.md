@@ -40,7 +40,9 @@
 | `exemplary-balance` | `main` | Production — siteiq.pvmath.com / topoiq.pvmath.com |
 | `cozy-enjoyment` | `staging` | Pre-production testing |
 
-Copy production env vars (Supabase, Brevo, etc.) into staging; use the same Supabase project or a dedicated staging DB if you prefer isolation later.
+`cozy-enjoyment` is the staging API environment for the React app. Configure its Railway service to deploy the **`staging`** branch with config path **`railway.api.toml`** (FastAPI/Uvicorn, `/api/health`). Copy production env vars (Supabase, Brevo, etc.) into staging; current preference is the same Supabase project for simpler solo testing. Generate a Railway domain and use that URL as the Cloudflare Pages **Preview** env var `VITE_API_URL`.
+
+**Cloudflare Pages staging:** existing Pages project `pvmath-react` hosts production at `app.pvmath.com`; branch previews should be enabled for `staging`. Set **Production** env `VITE_API_URL=https://api.pvmath.com`; set **Preview** env `VITE_API_URL=https://<cozy-enjoyment-staging-api>.up.railway.app`. The API already allows `*.pages.dev` origins via CORS regex.
 
 **Hosting note:** the app moved from Streamlit Community Cloud to **Railway** (Streamlit Cloud doesn't support a true custom top-level domain — only a `*.streamlit.app` subdomain rename — which is why Railway is used now). Domain registrar is **Namecheap**; DNS records for `pvmath.com`:
 | Type | Host | Value |
@@ -210,8 +212,8 @@ git pull origin staging
 # … fix TerrainIQ / app issues …
 git add -A && git commit -m "your message"
 git push origin staging
-# → Railway staging (cozy-enjoyment) auto-deploys
-# Test on staging *.up.railway.app URL before promoting
+# → Railway staging API (cozy-enjoyment) + Cloudflare Pages preview deploy
+# Test the staging Pages preview URL before promoting
 ```
 
 ### Promote to production (only when staging is verified)

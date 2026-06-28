@@ -6,6 +6,8 @@ pages_build_output_dir = "frontend/dist"
 # Build command: cd frontend && npm ci && npm run build
 # Build output directory: frontend/dist
 # Production environment variable: VITE_API_URL=https://api.pvmath.com
+# Preview environment variable: VITE_API_URL=https://<cozy-enjoyment-staging-api>.up.railway.app
+# Enable branch previews for staging; test staging preview before promoting to main.
 #
 # Custom domain (React app — Streamlit stays on siteiq.pvmath.com until cutover):
 # Cloudflare Pages → pvmath-react → Custom domains → app.pvmath.com
