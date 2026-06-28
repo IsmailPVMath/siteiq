@@ -317,6 +317,10 @@ export function OutputPage({
   const [blockGapM, setBlockGapM] = useState(
     input?.block_gap_m ?? DEFAULT_LAYOUT_CONFIG.block_gap_m,
   );
+  const [colsPerBlock, setColsPerBlock] = useState(
+    input?.cols_per_block ?? DEFAULT_LAYOUT_CONFIG.cols_per_block,
+  );
+  const [ewGapM, setEwGapM] = useState(input?.ew_gap_m ?? DEFAULT_LAYOUT_CONFIG.ew_gap_m);
   const [reportBusy, setReportBusy] = useState(false);
   const [packageBusy, setPackageBusy] = useState(false);
   const [exportError, setExportError] = useState("");
@@ -390,7 +394,8 @@ export function OutputPage({
     return moduleHWarning || moduleWWarning || slopeWarning || "";
   }
 
-  function layoutApiParams() {    const base = layoutPayloadFrom({
+  function layoutApiParams() {
+    const base = layoutPayloadFrom({
       module_h: moduleH,
       module_w: moduleW,
       module_wp: moduleWp,
@@ -402,6 +407,8 @@ export function OutputPage({
       road_preset: roadPreset,
       rows_per_block: rowsPerBlock,
       block_gap_m: blockGapM,
+      cols_per_block: colsPerBlock,
+      ew_gap_m: ewGapM,
       exclude_tracker_slope: excludeTrackerSlope,
       tracker_slope_limit_pct: trackerSlopeLimit,
     });
@@ -413,6 +420,8 @@ export function OutputPage({
         road_preset: "custom",
         rows_per_block: rowsPerBlock,
         block_gap_m: blockGapM,
+        cols_per_block: colsPerBlock,
+        ew_gap_m: ewGapM,
         allow_partial_strings: allowPartialStrings,
         row_alignment: layoutRowAlignment,
       };
@@ -1442,14 +1451,17 @@ export function OutputPage({
                   onChange={(e) => setLayoutRowAlignment(e.target.value as RowAlignment)}
                 >
                   <option value="horizontal">
-                    Horizontal from south — uniform row lines (recommended for large SAT)
+                    Aligned — string-aligned grid (best buildability)
                   </option>
-                  <option value="boundary">Along PV area boundary — fill irregular edges</option>
+                  <option value="boundary">
+                    Non-aligned — fill to the edge (max capacity)
+                  </option>
                 </select>
                 <p className="hint sidebar-hint">
-                  Horizontal rows share a south fence line and give realistic capacity on angled
-                  sites. Boundary mode packs into every pocket along the parcel edge and can
-                  overstate MWp.
+                  Aligned snaps every row to one shared string grid, so trackers line up
+                  string-for-string across the whole field — clean, road-friendly, slightly lower
+                  MWp. Non-aligned fills each pocket to its own edge for maximum capacity with
+                  ragged, staggered ends.
                 </p>
               </div>
               <div className="field">
@@ -1708,29 +1720,55 @@ export function OutputPage({
                   </div>
                 )}
                 {roadPreset === "custom" ? (
-                  <div className="grid-2 layout-custom-row">
-                    <div className="field">
-                      <label htmlFor="out-rows-block">Rows / block</label>
-                      <input
-                        id="out-rows-block"
-                        type="number"
-                        min="1"
-                        value={rowsPerBlock}
-                        onChange={(e) => setRowsPerBlock(Number(e.target.value))}
-                      />
+                  <>
+                    <div className="grid-2 layout-custom-row">
+                      <div className="field">
+                        <label htmlFor="out-rows-block">Rows / block (N-S road)</label>
+                        <NumberField
+                          id="out-rows-block"
+                          min={1}
+                          value={rowsPerBlock}
+                          onChange={setRowsPerBlock}
+                        />
+                      </div>
+                      <div className="field">
+                        <label htmlFor="out-block-gap">N-S road gap (m)</label>
+                        <NumberField
+                          id="out-block-gap"
+                          step="0.5"
+                          min={0}
+                          value={blockGapM}
+                          onChange={setBlockGapM}
+                        />
+                      </div>
                     </div>
-                    <div className="field">
-                      <label htmlFor="out-block-gap">N-S gap (m)</label>
-                      <input
-                        id="out-block-gap"
-                        type="number"
-                        step="0.5"
-                        min="0"
-                        value={blockGapM}
-                        onChange={(e) => setBlockGapM(Number(e.target.value))}
-                      />
+                    <div className="grid-2 layout-custom-row">
+                      <div className="field">
+                        <label htmlFor="out-cols-block">Strings / block (E-W road)</label>
+                        <NumberField
+                          id="out-cols-block"
+                          min={0}
+                          value={colsPerBlock}
+                          onChange={setColsPerBlock}
+                        />
+                      </div>
+                      <div className="field">
+                        <label htmlFor="out-ew-gap">E-W road gap (m)</label>
+                        <NumberField
+                          id="out-ew-gap"
+                          step="0.5"
+                          min={0}
+                          value={ewGapM}
+                          onChange={setEwGapM}
+                        />
+                      </div>
                     </div>
-                  </div>
+                    <p className="hint sidebar-hint">
+                      N-S roads run between tracker columns (gap every N rows). E-W roads cross the
+                      tracker length (gap every N strings) and line up across the field. Set strings/
+                      block to 0 to skip E-W roads.
+                    </p>
+                  </>
                 ) : null}
               </details>
               {layoutOptimization === "custom" ? (

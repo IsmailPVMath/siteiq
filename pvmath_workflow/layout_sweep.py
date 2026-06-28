@@ -95,6 +95,8 @@ def run_layout_sweep(
     max_tracker_length_m: float = 260.0,
     rows_per_block: int = 2,
     block_gap_m: float = 5.0,
+    cols_per_block: int = 0,
+    ew_gap_m: float = 0.0,
     road_mode: str = "auto",
     road_preset: str = "sat_auto",
     strings_per_inv: int = 4,
@@ -229,6 +231,8 @@ def run_layout_sweep(
                     ref_lon=ref_lon,
                     allow_partial_strings=allow_partial_strings,
                     row_alignment=row_alignment,
+                    cols_per_block=cols_per_block,
+                    ew_gap_m=ew_gap_m,
                     **grid_kwargs,
                 )
                 if layout:
@@ -292,6 +296,8 @@ def run_layout_sweep(
                     ref_lon=ref_lon,
                     allow_partial_strings=allow_partial_strings,
                     row_alignment=row_alignment,
+                    cols_per_block=cols_per_block,
+                    ew_gap_m=ew_gap_m,
                     **grid_kwargs,
                 )
                 if single:

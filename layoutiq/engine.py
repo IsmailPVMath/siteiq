@@ -6,7 +6,7 @@ import math
 from typing import Any
 
 from shapely.affinity import rotate as shp_rotate
-from shapely.geometry import LineString, MultiLineString, Polygon, box
+from shapely.geometry import Polygon, box
 from shapely.ops import unary_union
 
 from layoutiq.coords import latlon_to_xy
@@ -164,41 +164,10 @@ def pack_tracker_units(
     return units, partial_modules, used
 
 
-def _line_length(geom) -> float:
-    if geom.is_empty:
-        return 0.0
-    if geom.geom_type == "LineString":
-        return geom.length
-    if geom.geom_type == "MultiLineString":
-        return sum(g.length for g in geom.geoms)
-    if geom.geom_type == "GeometryCollection":
-        return sum(_line_length(g) for g in geom.geoms)
-    return 0.0
-
-
 def _snap_y_origin(miny: float, pitch: float) -> float:
     if pitch <= 0:
         return miny
     return math.floor(miny / pitch) * pitch
-
-
-def _available_row_length(
-    poly_rot: Polygon,
-    *,
-    south_fence_x: float | None,
-    west_fence_x: float | None,
-    cy: float,
-    is_tracker: bool,
-    search_m: float = 2500.0,
-) -> float:
-    """Measure buildable row-axis length from the field fence inward."""
-    if is_tracker:
-        x0 = south_fence_x if south_fence_x is not None else poly_rot.bounds[2]
-        sweep = LineString([(x0 - search_m, cy), (x0, cy)])
-    else:
-        x0 = west_fence_x if west_fence_x is not None else poly_rot.bounds[0]
-        sweep = LineString([(x0, cy), (x0 + search_m, cy)])
-    return _line_length(poly_rot.intersection(sweep))
 
 
 def _row_band_segments(poly_rot: Polygon, y: float, row_ns: float) -> list[tuple[float, float]]:
@@ -221,6 +190,70 @@ def _row_band_segments(poly_rot: Polygon, y: float, row_ns: float) -> list[tuple
         if x1 - x0 > 1e-3:
             segments.append((x0, x1))
     return sorted(segments, key=lambda s: s[0])
+
+
+def _ew_road_bands(
+    anchor: float,
+    *,
+    unit: float,
+    cols_per_block: int,
+    ew_gap: float,
+    lo: float,
+    hi: float,
+    is_tracker: bool,
+) -> list[tuple[float, float]]:
+    """Rotated-x ranges occupied by E-W maintenance roads (corridors that cross
+    the tracker length). Anchored at the field fence and spaced every
+    ``cols_per_block`` strings, so the roads line up across every row."""
+    if cols_per_block < 1 or ew_gap <= 0 or unit <= 0:
+        return []
+    block_len = cols_per_block * unit
+    period = block_len + ew_gap
+    bands: list[tuple[float, float]] = []
+    i = 0
+    while i < 100000:
+        if is_tracker:
+            right = anchor - block_len - i * period
+            left = right - ew_gap
+            if left < lo - 1e-6:
+                break
+            if right > lo and left < hi:
+                bands.append((left, right))
+        else:
+            left = anchor + block_len + i * period
+            right = left + ew_gap
+            if right > hi + 1e-6:
+                break
+            if left < hi and right > lo:
+                bands.append((left, right))
+        i += 1
+    return bands
+
+
+def _split_segments_by_roads(
+    segments: list[tuple[float, float]], road_bands: list[tuple[float, float]]
+) -> list[tuple[float, float]]:
+    """Cut each row segment wherever it crosses an E-W road band."""
+    if not road_bands:
+        return segments
+    out: list[tuple[float, float]] = []
+    for smin, smax in segments:
+        pieces = [(smin, smax)]
+        for rl, rr in road_bands:
+            nxt: list[tuple[float, float]] = []
+            for a, b in pieces:
+                if rr <= a or rl >= b:
+                    nxt.append((a, b))
+                    continue
+                if a < rl:
+                    nxt.append((a, min(rl, b)))
+                if b > rr:
+                    nxt.append((max(rr, a), b))
+            pieces = nxt
+        for a, b in pieces:
+            if b - a > 1e-6:
+                out.append((a, b))
+    return sorted(out, key=lambda s: s[0])
 
 
 def _string_rects_in_segment(
@@ -398,6 +431,8 @@ def run_layout(
     rotate_origin: tuple[float, float] | None = None,
     allow_partial_strings: bool = False,
     row_alignment: str = "horizontal",
+    cols_per_block: int = 0,
+    ew_gap_m: float = 0.0,
 ):
     """
     Sweep row bands across a rotated boundary polygon on a shared site grid.
@@ -410,10 +445,17 @@ def run_layout(
     parcel shares the same row pitch lines and south/west fence alignment.
 
     ``row_alignment``:
-    - ``horizontal`` — one buildable row length per pitch band, measured from
-      the south (SAT) or west (fixed) fence; industry default for large sites.
-    - ``boundary`` — pack strings into every polygon pocket along the parcel
-      edge (can overstate capacity on angled or concave boundaries).
+    - ``horizontal`` (Aligned) — every row snaps its strings to one shared
+      string grid anchored at the south (SAT) or west (fixed) fence, so string
+      columns line up across all rows. Orderly, best buildability; trims a little
+      capacity at the fence end.
+    - ``boundary`` (Non-aligned) — pack strings into every polygon pocket to its
+      own edge for maximum capacity, with ragged/staggered ends.
+
+    ``rows_per_block`` / ``block_gap_m`` insert N-S maintenance roads (gaps in
+    the pitch direction). ``cols_per_block`` / ``ew_gap_m`` insert E-W roads
+    (gaps that cross the tracker length), anchored at the fence so they line up
+    across the whole field.
     """
     is_tracker = mounting_type == "sat"
     use_blocks = rows_per_block > 0 and block_gap_m > 0
@@ -443,6 +485,13 @@ def run_layout(
     poly_rot = shp_rotate(poly_inset, rot_angle, origin=origin)
     minx, miny, maxx, maxy = poly_rot.bounds
 
+    # Shared string grid anchor for aligned placement. Every row snaps its
+    # strings to grid lines spaced one string-unit apart from the field fence,
+    # so string columns line up across all rows (PVcase "Grid" look).
+    string_unit = modules_per_string * module_w + max(0.0, inter_string_gap_m)
+    grid_anchor_south = south_fence_x if south_fence_x is not None else maxx
+    grid_anchor_west = west_fence_x if west_fence_x is not None else minx
+
     y = grid_y_origin if grid_y_origin is not None else _snap_y_origin(miny, pitch)
     rows_data: list[dict[str, Any]] = []
     rows_polys: list[Polygon] = []
@@ -450,22 +499,48 @@ def run_layout(
     string_row_local_idx: list[int] = []
     rows_in_block = 0
 
+    # E-W maintenance roads: fence-anchored gaps every ``cols_per_block`` strings
+    # that cross the tracker length, identical for every row so they line up.
+    ew_road_bands = _ew_road_bands(
+        grid_anchor_south if is_tracker else grid_anchor_west,
+        unit=string_unit,
+        cols_per_block=cols_per_block,
+        ew_gap=ew_gap_m,
+        lo=minx,
+        hi=maxx,
+        is_tracker=is_tracker,
+    )
+
     while y + row_ns <= maxy + 1e-6:
         band_segments = _row_band_segments(poly_rot, y, row_ns)
         if row_alignment == "boundary":
-            # Follow every polygon pocket along the edge (fragments concave sites).
+            # Non-aligned: fill every polygon pocket to its own edge — maximum
+            # capacity, ragged/staggered string ends.
             segments = band_segments
         else:
-            # Horizontal: one uniform run per pitch band, spanning the band's
-            # actual east-west extent. Strings that fall in interior gaps (ponds,
-            # cut-outs) are removed later by clipping, so rows stay on a single
-            # aligned grid instead of fragmenting into offset pockets.
-            if band_segments:
+            # Aligned: one run per pitch band, snapped to the shared string grid
+            # at the field fence so strings align column-wise across every row
+            # (orderly, best buildability). Strings over interior gaps (ponds,
+            # cut-outs) are dropped later by clipping.
+            if band_segments and string_unit > 0:
                 outer_min = min(s[0] for s in band_segments)
                 outer_max = max(s[1] for s in band_segments)
-                segments = [(outer_min, outer_max)]
+                if is_tracker:
+                    k = max(0, math.ceil((grid_anchor_south - outer_max) / string_unit - 1e-9))
+                    snapped_max = grid_anchor_south - k * string_unit
+                    segments = (
+                        [(outer_min, snapped_max)] if snapped_max - outer_min > 1e-3 else []
+                    )
+                else:
+                    k = max(0, math.ceil((outer_min - grid_anchor_west) / string_unit - 1e-9))
+                    snapped_min = grid_anchor_west + k * string_unit
+                    segments = (
+                        [(snapped_min, outer_max)] if outer_max - snapped_min > 1e-3 else []
+                    )
             else:
                 segments = []
+        if ew_road_bands:
+            segments = _split_segments_by_roads(segments, ew_road_bands)
         if not segments:
             y += pitch
             rows_in_block += 1

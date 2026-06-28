@@ -11,6 +11,8 @@ export interface LayoutElectricalConfig {
   max_tracker_length_m?: number;
   rows_per_block?: number;
   block_gap_m?: number;
+  cols_per_block?: number;
+  ew_gap_m?: number;
   road_mode?: RoadMode;
   road_preset?: string;
   exclude_tracker_slope?: boolean;
@@ -28,6 +30,8 @@ export const DEFAULT_LAYOUT_CONFIG: Required<LayoutElectricalConfig> = {
   max_tracker_length_m: 260,
   rows_per_block: 0,
   block_gap_m: 0.0,
+  cols_per_block: 0,
+  ew_gap_m: 0.0,
   road_mode: "off",
   road_preset: "no_roads",
   exclude_tracker_slope: false,
@@ -57,6 +61,8 @@ export function layoutPayloadFrom(
     max_tracker_length_m: input?.max_tracker_length_m ?? DEFAULT_LAYOUT_CONFIG.max_tracker_length_m,
     rows_per_block: input?.rows_per_block ?? DEFAULT_LAYOUT_CONFIG.rows_per_block,
     block_gap_m: input?.block_gap_m ?? DEFAULT_LAYOUT_CONFIG.block_gap_m,
+    cols_per_block: input?.cols_per_block ?? DEFAULT_LAYOUT_CONFIG.cols_per_block,
+    ew_gap_m: input?.ew_gap_m ?? DEFAULT_LAYOUT_CONFIG.ew_gap_m,
     road_mode: input?.road_mode ?? DEFAULT_LAYOUT_CONFIG.road_mode,
     road_preset: input?.road_preset ?? DEFAULT_LAYOUT_CONFIG.road_preset,
     exclude_tracker_slope:
