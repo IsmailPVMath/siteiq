@@ -35,6 +35,21 @@ export function setTokenRefresher(fn: (() => Promise<string | null>) | null) {
   tokenRefresher = fn;
 }
 
+// A raw fetch rejection (no HTTP response) is usually transient — a Railway
+// redeploy/cold-start finishing or a brief network blip. Retry once after a
+// short delay before surfacing the error, so a one-shot blip is absorbed
+// without changing behavior for a genuinely unreachable server.
+async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (err) {
+    await new Promise((r) => setTimeout(r, 800));
+    return await fetch(url, init).catch(() => {
+      throw err;
+    });
+  }
+}
+
 async function apiFetch<T>(
   path: string,
   token: string,
@@ -43,7 +58,7 @@ async function apiFetch<T>(
 ): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${API_URL}${path}`, {
+    res = await fetchWithRetry(`${API_URL}${path}`, {
       ...init,
       headers: {
         Accept: "application/json",
@@ -384,7 +399,7 @@ async function downloadBlob(
 ): Promise<Blob> {
   let res: Response;
   try {
-    res = await fetch(`${API_URL}${path}`, {
+    res = await fetchWithRetry(`${API_URL}${path}`, {
       method: "POST",
       headers: {
         Accept: accept,

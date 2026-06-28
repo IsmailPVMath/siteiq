@@ -196,13 +196,29 @@ def update_project(
     current = normalize_legacy_project_data(existing.project_data or {})
     patch = normalize_legacy_project_data(body.model_dump())
     merged = merge_project_data(current, patch)
-    buildable_geo, buildable_ha = _buildable_area(
-        merged.get("site_boundary_geojson") or {},
-        merged.get("restriction_polygons_geojson"),
+    # Only recompute the (relatively expensive) Shapely buildable area when the
+    # geometry actually changed. Settings-only saves (e.g. LayoutIQ params on an
+    # unchanged boundary) reuse the stored buildable area, which keeps the save a
+    # light merge + PATCH and avoids slow round trips that can drop the request.
+    geometry_changed = (
+        merged.get("site_boundary_geojson") != current.get("site_boundary_geojson")
+        or merged.get("restriction_polygons_geojson")
+        != current.get("restriction_polygons_geojson")
     )
-    merged["buildable_area_geojson"] = buildable_geo or merged.get("buildable_area_geojson")
-    merged.setdefault("workflow", {})
-    merged["workflow"]["buildable_area_ha"] = buildable_ha
+    if geometry_changed:
+        buildable_geo, buildable_ha = _buildable_area(
+            merged.get("site_boundary_geojson") or {},
+            merged.get("restriction_polygons_geojson"),
+        )
+        merged["buildable_area_geojson"] = buildable_geo or merged.get("buildable_area_geojson")
+        merged.setdefault("workflow", {})
+        merged["workflow"]["buildable_area_ha"] = buildable_ha
+    else:
+        merged.setdefault("workflow", {})
+        if "buildable_area_ha" not in merged["workflow"]:
+            merged["workflow"]["buildable_area_ha"] = (
+                current.get("workflow", {}).get("buildable_area_ha", 0.0)
+            )
     r = requests.patch(
         _project_base(),
         params={"id": f"eq.{project_id}", "user_id": f"eq.{user.user_id}", "select": "*"},
