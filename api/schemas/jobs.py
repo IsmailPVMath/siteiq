@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel
 
@@ -19,5 +19,5 @@ class JobStatusResponse(BaseModel):
     status: Literal["queued", "running", "succeeded", "failed"]
     created_at: float
     updated_at: float
-    error: str | None = None
+    error: Optional[str] = None
     result: Any = None
