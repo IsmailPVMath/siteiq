@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from reportlab.lib import colors
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.platypus import Paragraph, Table, TableStyle
+from reportlab.lib.units import cm
+from reportlab.platypus import CondPageBreak, HRFlowable, Paragraph, Spacer, Table, TableStyle
 
 from pvmath_geocode import pdf_escape
 
@@ -34,6 +35,22 @@ def base_styles():
         "white": S("white", fontSize=11, fontName="Helvetica-Bold", textColor=colors.white),
         "note": S("note", fontSize=7.5, textColor=colors.HexColor("#7a4f00"), leading=11),
     }
+
+
+def module_divider(min_space_cm: float = 11.0) -> list:
+    """Separator between modules: a brand rule, then a page break only when
+    there isn't enough room left for a meaningful chunk of the next module.
+
+    Avoids the large empty gaps caused by forcing a hard PageBreak between
+    every section while still keeping big modules (e.g. the terrain slope map)
+    from being split awkwardly across a page boundary.
+    """
+    return [
+        Spacer(1, 0.35 * cm),
+        HRFlowable(width="100%", thickness=1, color=BORDER, spaceBefore=0, spaceAfter=0),
+        Spacer(1, 0.35 * cm),
+        CondPageBreak(min_space_cm * cm),
+    ]
 
 
 def section_hdr(text: str, st) -> Table:

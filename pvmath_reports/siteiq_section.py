@@ -9,7 +9,7 @@ from reportlab.graphics.shapes import Drawing, Line, Rect, String
 from reportlab.lib import colors
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm
-from reportlab.platypus import KeepTogether, PageBreak, Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus import KeepTogether, Paragraph, Spacer, Table, TableStyle
 
 from pvmath_pdf import strip_pdf_label
 from pvmath_reports.common import (
@@ -20,15 +20,13 @@ from pvmath_reports.common import (
     MUTED,
     base_styles,
     lp,
+    module_divider,
     section_hdr,
 )
 from pvmath_reports.siteiq_next_steps import get_next_steps
 from pvmath_reports.siteiq_suitability import SUITABILITY_WEIGHTS, compute_site_suitability
 
-_MONTH_COLORS = [
-    "#f87171", "#fb923c", "#facc15", "#a3e635", "#4ade80", "#22c55e",
-    "#22c55e", "#4ade80", "#a3e635", "#facc15", "#fb923c", "#f87171",
-]
+_MONTH_COLORS = ["#1d9e52"] * 12
 
 
 def _terrain_from_topo(topo: Optional[Dict[str, Any]], mount_type: str) -> tuple[dict, str]:
@@ -125,7 +123,7 @@ def build_siteiq_flowables(
         f"Weighted screening score {suit['overall']}/100 across solar, terrain, flood, land, and regulatory factors."
     )
 
-    story.append(PageBreak())
+    story.extend(module_divider())
     story.append(section_hdr("SiteIQ — Site screening", st))
     story.append(Spacer(1, 0.2 * cm))
 

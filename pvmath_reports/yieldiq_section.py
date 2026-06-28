@@ -13,10 +13,10 @@ import numpy as np
 from reportlab.lib import colors
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm
-from reportlab.platypus import Image as RLImage, PageBreak, Spacer, Table, TableStyle
+from reportlab.platypus import Image as RLImage, Spacer, Table, TableStyle
 
 from pvmath_capacity import format_mwh_range, format_mwp_range
-from pvmath_reports.common import ACCENT, BORDER, DARK, LGRAY, MUTED, base_styles, lp, section_hdr
+from pvmath_reports.common import ACCENT, BORDER, DARK, LGRAY, MUTED, base_styles, lp, module_divider, section_hdr
 from pvmath_yield import CONFIG_ORDER, config_display_name, format_loss_pct, format_pvgis_total_loss
 
 CHART_COLORS = ["#e85d04", "#c24a00", "#1d9e52", "#145f34"]
@@ -90,7 +90,7 @@ def build_yieldiq_flowables(
     st = base_styles()
     story: List = []
 
-    story.append(PageBreak())
+    story.extend(module_divider())
     story.append(section_hdr("YieldIQ — Energy yield", st))
     story.append(Spacer(1, 0.2 * cm))
 

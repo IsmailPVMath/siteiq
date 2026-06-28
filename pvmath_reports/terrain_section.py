@@ -6,10 +6,10 @@ import io
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from reportlab.lib.units import mm
-from reportlab.platypus import PageBreak, Spacer
+from reportlab.platypus import KeepTogether, Spacer
 
 from pvmath_geocode import resolve_location_label
-from pvmath_reports.common import base_styles, lp, section_hdr
+from pvmath_reports.common import base_styles, lp, module_divider, section_hdr
 from pvmath_terrain_report import (
     build_report_context,
     build_terrain_unified_flowables,
@@ -142,7 +142,7 @@ def build_terrain_section_flowables(
     st = base_styles()
     if not topo:
         return [
-            PageBreak(),
+            *module_divider(),
             section_hdr("TerrainIQ — Terrain analysis", st),
             Spacer(1, 4 * mm),
             lp("TerrainIQ not run — draw a site boundary and run terrain analysis.", st["muted"]),
@@ -161,9 +161,11 @@ def build_terrain_section_flowables(
         slope_img_buf=slope_buf,
     )
     body = build_terrain_unified_flowables(ctx)
-    return [
-        PageBreak(),
-        section_hdr("TerrainIQ — Terrain analysis", st),
-        Spacer(1, 3 * mm),
-        *body,
-    ]
+    header = [section_hdr("TerrainIQ — Terrain analysis", st), Spacer(1, 3 * mm)]
+    if body:
+        return [
+            *module_divider(),
+            KeepTogether(header + [body[0]]),
+            *body[1:],
+        ]
+    return [*module_divider(), *header, *body]

@@ -10,12 +10,12 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm
-from reportlab.platypus import HRFlowable, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from pvmath_brand import PRODUCT_NAME
 from pvmath_geocode import format_coords, resolve_location_label
 from pvmath_pdf import SITEIQ_DISCLAIMER_BODY, append_siteiq_metrics_annexure
-from pvmath_reports.common import ACCENT, ACCENT_HDR, BORDER, DARK, MUTED, base_styles, lp, module_banner, section_hdr
+from pvmath_reports.common import ACCENT, ACCENT_HDR, BORDER, DARK, MUTED, base_styles, lp, module_banner, module_divider, section_hdr
 from pvmath_reports.siteiq_section import build_siteiq_flowables
 from pvmath_reports.terrain_section import build_terrain_section_flowables
 from pvmath_reports.yieldiq_section import build_yieldiq_flowables
@@ -82,7 +82,7 @@ def _project_summary_flowables(
 def _annex_flowables() -> List:
     st = base_styles()
     story: List = [
-        PageBreak(),
+        *module_divider(),
         section_hdr("DISCLAIMERS & REFERENCE", st),
         Spacer(1, 0.2 * cm),
         lp(SITEIQ_DISCLAIMER_BODY, st["muted"]),
