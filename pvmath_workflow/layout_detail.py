@@ -117,6 +117,7 @@ def build_layout_detail(
     road_preset: str = "no_roads",
     allow_partial_strings: bool = False,
     row_alignment: str = "horizontal",
+    prune_isolated_blocks: bool = True,
 ) -> Dict[str, Any]:
     n_portrait, tracker, label = _config_from_key(config_key)
     polys = _normalize_polys(boundary, boundaries)
@@ -189,6 +190,7 @@ def build_layout_detail(
             row_alignment=row_alignment,
             cols_per_block=lp["cols_per_block"],
             ew_gap_m=lp["ew_gap_m"],
+            prune_isolated_blocks=prune_isolated_blocks,
             **grid_kwargs,
         )
         if layout:

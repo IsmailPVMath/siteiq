@@ -107,6 +107,7 @@ def run_layout_sweep(
     portrait_filter: Optional[List[int]] = None,
     row_alignment: str = "horizontal",
     allow_partial_strings: bool = False,
+    prune_isolated_blocks: bool = True,
 ) -> Dict[str, Any]:
     """
     Iterate mount/portrait × pitch across one or more site parcels.
@@ -239,6 +240,7 @@ def run_layout_sweep(
                     row_alignment=row_alignment,
                     cols_per_block=lp["cols_per_block"],
                     ew_gap_m=lp["ew_gap_m"],
+                    prune_isolated_blocks=prune_isolated_blocks,
                     **grid_kwargs,
                 )
                 if layout:
@@ -305,6 +307,7 @@ def run_layout_sweep(
                     row_alignment=row_alignment,
                     cols_per_block=lp["cols_per_block"],
                     ew_gap_m=lp["ew_gap_m"],
+                    prune_isolated_blocks=prune_isolated_blocks,
                     **grid_kwargs,
                 )
                 if single:

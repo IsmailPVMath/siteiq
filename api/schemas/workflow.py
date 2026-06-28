@@ -153,6 +153,22 @@ class WorkflowLayoutSweepRequest(BaseModel):
         default=False,
         description="Place half-strings (≥50% modules) at row ends when space remains; otherwise stop at last complete string.",
     )
+    ignore_soft_constraints: bool = Field(
+        default=False,
+        description="Skip forest/vegetation OSM exclusions — assume EPC land clearing for early layout.",
+    )
+    constraint_layers: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="SiteIQ OSM constraint layers; required when ignore_soft_constraints is true.",
+    )
+    setbacks_m: Optional[Dict[str, float]] = Field(
+        default=None,
+        description="Per-category GIS setbacks (m); paired with constraint_layers.",
+    )
+    prune_isolated_blocks: bool = Field(
+        default=True,
+        description="Drop tiny disconnected tracker/table islands below minimum block size.",
+    )
 
 
 class WorkflowLayoutSweepResponse(BaseModel):
@@ -211,6 +227,22 @@ class WorkflowLayoutDetailRequest(BaseModel):
     row_alignment: Literal["horizontal", "boundary"] = Field(
         default="horizontal",
         description="horizontal = uniform rows from south/west fence; boundary = pack along parcel edge pockets.",
+    )
+    ignore_soft_constraints: bool = Field(
+        default=False,
+        description="Skip forest/vegetation OSM exclusions — assume EPC land clearing for early layout.",
+    )
+    constraint_layers: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="SiteIQ OSM constraint layers; required when ignore_soft_constraints is true.",
+    )
+    setbacks_m: Optional[Dict[str, float]] = Field(
+        default=None,
+        description="Per-category GIS setbacks (m); paired with constraint_layers.",
+    )
+    prune_isolated_blocks: bool = Field(
+        default=True,
+        description="Drop tiny disconnected tracker/table islands below minimum block size.",
     )
 
 

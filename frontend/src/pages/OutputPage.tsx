@@ -342,20 +342,34 @@ export function OutputPage({
   );
   const hasBoundary = boundaries.length > 0;
   const [useFullBoundary, setUseFullBoundary] = useState(layoutInit.use_full_boundary);
+  const [ignoreSoftConstraints, setIgnoreSoftConstraints] = useState(
+    layoutInit.ignore_soft_constraints,
+  );
+  const [pruneIsolatedBlocks, setPruneIsolatedBlocks] = useState(layoutInit.prune_isolated_blocks);
   const gisExcludedRings = useMemo(
     () => geoJsonToLatLonRings(gisResult?.excluded_area_geojson ?? null),
     [gisResult?.excluded_area_geojson],
   );
   const layoutRestrictionPolygons = useMemo(
-    () =>
-      useFullBoundary
-        ? restrictionPolygons
-        : gisResult?.success && gisExcludedRings.length
-          ? gisExcludedRings
-          : restrictionPolygons,
-    [useFullBoundary, gisExcludedRings, gisResult?.success, restrictionPolygons],
+    () => {
+      if (useFullBoundary) return restrictionPolygons;
+      if (ignoreSoftConstraints) return restrictionPolygons;
+      if (gisResult?.success && gisExcludedRings.length) return gisExcludedRings;
+      return restrictionPolygons;
+    },
+    [useFullBoundary, ignoreSoftConstraints, gisExcludedRings, gisResult?.success, restrictionPolygons],
   );
   const layoutUsesGisBuildable = !useFullBoundary && !!(gisResult?.success && gisExcludedRings.length);
+  const layoutGisExtras = useMemo(() => {
+    if (useFullBoundary || !ignoreSoftConstraints || !gisResult?.constraint_layers) {
+      return {};
+    }
+    return {
+      ignore_soft_constraints: true,
+      constraint_layers: gisResult.constraint_layers,
+      setbacks_m: gisSetbacks,
+    };
+  }, [useFullBoundary, ignoreSoftConstraints, gisResult?.constraint_layers, gisSetbacks]);
   const landScoreFromGis = useFullBoundary
     ? scoreLandFromBuildablePct(100)
     : scoreLandFromBuildablePct(gisResult?.buildable_pct);
@@ -432,6 +446,8 @@ export function OutputPage({
       azimuth_deg: azimuthDeg,
       azimuth_custom: azimuthCustom,
       use_full_boundary: useFullBoundary,
+      ignore_soft_constraints: ignoreSoftConstraints,
+      prune_isolated_blocks: pruneIsolatedBlocks,
       selected_layout_row: selectedLayoutRow,
     };
   }
@@ -471,6 +487,13 @@ export function OutputPage({
       };
     }
     return { ...base, azimuth: azimuthDeg, allow_partial_strings: allowPartialStrings, row_alignment: layoutRowAlignment };
+  }
+
+  function layoutSmartExtras() {
+    return {
+      ...layoutGisExtras,
+      prune_isolated_blocks: pruneIsolatedBlocks,
+    };
   }
 
   const buildableMask = useFullBoundary
@@ -766,6 +789,8 @@ export function OutputPage({
     azimuthDeg,
     azimuthCustom,
     useFullBoundary,
+    ignoreSoftConstraints,
+    pruneIsolatedBlocks,
     selectedLayoutRow,
   ]);
 
@@ -989,6 +1014,7 @@ export function OutputPage({
         mount_filter: mountFilter,
         ...(layoutPortrait !== "all" ? { portrait_filter: [Number(layoutPortrait)] } : {}),
         ...layoutApiParams(),
+        ...layoutSmartExtras(),
       };
       if (layoutOptimization === "custom") {
         const gcr = Number(layoutCustomGcr);
@@ -1043,6 +1069,7 @@ export function OutputPage({
       config_key: row.config_key,
       pitch_m: row.pitch_m,
       ...layoutApiParams(),
+      ...layoutSmartExtras(),
     };
   }
 
@@ -1827,6 +1854,33 @@ export function OutputPage({
                     GIS constraints unavailable; LayoutIQ will use the submitted boundary.
                   </p>
                 ) : null}
+                <label className="checkbox-field">
+                  <input
+                    type="checkbox"
+                    checked={ignoreSoftConstraints}
+                    onChange={(e) => setIgnoreSoftConstraints(e.target.checked)}
+                    disabled={useFullBoundary || !gisResult?.success}
+                  />
+                  EPC clearing — ignore vegetation/tree OSM exclusions
+                </label>
+                {ignoreSoftConstraints && !useFullBoundary && gisResult?.success ? (
+                  <p className="hint sidebar-hint">
+                    Roads, water, buildings, and transmission setbacks still apply. Forest/wood
+                    zones are treated as clearable for early automated packing.
+                  </p>
+                ) : null}
+                <label className="checkbox-field">
+                  <input
+                    type="checkbox"
+                    checked={pruneIsolatedBlocks}
+                    onChange={(e) => setPruneIsolatedBlocks(e.target.checked)}
+                  />
+                  Drop tiny isolated tracker islands
+                </label>
+                <p className="hint sidebar-hint">
+                  Removes disconnected pockets with fewer than 3 tracker units (or 4 fixed-tilt
+                  strings) — avoids lone SS4-style stubs. Fine-tune in CAD/DXF export if needed.
+                </p>
                 <div className="layout-road-tab-row">
                   <button
                     type="button"

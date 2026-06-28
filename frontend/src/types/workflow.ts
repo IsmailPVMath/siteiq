@@ -129,6 +129,10 @@ export interface WorkflowLayoutSweepRequest extends LayoutElectricalConfig {
   row_alignment?: RowAlignment;
   azimuth?: number;
   allow_partial_strings?: boolean;
+  ignore_soft_constraints?: boolean;
+  constraint_layers?: Record<string, GeoJSON.FeatureCollection>;
+  setbacks_m?: Record<string, number>;
+  prune_isolated_blocks?: boolean;
 }
 
 export interface GcrGuidanceEntry {
@@ -194,6 +198,10 @@ export interface WorkflowLayoutDetailRequest extends LayoutElectricalConfig {
   pitch_m: number;
   setback_m?: number;
   azimuth?: number;
+  ignore_soft_constraints?: boolean;
+  constraint_layers?: Record<string, GeoJSON.FeatureCollection>;
+  setbacks_m?: Record<string, number>;
+  prune_isolated_blocks?: boolean;
 }
 
 export interface WorkflowLayoutDetailResponse {

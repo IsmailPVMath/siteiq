@@ -22,6 +22,10 @@ LAYER_STYLES: Dict[str, Dict[str, str]] = {
     "transmission_lines": {"color": "#ea580c", "fillColor": "#fdba74"},
 }
 
+# OSM layers treated as "soft" for early-stage LayoutIQ — EPCs often clear vegetation
+# before build. Roads, water, buildings, and transmission lines stay hard exclusions.
+SOFT_CONSTRAINT_CATEGORIES = frozenset({"forests"})
+
 DEFAULT_SETBACKS_M: Dict[str, float] = {
     "site_boundary": 5.0,
     "roads": 5.0,

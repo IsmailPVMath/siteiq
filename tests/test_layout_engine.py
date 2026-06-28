@@ -123,3 +123,31 @@ def test_tracker_units_respect_options_around_obstruction():
         # Strings map exactly to whole units (no clipped stubs, no partials).
         assert row["partial_modules"] == 0
         assert row["n_strings"] == sum(units)
+
+
+def test_prune_isolated_blocks_flag():
+    ref_lat, ref_lon = 32.0, -96.5
+    dlat, dlon = 0.004, 0.004
+    ring = [
+        (ref_lat, ref_lon),
+        (ref_lat + dlat, ref_lon),
+        (ref_lat + dlat, ref_lon + dlon),
+        (ref_lat, ref_lon + dlon),
+    ]
+    dense = run_layout(
+        ring,
+        module_h=2.094,
+        module_w=1.038,
+        n_portrait=1,
+        pitch=6.35,
+        setback=5.0,
+        azimuth=180.0,
+        mounting_type="sat",
+        modules_per_string=28,
+        inter_string_gap_m=0.5,
+        ref_lat=ref_lat,
+        ref_lon=ref_lon,
+        prune_isolated_blocks=True,
+    )
+    assert dense
+    assert dense["total_modules"] > 0

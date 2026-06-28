@@ -37,6 +37,7 @@ from pvmath_supabase import (
     is_over_limit,
     usage_limit_detail,
 )
+from pvmath_workflow.buildable_engine import compute_layout_exclusion_rings
 from pvmath_workflow.gis_analysis import GisAnalysisRequest, run_gis_analysis
 from pvmath_workflow.layout_detail import build_layout_detail, export_layout_dxf
 from pvmath_workflow.layout_matrix import run_fixed_tilt_layout_matrix
@@ -75,6 +76,48 @@ def _merge_latlon_polys(*groups):
             if ring and len(ring) >= 3:
                 merged.append(ring)
     return merged
+
+
+def _rings_latlon_to_geojson(rings: list) -> dict | None:
+    features = []
+    for ring in rings or []:
+        if not ring or len(ring) < 3:
+            continue
+        coords = [[float(p[1]), float(p[0])] for p in ring]
+        if coords[0] != coords[-1]:
+            coords.append(coords[0])
+        features.append(
+            {
+                "type": "Feature",
+                "properties": {"category": "manual"},
+                "geometry": {"type": "Polygon", "coordinates": [coords]},
+            }
+        )
+    if not features:
+        return None
+    return {"type": "FeatureCollection", "features": features}
+
+
+def _resolve_layout_restrictions(body, polys: list) -> list:
+    """
+    Build layout no-build rings.
+
+    Default: use restriction_polygons from the client (full SiteIQ excluded union).
+    EPC clearing mode: recompute hard GIS exclusions only (skip forests/vegetation)
+    and merge manual project restriction zones.
+    """
+    manual = _latlon_polys(None, body.restriction_polygons)
+    if getattr(body, "ignore_soft_constraints", False) and getattr(body, "constraint_layers", None):
+        return compute_layout_exclusion_rings(
+            polys,
+            body.constraint_layers,
+            setbacks_m=getattr(body, "setbacks_m", None),
+            manual_restrictions_geojson=_rings_latlon_to_geojson(manual),
+            ignore_soft_constraints=True,
+        )
+    if manual:
+        return manual
+    return _latlon_polys(None, body.restriction_polygons)
 
 
 def _tracker_slope_restrictions(body) -> list:
@@ -308,7 +351,7 @@ async def workflow_layout_sweep(
     polys = _latlon_polys(body.boundary, body.boundaries)
     if not polys:
         raise HTTPException(status_code=400, detail="A site boundary is required for LayoutIQ.")
-    manual_restrictions = _latlon_polys(None, body.restriction_polygons)
+    manual_restrictions = _resolve_layout_restrictions(body, polys)
     loop = asyncio.get_running_loop()
     try:
         tracker_restrictions = await asyncio.wait_for(
@@ -352,6 +395,7 @@ async def workflow_layout_sweep(
                     portrait_filter=body.portrait_filter,
                     row_alignment=body.row_alignment,
                     allow_partial_strings=body.allow_partial_strings,
+                    prune_isolated_blocks=body.prune_isolated_blocks,
                 ),
             ),
             timeout=LAYOUT_TIMEOUT_SEC,
@@ -380,7 +424,7 @@ def _layout_detail_payload(body: WorkflowLayoutDetailRequest):
     polys = _latlon_polys(body.boundary, body.boundaries)
     if not polys:
         raise ValueError("A site boundary is required")
-    manual_restrictions = _latlon_polys(None, body.restriction_polygons)
+    manual_restrictions = _resolve_layout_restrictions(body, polys)
     tracker_restrictions = _tracker_slope_restrictions(body)
     restrictions = manual_restrictions
     if (body.config_key or "").upper().startswith("SAT"):
@@ -409,6 +453,7 @@ def _layout_detail_payload(body: WorkflowLayoutDetailRequest):
         road_preset=body.road_preset,
         allow_partial_strings=body.allow_partial_strings,
         row_alignment=body.row_alignment,
+        prune_isolated_blocks=body.prune_isolated_blocks,
     )
 
 

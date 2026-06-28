@@ -11,6 +11,7 @@ from shapely.ops import unary_union
 from pvmath_workflow.gis_constraints import (
     DEFAULT_SETBACKS_M,
     LAYER_STYLES,
+    SOFT_CONSTRAINT_CATEGORIES,
     road_setback_for,
 )
 
@@ -102,6 +103,120 @@ def _road_exclusion(fc: dict, road_floor: float, lat: float):
     return unary_union(buffered_list), max_setback
 
 
+def _collect_constraint_exclusions(
+    site,
+    constraint_layers: Dict[str, dict],
+    *,
+    setbacks_m: Dict[str, float],
+    skip_categories: Optional[set] = None,
+) -> tuple[List[Any], List[dict]]:
+    """Buffered constraint zones clipped to the site polygon."""
+    lat = float(site.centroid.y)
+    exclusions: List[Any] = []
+    summary: List[dict] = []
+    skip = skip_categories or set()
+
+    for category, fc in (constraint_layers or {}).items():
+        if category in skip:
+            continue
+        if category == "roads":
+            road_floor = setbacks_m.get("roads", 0.0)
+            geoms = _fc_to_geoms(fc)
+            buffered, setback = _road_exclusion(fc, road_floor, lat)
+            if buffered is None or buffered.is_empty:
+                continue
+        else:
+            setback = setbacks_m.get(category, 0.0)
+            if setback <= 0:
+                continue
+            geoms = _fc_to_geoms(fc)
+            if not geoms:
+                continue
+            union = unary_union(geoms)
+            buffered = _buffer_geom(union, setback, lat)
+            if buffered is None or buffered.is_empty:
+                continue
+        try:
+            clipped = buffered.intersection(site)
+        except Exception:
+            clipped = buffered
+        if clipped.is_empty:
+            continue
+        exclusions.append(clipped)
+        summary.append(
+            {
+                "category": category,
+                "label": category.replace("_", " ").title(),
+                "feature_count": len(geoms),
+                "setback_m": setback,
+                "excluded_ha": round(_area_ha(clipped, lat), 2),
+                "style": LAYER_STYLES.get(category, {}),
+            }
+        )
+    return exclusions, summary
+
+
+def _geom_to_latlon_rings(geom) -> List[List[Tuple[float, float]]]:
+    """Convert a polygonal geometry (lon/lat) to layout restriction rings."""
+    if geom is None or geom.is_empty:
+        return []
+    polys = []
+    if geom.geom_type == "Polygon":
+        polys = [geom]
+    elif geom.geom_type == "MultiPolygon":
+        polys = list(geom.geoms)
+    elif geom.geom_type == "GeometryCollection":
+        polys = [g for g in geom.geoms if getattr(g, "geom_type", "") == "Polygon" and not g.is_empty]
+    rings: List[List[Tuple[float, float]]] = []
+    for poly in polys:
+        if poly.is_empty:
+            continue
+        coords = list(poly.exterior.coords)
+        if len(coords) < 4:
+            continue
+        rings.append([(float(lat), float(lon)) for lon, lat in coords[:-1]])
+    return rings
+
+
+def compute_layout_exclusion_rings(
+    rings: Sequence[Sequence[Tuple[float, float]]],
+    constraint_layers: Dict[str, dict],
+    *,
+    setbacks_m: Optional[Dict[str, float]] = None,
+    manual_restrictions_geojson: Optional[dict] = None,
+    ignore_soft_constraints: bool = False,
+) -> List[List[Tuple[float, float]]]:
+    """
+    Lat/lon rings subtracted from the layout buildable area.
+
+    When ``ignore_soft_constraints`` is True, forest/vegetation OSM layers are
+  skipped so early-stage layouts can assume EPC land clearing.
+    """
+    site = _rings_to_site(rings)
+    if site is None:
+        return []
+
+    setbacks = {**DEFAULT_SETBACKS_M, **(setbacks_m or {})}
+    skip = SOFT_CONSTRAINT_CATEGORIES if ignore_soft_constraints else set()
+    exclusions, _summary = _collect_constraint_exclusions(
+        site,
+        constraint_layers,
+        setbacks_m=setbacks,
+        skip_categories=skip,
+    )
+
+    if manual_restrictions_geojson:
+        manual = _parse_geojson_geom(manual_restrictions_geojson)
+        if manual is not None and not manual.is_empty:
+            exclusions.append(manual)
+
+    if not exclusions:
+        return []
+
+    excluded_union = unary_union(exclusions)
+    return _geom_to_latlon_rings(excluded_union)
+
+
 def compute_buildable_area(
     rings: Sequence[Sequence[Tuple[float, float]]],
     constraint_layers: Dict[str, dict],
@@ -139,47 +254,11 @@ def compute_buildable_area(
                 "note": "Site boundary setback consumes entire polygon.",
             }
 
-    exclusions: List[Any] = []
-    summary: List[dict] = []
-
-    for category, fc in (constraint_layers or {}).items():
-        # Roads use per-feature, class-aware setbacks (motorway ≫ field track),
-        # buffered from the centerline so the carriageway + regulatory zone is
-        # cleared. Every other category uses a single flat setback.
-        if category == "roads":
-            road_floor = setbacks.get("roads", 0.0)
-            geoms = _fc_to_geoms(fc)
-            buffered, setback = _road_exclusion(fc, road_floor, lat)
-            if buffered is None or buffered.is_empty:
-                continue
-        else:
-            setback = setbacks.get(category, 0.0)
-            if setback <= 0:
-                continue
-            geoms = _fc_to_geoms(fc)
-            if not geoms:
-                continue
-            union = unary_union(geoms)
-            buffered = _buffer_geom(union, setback, lat)
-            if buffered is None or buffered.is_empty:
-                continue
-        try:
-            clipped = buffered.intersection(site)
-        except Exception:
-            clipped = buffered
-        if clipped.is_empty:
-            continue
-        exclusions.append(clipped)
-        summary.append(
-            {
-                "category": category,
-                "label": category.replace("_", " ").title(),
-                "feature_count": len(geoms),
-                "setback_m": setback,
-                "excluded_ha": round(_area_ha(clipped, lat), 2),
-                "style": LAYER_STYLES.get(category, {}),
-            }
-        )
+    exclusions, summary = _collect_constraint_exclusions(
+        site,
+        constraint_layers,
+        setbacks_m=setbacks,
+    )
 
     if manual_restrictions_geojson:
         manual = _parse_geojson_geom(manual_restrictions_geojson)

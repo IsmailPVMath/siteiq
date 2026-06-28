@@ -41,6 +41,8 @@ export interface LayoutIQSnapshot {
   azimuth_deg: number;
   azimuth_custom: boolean;
   use_full_boundary: boolean;
+  ignore_soft_constraints: boolean;
+  prune_isolated_blocks: boolean;
   selected_layout_row: LayoutSweepRow | null;
 }
 
@@ -144,6 +146,8 @@ export function mergeLayoutIQSnapshot(
     azimuth_deg: s.azimuth_deg ?? 180,
     azimuth_custom: s.azimuth_custom ?? false,
     use_full_boundary: s.use_full_boundary ?? false,
+    ignore_soft_constraints: s.ignore_soft_constraints ?? true,
+    prune_isolated_blocks: s.prune_isolated_blocks ?? true,
     selected_layout_row: s.selected_layout_row ?? null,
   };
 }
@@ -223,6 +227,8 @@ export function parseLayoutIQSnapshot(raw: unknown): LayoutIQSnapshot | null {
     azimuth_deg: Number(o.azimuth_deg) || 180,
     azimuth_custom: Boolean(o.azimuth_custom),
     use_full_boundary: Boolean(o.use_full_boundary),
+    ignore_soft_constraints: o.ignore_soft_constraints !== false,
+    prune_isolated_blocks: o.prune_isolated_blocks !== false,
     selected_layout_row: (o.selected_layout_row as LayoutSweepRow | null) ?? null,
   });
 }

@@ -8,8 +8,13 @@ from typing import Any
 from shapely.affinity import rotate as shp_rotate
 from shapely.geometry import Polygon, box
 from shapely.ops import unary_union
+from shapely.strtree import STRtree
 
 from layoutiq.coords import latlon_to_xy
+
+# Drop disconnected PV pockets too small to be useful in automated LayoutIQ.
+DEFAULT_MIN_TRACKER_UNITS_PER_BLOCK = 3
+DEFAULT_MIN_STRINGS_PER_BLOCK = 4
 
 
 def count_strings_in_length(
@@ -406,6 +411,145 @@ def _prepare_poly_inset(
     }
 
 
+def _cluster_string_indices(string_polys: list, link_m: float) -> list[list[int]]:
+    """Group string polygons into spatially connected blocks."""
+    n = len(string_polys)
+    if n == 0:
+        return []
+    if n == 1:
+        return [[0]]
+
+    parent = list(range(n))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    def union(a: int, b: int) -> None:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[rb] = ra
+
+    buffered = [p.buffer(link_m) for p in string_polys]
+    tree = STRtree(buffered)
+    for i, geom in enumerate(buffered):
+        for j in tree.query(geom):
+            if j <= i:
+                continue
+            if geom.intersects(buffered[j]):
+                union(i, j)
+
+    clusters: dict[int, list[int]] = {}
+    for i in range(n):
+        clusters.setdefault(find(i), []).append(i)
+    return list(clusters.values())
+
+
+def _cluster_meets_minimum(
+    cluster: list[int],
+    *,
+    is_tracker: bool,
+    string_row_local_idx: list[int],
+    rows_data: list[dict[str, Any]],
+    min_tracker_units_per_block: int,
+    min_strings_per_block: int,
+) -> bool:
+    if not cluster:
+        return False
+    row_idxs = {string_row_local_idx[i] for i in cluster if i < len(string_row_local_idx)}
+    if is_tracker:
+        tracker_units = 0
+        for rli in row_idxs:
+            if rli < len(rows_data):
+                tracker_units += len(rows_data[rli].get("tracker_units") or [])
+        return tracker_units >= min_tracker_units_per_block
+    return len(cluster) >= min_strings_per_block
+
+
+def prune_isolated_layout_blocks(
+    layout: dict[str, Any],
+    *,
+    pitch: float,
+    is_tracker: bool,
+    prune_isolated_blocks: bool = True,
+    min_tracker_units_per_block: int = DEFAULT_MIN_TRACKER_UNITS_PER_BLOCK,
+    min_strings_per_block: int = DEFAULT_MIN_STRINGS_PER_BLOCK,
+) -> dict[str, Any]:
+    """
+    Remove tiny disconnected PV islands (e.g. a lone tracker in a separate pocket).
+
+    Strings within ``link_m`` of each other belong to the same block. Blocks below
+    the minimum tracker-unit or string count are dropped.
+    """
+    if not prune_isolated_blocks:
+        return layout
+
+    string_polys = layout.get("string_polys") or []
+    if len(string_polys) < 2:
+        return layout
+
+    rows_data = layout.get("rows_data") or []
+    string_row_local_idx = layout.get("string_row_local_idx") or []
+    row_ns = float(layout.get("row_ns") or pitch)
+    link_m = max(pitch * 1.25, row_ns * 1.5, 2.0)
+
+    clusters = _cluster_string_indices(string_polys, link_m)
+    if len(clusters) <= 1:
+        return layout
+
+    kept_strings: set[int] = set()
+    pruned_blocks = 0
+    for cluster in clusters:
+        if _cluster_meets_minimum(
+            cluster,
+            is_tracker=is_tracker,
+            string_row_local_idx=string_row_local_idx,
+            rows_data=rows_data,
+            min_tracker_units_per_block=min_tracker_units_per_block,
+            min_strings_per_block=min_strings_per_block,
+        ):
+            kept_strings.update(cluster)
+        else:
+            pruned_blocks += 1
+
+    if not kept_strings or len(kept_strings) == len(string_polys):
+        layout["pruned_island_blocks"] = pruned_blocks
+        return layout
+
+    new_string_polys = []
+    new_string_row_local_idx = []
+    for i, spoly in enumerate(string_polys):
+        if i not in kept_strings:
+            continue
+        new_string_polys.append(spoly)
+        if i < len(string_row_local_idx):
+            new_string_row_local_idx.append(string_row_local_idx[i])
+
+    kept_row_local = sorted({idx for idx in new_string_row_local_idx})
+    old_to_new = {old: new for new, old in enumerate(kept_row_local)}
+
+    rows_polys = layout.get("rows_polys") or []
+    new_rows_polys = [rows_polys[i] for i in kept_row_local if i < len(rows_polys)]
+    new_rows_data = [rows_data[i] for i in kept_row_local if i < len(rows_data)]
+    new_string_row_local_idx = [old_to_new[idx] for idx in new_string_row_local_idx]
+
+    if not new_rows_data:
+        return None
+
+    layout["string_polys"] = new_string_polys
+    layout["string_row_local_idx"] = new_string_row_local_idx
+    layout["rows_polys"] = new_rows_polys
+    layout["rows_data"] = new_rows_data
+    layout["total_modules"] = sum(r["n_modules"] for r in new_rows_data)
+    layout["total_strings"] = sum(r["n_strings"] for r in new_rows_data)
+    layout["total_tracker_units"] = sum(len(r.get("tracker_units") or []) for r in new_rows_data)
+    layout["total_rows"] = len(new_rows_data)
+    layout["pruned_island_blocks"] = pruned_blocks
+    return layout
+
+
 def run_layout(
     latlons,
     module_h: float,
@@ -434,6 +578,9 @@ def run_layout(
     row_alignment: str = "horizontal",
     cols_per_block: int = 0,
     ew_gap_m: float = 0.0,
+    prune_isolated_blocks: bool = True,
+    min_tracker_units_per_block: int = DEFAULT_MIN_TRACKER_UNITS_PER_BLOCK,
+    min_strings_per_block: int = DEFAULT_MIN_STRINGS_PER_BLOCK,
 ):
     """
     Sweep row bands across a rotated boundary polygon on a shared site grid.
@@ -725,19 +872,16 @@ def run_layout(
     if not rows_data:
         return None
 
-    total_modules = sum(r["n_modules"] for r in rows_data)
-    total_strings = sum(r["n_strings"] for r in rows_data)
-    total_tracker_units = sum(len(r.get("tracker_units") or []) for r in rows_data)
-    return {
+    result = {
         "rows_data": rows_data,
         "rows_polys": rows_polys,
         "string_polys": string_polys,
         "string_row_local_idx": string_row_local_idx,
         "poly_m": poly_m,
         "poly_inset": poly_inset,
-        "total_modules": total_modules,
-        "total_strings": total_strings,
-        "total_tracker_units": total_tracker_units,
+        "total_modules": sum(r["n_modules"] for r in rows_data),
+        "total_strings": sum(r["n_strings"] for r in rows_data),
+        "total_tracker_units": sum(len(r.get("tracker_units") or []) for r in rows_data),
         "total_rows": len(rows_data),
         "area_m2": area_m2,
         "area_ha": round(area_m2 / 10_000, 3),
@@ -757,6 +901,14 @@ def run_layout(
         "ns_gap_1_effective_m": ns_gap_1,
         "bands_per_block": bands_per_block,
     }
+    return prune_isolated_layout_blocks(
+        result,
+        pitch=pitch,
+        is_tracker=is_tracker,
+        prune_isolated_blocks=prune_isolated_blocks,
+        min_tracker_units_per_block=min_tracker_units_per_block,
+        min_strings_per_block=min_strings_per_block,
+    )
 
 
 def site_layout_grid(
