@@ -1196,6 +1196,7 @@ export function OutputPage({
       layout_row: selectedLayoutRow,
       yield_result: yieldResult as unknown as Record<string, unknown> | null,
       selected_yield_mwh: selectedAnnualMwh,
+      location_label: locationLabel || "",
     };
   }
 

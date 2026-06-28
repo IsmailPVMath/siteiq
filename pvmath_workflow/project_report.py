@@ -8,9 +8,9 @@ import zipfile
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 
-from pvmath_brand import PRODUCT_NAME
+from pvmath_brand import COMPANY_NAME, PRODUCT_NAME, TAGLINE
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_LEFT, TA_RIGHT
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A3, A4, landscape
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm, mm
@@ -27,6 +27,8 @@ from reportlab.platypus import (
 
 from layoutiq.bom import compute_bom
 from layoutiq.drawing import make_layout_drawing
+from layoutiq.tracker_styles import TRACKER_UNIT_STYLES
+from layoutiq.tracker_units import build_tracker_unit_polys, count_tracker_units_by_size
 from pvmath_geocode import pdf_escape
 from pvmath_pdf import SITEIQ_DISCLAIMER_BODY
 from pvmath_workflow.layout_detail import build_layout_detail, export_layout_dxf
@@ -55,7 +57,10 @@ def _styles():
 
 def _section_table(rows: List[List[str]], col_widths) -> Table:
     st = _styles()
-    data = [[_lp(c, st["lbl"] if i == 0 else st["body"]) for c in row] for row in rows]
+    data = [
+        [_lp(c, st["lbl"] if i == 0 else st["body"]) for i, c in enumerate(row)]
+        for row in rows
+    ]
     tbl = Table(data, colWidths=col_widths)
     tbl.setStyle(
         TableStyle(
@@ -283,6 +288,99 @@ def _merged_layout_for_drawing(detail: Dict[str, Any]) -> Optional[Dict[str, Any
     return merged
 
 
+def _fit_image(png_bytes: bytes, max_w: float, max_h: float) -> RLImage:
+    """RLImage scaled to fit a box while preserving aspect ratio."""
+    aspect = 13.0 / 10.0
+    try:
+        from PIL import Image as PILImage  # pillow is a project dependency
+
+        with PILImage.open(io.BytesIO(png_bytes)) as im:
+            if im.height:
+                aspect = im.width / im.height
+    except Exception:
+        pass
+    w = max_w
+    h = w / aspect
+    if h > max_h:
+        h = max_h
+        w = h * aspect
+    return RLImage(io.BytesIO(png_bytes), width=w, height=h)
+
+
+def _logo_block(st) -> Table:
+    """Small PVMath logo mark + wordmark for the title block."""
+    mark = Table(
+        [[_lp("PV", ParagraphStyle(
+            "logomark", parent=st["white"], fontSize=13, alignment=TA_CENTER, leading=15,
+        ))]],
+        colWidths=[10 * mm],
+        rowHeights=[10 * mm],
+    )
+    mark.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#145f34")),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    word = [
+        _lp(COMPANY_NAME, ParagraphStyle(
+            "logoword", parent=st["h2"], fontSize=15, leading=17, textColor=colors.HexColor("#1d9e52"),
+            spaceBefore=0, spaceAfter=2,
+        )),
+        _lp(TAGLINE, ParagraphStyle(
+            "logotag", parent=st["muted"], fontSize=7, leading=9, textColor=colors.HexColor("#5a7a5a"),
+        )),
+    ]
+    tbl = Table([[mark, word]], colWidths=[12 * mm, None])
+    tbl.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("LEFTPADDING", (1, 0), (1, 0), 6),
+    ]))
+    return tbl
+
+
+# BOM lines surfaced on the A3 sheet (concise "nutshell"); full BOM lives in the CSV.
+_A3_BOM_KEYS = [
+    "DC Capacity",
+    "AC Capacity (est.)",
+    "DC:AC Ratio",
+    "Total Modules",
+    "Total Strings",
+    "Total tracker units",
+    "Total Inverters",
+    "Foundation Posts (est.)",
+    "Rail / Purlin (m, est.)",
+    "Module Clamps (est.)",
+    "DC String Cable (est.)",
+    "Site Area",
+]
+
+
+def _sidebar_panel(rows: List[List], header: str, st, *, col_widths) -> Table:
+    """Boxed info panel with a green header band."""
+    data = [[_lp(header, st["white"])] + [_lp("", st["white"])] * (len(col_widths) - 1)]
+    data += rows
+    tbl = Table(data, colWidths=col_widths)
+    style = [
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#145f34")),
+        ("SPAN", (0, 0), (-1, 0)),
+        ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#1d9e52")),
+        ("INNERGRID", (0, 1), (-1, -1), 0.25, colors.HexColor("#d4e8d4")),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, 0), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 4),
+    ]
+    tbl.setStyle(TableStyle(style))
+    return tbl
+
+
 def build_layout_a3_pdf(
     *,
     project_name: str,
@@ -290,84 +388,185 @@ def build_layout_a3_pdf(
     bom: Dict[str, str],
     module_wp: int = 550,
     azimuth: float = 180.0,
+    country: str = "",
+    lat: Optional[float] = None,
+    lon: Optional[float] = None,
+    land_use: str = "Standard",
+    location_label: str = "",
+    drawn_by: str = "PVMath LayoutIQ",
+    checked_by: str = "—",
+    revision: str = "R0",
 ) -> bytes:
-    """A3 landscape: layout schematic (left) + BOM sidebar (right)."""
+    """A3 landscape engineering sheet: centred top-view layout + title block sidebar."""
     layout = _merged_layout_for_drawing(detail)
     if not layout:
         raise ValueError("No layout geometry for A3 sheet")
 
     chart_bytes = make_layout_drawing(layout, project_name, module_wp, azimuth)
     page_w, page_h = landscape(A3)
+    margin = 10 * mm
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf,
         pagesize=landscape(A3),
-        leftMargin=12 * mm,
-        rightMargin=12 * mm,
-        topMargin=12 * mm,
-        bottomMargin=12 * mm,
+        leftMargin=margin,
+        rightMargin=margin,
+        topMargin=margin,
+        bottomMargin=margin,
     )
     st = _styles()
+    # SimpleDocTemplate adds 6pt frame padding on each side; outer table adds
+    # 6pt cell padding top/bottom. Reserve that so the sheet fits one page.
+    usable_w = page_w - 2 * margin - 12
+    usable_h = page_h - 2 * margin - 12
+    row_h = usable_h - 12
 
-    title_row = Table(
-        [[
-            _lp(f"LayoutIQ — {project_name}", st["white"]),
-            _lp(
-                f"{detail.get('label', '')} · {detail.get('pitch_m')} m · GCR {detail.get('gcr')} · "
-                f"{detail.get('dc_kwp', 0):,.0f} kWp",
-                ParagraphStyle("sub", parent=st["muted"], fontSize=8, textColor=colors.HexColor("#d4e8d4"), alignment=TA_RIGHT),
-            ),
-        ]],
-        colWidths=[page_w * 0.55, page_w * 0.35],
-    )
-    title_row.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#145f34")),
-        ("TOPPADDING", (0, 0), (-1, -1), 8),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-        ("LEFTPADDING", (0, 0), (-1, -1), 10),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
-    ]))
+    sidebar_w = 122 * mm
+    gap = 4 * mm
+    main_w = usable_w - sidebar_w - gap
 
-    img_w = page_w * 0.68
-    img_h = page_h * 0.78
-    layout_img = RLImage(io.BytesIO(chart_bytes), width=img_w, height=img_h)
+    layout_img = _fit_image(chart_bytes, main_w - 14, row_h - 4)
 
-    bom_rows = [[_lp("Bill of materials", st["h3"]), _lp("", st["body"])]]
-    bom_rows.append([_lp("Item", st["lbl"]), _lp("Quantity", st["lbl"])])
-    for key, val in bom.items():
-        bom_rows.append([_lp(key, st["body"]), _lp(val, st["body"])])
+    is_tracker = bool(layout.get("is_tracker"))
+    mount_str = "Single-Axis Tracker (SAT)" if is_tracker else f"Fixed Tilt · Az {azimuth:g}°"
+    coord_str = f"{lat:.5f}, {lon:.5f}" if lat is not None and lon is not None else "—"
+    inner = [3.6 * cm, sidebar_w - 3.6 * cm - 12]
 
-    bom_tbl = Table(bom_rows, colWidths=[img_w * 0.38, img_w * 0.22])
-    bom_tbl.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e8f5ee")),
-        ("BACKGROUND", (0, 1), (-1, 1), colors.HexColor("#f0faf3")),
-        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#1d9e52")),
-        ("INNERGRID", (0, 1), (-1, -1), 0.3, colors.HexColor("#d4e8d4")),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ("LEFTPADDING", (0, 0), (-1, -1), 5),
-        ("SPAN", (0, 0), (1, 0)),
-    ]))
-
-    body = Table(
-        [[layout_img, bom_tbl]],
-        colWidths=[img_w + 6 * mm, page_w - img_w - 30 * mm],
-    )
-    body.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
-
-    story = [
-        title_row,
-        Spacer(1, 4 * mm),
-        body,
-        Spacer(1, 3 * mm),
-        _lp(
-            f"A3 layout sheet · {date.today()} · Preliminary BOM — verify before procurement. "
-            "DXF geometry uses local metric coordinates.",
-            st["muted"],
-        ),
+    # ── Project summary panel ────────────────────────────────────────────────
+    summary_rows = [
+        [_lp("Project", st["lbl"]), _lp(project_name or "—", st["body"])],
+        [_lp("Location", st["lbl"]), _lp(location_label or country or "—", st["body"])],
+        [_lp("Coordinates", st["lbl"]), _lp(coord_str, st["body"])],
+        [_lp("Land use", st["lbl"]), _lp(land_use or "—", st["body"])],
+        [_lp("Mounting", st["lbl"]), _lp(mount_str, st["body"])],
     ]
-    doc.build(story)
+    summary_panel = _sidebar_panel(summary_rows, "PROJECT SUMMARY", st, col_widths=inner)
+
+    # ── Key metrics panel ────────────────────────────────────────────────────
+    metric_rows = [
+        [_lp("Configuration", st["lbl"]), _lp(str(detail.get("label", "—")), st["body"])],
+        [_lp("DC capacity", st["lbl"]), _lp(f"{detail.get('dc_kwp', 0):,.1f} kWp", st["body"])],
+        [_lp("Modules", st["lbl"]), _lp(f"{detail.get('total_modules', 0):,}", st["body"])],
+        [_lp("Pitch / GCR", st["lbl"]), _lp(f"{detail.get('pitch_m', '—')} m · {detail.get('gcr', '—')}", st["body"])],
+        [_lp("Site area", st["lbl"]), _lp(f"{detail.get('area_ha', '—')} ha", st["body"])],
+        [_lp("Density", st["lbl"]), _lp(f"{detail.get('mw_per_ha', '—')} MWp/ha", st["body"])],
+    ]
+    metrics_panel = _sidebar_panel(metric_rows, "KEY METRICS", st, col_widths=inner)
+
+    # ── Tracker unit legend (colored swatches + counts) ──────────────────────
+    unit_counts = count_tracker_units_by_size(layout)
+    legend_panel = None
+    if unit_counts:
+        swatch_w = 9 * mm
+        label_w = sidebar_w - swatch_w - 22 * mm
+        qty_w = sidebar_w - swatch_w - label_w - 12
+        legend_data = [[_lp("LEGEND — TRACKER UNITS", st["white"]), _lp("", st["white"]), _lp("", st["white"])]]
+        swatch_style = [
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#145f34")),
+            ("SPAN", (0, 0), (-1, 0)),
+            ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#1d9e52")),
+            ("INNERGRID", (0, 1), (-1, -1), 0.25, colors.HexColor("#d4e8d4")),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ("LEFTPADDING", (0, 0), (-1, -1), 5),
+            ("ALIGN", (2, 1), (2, -1), "RIGHT"),
+        ]
+        ridx = 1
+        for label, qty in unit_counts.items():
+            n = int(str(label).rstrip("Ss") or 0)
+            style = TRACKER_UNIT_STYLES.get(n, {})
+            legend_data.append([
+                _lp("", st["body"]),
+                _lp(style.get("label", label), st["body"]),
+                _lp(f"{qty:,}", st["body"]),
+            ])
+            swatch_style.append(
+                ("BACKGROUND", (0, ridx), (0, ridx), colors.HexColor(style.get("fill", "#64748b")))
+            )
+            ridx += 1
+        legend_data.append([
+            _lp("", st["lbl"]),
+            _lp("Total units", st["lbl"]),
+            _lp(f"{sum(unit_counts.values()):,}", st["lbl"]),
+        ])
+        legend_panel = Table(legend_data, colWidths=[swatch_w, label_w, qty_w])
+        legend_panel.setStyle(TableStyle(swatch_style))
+
+    # ── BOM nutshell panel (curated key lines; full BOM in CSV) ───────────────
+    bom_rows = [[_lp("Item", st["lbl"]), _lp("Quantity", st["lbl"])]]
+    for key in _A3_BOM_KEYS:
+        if key in bom:
+            bom_rows.append([_lp(key, st["body"]), _lp(bom[key], st["body"])])
+    bom_panel = _sidebar_panel(bom_rows, "BILL OF MATERIALS", st, col_widths=inner)
+
+    # ── Title block (drawn by / revision / scale) + logo ─────────────────────
+    half = (sidebar_w - 12) / 2
+    tb_rows = [
+        [_lp("Drawn by", st["lbl"]), _lp(drawn_by, st["body"])],
+        [_lp("Checked", st["lbl"]), _lp(checked_by, st["body"])],
+        [_lp("Revision", st["lbl"]), _lp(revision, st["body"])],
+        [_lp("Date", st["lbl"]), _lp(date.today().isoformat(), st["body"])],
+        [_lp("Sheet", st["lbl"]), _lp("Layout — A3 top view", st["body"])],
+        [_lp("Units", st["lbl"]), _lp("Local metric (m) · DXF georeferenced", st["body"])],
+    ]
+    titleblock = Table(tb_rows, colWidths=[3.0 * cm, sidebar_w - 3.0 * cm - 12])
+    titleblock.setStyle(TableStyle([
+        ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#1d9e52")),
+        ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#d4e8d4")),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+    ]))
+
+    logo_row = Table([[_logo_block(st)]], colWidths=[sidebar_w])
+    logo_row.setStyle(TableStyle([
+        ("ALIGN", (0, 0), (-1, -1), "RIGHT"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+    ]))
+
+    sidebar_items: list = [summary_panel, Spacer(1, 3 * mm), metrics_panel, Spacer(1, 3 * mm)]
+    if legend_panel is not None:
+        sidebar_items += [legend_panel, Spacer(1, 3 * mm)]
+    sidebar_items += [
+        bom_panel,
+        Spacer(1, 3 * mm),
+        titleblock,
+        Spacer(1, 2 * mm),
+        logo_row,
+    ]
+
+    sidebar = Table([[item] for item in sidebar_items], colWidths=[sidebar_w])
+    sidebar.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+
+    frame = Table(
+        [[layout_img, sidebar]],
+        colWidths=[main_w, sidebar_w + gap],
+        rowHeights=[row_h],
+    )
+    frame.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (0, 0), "MIDDLE"),
+        ("ALIGN", (0, 0), (0, 0), "CENTER"),
+        ("VALIGN", (1, 0), (1, 0), "TOP"),
+        ("BOX", (0, 0), (-1, -1), 1.0, colors.HexColor("#145f34")),
+        ("LINEBEFORE", (1, 0), (1, 0), 0.6, colors.HexColor("#1d9e52")),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+    ]))
+
+    doc.build([frame])
     return buf.getvalue()
 
 
@@ -418,6 +617,9 @@ def build_project_package_zip(
     layout_row: Optional[Dict[str, Any]] = None,
     yield_result: Optional[Dict[str, Any]] = None,
     selected_yield_mwh: Optional[float] = None,
+    location_label: str = "",
+    drawn_by: str = "PVMath LayoutIQ",
+    revision: str = "R0",
 ) -> bytes:
     """ZIP: PVMath report PDF, A3 layout+BOM PDF, BOM CSV, layout DXF."""
     detail = build_layout_detail(
@@ -492,6 +694,13 @@ def build_project_package_zip(
         bom=bom,
         module_wp=module_wp,
         azimuth=azimuth,
+        country=country,
+        lat=lat,
+        lon=lon,
+        land_use=land_use,
+        location_label=location_label,
+        drawn_by=drawn_by,
+        revision=revision,
     )
     bom_csv = build_bom_csv(bom, project_name)
     dxf_bytes = export_layout_dxf(detail, project_name)

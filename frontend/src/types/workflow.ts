@@ -258,6 +258,9 @@ export interface WorkflowPvmathReportRequest {
   layout_row?: LayoutSweepRow | null;
   yield_result?: Record<string, unknown> | null;
   selected_yield_mwh?: number | null;
+  location_label?: string;
+  drawn_by?: string;
+  revision?: string;
 }
 
 export interface WorkflowProjectPackageRequest extends WorkflowPvmathReportRequest, LayoutElectricalConfig {
