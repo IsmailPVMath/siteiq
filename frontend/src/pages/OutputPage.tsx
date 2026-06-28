@@ -244,6 +244,11 @@ export function OutputPage({
   const [topoAllowCoarsen, setTopoAllowCoarsen] = useState(true);
   const topoAutoRan = useRef(Boolean(initialTopo));
   const autoSaveBusy = useRef(false);
+  // Serializes every save (manual + silent autosave) so two never hit the
+  // single-worker API at once — e.g. a manual "Save project" landing on top of
+  // the post-TerrainIQ autosave + terrain-mesh build, which dropped the
+  // connection and surfaced the "Network error" banner.
+  const saveChain = useRef<Promise<string | null>>(Promise.resolve(null));
   const yieldAutoRan = useRef(false);
   const [topoPdfBusy, setTopoPdfBusy] = useState(false);
   const [topoZipBusy, setTopoZipBusy] = useState(false);
@@ -616,9 +621,11 @@ export function OutputPage({
       if (overrides?.grid_m != null) setTopoGridM(overrides.grid_m);
       if (overrides?.allow_coarsen != null) setTopoAllowCoarsen(overrides.allow_coarsen);
       await refreshFinalScore(topo);
-      void fetchTopoMesh();
       onWorkflowDepth?.("topo");
+      // Kick off the lightweight save before the heavy terrain-mesh build so
+      // the single-worker API isn't doing both at once.
       autoSaveWorkflow("topo");
+      void fetchTopoMesh();
     } catch (err) {
       setTopoError(err instanceof Error ? err.message : "TerrainIQ analysis failed");
     } finally {
@@ -644,7 +651,16 @@ export function OutputPage({
     }
   }
 
-  async function persistWorkflow(options?: { silent?: boolean; stage?: OutputModuleStage }) {
+  function persistWorkflow(options?: { silent?: boolean; stage?: OutputModuleStage }): Promise<string | null> {
+    // Chain onto any in-flight save so saves run strictly one at a time.
+    const next = saveChain.current
+      .catch(() => null)
+      .then(() => runPersistWorkflow(options));
+    saveChain.current = next;
+    return next;
+  }
+
+  async function runPersistWorkflow(options?: { silent?: boolean; stage?: OutputModuleStage }) {
     if (!input) return null;
     const stage = options?.stage ?? activeStage;
     setSaveBusy(true);
