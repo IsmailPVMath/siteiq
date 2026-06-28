@@ -36,18 +36,25 @@ export function setTokenRefresher(fn: (() => Promise<string | null>) | null) {
 }
 
 // A raw fetch rejection (no HTTP response) is usually transient — a Railway
-// redeploy/cold-start finishing or a brief network blip. Retry once after a
-// short delay before surfacing the error, so a one-shot blip is absorbed
-// without changing behavior for a genuinely unreachable server.
+// redeploy/cold-start finishing or a brief network blip. A production deploy
+// can take well over a second, so retry a few times with increasing backoff
+// (~0.8s + 2s + 4s ≈ 7s total) to ride out a redeploy window before surfacing
+// the error. Only raw rejections are retried; a real HTTP error still returns.
+const RETRY_DELAYS_MS = [800, 2000, 4000];
+
 async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
-  try {
-    return await fetch(url, init);
-  } catch (err) {
-    await new Promise((r) => setTimeout(r, 800));
-    return await fetch(url, init).catch(() => {
-      throw err;
-    });
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+    try {
+      return await fetch(url, init);
+    } catch (err) {
+      lastErr = err;
+      const delay = RETRY_DELAYS_MS[attempt];
+      if (delay === undefined) break;
+      await new Promise((r) => setTimeout(r, delay));
+    }
   }
+  throw lastErr;
 }
 
 async function apiFetch<T>(
