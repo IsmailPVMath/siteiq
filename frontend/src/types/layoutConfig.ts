@@ -13,7 +13,7 @@ export interface LayoutElectricalConfig {
   rows_per_block?: number;
   /** Second N-S gap / road (m) at north block end. */
   block_gap_m?: number;
-  /** First N-S gap (m) at north block end, before second gap. */
+  /** First N-S gap (m); 0 = use inter_string_gap_m. */
   ns_gap_1_m?: number;
   /** Tracker columns at constant pitch before E-W gap. */
   cols_per_block?: number;
@@ -47,9 +47,9 @@ export const DEFAULT_LAYOUT_CONFIG: Required<LayoutElectricalConfig> = {
 };
 
 export const ROAD_PRESETS: { id: string; label: string; mode: RoadMode }[] = [
-  { id: "sat_auto", label: "50 columns → 6 m E-W · 16 bands → 0.6 + 5 m N-S", mode: "auto" },
-  { id: "sat_ew_100", label: "100 columns → 6 m E-W · 16 bands → 0.6 + 5 m N-S", mode: "manual" },
-  { id: "sat_wide", label: "50 columns → 8 m E-W · 16 bands → 0.6 + 8 m N-S", mode: "manual" },
+  { id: "sat_auto", label: "50 columns → 6 m E-W · 16 bands → string gap + 5 m N-S", mode: "auto" },
+  { id: "sat_ew_100", label: "100 columns → 6 m E-W · 16 bands → string gap + 5 m N-S", mode: "manual" },
+  { id: "sat_wide", label: "50 columns → 8 m E-W · 16 bands → string gap + 8 m N-S", mode: "manual" },
   { id: "no_roads", label: "No access roads (constant pitch)", mode: "off" },
   { id: "custom", label: "Custom — columns, bands & gaps", mode: "manual" },
 ];
@@ -65,21 +65,21 @@ export const ROAD_PRESET_VALUES: Record<
     cols_per_block: 50,
     ew_gap_m: 6,
     rows_per_block: 16,
-    ns_gap_1_m: 0.6,
+    ns_gap_1_m: 0,
     block_gap_m: 5,
   },
   sat_ew_100: {
     cols_per_block: 100,
     ew_gap_m: 6,
     rows_per_block: 16,
-    ns_gap_1_m: 0.6,
+    ns_gap_1_m: 0,
     block_gap_m: 5,
   },
   sat_wide: {
     cols_per_block: 50,
     ew_gap_m: 8,
     rows_per_block: 16,
-    ns_gap_1_m: 0.6,
+    ns_gap_1_m: 0,
     block_gap_m: 8,
   },
   no_roads: {

@@ -455,14 +455,16 @@ def run_layout(
 
     ``rows_per_block`` counts full east–west pitch bands (constant pitch across the
     PV area) before an N-S road at the north end of the block. ``ns_gap_1_m`` and
-    ``block_gap_m`` (second N-S gap) are the two maintenance gaps inserted on the
-    pitch grid at that boundary (e.g. 0.6 m + 5 m). ``cols_per_block`` /
-    ``ew_gap_m`` insert E-W roads after that many tracker columns, anchored at the
-    fence so they line up across the whole field.
+    ``block_gap_m`` (second N-S gap) are the maintenance gaps inserted on the
+    pitch grid at that boundary. When ``ns_gap_1_m`` is 0, the first gap uses
+    ``inter_string_gap_m``. ``cols_per_block`` / ``ew_gap_m`` insert E-W roads
+    after that many tracker columns, anchored at the fence so they line up
+    across the whole field.
     """
     is_tracker = mounting_type == "sat"
     bands_per_block = rows_per_block
-    use_ns_blocks = bands_per_block > 0 and (ns_gap_1_m > 0 or block_gap_m > 0)
+    ns_gap_1 = ns_gap_1_m if ns_gap_1_m > 0 else inter_string_gap_m
+    use_ns_blocks = bands_per_block > 0 and (ns_gap_1 > 0 or block_gap_m > 0)
 
     lats = [p[0] for p in latlons]
     lons = [p[1] for p in latlons]
@@ -651,8 +653,8 @@ def run_layout(
         if use_ns_blocks and len(rows_data) > rows_before:
             rows_in_block += 1
             if rows_in_block >= bands_per_block:
-                if ns_gap_1_m > 0:
-                    y += max(1, math.ceil(ns_gap_1_m / pitch)) * pitch
+                if ns_gap_1 > 0:
+                    y += max(1, math.ceil(ns_gap_1 / pitch)) * pitch
                 if block_gap_m > 0:
                     y += max(1, math.ceil(block_gap_m / pitch)) * pitch
                 rows_in_block = 0
@@ -689,6 +691,7 @@ def run_layout(
         "rows_per_block": rows_per_block,
         "block_gap_m": block_gap_m,
         "ns_gap_1_m": ns_gap_1_m,
+        "ns_gap_1_effective_m": ns_gap_1,
         "bands_per_block": bands_per_block,
     }
 

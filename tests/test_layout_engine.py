@@ -70,7 +70,7 @@ def test_roads_reduce_row_count():
         modules_per_string=28,
         inter_string_gap_m=0.5,
         rows_per_block=16,
-        ns_gap_1_m=0.6,
+        ns_gap_1_m=0.0,
         block_gap_m=5.0,
         cols_per_block=50,
         ew_gap_m=6.0,

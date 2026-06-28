@@ -56,6 +56,9 @@ function migrateLegacyRoadSettings(s: LayoutIQSnapshotSource): LayoutIQSnapshotS
   if (preset === "sat_single" || preset === "sat_dense") {
     return { ...s, road_preset: "sat_auto", ...roadParamsFromPreset("sat_auto") };
   }
+  if (s.ns_gap_1_m === 0.6) {
+    return { ...s, ns_gap_1_m: 0 };
+  }
   if (preset === "sat_auto" || preset === "sat_wide" || preset === "sat_ew_100") {
     const hasNewFields =
       (s.cols_per_block ?? 0) > 0 ||

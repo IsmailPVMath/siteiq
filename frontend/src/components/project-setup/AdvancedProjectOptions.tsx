@@ -250,14 +250,18 @@ export function AdvancedProjectOptions({
                 type="number"
                 step="0.1"
                 min="0"
-                value={a.ns_gap_1_m ?? ""}
-                onChange={(e) =>
+                value={a.ns_gap_1_m && a.ns_gap_1_m > 0 ? a.ns_gap_1_m : a.inter_string_gap_m ?? ""}
+                onChange={(e) => {
+                  const n = e.target.value ? Number(e.target.value) : undefined;
+                  const stringGap = a.inter_string_gap_m ?? 0.5;
                   onAssumptionsChange({
-                    ns_gap_1_m: e.target.value ? Number(e.target.value) : undefined,
-                  })
-                }
-                placeholder="0.6"
+                    ns_gap_1_m:
+                      n == null || Math.abs(n - stringGap) < 1e-6 ? undefined : n,
+                  });
+                }}
+                placeholder={String(a.inter_string_gap_m ?? 0.5)}
               />
+              <p className="hint">Defaults to inter-string gap.</p>
             </div>
             <div className="field">
               <label htmlFor="block-gap">Second N-S gap / road (m)</label>

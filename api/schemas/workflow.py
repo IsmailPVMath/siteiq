@@ -118,7 +118,7 @@ class WorkflowLayoutSweepRequest(BaseModel):
         default=0.0,
         ge=0,
         le=30.0,
-        description="First N-S gap (m) at north block end, before second gap.",
+        description="First N-S gap (m) at north block end; 0 uses inter_string_gap_m.",
     )
     cols_per_block: int = Field(
         default=0,
@@ -188,7 +188,7 @@ class WorkflowLayoutDetailRequest(BaseModel):
         default=0.0,
         ge=0,
         le=30.0,
-        description="First N-S gap (m) at north block end, before second gap.",
+        description="First N-S gap (m) at north block end; 0 uses inter_string_gap_m.",
     )
     cols_per_block: int = Field(
         default=0,
@@ -292,7 +292,7 @@ class WorkflowProjectPackageRequest(WorkflowPvmathReportRequest):
         default=0.0,
         ge=0,
         le=30.0,
-        description="First N-S gap (m) at north block end, before second gap.",
+        description="First N-S gap (m) at north block end; 0 uses inter_string_gap_m.",
     )
     cols_per_block: int = Field(
         default=0,

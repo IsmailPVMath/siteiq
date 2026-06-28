@@ -18,36 +18,37 @@ DEFAULT_MAX_TRACKER_LENGTH_M = 260.0
 # Default = equal pitch (no access-road gaps). Access roads are opt-in via presets.
 DEFAULT_ROWS_PER_BLOCK = 0
 DEFAULT_BLOCK_GAP_M = 0.0
-DEFAULT_NS_GAP_1_M = 0.0
+DEFAULT_NS_GAP_1_M = 0.0  # 0 = use inter_string_gap_m at layout time
 DEFAULT_COLS_PER_BLOCK = 0
 DEFAULT_EW_GAP_M = 0.0
 
 # PVCase-style roads: constant pitch, E-W gap after N columns, N-S gaps at north block end.
+# ns_gap_1_m=0 in presets → first N-S gap follows the user's inter-string gap.
 ROAD_PRESETS: Dict[str, Dict[str, Any]] = {
     "sat_auto": {
-        "label": "50 columns → 6 m E-W gap · 16 bands → 0.6 + 5 m N-S",
+        "label": "50 columns → 6 m E-W gap · 16 bands → string gap + 5 m N-S",
         "cols_per_block": 50,
         "ew_gap_m": 6.0,
         "rows_per_block": 16,
-        "ns_gap_1_m": 0.6,
+        "ns_gap_1_m": 0.0,
         "block_gap_m": 5.0,
         "road_mode": "auto",
     },
     "sat_ew_100": {
-        "label": "100 columns → 6 m E-W gap · 16 bands → 0.6 + 5 m N-S",
+        "label": "100 columns → 6 m E-W gap · 16 bands → string gap + 5 m N-S",
         "cols_per_block": 100,
         "ew_gap_m": 6.0,
         "rows_per_block": 16,
-        "ns_gap_1_m": 0.6,
+        "ns_gap_1_m": 0.0,
         "block_gap_m": 5.0,
         "road_mode": "manual",
     },
     "sat_wide": {
-        "label": "50 columns → 8 m E-W gap · 16 bands → 0.6 + 8 m N-S",
+        "label": "50 columns → 8 m E-W gap · 16 bands → string gap + 8 m N-S",
         "cols_per_block": 50,
         "ew_gap_m": 8.0,
         "rows_per_block": 16,
-        "ns_gap_1_m": 0.6,
+        "ns_gap_1_m": 0.0,
         "block_gap_m": 8.0,
         "road_mode": "manual",
     },

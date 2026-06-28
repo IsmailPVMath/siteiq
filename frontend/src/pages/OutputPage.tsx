@@ -380,6 +380,10 @@ export function OutputPage({
     setBlockGapM(p.block_gap_m ?? 0);
   }
 
+  function effectiveNsGap1M(): number {
+    return nsGap1M > 0 ? nsGap1M : interStringGap;
+  }
+
   function buildLayoutIQSnapshot(): LayoutIQSnapshot {
     return {
       optimization_mode: layoutOptimization,
@@ -1764,8 +1768,8 @@ export function OutputPage({
                 </div>
                 {roadMode === "auto" ? (
                   <p className="hint sidebar-hint">
-                    Constant pitch; E-W gap after 50 columns (6 m); N-S gaps 0.6 + 5 m
-                    after 16 full-width pitch bands.
+                    Constant pitch; E-W gap after 50 columns (6 m); N-S gaps use your
+                    inter-string gap + 5 m after 16 full-width pitch bands.
                   </p>
                 ) : (
                   <div className="field">
@@ -1840,10 +1844,17 @@ export function OutputPage({
                           id="out-ns-gap-1"
                           step="0.1"
                           min={0}
-                          value={nsGap1M}
-                          onChange={setNsGap1M}
+                          value={effectiveNsGap1M()}
+                          onChange={(n) => {
+                            setNsGap1M(Math.abs(n - interStringGap) < 1e-6 ? 0 : n);
+                          }}
                           disabled={roadMode === "auto"}
+                          placeholder={String(interStringGap)}
                         />
+                        <p className="hint sidebar-hint">
+                          Defaults to inter-string gap ({interStringGap} m). Set a different
+                          value to override.
+                        </p>
                       </div>
                       <div className="field">
                         <label htmlFor="out-block-gap">Second N-S gap / road (m)</label>
@@ -1868,7 +1879,7 @@ export function OutputPage({
                       ? `E-W: ${colsPerBlock} columns → ${ewGapM} m gap. `
                       : ""}
                     {rowsPerBlock > 0
-                      ? `N-S: ${rowsPerBlock} bands → ${nsGap1M} + ${blockGapM} m gaps.`
+                      ? `N-S: ${rowsPerBlock} bands → ${effectiveNsGap1M()} + ${blockGapM} m gaps.`
                       : ""}
                   </p>
                 ) : null}
