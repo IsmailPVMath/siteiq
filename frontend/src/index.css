@@ -597,6 +597,26 @@ a {
   gap: 0.4rem;
 }
 
+.layout-refine-pitch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.65rem 1rem;
+  margin: 0.85rem 0 0.35rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border);
+}
+
+.layout-refine-pitch .field {
+  flex: 1 1 10rem;
+  margin: 0;
+}
+
+.layout-refine-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+}
+
 .layout-preview-map {
   width: 100%;
   min-height: 560px;

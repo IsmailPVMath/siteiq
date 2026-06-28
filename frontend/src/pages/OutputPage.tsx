@@ -930,6 +930,16 @@ export function OutputPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeStage, selectedLayoutRow, yieldResult, yieldBusy]);
 
+  function selectLayoutRow(row: LayoutSweepRow, loadPreview = true) {
+    setSelectedLayoutRow(row);
+    setLayoutCustomPitch(String(row.pitch_m));
+    setLayoutFilter(row.config_key);
+    setLayoutDetail(null);
+    setTerrain3D(null);
+    setYieldResult(null);
+    if (loadPreview) void handleLayoutDetail(row);
+  }
+
   async function handleLayoutSweep() {
     if (!hasBoundary) return;
     const inputError = layoutInputError();
@@ -942,6 +952,10 @@ export function OutputPage({
     setLayoutBusy(true);
     setLayoutError("");
     try {
+      const pitch = Number(layoutCustomPitch);
+      const refineFrom = selectedLayoutRow;
+      const isRefineRun = pitch > 0 && !!refineFrom;
+
       const body: Parameters<typeof workflowLayoutSweep>[1] = {
         boundaries,
         restriction_polygons: layoutRestrictionPolygons,
@@ -959,14 +973,38 @@ export function OutputPage({
         const gcr = Number(layoutCustomGcr);
         if (gcr > 0) body.custom_gcr = gcr;
       }
-      const pitch = Number(layoutCustomPitch);
-      if (pitch > 0) body.custom_pitch_m = pitch;
+      if (pitch > 0) {
+        body.custom_pitch_m = pitch;
+        if (refineFrom) {
+          body.portrait_filter = [refineFrom.n_portrait];
+        }
+      }
       const res = await workflowLayoutSweep(token, body);
       setLayoutSweep(res);
-      setLayoutFilter("all");
-      setSelectedLayoutRow(null);
-      setLayoutDetail(null);
-      setTerrain3D(null);
+      if (isRefineRun && refineFrom) {
+        const match = res.rows.find(
+          (r) =>
+            r.success &&
+            r.config_key === refineFrom.config_key &&
+            Math.abs(r.pitch_m - pitch) < 0.005,
+        );
+        if (match) {
+          setLayoutFilter(match.config_key);
+          setSelectedLayoutRow(match);
+          setLayoutCustomPitch(String(match.pitch_m));
+          void handleLayoutDetail(match);
+        } else {
+          setLayoutFilter(refineFrom.config_key);
+          setSelectedLayoutRow(null);
+          setLayoutDetail(null);
+          setTerrain3D(null);
+        }
+      } else {
+        setLayoutFilter("all");
+        setSelectedLayoutRow(null);
+        setLayoutDetail(null);
+        setTerrain3D(null);
+      }
       setYieldResult(null);
     } catch (err) {
       setLayoutError(err instanceof Error ? err.message : "Layout sweep failed");
@@ -1889,16 +1927,16 @@ export function OutputPage({
                 <input
                   id="layout-fixed-pitch"
                   type="number"
-                  step="0.1"
+                  step="0.01"
                   min="3"
                   max="20"
-                  placeholder="e.g. 6.5"
+                  placeholder="e.g. 6.50"
                   value={layoutCustomPitch}
                   onChange={(e) => setLayoutCustomPitch(e.target.value)}
                 />
                 <p className="hint sidebar-hint">
                   {layoutCustomPitch
-                    ? "Single layout at this pitch — no pitch sweep."
+                    ? "Single layout at this pitch — no pitch sweep. Select a result row to start from its pitch, then tweak (e.g. 5.93 → 5.90)."
                     : "Leave empty to compare multiple pitches (capacity sweep)."}
                 </p>
               </div>
@@ -2542,13 +2580,7 @@ export function OutputPage({
                           <button
                             type="button"
                             className="btn btn-ghost btn-sm"
-                            onClick={() => {
-                              setSelectedLayoutRow(row);
-                              setLayoutDetail(null);
-                              setTerrain3D(null);
-                              setYieldResult(null);
-                              void handleLayoutDetail(row);
-                            }}
+                            onClick={() => selectLayoutRow(row)}
                           >
                             {selectedLayoutRow?.config_key === row.config_key &&
                             selectedLayoutRow?.pitch_m === row.pitch_m
@@ -2602,6 +2634,33 @@ export function OutputPage({
                         </button>
                       </div>
                     </div>
+                    <div className="layout-refine-pitch">
+                      <div className="field">
+                        <label htmlFor="layout-refine-pitch">Refine pitch (m)</label>
+                        <input
+                          id="layout-refine-pitch"
+                          type="number"
+                          step="0.01"
+                          min="3"
+                          max="20"
+                          placeholder={String(selectedLayoutRow.pitch_m)}
+                          value={layoutCustomPitch}
+                          onChange={(e) => setLayoutCustomPitch(e.target.value)}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        onClick={() => void handleLayoutSweep()}
+                        disabled={layoutBusy || gisBusy || !layoutCustomPitch}
+                      >
+                        {layoutBusy ? "Running…" : "Re-run at this pitch"}
+                      </button>
+                    </div>
+                    <p className="hint layout-refine-hint">
+                      Tweak the pitch from your selected row (e.g. 5.93 → 5.90) and re-run a single
+                      layout at the same mount and portrait.
+                    </p>
                     {layoutDetail ? (
                       <>
                         <LayoutPreviewMap
