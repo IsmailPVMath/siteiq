@@ -34,6 +34,7 @@ import {
   DEFAULT_LAYOUT_CONFIG,
   ROAD_PRESETS,
   layoutPayloadFrom,
+  roadParamsFromPreset,
   type RoadMode,
   type RowAlignment,
 } from "../types/layoutConfig";
@@ -294,6 +295,7 @@ export function OutputPage({
   const [azimuthCustom, setAzimuthCustom] = useState<boolean>(layoutInit.azimuth_custom);
   const [rowsPerBlock, setRowsPerBlock] = useState(layoutInit.rows_per_block);
   const [blockGapM, setBlockGapM] = useState(layoutInit.block_gap_m);
+  const [roadRepeatM, setRoadRepeatM] = useState(layoutInit.road_repeat_m);
   const [colsPerBlock, setColsPerBlock] = useState(layoutInit.cols_per_block);
   const [ewGapM, setEwGapM] = useState(layoutInit.ew_gap_m);
   const [reportBusy, setReportBusy] = useState(false);
@@ -369,6 +371,15 @@ export function OutputPage({
     return moduleHWarning || moduleWWarning || slopeWarning || "";
   }
 
+  function applyRoadPresetToState(id: string) {
+    const p = roadParamsFromPreset(id);
+    setRoadRepeatM(p.road_repeat_m ?? 0);
+    setBlockGapM(p.block_gap_m ?? 0);
+    setRowsPerBlock(p.rows_per_block ?? 0);
+    setColsPerBlock(p.cols_per_block ?? 0);
+    setEwGapM(p.ew_gap_m ?? 0);
+  }
+
   function buildLayoutIQSnapshot(): LayoutIQSnapshot {
     return {
       optimization_mode: layoutOptimization,
@@ -393,6 +404,7 @@ export function OutputPage({
       road_preset: roadPreset,
       rows_per_block: rowsPerBlock,
       block_gap_m: blockGapM,
+      road_repeat_m: roadRepeatM,
       cols_per_block: colsPerBlock,
       ew_gap_m: ewGapM,
       azimuth_deg: azimuthDeg,
@@ -415,6 +427,7 @@ export function OutputPage({
       road_preset: roadPreset,
       rows_per_block: rowsPerBlock,
       block_gap_m: blockGapM,
+      road_repeat_m: roadRepeatM,
       cols_per_block: colsPerBlock,
       ew_gap_m: ewGapM,
       exclude_tracker_slope: excludeTrackerSlope,
@@ -426,8 +439,9 @@ export function OutputPage({
         azimuth: azimuthDeg,
         road_mode: "manual" as RoadMode,
         road_preset: "custom",
-        rows_per_block: rowsPerBlock,
+        rows_per_block: roadRepeatM > 0 ? 0 : rowsPerBlock,
         block_gap_m: blockGapM,
+        road_repeat_m: roadRepeatM,
         cols_per_block: colsPerBlock,
         ew_gap_m: ewGapM,
         allow_partial_strings: allowPartialStrings,
@@ -1735,6 +1749,7 @@ export function OutputPage({
                     onClick={() => {
                       setRoadMode("auto");
                       setRoadPreset("sat_auto");
+                      applyRoadPresetToState("sat_auto");
                     }}
                   >
                     Auto roads
@@ -1748,7 +1763,10 @@ export function OutputPage({
                   </button>
                 </div>
                 {roadMode === "auto" ? (
-                  <p className="hint sidebar-hint">2 tracker rows + 5 m N-S gap</p>
+                  <p className="hint sidebar-hint">
+                    Full east–west pitch bands at constant pitch; N-S maintenance road every 100 m
+                    array depth, then 5 m gap.
+                  </p>
                 ) : (
                   <div className="field">
                     <label htmlFor="out-road-preset">Road preset</label>
@@ -1758,7 +1776,14 @@ export function OutputPage({
                       onChange={(e) => {
                         const id = e.target.value;
                         setRoadPreset(id);
-                        setRoadMode(id === "no_roads" ? "off" : "manual");
+                        if (id === "no_roads") {
+                          setRoadMode("off");
+                        } else if (id === "sat_auto") {
+                          setRoadMode("auto");
+                        } else {
+                          setRoadMode("manual");
+                        }
+                        if (id !== "custom") applyRoadPresetToState(id);
                       }}
                     >
                       {ROAD_PRESETS.map((p) => (
@@ -1771,14 +1796,19 @@ export function OutputPage({
                 )}
                 {roadPreset === "custom" ? (
                   <>
+                    <p className="hint sidebar-hint">
+                      Each block fills the full east–west width at constant pitch; the N-S road
+                      follows the array depth you set (not adjacent tracker columns).
+                    </p>
                     <div className="grid-2 layout-custom-row">
                       <div className="field">
-                        <label htmlFor="out-rows-block">Rows / block (N-S road)</label>
+                        <label htmlFor="out-road-repeat">Array depth between N-S roads (m)</label>
                         <NumberField
-                          id="out-rows-block"
-                          min={1}
-                          value={rowsPerBlock}
-                          onChange={setRowsPerBlock}
+                          id="out-road-repeat"
+                          step="5"
+                          min={0}
+                          value={roadRepeatM}
+                          onChange={setRoadRepeatM}
                         />
                       </div>
                       <div className="field">
@@ -1792,6 +1822,17 @@ export function OutputPage({
                         />
                       </div>
                     </div>
+                    {roadRepeatM <= 0 ? (
+                      <div className="field">
+                        <label htmlFor="out-rows-block">Pitch bands / block (legacy)</label>
+                        <NumberField
+                          id="out-rows-block"
+                          min={1}
+                          value={rowsPerBlock}
+                          onChange={setRowsPerBlock}
+                        />
+                      </div>
+                    ) : null}
                     <div className="grid-2 layout-custom-row">
                       <div className="field">
                         <label htmlFor="out-cols-block">Strings / block (E-W road)</label>

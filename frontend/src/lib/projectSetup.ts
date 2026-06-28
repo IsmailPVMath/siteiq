@@ -198,6 +198,7 @@ export function draftToProjectPayload(draft: ProjectSetupDraft): ProjectPayload 
       road_preset: a.road_preset,
       rows_per_block: a.rows_per_block,
       block_gap_m: a.block_gap_m,
+      road_repeat_m: a.road_repeat_m,
       cols_per_block: a.cols_per_block,
       ew_gap_m: a.ew_gap_m,
     },
@@ -237,6 +238,7 @@ export function draftToGateRequest(draft: ProjectSetupDraft): GateAnalyzeRequest
     road_preset: a.road_preset,
     rows_per_block: a.road_mode === "manual" && a.road_preset === "custom" ? a.rows_per_block : undefined,
     block_gap_m: a.road_mode === "manual" && a.road_preset === "custom" ? a.block_gap_m : undefined,
+    road_repeat_m: a.road_mode === "manual" && a.road_preset === "custom" ? a.road_repeat_m : undefined,
     cols_per_block: a.road_mode === "manual" && a.road_preset === "custom" ? a.cols_per_block : undefined,
     ew_gap_m: a.road_mode === "manual" && a.road_preset === "custom" ? a.ew_gap_m : undefined,
   };
@@ -278,6 +280,7 @@ export function gateRequestToDraft(initial: Partial<GateAnalyzeRequest>): Projec
   if (initial.road_preset) d.assumptions.road_preset = initial.road_preset;
   if (initial.rows_per_block != null) d.assumptions.rows_per_block = initial.rows_per_block;
   if (initial.block_gap_m != null) d.assumptions.block_gap_m = initial.block_gap_m;
+  if (initial.road_repeat_m != null) d.assumptions.road_repeat_m = initial.road_repeat_m;
   if (initial.cols_per_block != null) d.assumptions.cols_per_block = initial.cols_per_block;
   if (initial.ew_gap_m != null) d.assumptions.ew_gap_m = initial.ew_gap_m;
   if (initial.restriction_polygons) d.geometry.restrictions = initial.restriction_polygons;
@@ -351,6 +354,7 @@ export function projectRecordToDraft(row: ProjectRecord): ProjectSetupDraft {
   if (typeof wf.road_preset === "string") d.assumptions.road_preset = wf.road_preset;
   if (typeof wf.rows_per_block === "number") d.assumptions.rows_per_block = wf.rows_per_block;
   if (typeof wf.block_gap_m === "number") d.assumptions.block_gap_m = wf.block_gap_m;
+  if (typeof wf.road_repeat_m === "number") d.assumptions.road_repeat_m = wf.road_repeat_m;
   if (typeof wf.cols_per_block === "number") d.assumptions.cols_per_block = wf.cols_per_block;
   if (typeof wf.ew_gap_m === "number") d.assumptions.ew_gap_m = wf.ew_gap_m;
 

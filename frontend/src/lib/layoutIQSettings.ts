@@ -1,4 +1,9 @@
-import { DEFAULT_LAYOUT_CONFIG, type RoadMode, type RowAlignment } from "../types/layoutConfig";
+import {
+  DEFAULT_LAYOUT_CONFIG,
+  roadParamsFromPreset,
+  type RoadMode,
+  type RowAlignment,
+} from "../types/layoutConfig";
 import type { GateAnalyzeRequest } from "../types/gate";
 import type {
   LayoutLandCost,
@@ -30,6 +35,7 @@ export interface LayoutIQSnapshot {
   road_preset: string;
   rows_per_block: number;
   block_gap_m: number;
+  road_repeat_m: number;
   cols_per_block: number;
   ew_gap_m: number;
   azimuth_deg: number;
@@ -42,6 +48,22 @@ export type LayoutIQSnapshotSource = Partial<LayoutIQSnapshot>;
 
 function mountFromInput(mountType?: string): "Fixed Tilt" | "Single-Axis Tracker" {
   return mountType === "Single-Axis Tracker" ? "Single-Axis Tracker" : "Fixed Tilt";
+}
+
+/** Map legacy "2 rows" presets to metre-based full-width band roads. */
+function migrateLegacyRoadSettings(s: LayoutIQSnapshotSource): LayoutIQSnapshotSource {
+  const preset = s.road_preset ?? DEFAULT_LAYOUT_CONFIG.road_preset;
+  if (preset === "sat_single") {
+    return { ...s, road_preset: "sat_dense", ...roadParamsFromPreset("sat_dense") };
+  }
+  if (
+    (preset === "sat_auto" || preset === "sat_wide" || preset === "sat_dense") &&
+    (s.rows_per_block === 1 || s.rows_per_block === 2) &&
+    !s.road_repeat_m
+  ) {
+    return { ...s, ...roadParamsFromPreset(preset) };
+  }
+  return s;
 }
 
 /** Defaults from project setup input when no saved LayoutIQ snapshot exists. */
@@ -64,6 +86,7 @@ export function layoutIQDefaultsFromInput(input?: GateAnalyzeRequest): LayoutIQS
     road_preset: input.road_preset,
     rows_per_block: input.rows_per_block,
     block_gap_m: input.block_gap_m,
+    road_repeat_m: input.road_repeat_m,
     cols_per_block: input.cols_per_block,
     ew_gap_m: input.ew_gap_m,
   };
@@ -74,7 +97,7 @@ export function mergeLayoutIQSnapshot(
   input?: GateAnalyzeRequest,
 ): LayoutIQSnapshot {
   const fromInput = layoutIQDefaultsFromInput(input);
-  const s = saved ?? {};
+  const s = migrateLegacyRoadSettings(saved ?? {});
   return {
     optimization_mode: s.optimization_mode ?? "balanced",
     land_cost: s.land_cost ?? "auto",
@@ -110,6 +133,7 @@ export function mergeLayoutIQSnapshot(
     road_preset: s.road_preset ?? fromInput.road_preset ?? DEFAULT_LAYOUT_CONFIG.road_preset,
     rows_per_block: s.rows_per_block ?? fromInput.rows_per_block ?? DEFAULT_LAYOUT_CONFIG.rows_per_block,
     block_gap_m: s.block_gap_m ?? fromInput.block_gap_m ?? DEFAULT_LAYOUT_CONFIG.block_gap_m,
+    road_repeat_m: s.road_repeat_m ?? fromInput.road_repeat_m ?? DEFAULT_LAYOUT_CONFIG.road_repeat_m,
     cols_per_block: s.cols_per_block ?? fromInput.cols_per_block ?? DEFAULT_LAYOUT_CONFIG.cols_per_block,
     ew_gap_m: s.ew_gap_m ?? fromInput.ew_gap_m ?? DEFAULT_LAYOUT_CONFIG.ew_gap_m,
     azimuth_deg: s.azimuth_deg ?? 180,
@@ -139,6 +163,7 @@ export function layoutIQToWorkflowFields(s: LayoutIQSnapshot): Record<string, un
     road_preset: s.road_preset,
     rows_per_block: s.rows_per_block,
     block_gap_m: s.block_gap_m,
+    road_repeat_m: s.road_repeat_m,
     cols_per_block: s.cols_per_block,
     ew_gap_m: s.ew_gap_m,
   };
@@ -187,6 +212,7 @@ export function parseLayoutIQSnapshot(raw: unknown): LayoutIQSnapshot | null {
     road_preset: String(o.road_preset ?? DEFAULT_LAYOUT_CONFIG.road_preset),
     rows_per_block: Number(o.rows_per_block) || 0,
     block_gap_m: Number(o.block_gap_m) || 0,
+    road_repeat_m: Number(o.road_repeat_m) || 0,
     cols_per_block: Number(o.cols_per_block) || 0,
     ew_gap_m: Number(o.ew_gap_m) || 0,
     azimuth_deg: Number(o.azimuth_deg) || 180,

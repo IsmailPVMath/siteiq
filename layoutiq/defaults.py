@@ -15,32 +15,39 @@ DEFAULT_INTER_STRING_GAP_M = 0.5
 DEFAULT_TRACKER_STRING_OPTIONS = [8, 7, 6, 5]
 DEFAULT_MAX_TRACKER_LENGTH_M = 260.0
 
-# Default = equal pitch (no access-road gaps). Access roads are opt-in via presets;
-# N-S road gaps intentionally widen pitch periodically when enabled.
+# Default = equal pitch (no access-road gaps). Access roads are opt-in via presets.
 DEFAULT_ROWS_PER_BLOCK = 0
 DEFAULT_BLOCK_GAP_M = 0.0
+DEFAULT_ROAD_REPEAT_M = 0.0
 
+# N-S roads: full east-west pitch bands at constant pitch, then a maintenance gap.
+# ``road_repeat_m`` is array depth between roads (metres along pitch), NOT adjacent
+# tracker columns. ``rows_per_block`` is a legacy/custom override (pitch-band count).
 ROAD_PRESETS: Dict[str, Dict[str, Any]] = {
     "sat_auto": {
-        "label": "SAT auto — 2 rows + 5 m N-S gap",
-        "rows_per_block": 2,
+        "label": "N-S road every 100 m — 5 m gap (full-width bands)",
+        "road_repeat_m": 100.0,
         "block_gap_m": 5.0,
+        "rows_per_block": 0,
         "road_mode": "auto",
     },
     "sat_wide": {
-        "label": "Wide access — 2 rows + 8 m N-S gap",
-        "rows_per_block": 2,
+        "label": "N-S road every 100 m — 8 m gap (full-width bands)",
+        "road_repeat_m": 100.0,
         "block_gap_m": 8.0,
+        "rows_per_block": 0,
         "road_mode": "manual",
     },
-    "sat_single": {
-        "label": "Single-row blocks — 1 row + 5 m gap",
-        "rows_per_block": 1,
+    "sat_dense": {
+        "label": "N-S road every 50 m — 5 m gap (full-width bands)",
+        "road_repeat_m": 50.0,
         "block_gap_m": 5.0,
+        "rows_per_block": 0,
         "road_mode": "manual",
     },
     "no_roads": {
-        "label": "No access roads (strings only)",
+        "label": "No access roads (constant pitch)",
+        "road_repeat_m": 0.0,
         "rows_per_block": 0,
         "block_gap_m": 0.0,
         "road_mode": "off",
@@ -59,6 +66,7 @@ def layout_params(
     max_tracker_length_m: float = DEFAULT_MAX_TRACKER_LENGTH_M,
     rows_per_block: int = DEFAULT_ROWS_PER_BLOCK,
     block_gap_m: float = DEFAULT_BLOCK_GAP_M,
+    road_repeat_m: float = DEFAULT_ROAD_REPEAT_M,
     road_mode: RoadMode = "off",
     road_preset: str = "no_roads",
 ) -> Dict[str, Any]:
@@ -75,6 +83,7 @@ def layout_params(
             "max_tracker_length_m": max_tracker_length_m,
             "rows_per_block": preset["rows_per_block"],
             "block_gap_m": preset["block_gap_m"],
+            "road_repeat_m": preset["road_repeat_m"],
             "road_mode": "auto",
             "road_preset": "sat_auto",
         }
@@ -88,8 +97,9 @@ def layout_params(
             "inter_string_gap_m": inter_string_gap_m,
             "tracker_string_options": tracker_string_options or DEFAULT_TRACKER_STRING_OPTIONS,
             "max_tracker_length_m": max_tracker_length_m,
-            "rows_per_block": preset["rows_per_block"],
-            "block_gap_m": preset["block_gap_m"],
+            "rows_per_block": preset.get("rows_per_block", 0),
+            "block_gap_m": preset.get("block_gap_m", 0.0),
+            "road_repeat_m": preset.get("road_repeat_m", 0.0),
             "road_mode": "manual",
             "road_preset": road_preset,
         }
@@ -104,6 +114,7 @@ def layout_params(
             "max_tracker_length_m": max_tracker_length_m,
             "rows_per_block": 0,
             "block_gap_m": 0.0,
+            "road_repeat_m": 0.0,
             "road_mode": "off",
             "road_preset": "no_roads",
         }
@@ -118,6 +129,7 @@ def layout_params(
         "max_tracker_length_m": max_tracker_length_m,
         "rows_per_block": max(0, rows_per_block),
         "block_gap_m": max(0.0, block_gap_m),
+        "road_repeat_m": max(0.0, road_repeat_m),
         "road_mode": road_mode,
         "road_preset": road_preset or "custom",
     }

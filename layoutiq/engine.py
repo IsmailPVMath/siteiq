@@ -433,6 +433,7 @@ def run_layout(
     row_alignment: str = "horizontal",
     cols_per_block: int = 0,
     ew_gap_m: float = 0.0,
+    road_repeat_m: float = 0.0,
 ):
     """
     Sweep row bands across a rotated boundary polygon on a shared site grid.
@@ -453,12 +454,20 @@ def run_layout(
       own edge for maximum capacity, with ragged/staggered ends.
 
     ``rows_per_block`` / ``block_gap_m`` insert N-S maintenance roads (gaps in
-    the pitch direction). ``cols_per_block`` / ``ew_gap_m`` insert E-W roads
-    (gaps that cross the tracker length), anchored at the fence so they line up
-    across the whole field.
+    the pitch direction). ``road_repeat_m`` (preferred) sets the array depth
+    between roads in metres — each band fills the full east-west width at
+    constant pitch before the next band; roads appear every
+    ``ceil(road_repeat_m / pitch)`` bands. ``cols_per_block`` / ``ew_gap_m``
+    insert E-W roads (gaps that cross the tracker length), anchored at the
+    fence so they line up across the whole field.
     """
     is_tracker = mounting_type == "sat"
-    use_blocks = rows_per_block > 0 and block_gap_m > 0
+    bands_per_block = (
+        max(1, math.ceil(road_repeat_m / pitch))
+        if road_repeat_m > 0 and pitch > 0
+        else rows_per_block
+    )
+    use_blocks = block_gap_m > 0 and bands_per_block > 0
 
     lats = [p[0] for p in latlons]
     lons = [p[1] for p in latlons]
@@ -646,7 +655,7 @@ def run_layout(
         y += pitch
         if use_blocks and len(rows_data) > rows_before:
             rows_in_block += 1
-            if rows_in_block >= rows_per_block:
+            if rows_in_block >= bands_per_block:
                 road_slots = max(1, math.ceil(block_gap_m / pitch))
                 y += road_slots * pitch
                 rows_in_block = 0
@@ -682,6 +691,8 @@ def run_layout(
         "max_tracker_length_m": max_tracker_length_m,
         "rows_per_block": rows_per_block,
         "block_gap_m": block_gap_m,
+        "road_repeat_m": road_repeat_m,
+        "bands_per_block": bands_per_block,
     }
 
 

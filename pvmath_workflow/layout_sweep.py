@@ -95,6 +95,7 @@ def run_layout_sweep(
     max_tracker_length_m: float = 260.0,
     rows_per_block: int = 0,
     block_gap_m: float = 0.0,
+    road_repeat_m: float = 0.0,
     cols_per_block: int = 0,
     ew_gap_m: float = 0.0,
     road_mode: str = "off",
@@ -147,6 +148,7 @@ def run_layout_sweep(
         max_tracker_length_m=max_tracker_length_m,
         rows_per_block=rows_per_block,
         block_gap_m=block_gap_m,
+        road_repeat_m=road_repeat_m,
         road_mode=road_mode,  # type: ignore[arg-type]
         road_preset=road_preset,
     )
@@ -226,6 +228,7 @@ def run_layout_sweep(
                     max_tracker_length_m=lp["max_tracker_length_m"],
                     rows_per_block=lp["rows_per_block"],
                     block_gap_m=lp["block_gap_m"],
+                    road_repeat_m=lp["road_repeat_m"],
                     restriction_latlons=active_restrictions,
                     ref_lat=ref_lat,
                     ref_lon=ref_lon,
@@ -291,6 +294,7 @@ def run_layout_sweep(
                     max_tracker_length_m=lp["max_tracker_length_m"],
                     rows_per_block=lp["rows_per_block"],
                     block_gap_m=lp["block_gap_m"],
+                    road_repeat_m=lp["road_repeat_m"],
                     restriction_latlons=active_restrictions,
                     ref_lat=ref_lat,
                     ref_lon=ref_lon,

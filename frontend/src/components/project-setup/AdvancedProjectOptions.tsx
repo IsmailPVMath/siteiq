@@ -1,5 +1,5 @@
 import type { ProjectSetupDraft } from "../../types/projectSetup";
-import { ROAD_PRESETS } from "../../types/layoutConfig";
+import { ROAD_PRESETS, roadParamsFromPreset } from "../../types/layoutConfig";
 import type { RoadMode } from "../../types/layoutConfig";
 
 interface Props {
@@ -171,6 +171,16 @@ export function AdvancedProjectOptions({
             if (id === "no_roads") onRoadModeChange("off", id);
             else if (id === "sat_auto") onRoadModeChange("auto", id);
             else onRoadModeChange("manual", id);
+            if (id !== "custom") {
+              const p = roadParamsFromPreset(id);
+              onAssumptionsChange({
+                road_repeat_m: p.road_repeat_m,
+                block_gap_m: p.block_gap_m,
+                rows_per_block: p.rows_per_block,
+                cols_per_block: p.cols_per_block,
+                ew_gap_m: p.ew_gap_m,
+              });
+            }
           }}
         >
           {ROAD_PRESETS.map((p) => (
@@ -183,19 +193,19 @@ export function AdvancedProjectOptions({
       {a.road_preset === "custom" ? (
         <div className="grid-2">
           <div className="field">
-            <label htmlFor="rows-per-block">Rows per block</label>
+            <label htmlFor="road-repeat">Array depth between N-S roads (m)</label>
             <input
-              id="rows-per-block"
+              id="road-repeat"
               type="number"
-              step="1"
-              min="1"
-              value={a.rows_per_block ?? ""}
+              step="5"
+              min="0"
+              value={a.road_repeat_m ?? ""}
               onChange={(e) =>
                 onAssumptionsChange({
-                  rows_per_block: e.target.value ? Number(e.target.value) : undefined,
+                  road_repeat_m: e.target.value ? Number(e.target.value) : undefined,
                 })
               }
-              placeholder="2"
+              placeholder="100"
             />
           </div>
           <div className="field">

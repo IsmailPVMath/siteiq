@@ -107,8 +107,14 @@ class WorkflowLayoutSweepRequest(BaseModel):
     inter_string_gap_m: float = Field(default=0.5, ge=0, le=2.0)
     tracker_string_options: List[int] = Field(default_factory=lambda: [8, 7, 6, 5])
     max_tracker_length_m: float = Field(default=260.0, gt=0, le=500.0)
-    rows_per_block: int = Field(default=0, ge=0, le=10)
-    block_gap_m: float = Field(default=0.0, ge=0, le=20.0)
+    rows_per_block: int = Field(default=0, ge=0, le=200)
+    block_gap_m: float = Field(default=0.0, ge=0, le=30.0)
+    road_repeat_m: float = Field(
+        default=0.0,
+        ge=0,
+        le=500.0,
+        description="Array depth (m along pitch) between N-S roads; each band fills full E-W width.",
+    )
     cols_per_block: int = Field(default=0, ge=0, le=200)
     ew_gap_m: float = Field(default=0.0, ge=0, le=30.0)
     road_mode: Literal["auto", "manual", "off"] = Field(default="off")
@@ -161,8 +167,14 @@ class WorkflowLayoutDetailRequest(BaseModel):
     inter_string_gap_m: float = Field(default=0.5, ge=0, le=2.0)
     tracker_string_options: List[int] = Field(default_factory=lambda: [8, 7, 6, 5])
     max_tracker_length_m: float = Field(default=260.0, gt=0, le=500.0)
-    rows_per_block: int = Field(default=0, ge=0, le=10)
-    block_gap_m: float = Field(default=0.0, ge=0, le=20.0)
+    rows_per_block: int = Field(default=0, ge=0, le=200)
+    block_gap_m: float = Field(default=0.0, ge=0, le=30.0)
+    road_repeat_m: float = Field(
+        default=0.0,
+        ge=0,
+        le=500.0,
+        description="Array depth (m along pitch) between N-S roads; each band fills full E-W width.",
+    )
     cols_per_block: int = Field(default=0, ge=0, le=200)
     ew_gap_m: float = Field(default=0.0, ge=0, le=30.0)
     road_mode: Literal["auto", "manual", "off"] = Field(default="off")
@@ -249,8 +261,14 @@ class WorkflowProjectPackageRequest(WorkflowPvmathReportRequest):
     inter_string_gap_m: float = Field(default=0.5, ge=0, le=2.0)
     tracker_string_options: List[int] = Field(default_factory=lambda: [8, 7, 6, 5])
     max_tracker_length_m: float = Field(default=260.0, gt=0, le=500.0)
-    rows_per_block: int = Field(default=0, ge=0, le=10)
-    block_gap_m: float = Field(default=0.0, ge=0, le=20.0)
+    rows_per_block: int = Field(default=0, ge=0, le=200)
+    block_gap_m: float = Field(default=0.0, ge=0, le=30.0)
+    road_repeat_m: float = Field(
+        default=0.0,
+        ge=0,
+        le=500.0,
+        description="Array depth (m along pitch) between N-S roads; each band fills full E-W width.",
+    )
     cols_per_block: int = Field(default=0, ge=0, le=200)
     ew_gap_m: float = Field(default=0.0, ge=0, le=30.0)
     road_mode: Literal["auto", "manual", "off"] = Field(default="off")

@@ -42,7 +42,7 @@ def test_roads_reduce_row_count():
         ref_lat=ref_lat,
         ref_lon=ref_lon,
     )
-    with_roads = run_layout(
+    with_roads_legacy_bands = run_layout(
         ring,
         module_h=2.094,
         module_w=1.038,
@@ -58,6 +58,23 @@ def test_roads_reduce_row_count():
         ref_lat=ref_lat,
         ref_lon=ref_lon,
     )
-    assert dense and with_roads
-    assert with_roads["total_modules"] < dense["total_modules"]
-    assert with_roads["total_rows"] < dense["total_rows"]
+    with_roads_depth = run_layout(
+        ring,
+        module_h=2.094,
+        module_w=1.038,
+        n_portrait=1,
+        pitch=6.35,
+        setback=5.0,
+        azimuth=180.0,
+        mounting_type="sat",
+        modules_per_string=28,
+        inter_string_gap_m=0.5,
+        road_repeat_m=100.0,
+        block_gap_m=5.0,
+        ref_lat=ref_lat,
+        ref_lon=ref_lon,
+    )
+    assert dense and with_roads_legacy_bands and with_roads_depth
+    assert with_roads_legacy_bands["total_modules"] < dense["total_modules"]
+    assert with_roads_depth["total_modules"] < dense["total_modules"]
+    assert with_roads_depth["total_rows"] < dense["total_rows"]
