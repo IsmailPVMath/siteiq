@@ -507,20 +507,6 @@ a {
   background: #e8f8ee;
 }
 
-.layout-advanced summary {
-  cursor: pointer;
-  list-style: none;
-}
-
-.layout-advanced summary h2 {
-  display: inline;
-  margin: 0;
-}
-
-.layout-advanced summary::-webkit-details-marker {
-  display: none;
-}
-
 .sidebar-advanced {
   margin: 0.5rem 0;
   padding: 0.5rem 0;

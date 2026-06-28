@@ -1,6 +1,5 @@
 import { FormEvent, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type * as GeoJSON from "geojson";
-import { AdvancedProjectOptions } from "../components/project-setup/AdvancedProjectOptions";
 import { BoundaryWorkspace } from "../components/project-setup/BoundaryWorkspace";
 import { InputMethodCards } from "../components/project-setup/InputMethodCards";
 import { ProjectAssumptionsPanel } from "../components/project-setup/ProjectAssumptionsPanel";
@@ -24,7 +23,6 @@ import {
   effectiveRings,
   gateRequestToDraft,
   geoJsonToParcels,
-  parseTrackerStringOptions,
   projectRecordToDraft,
   restrictionsToGeoJson,
   ringsToGeoJson,
@@ -32,7 +30,6 @@ import {
 } from "../lib/projectSetup";
 import type { GateAnalyzeRequest } from "../types/gate";
 import type { InputMethod, SetupParcel } from "../types/projectSetup";
-import type { RoadMode } from "../types/layoutConfig";
 
 export type ScreeningFormValues = GateAnalyzeRequest;
 
@@ -48,9 +45,6 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
   const [draft, dispatch] = useReducer(
     draftReducer,
     initial ? gateRequestToDraft(initial) : gateRequestToDraft({}),
-  );
-  const [trackerStringOptions, setTrackerStringOptions] = useState(
-    (draft.assumptions.tracker_string_options ?? [8, 7, 6, 5, 4, 3, 2, 1]).join(","),
   );
   const [drawMode, setDrawMode] = useState<"site" | "restriction">("site");
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
@@ -300,15 +294,8 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
   }
 
   async function submitNow() {
-    const next = {
-      ...draft,
-      assumptions: {
-        ...draft.assumptions,
-        tracker_string_options: parseTrackerStringOptions(trackerStringOptions),
-      },
-    };
     await saveProjectDraft();
-    onSubmit(draftToGateRequest(next));
+    onSubmit(draftToGateRequest(draft));
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -528,20 +515,6 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
               }}
             />
 
-            <AdvancedProjectOptions
-              draft={draft}
-              trackerStringOptions={trackerStringOptions}
-              onTrackerStringOptionsChange={setTrackerStringOptions}
-              onDesignChange={(p) => dispatch({ type: "set_design", design_basis: p })}
-              onInfoChange={(p) => dispatch({ type: "set_info", project_info: p })}
-              onAssumptionsChange={(p) => dispatch({ type: "set_assumptions", assumptions: p })}
-              onRoadModeChange={(mode, preset) =>
-                dispatch({
-                  type: "set_assumptions",
-                  assumptions: { road_mode: mode as RoadMode, road_preset: preset },
-                })
-              }
-            />
           </div>
 
           <aside className="project-setup-rail">
