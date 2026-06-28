@@ -161,13 +161,23 @@ def partial_update_project(
     current = normalize_legacy_project_data(existing.project_data or {})
     patch = {k: v for k, v in body.model_dump(exclude_none=True).items()}
     merged = merge_project_data(current, patch)
-    buildable_geo, buildable_ha = _buildable_area(
-        merged.get("site_boundary_geojson") or {},
-        merged.get("restriction_polygons_geojson"),
+    geometry_changed = (
+        "site_boundary_geojson" in patch or "restriction_polygons_geojson" in patch
     )
-    merged["buildable_area_geojson"] = buildable_geo or merged.get("buildable_area_geojson")
-    merged.setdefault("workflow", {})
-    merged["workflow"]["buildable_area_ha"] = buildable_ha
+    if geometry_changed:
+        buildable_geo, buildable_ha = _buildable_area(
+            merged.get("site_boundary_geojson") or {},
+            merged.get("restriction_polygons_geojson"),
+        )
+        merged["buildable_area_geojson"] = buildable_geo or merged.get("buildable_area_geojson")
+        merged.setdefault("workflow", {})
+        merged["workflow"]["buildable_area_ha"] = buildable_ha
+    else:
+        merged.setdefault("workflow", {})
+        if "buildable_area_ha" not in merged["workflow"]:
+            merged["workflow"]["buildable_area_ha"] = (
+                current.get("workflow", {}).get("buildable_area_ha", 0.0)
+            )
     r = requests.patch(
         _project_base(),
         params={"id": f"eq.{project_id}", "user_id": f"eq.{user.user_id}", "select": "*"},

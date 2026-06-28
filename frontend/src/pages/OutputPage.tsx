@@ -21,6 +21,7 @@ import {
 } from "../lib/api";
 import {
   persistWorkflowProject,
+  persistWorkflowProgress,
   type WorkflowRestore,
 } from "../lib/workflowSave";
 import { mergeLayoutIQSnapshot, type LayoutIQSnapshot } from "../lib/layoutIQSettings";
@@ -247,7 +248,7 @@ export function OutputPage({
   useEffect(() => () => stopSidebarDrag.current(), []);
 
   const [projectId, setProjectId] = useState(projectIdProp);
-  const [saveBusy, setSaveBusy] = useState(false);
+  const [manualSaveBusy, setManualSaveBusy] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
   const [topoBusy, setTopoBusy] = useState(false);
   const [topoError, setTopoError] = useState("");
@@ -257,12 +258,14 @@ export function OutputPage({
   const [topoGridM, setTopoGridM] = useState(() => defaultTopoGridM(siteAreaHa));
   const [topoAllowCoarsen, setTopoAllowCoarsen] = useState(true);
   const topoAutoRan = useRef(Boolean(initialTopo));
-  const autoSaveBusy = useRef(false);
   // Serializes every save (manual + silent autosave) so two never hit the
   // single-worker API at once — e.g. a manual "Save project" landing on top of
   // the post-TerrainIQ autosave + terrain-mesh build, which dropped the
   // connection and surfaced the "Network error" banner.
   const saveChain = useRef<Promise<string | null>>(Promise.resolve(null));
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingAutoSaveStage = useRef<OutputModuleStage>("screen");
+  const AUTO_SAVE_DEBOUNCE_MS = 1200;
   const yieldAutoRan = useRef(false);
   const [topoPdfBusy, setTopoPdfBusy] = useState(false);
   const [topoZipBusy, setTopoZipBusy] = useState(false);
@@ -690,7 +693,11 @@ export function OutputPage({
     }
   }
 
-  function persistWorkflow(options?: { silent?: boolean; stage?: OutputModuleStage }): Promise<string | null> {
+  function persistWorkflow(options?: {
+    silent?: boolean;
+    stage?: OutputModuleStage;
+    light?: boolean;
+  }): Promise<string | null> {
     // Chain onto any in-flight save so saves run strictly one at a time.
     const next = saveChain.current
       .catch(() => null)
@@ -699,30 +706,39 @@ export function OutputPage({
     return next;
   }
 
-  async function runPersistWorkflow(options?: { silent?: boolean; stage?: OutputModuleStage }) {
+  async function runPersistWorkflow(options?: {
+    silent?: boolean;
+    stage?: OutputModuleStage;
+    light?: boolean;
+  }) {
     if (!input) return null;
     const stage = options?.stage ?? activeStage;
-    setSaveBusy(true);
-    if (!options?.silent) setSaveMsg("");
+    const silent = options?.silent ?? false;
+    const light = Boolean(options?.light && projectId);
+    if (!silent) setManualSaveBusy(true);
+    if (!silent) setSaveMsg("");
     try {
-      const id = await persistWorkflowProject(
-        token,
-        projectId || undefined,
-        input,
-        result,
-        stage,
-        createProject,
-        updateProject,
-        {
-          topo: topoResult,
-          finalScore,
-          gisSetbacks: Object.keys(gisSetbacks).length ? gisSetbacks : null,
-          layoutSettings: buildLayoutIQSnapshot(),
-        },
-      );
+      const layoutSettings = buildLayoutIQSnapshot();
+      const extras = {
+        topo: topoResult,
+        finalScore,
+        gisSetbacks: Object.keys(gisSetbacks).length ? gisSetbacks : null,
+        layoutSettings,
+      };
+      const id = light
+        ? await persistWorkflowProgress(token, projectId!, stage, extras)
+        : await persistWorkflowProject(
+            token,
+            projectId || undefined,
+            input,
+            result,
+            stage,
+            createProject,
+            updateProject,
+            extras,
+          );
       setProjectId(id);
       onProjectIdChange?.(id);
-      const layoutSettings = buildLayoutIQSnapshot();
       onWorkflowPersist?.({
         projectId: id,
         lastStage: stage,
@@ -731,27 +747,38 @@ export function OutputPage({
         gisSetbacks: Object.keys(gisSetbacks).length ? gisSetbacks : null,
         layoutSettings,
       });
-      if (!options?.silent) {
+      if (!silent) {
         setSaveMsg("Project saved — LayoutIQ settings and progress restored from My projects.");
       }
       return id;
     } catch (err) {
-      if (!options?.silent) {
+      if (!silent) {
         setSaveMsg(err instanceof Error ? err.message : "Save failed");
       }
       return null;
     } finally {
-      setSaveBusy(false);
+      if (!silent) setManualSaveBusy(false);
     }
   }
 
   function autoSaveWorkflow(stage: OutputModuleStage) {
-    if (autoSaveBusy.current) return;
-    autoSaveBusy.current = true;
-    void persistWorkflow({ silent: true, stage }).finally(() => {
-      autoSaveBusy.current = false;
-    });
+    pendingAutoSaveStage.current = stage;
+    if (autoSaveTimer.current) window.clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = window.setTimeout(() => {
+      autoSaveTimer.current = null;
+      void persistWorkflow({
+        silent: true,
+        stage: pendingAutoSaveStage.current,
+        light: true,
+      });
+    }, AUTO_SAVE_DEBOUNCE_MS);
   }
+
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimer.current) window.clearTimeout(autoSaveTimer.current);
+    };
+  }, []);
 
   async function handleSaveProject() {
     await persistWorkflow();
@@ -913,10 +940,10 @@ export function OutputPage({
             className="btn btn-ghost"
             type="button"
             onClick={() => void handleSaveProject()}
-            disabled={saveBusy || !input}
+            disabled={manualSaveBusy || !input}
             title="Save progress and resume later from My projects"
           >
-            {saveBusy ? "Saving…" : "Save project"}
+            {manualSaveBusy ? "Saving…" : "Save project"}
           </button>
           {proceed}
         </div>
@@ -1537,7 +1564,7 @@ export function OutputPage({
           : ({ "--results-sb-w": `${sidebarWidth}px` } as React.CSSProperties)
       }
     >
-      {saveBusy ? (
+      {manualSaveBusy ? (
         <div className="saving-overlay" role="status" aria-live="polite">
           <div className="saving-overlay-card">
             <div className="processing-spinner" aria-hidden />

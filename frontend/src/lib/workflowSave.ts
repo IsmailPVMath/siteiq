@@ -1,5 +1,6 @@
 import { draftToGateRequest, draftToProjectPayload, gateRequestToDraft, projectRecordToDraft } from "./projectSetup";
 import type { ProjectPayload, ProjectRecord } from "./api";
+import { partialUpdateProject } from "./api";
 import type { GateAnalyzeRequest } from "../types/gate";
 import type { TerrainIQAnalyzeResponse } from "../types/terrainiq";
 import type { OutputModuleStage, WorkflowScoreResponse, WorkflowScreenResponse } from "../types/workflow";
@@ -56,6 +57,47 @@ export function buildWorkflowSavePayload(
       saved_at: new Date().toISOString(),
     },
   };
+}
+
+/** Small workflow-only patch for step transitions (no boundary re-upload). */
+export function buildWorkflowProgressPatch(
+  lastStage: OutputModuleStage,
+  extras?: {
+    topo?: TerrainIQAnalyzeResponse | null;
+    finalScore?: WorkflowScoreResponse | null;
+    gisSetbacks?: Record<string, number> | null;
+    layoutSettings?: LayoutIQSnapshot | null;
+  },
+): Partial<ProjectPayload> {
+  const layoutFields = extras?.layoutSettings ? layoutIQToWorkflowFields(extras.layoutSettings) : {};
+  return {
+    workflow: {
+      ...layoutFields,
+      last_stage: lastStage,
+      topo_snapshot: slimTopoSnapshot(extras?.topo),
+      final_score_snapshot: (extras?.finalScore ?? null) as unknown as Record<string, unknown> | null,
+      gis_setbacks_m: extras?.gisSetbacks ?? null,
+      layout_settings_snapshot: (extras?.layoutSettings ?? null) as unknown as Record<string, unknown> | null,
+      saved_at: new Date().toISOString(),
+    },
+  };
+}
+
+/** Fast save when the project row already exists — workflow progress only. */
+export async function persistWorkflowProgress(
+  token: string,
+  projectId: string,
+  lastStage: OutputModuleStage,
+  extras?: {
+    topo?: TerrainIQAnalyzeResponse | null;
+    finalScore?: WorkflowScoreResponse | null;
+    gisSetbacks?: Record<string, number> | null;
+    layoutSettings?: LayoutIQSnapshot | null;
+  },
+): Promise<string> {
+  const patch = buildWorkflowProgressPatch(lastStage, extras);
+  await partialUpdateProject(token, projectId, patch);
+  return projectId;
 }
 
 /** Persist full project geometry + workflow snapshots (not workflow-only partial patch). */
