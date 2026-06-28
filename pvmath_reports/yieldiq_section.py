@@ -158,7 +158,13 @@ def build_yieldiq_flowables(
             best_key = k
     best_cfg = configs.get(best_key) if best_key else None
 
-    sel_cfg = configs.get(selected_config_key) if selected_config_key in configs else None
+    # Only honor an explicit selection that matches the active mount filter —
+    # a stale Fixed-tilt layout row must not leak into a tracker report.
+    sel_cfg = None
+    if selected_config_key in configs and _matches_filter(selected_config_key, mount_filter):
+        sel_cfg = configs[selected_config_key]
+    else:
+        selected_config_key = None
     screening_cfg = sel_cfg or best_cfg
     screening_key = selected_config_key if sel_cfg else best_key
 

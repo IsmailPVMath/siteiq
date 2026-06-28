@@ -24,7 +24,7 @@ from pvmath_reports.common import (
     section_hdr,
 )
 from pvmath_reports.siteiq_next_steps import get_next_steps
-from pvmath_reports.siteiq_suitability import SUITABILITY_WEIGHTS, compute_site_suitability
+from pvmath_reports.siteiq_suitability import compute_site_suitability
 
 _MONTH_COLORS = ["#1d9e52"] * 12
 
@@ -120,7 +120,8 @@ def build_siteiq_flowables(
     pvm_score = (score or {}).get("pvmath_score") if score else None
     verdict_label = (score or {}).get("verdict") or suit["verdict_label"]
     verdict_txt = (score or {}).get("verdict_detail") or (
-        f"Weighted screening score {suit['overall']}/100 across solar, terrain, flood, land, and regulatory factors."
+        "Screening verdict across solar, flood, land use and regulatory factors. "
+        "See the PVMath score at the end of this report for the full composite."
     )
 
     story.extend(module_divider())
@@ -152,32 +153,6 @@ def build_siteiq_flowables(
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
     ]))
     story.append(vt)
-    story.append(Spacer(1, 0.3 * cm))
-
-    story.append(section_hdr("SITE SUITABILITY BREAKDOWN", st))
-    story.append(Spacer(1, 0.12 * cm))
-    display_score = pvm_score if pvm_score is not None else suit["overall"]
-    story.append(Paragraph(
-        f"<b>Overall Score: {display_score}/100 "
-        f"(<font color='#1d9e52'>{verdict_label}</font>)</b>",
-        ParagraphStyle("OvScore", fontSize=11, fontName="Helvetica-Bold", textColor=DARK, leading=15),
-    ))
-    story.append(Spacer(1, 0.12 * cm))
-
-    brk_rows = [[lp("Category", st["white"]), lp("Score", st["white"]), lp("Weight", st["white"])]]
-    for label, key, weight in SUITABILITY_WEIGHTS:
-        brk_rows.append([lp(label, st["body"]), lp(str(suit["scores"][key]), st["body"]), lp(f"{weight}%", st["muted"])])
-    brk_t = Table(brk_rows, colWidths=[8.5 * cm, 4 * cm, 4.5 * cm])
-    brk_t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), ACCENT),
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.lightgrey),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-        ("LEFTPADDING", (0, 0), (-1, -1), 8),
-        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LGRAY]),
-    ]))
-    story.append(brk_t)
     story.append(Spacer(1, 0.3 * cm))
 
     story.append(section_hdr("KEY DRIVERS", st))

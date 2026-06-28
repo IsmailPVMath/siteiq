@@ -44,7 +44,6 @@ def _project_summary_flowables(
     rows = [
         [lp("Project", st["lbl"]), lp(project_name or "—", st["body"])],
         [lp("Location", st["lbl"]), lp(loc_line, st["body"])],
-        [lp("Country", st["lbl"]), lp(country or "—", st["body"])],
         [lp("Coordinates", st["lbl"]), lp(coord, st["body"])],
         [lp("Site area", st["lbl"]), lp(f"{area_ha:,.1f} ha" if area_ha else "—", st["body"])],
         [lp("Land use", st["lbl"]), lp(land_use or "—", st["body"])],
@@ -117,10 +116,9 @@ def _pvmath_score_flowables(result: Dict[str, Any]) -> List:
 
     big = Table([[
         Paragraph(
-            f"<b>{overall if overall is not None else '—'}</b>"
-            f"<font size=11>/100</font>",
+            f"<b>{overall if overall is not None else '—'}/100</b>",
             ParagraphStyle("bigscore", fontSize=30, fontName="Helvetica-Bold",
-                           textColor=v_color, leading=32),
+                           textColor=v_color, leading=34),
         ),
         Paragraph(
             f"<b>{verdict or '—'}</b>",

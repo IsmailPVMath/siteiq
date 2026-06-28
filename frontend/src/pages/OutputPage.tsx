@@ -1217,7 +1217,7 @@ export function OutputPage({
       lat: result.coordinates.lat,
       lon: result.coordinates.lon,
       land_use: input?.land_use || "Standard",
-      mount_type: selectedLayoutRow?.mount_type || layoutMountType || input?.mount_type || "Fixed Tilt",
+      mount_type: layoutMountType || selectedLayoutRow?.mount_type || input?.mount_type || "Fixed Tilt",
       area_ha: input?.area_ha || Number(result.capacity?.area_ha ?? 0) || 0,
       boundaries,
       screening: result as unknown as Record<string, unknown>,

@@ -667,28 +667,21 @@ def _impact_paragraph(text: str, kind: str):
     )
 
 
-def _append_terrain_drivers_section(story, ctx: dict, usable, hdr_style, body_style):
+def _append_terrain_drivers_section(
+    story, ctx: dict, usable, hdr_style, body_style,
+    *, accent: str | None = None, row_bg: str | None = None,
+):
     from reportlab.lib import colors
     from reportlab.lib.styles import ParagraphStyle
-    from reportlab.platypus import Paragraph, Spacer, Table, TableStyle
+    from reportlab.platypus import KeepTogether, Paragraph, Spacer, Table, TableStyle
     from reportlab.lib.units import mm
 
     td = ctx.get("terrain_drivers") or {}
     if not td:
         return
 
-    story.append(Spacer(1, 2 * mm))
-    story.append(Paragraph("Terrain Drivers", hdr_style))
-    story.append(Spacer(1, 1.5 * mm))
-    story.append(Paragraph(
-        f"<b>Terrain Score: {td['terrain_score']}/100 "
-        f"({td['terrain_score_label']})</b>",
-        ParagraphStyle(
-            "tsc", parent=body_style, fontSize=11,
-            fontName="Helvetica-Bold", leading=15,
-        ),
-    ))
-    story.append(Spacer(1, 2 * mm))
+    header_bg = colors.HexColor(accent) if accent else colors.HexColor("#1565c0")
+    alt_bg = colors.HexColor(row_bg) if row_bg else colors.HexColor("#f0f4f8")
 
     rows = [[_lp("Driver", bold=True, color="#ffffff"), _lp("Impact", bold=True, color="#ffffff")]]
     for driver, impact, kind in td.get("drivers", []):
@@ -698,16 +691,33 @@ def _append_terrain_drivers_section(story, ctx: dict, usable, hdr_style, body_st
     d_tbl.setStyle(TableStyle([
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
         ("FONTSIZE", (0, 0), (-1, -1), 8.5),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1565c0")),
+        ("BACKGROUND", (0, 0), (-1, 0), header_bg),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f0f4f8")]),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, alt_bg]),
         ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#cccccc")),
         ("TOPPADDING", (0, 0), (-1, -1), 4),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
         ("LEFTPADDING", (0, 0), (-1, -1), 6),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
     ]))
-    story.append(d_tbl)
+
+    # Keep the header + score + table together so the header is never orphaned
+    # at the bottom of a page (alignment fix for the unified report).
+    story.append(Spacer(1, 2 * mm))
+    story.append(KeepTogether([
+        Paragraph("Terrain Drivers", hdr_style),
+        Spacer(1, 1.5 * mm),
+        Paragraph(
+            f"<b>Terrain Score: {td['terrain_score']}/100 "
+            f"({td['terrain_score_label']})</b>",
+            ParagraphStyle(
+                "tsc", parent=body_style, fontSize=11,
+                fontName="Helvetica-Bold", leading=15,
+            ),
+        ),
+        Spacer(1, 2 * mm),
+        d_tbl,
+    ]))
     story.append(Spacer(1, 3 * mm))
 
     story.append(Paragraph(
@@ -1185,6 +1195,39 @@ def build_terrain_unified_flowables(
     story.append(KeepTogether(map_parts))
     story.append(Spacer(1, 4 * mm))
 
+    # Slope Distribution sits directly under the slope map (user request).
+    slope_bins = ctx.get("slope_bins")
+    if slope_bins:
+        bin_labels = ["0% – 2.5%", "2.5% – 5%", "5% – 7.5%", "7.5% – 10%", "&gt; 10%"]
+        bin_colors = [
+            (colors.HexColor("#1b5e20"), colors.white),
+            (colors.HexColor("#66bb6a"), colors.white),
+            (colors.HexColor("#d4e157"), colors.HexColor("#1a1a1a")),
+            (colors.HexColor("#ffa726"), colors.HexColor("#1a1a1a")),
+            (colors.HexColor("#c62828"), colors.white),
+        ]
+        bins_data = [["Slope range", "% of site area"]]
+        for lbl, pct in zip(bin_labels, slope_bins):
+            bins_data.append([Paragraph(lbl, body_style), f"{round(pct, 1)}%"])
+        bins_tbl = Table(bins_data, colWidths=[usable * 0.58, usable * 0.42])
+        bs = [
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("BACKGROUND", (0, 0), (-1, 0), MID_BLUE),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#cccccc")),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("ALIGN", (1, 1), (1, -1), "CENTER"),
+        ]
+        for i, (bg, fg) in enumerate(bin_colors, start=1):
+            bs.append(("BACKGROUND", (1, i), (1, i), bg))
+            bs.append(("TEXTCOLOR", (1, i), (1, i), fg))
+        bins_tbl.setStyle(TableStyle(bs))
+        story.append(KeepTogether([Paragraph("Slope Distribution", hdr_tight), bins_tbl]))
+        story.append(Spacer(1, 4 * mm))
+
     z_min = round(ctx["z_min"])
     z_max = round(ctx["z_max"])
     z_rng = round(ctx["z_range"])
@@ -1247,38 +1290,6 @@ def build_terrain_unified_flowables(
         story.append(KeepTogether([Paragraph("Slope Direction (Tracker Screening)", hdr_tight), d_tbl]))
         story.append(Spacer(1, 4 * mm))
 
-    slope_bins = ctx.get("slope_bins")
-    if slope_bins:
-        bin_labels = ["0% – 2.5%", "2.5% – 5%", "5% – 7.5%", "7.5% – 10%", "&gt; 10%"]
-        bin_colors = [
-            (colors.HexColor("#1b5e20"), colors.white),
-            (colors.HexColor("#66bb6a"), colors.white),
-            (colors.HexColor("#d4e157"), colors.HexColor("#1a1a1a")),
-            (colors.HexColor("#ffa726"), colors.HexColor("#1a1a1a")),
-            (colors.HexColor("#c62828"), colors.white),
-        ]
-        bins_data = [["Slope range", "% of site area"]]
-        for lbl, pct in zip(bin_labels, slope_bins):
-            bins_data.append([Paragraph(lbl, body_style), f"{round(pct, 1)}%"])
-        bins_tbl = Table(bins_data, colWidths=[usable * 0.58, usable * 0.42])
-        bs = [
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 9),
-            ("BACKGROUND", (0, 0), (-1, 0), MID_BLUE),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-            ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#cccccc")),
-            ("TOPPADDING", (0, 0), (-1, -1), 4),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ("LEFTPADDING", (0, 0), (-1, -1), 6),
-            ("ALIGN", (1, 1), (1, -1), "CENTER"),
-        ]
-        for i, (bg, fg) in enumerate(bin_colors, start=1):
-            bs.append(("BACKGROUND", (1, i), (1, i), bg))
-            bs.append(("TEXTCOLOR", (1, i), (1, i), fg))
-        bins_tbl.setStyle(TableStyle(bs))
-        story.append(KeepTogether([Paragraph("Slope Distribution", hdr_tight), bins_tbl]))
-        story.append(Spacer(1, 4 * mm))
-
     story.append(Paragraph("Engineering Verdict", hdr_style))
     vf = ctx.get("verdict_fixed") or ("—", "")
     vt = ctx.get("verdict_tracker") or ("—", "")
@@ -1299,7 +1310,10 @@ def build_terrain_unified_flowables(
         "Cross-row metrics above apply to tracker screening.</i>",
         ParagraphStyle("vnote_u", fontSize=8, textColor=MUTED, leading=11),
     ))
-    _append_terrain_drivers_section(story, ctx, usable, hdr_style, body_style)
+    _append_terrain_drivers_section(
+        story, ctx, usable, hdr_style, body_style,
+        accent=accent, row_bg=row_bg,
+    )
     story.append(Spacer(1, 4 * mm))
 
     story.append(Paragraph("Slope Threshold Reference", hdr_style))
