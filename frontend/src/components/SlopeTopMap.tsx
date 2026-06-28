@@ -217,6 +217,24 @@ export function SlopeTopMap({ mesh, boundaries, excludedGeoJson, height = 440 }:
           </span>
         ))}
       </div>
+      <div className="slope-top-northarrow" aria-label="North">
+        <svg viewBox="0 0 40 56" width="34" height="48" role="img">
+          <polygon points="20,2 30,30 20,23 10,30" fill="#ffffff" stroke="#1f2937" strokeWidth="1.2" />
+          <polygon points="20,2 20,23 10,30" fill="#1f2937" />
+          <text
+            x="20"
+            y="50"
+            textAnchor="middle"
+            fontSize="16"
+            fontWeight="700"
+            fill="#ffffff"
+            stroke="#1f2937"
+            strokeWidth="0.6"
+          >
+            N
+          </text>
+        </svg>
+      </div>
       {hover ? (
         <div className="slope-top-tooltip" style={{ left: hover.x + 12, top: hover.y + 12 }}>
           {hover.slope.toFixed(1)}% slope
