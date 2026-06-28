@@ -81,3 +81,45 @@ def test_roads_reduce_row_count():
     assert with_roads_legacy_bands["total_modules"] < dense["total_modules"]
     assert with_roads_ns["total_modules"] < dense["total_modules"]
     assert with_roads_ns["total_rows"] < dense["total_rows"]
+
+
+def test_tracker_units_respect_options_around_obstruction():
+    # Trackers are rigid: a clipped 6/5/4/3-string unit must be dropped whole,
+    # never left as a 1- or 2-string stub, even when a restriction (tree) and an
+    # irregular boundary clip the rows.
+    ref_lat, ref_lon = 17.0, 78.0
+
+    def square(half):
+        return [
+            (ref_lat - half, ref_lon - half),
+            (ref_lat - half, ref_lon + half),
+            (ref_lat + half, ref_lon + half),
+            (ref_lat + half, ref_lon - half),
+        ]
+
+    options = [6, 5, 4, 3]
+    layout = run_layout(
+        square(0.0027),
+        module_h=2.094,
+        module_w=1.038,
+        n_portrait=1,
+        pitch=6.0,
+        setback=5.0,
+        azimuth=180.0,
+        mounting_type="sat",
+        modules_per_string=28,
+        inter_string_gap_m=0.5,
+        tracker_string_options=options,
+        max_tracker_length_m=260.0,
+        restriction_latlons=[square(0.0008)],
+        ref_lat=ref_lat,
+        ref_lon=ref_lon,
+    )
+    assert layout
+    for row in layout["rows_data"]:
+        units = row.get("tracker_units") or []
+        # Every placed tracker unit is one of the selected options.
+        assert all(u in options for u in units)
+        # Strings map exactly to whole units (no clipped stubs, no partials).
+        assert row["partial_modules"] == 0
+        assert row["n_strings"] == sum(units)

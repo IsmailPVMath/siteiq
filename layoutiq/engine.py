@@ -559,7 +559,7 @@ def run_layout(
             if is_tracker:
                 tracker_units, partial_modules, actual_len = pack_tracker_units(
                     avail_len,
-                    tracker_string_options=tracker_string_options or [8, 7, 6, 5, 4, 3, 2, 1],
+                    tracker_string_options=tracker_string_options or [8, 7, 6, 5],
                     max_tracker_length_m=max_tracker_length_m,
                     modules_per_string=modules_per_string,
                     module_w=module_w,
@@ -579,14 +579,99 @@ def run_layout(
             if n_strings < 1 and partial_modules < 1:
                 continue
 
+            min_partial_modules = max(1, modules_per_string // 2)
+            planned_whole = (
+                sum(tracker_units)
+                if is_tracker
+                else n_strings - (1 if partial_modules > 0 else 0)
+            )
+            string_rects = list(
+                _string_rects_in_segment(
+                    x_seg_min=seg_min,
+                    x_seg_max=seg_max,
+                    y=y,
+                    row_ns=row_ns,
+                    n_strings=planned_whole,
+                    modules_per_string=modules_per_string,
+                    module_w=module_w,
+                    inter_string_gap_m=inter_string_gap_m,
+                    is_tracker=is_tracker,
+                    partial_modules=partial_modules,
+                )
+            )
+            whole_rects = string_rects[:planned_whole]
+            partial_rects = string_rects[planned_whole:]
+
+            placed_clips: list = []
+            placed_partial_modules = 0
+            accepted_units: list[int] = []
+
+            if is_tracker:
+                # A single-axis tracker is a rigid structure: every string in a
+                # planned 6/5/4/3-string unit must fit wholly inside the buildable
+                # area, otherwise the entire unit is dropped. This prevents
+                # clipping (trees, irregular boundary) from leaving invalid 1–2
+                # string tracker stubs that can't physically be installed.
+                idx = 0
+                for unit_strings in tracker_units:
+                    unit_rects = whole_rects[idx : idx + unit_strings]
+                    idx += unit_strings
+                    if len(unit_rects) < unit_strings:
+                        continue
+                    unit_clips = [r.intersection(poly_rot) for r in unit_rects]
+                    unit_ok = all(
+                        _accept_string_geom(
+                            clip,
+                            rect,
+                            allow_partial=False,
+                            min_partial_modules=min_partial_modules,
+                            module_w=module_w,
+                            row_ns=row_ns,
+                        )
+                        for clip, rect in zip(unit_clips, unit_rects)
+                    )
+                    if not unit_ok:
+                        continue
+                    placed_clips.extend(unit_clips)
+                    accepted_units.append(unit_strings)
+                whole_strings = sum(accepted_units)
+            else:
+                for srect in whole_rects:
+                    s_clipped = srect.intersection(poly_rot)
+                    if not _accept_string_geom(
+                        s_clipped,
+                        srect,
+                        allow_partial=allow_partial_strings,
+                        min_partial_modules=min_partial_modules,
+                        module_w=module_w,
+                        row_ns=row_ns,
+                    ):
+                        continue
+                    placed_clips.append(s_clipped)
+                whole_strings = len(placed_clips)
+                for prect in partial_rects:
+                    p_clipped = prect.intersection(poly_rot)
+                    if _accept_string_geom(
+                        p_clipped,
+                        prect,
+                        allow_partial=allow_partial_strings,
+                        min_partial_modules=min_partial_modules,
+                        module_w=module_w,
+                        row_ns=row_ns,
+                    ):
+                        placed_clips.append(p_clipped)
+                        placed_partial_modules = partial_modules
+
+            n_mod = whole_strings * modules_per_string + placed_partial_modules
+            if n_mod < 1:
+                # Nothing survived clipping for this band — don't emit an empty row.
+                continue
+
             if is_tracker:
                 row_rect = box(seg_max - actual_len, y, seg_max, y + row_ns)
             else:
                 row_rect = box(seg_min, y, seg_min + actual_len, y + row_ns)
             row_clipped = row_rect.intersection(poly_rot)
-            if row_clipped.is_empty or row_clipped.area <= row_ns * module_w * 0.5:
-                continue
-
             row_orig = shp_rotate(row_clipped, -rot_angle, origin=origin)
             # On concave parcels a segment can clip into a MultiPolygon — all strings
             # from this segment share the first row-local index for that band.
@@ -596,29 +681,8 @@ def run_layout(
             elif row_orig.geom_type == "MultiPolygon":
                 rows_polys.extend(row_orig.geoms)
 
-            min_partial_modules = max(1, modules_per_string // 2)
-            whole_strings = sum(tracker_units) if is_tracker else n_strings - (1 if partial_modules > 0 else 0)
-            for srect in _string_rects_in_segment(
-                x_seg_min=seg_min,
-                x_seg_max=seg_max,
-                y=y,
-                row_ns=row_ns,
-                n_strings=whole_strings,
-                modules_per_string=modules_per_string,
-                module_w=module_w,
-                inter_string_gap_m=inter_string_gap_m,
-                is_tracker=is_tracker,
-                partial_modules=partial_modules,
-            ):
-                s_clipped = srect.intersection(poly_rot)
-                if not _accept_string_geom(
-                    s_clipped,
-                    srect,
-                    allow_partial=allow_partial_strings,
-                    min_partial_modules=min_partial_modules,
-                    module_w=module_w,
-                    row_ns=row_ns,
-                ):
+            for s_clipped in placed_clips:
+                if s_clipped.is_empty:
                     continue
                 s_orig = shp_rotate(s_clipped, -rot_angle, origin=origin)
                 if s_orig.geom_type == "Polygon":
@@ -631,13 +695,12 @@ def run_layout(
                         string_polys.append(g)
                         string_row_local_idx.append(row_local_idx)
 
-            n_mod = whole_strings * modules_per_string + partial_modules
             rows_data.append(
                 {
                     "n_modules": n_mod,
-                    "n_strings": whole_strings + (1 if partial_modules > 0 else 0),
-                    "partial_modules": partial_modules,
-                    "tracker_units": tracker_units,
+                    "n_strings": whole_strings + (1 if placed_partial_modules > 0 else 0),
+                    "partial_modules": placed_partial_modules,
+                    "tracker_units": accepted_units if is_tracker else [],
                     "length_m": round(actual_len, 2),
                     "y_rot_m": round(y, 1),
                 }
