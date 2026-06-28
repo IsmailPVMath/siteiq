@@ -2,7 +2,7 @@ import { COMPANY_NAME } from "../lib/brand";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
-  analyzeTopo,
+  analyzeTopoJob,
   analyzeYield,
   createProject,
   updateProject,
@@ -16,7 +16,7 @@ import {
   workflowProjectPackage,
   workflowPvmathReportPdf,
   workflowScore,
-  workflowTerrainMesh,
+  workflowTerrainMeshJob,
 } from "../lib/api";
 import {
   persistWorkflowProject,
@@ -177,7 +177,18 @@ function ringsToFeatureCollection(rings: LatLonRing[]): GeoJSON.FeatureCollectio
 
 function isTopoGridTooLarge(message: string) {
   const m = message.toLowerCase();
-  return m.includes("too large") || m.includes("allow_coarsen") || m.includes("grid_m");
+  return (
+    m.includes("too large") ||
+    m.includes("grid_too_large") ||
+    m.includes("allow_coarsen") ||
+    m.includes("grid_m")
+  );
+}
+
+function defaultTopoGridM(areaHa?: number) {
+  if (!areaHa || areaHa < 500) return 5;
+  if (areaHa < 1500) return 10;
+  return 15;
 }
 
 export function OutputPage({
@@ -240,7 +251,9 @@ export function OutputPage({
   const [topoBusy, setTopoBusy] = useState(false);
   const [topoError, setTopoError] = useState("");
   const [topoResult, setTopoResult] = useState<TerrainIQAnalyzeResponse | null>(initialTopo);
-  const [topoGridM, setTopoGridM] = useState(5);
+  const siteAreaHa = input?.area_ha ?? 0;
+  const largeSiteMode = siteAreaHa >= 500;
+  const [topoGridM, setTopoGridM] = useState(() => defaultTopoGridM(siteAreaHa));
   const [topoAllowCoarsen, setTopoAllowCoarsen] = useState(true);
   const topoAutoRan = useRef(Boolean(initialTopo));
   const autoSaveBusy = useRef(false);
@@ -616,16 +629,15 @@ export function OutputPage({
     setTopoBusy(true);
     setTopoError("");
     try {
-      const topo = await analyzeTopo(token, payload);
+      const topo = await analyzeTopoJob(token, payload);
       setTopoResult(topo);
+      setTopoMesh(null);
+      setTerrain3D(null);
       if (overrides?.grid_m != null) setTopoGridM(overrides.grid_m);
       if (overrides?.allow_coarsen != null) setTopoAllowCoarsen(overrides.allow_coarsen);
       await refreshFinalScore(topo);
       onWorkflowDepth?.("topo");
-      // Kick off the lightweight save before the heavy terrain-mesh build so
-      // the single-worker API isn't doing both at once.
       autoSaveWorkflow("topo");
-      void fetchTopoMesh();
     } catch (err) {
       setTopoError(err instanceof Error ? err.message : "TerrainIQ analysis failed");
     } finally {
@@ -637,7 +649,7 @@ export function OutputPage({
     if (!boundaries.length) return;
     setTopoMeshBusy(true);
     try {
-      const mesh = await workflowTerrainMesh(token, {
+      const mesh = await workflowTerrainMeshJob(token, {
         boundaries,
         grid_m: 10,
         max_vertices: 40000,
@@ -788,13 +800,6 @@ export function OutputPage({
         : "");
     document.title = where ? `${name} · ${where} — ${COMPANY_NAME}` : `${name} — ${COMPANY_NAME}`;
   }, [result.project_name, input?.project_name, locationLabel, result.coordinates]);
-
-  useEffect(() => {
-    if (initialTopo && boundaries.length && !topoMesh) {
-      void fetchTopoMesh();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   function runTopoAdaptiveGrid() {
     setTopoAllowCoarsen(true);
@@ -1076,14 +1081,14 @@ export function OutputPage({
     setTerrain3DBusy(true);
     setLayoutError("");
     try {
-      setTerrain3D(
-        await workflowTerrainMesh(token, {
-          boundaries,
-          grid_m: 10,
-          max_vertices: 24000,
-          mask_geojson: buildableMask,
-        }),
-      );
+      const mesh = await workflowTerrainMeshJob(token, {
+        boundaries,
+        grid_m: 10,
+        max_vertices: 24000,
+        mask_geojson: buildableMask,
+      });
+      setTerrain3D(mesh);
+      setTopoMesh((current) => current ?? mesh);
     } catch (err) {
       setLayoutError(err instanceof Error ? err.message : "3D terrain failed");
     } finally {
@@ -1399,7 +1404,21 @@ export function OutputPage({
             ) : topoMeshBusy ? (
               <p className="hint">Rendering high-resolution slope terrain…</p>
             ) : (
-              <p className="hint">Slope terrain unavailable for this boundary.</p>
+              <div className="slope-map-placeholder">
+                <p className="hint">
+                  Slope verdict and statistics are ready. Render the visual slope map only when
+                  needed; this avoids starting the heavier terrain-mesh job immediately after
+                  TerrainIQ.
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => void fetchTopoMesh()}
+                  disabled={!boundaries.length}
+                >
+                  Render slope map
+                </button>
+              </div>
             )}
           </div>
           {renderSlopeAnalysisTable(topoResult)}
@@ -1460,6 +1479,7 @@ export function OutputPage({
                     <option value={3}>3 m — highest detail (small sites)</option>
                     <option value={5}>5 m — high detail (default)</option>
                     <option value={10}>10 m — balanced</option>
+                    <option value={15}>15 m — large site default</option>
                     <option value={20}>20 m — fast (large sites)</option>
                     <option value={30}>30 m — coarse overview</option>
                   </select>
@@ -1476,6 +1496,13 @@ export function OutputPage({
                   Finer grids give more accurate slope but take longer. Change a setting, then
                   re-run.
                 </p>
+                {largeSiteMode ? (
+                  <p className="hint sidebar-hint">
+                    Large site mode: this {siteAreaHa.toLocaleString()} ha project starts with a
+                    coarser grid to keep TerrainIQ responsive. Use finer grids only when you need
+                    detailed engineering checks for a smaller section.
+                  </p>
+                ) : null}
               </details>
               <button
                 className="btn btn-primary btn-block"

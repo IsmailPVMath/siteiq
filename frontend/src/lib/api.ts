@@ -41,6 +41,8 @@ export function setTokenRefresher(fn: (() => Promise<string | null>) | null) {
 // (~0.8s + 2s + 4s ≈ 7s total) to ride out a redeploy window before surfacing
 // the error. Only raw rejections are retried; a real HTTP error still returns.
 const RETRY_DELAYS_MS = [800, 2000, 4000];
+const JOB_POLL_MS = 1500;
+const JOB_TIMEOUT_MS = 10 * 60 * 1000;
 
 async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
   let lastErr: unknown;
@@ -182,6 +184,51 @@ export function workflowTerrainMesh(token: string, body: WorkflowTerrainMeshRequ
   });
 }
 
+interface JobStartResponse {
+  job_id: string;
+  kind: string;
+  status: "queued" | "running" | "succeeded" | "failed";
+}
+
+interface JobStatusResponse<T> extends JobStartResponse {
+  created_at: number;
+  updated_at: number;
+  error?: string | null;
+  result?: T | null;
+}
+
+async function pollJob<T>(
+  token: string,
+  statusPath: (jobId: string) => string,
+  jobId: string,
+): Promise<T> {
+  const started = Date.now();
+  while (Date.now() - started < JOB_TIMEOUT_MS) {
+    const status = await apiFetch<JobStatusResponse<T>>(statusPath(jobId), token);
+    if (status.status === "succeeded") {
+      if (!status.result) throw new Error("Job finished without a result");
+      return status.result;
+    }
+    if (status.status === "failed") {
+      throw new Error(status.error || "Job failed");
+    }
+    await new Promise((resolve) => setTimeout(resolve, JOB_POLL_MS));
+  }
+  throw new Error("Job timed out. Try a coarser grid or smaller area.");
+}
+
+export async function workflowTerrainMeshJob(token: string, body: WorkflowTerrainMeshRequest) {
+  const started = await apiFetch<JobStartResponse>("/api/v1/workflow/terrain-mesh-job", token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  return pollJob<WorkflowTerrainMeshResponse>(
+    token,
+    (jobId) => `/api/v1/workflow/terrain-mesh-job/${jobId}`,
+    started.job_id,
+  );
+}
+
 export function workflowPvmathReportPdf(token: string, body: WorkflowPvmathReportRequest) {
   return downloadBlob("/api/v1/workflow/pvmath-report-pdf", token, body, "application/pdf");
 }
@@ -219,6 +266,18 @@ export function analyzeTopo(token: string, body: TerrainIQAnalyzeRequest) {
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+export async function analyzeTopoJob(token: string, body: TerrainIQAnalyzeRequest) {
+  const started = await apiFetch<JobStartResponse>("/api/v1/terrainiq/analyze-job", token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  return pollJob<TerrainIQAnalyzeResponse>(
+    token,
+    (jobId) => `/api/v1/terrainiq/analyze-job/${jobId}`,
+    started.job_id,
+  );
 }
 
 export function analyzeYield(token: string, body: YieldIQAnalyzeRequest) {

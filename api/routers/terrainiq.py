@@ -13,6 +13,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 from api.deps import get_current_user
+from api.job_store import get_heavy_job, submit_heavy_job
+from api.schemas.jobs import JobStartResponse, JobStatusResponse
 from api.schemas.terrainiq import TerrainIQAnalyzeRequest, TerrainIQAnalyzeResponse
 from pvmath_geocode import resolve_location_label
 from pvmath_supabase import AuthUser, PLATFORM_APP, is_over_limit, usage_limit_detail
@@ -150,6 +152,10 @@ def _analysis_response(body: TerrainIQAnalyzeRequest, analysis: Dict[str, Any]) 
     )
 
 
+def _run_analysis_response(body: TerrainIQAnalyzeRequest) -> TerrainIQAnalyzeResponse:
+    return _analysis_response(body, _run_topo(body))
+
+
 def _build_topo_pdf(body: TerrainIQAnalyzeRequest, analysis: Dict[str, Any]) -> bytes:
     bbox = analysis["bbox"]
     X = analysis["X"]
@@ -258,6 +264,36 @@ async def analyze_terrainiq(
         raise HTTPException(status_code=500, detail=f"TerrainIQ analysis failed: {exc}") from exc
 
     return _analysis_response(body, analysis)
+
+
+@router.post("/terrainiq/analyze-job", response_model=JobStartResponse)
+async def start_terrainiq_analysis_job(
+    body: TerrainIQAnalyzeRequest,
+    user: AuthUser = Depends(get_current_user),
+):
+    """Start TerrainIQ as a background job so huge sites don't tie up HTTP requests."""
+    if user.access_token and is_over_limit(user.user_id, TOPO_APP, user.access_token):
+        raise HTTPException(status_code=429, detail=_limit_detail(user))
+    try:
+        job = submit_heavy_job(
+            user.user_id,
+            "terrainiq.analyze",
+            partial(_run_analysis_response, body),
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
+    return JobStartResponse(job_id=job.id, kind=job.kind, status=job.status)
+
+
+@router.get("/terrainiq/analyze-job/{job_id}", response_model=JobStatusResponse)
+async def get_terrainiq_analysis_job(
+    job_id: str,
+    user: AuthUser = Depends(get_current_user),
+):
+    job = get_heavy_job(user.user_id, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return JobStatusResponse(**job.public())
 
 
 def _render_slope_png(analysis: Dict[str, Any]) -> bytes:

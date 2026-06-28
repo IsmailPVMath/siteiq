@@ -11,7 +11,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 from api.deps import get_current_user
+from api.job_store import get_heavy_job, submit_heavy_job
 from api.schemas.gis import WorkflowGisAnalysisRequest, WorkflowGisAnalysisResponse
+from api.schemas.jobs import JobStartResponse, JobStatusResponse
 from api.schemas.workflow import (
     WorkflowLayoutDetailRequest,
     WorkflowLayoutDetailResponse,
@@ -101,6 +103,19 @@ def _lonlat_polys(boundary, boundaries):
         if len(pts) >= 3:
             polys.append(pts)
     return polys
+
+
+def _build_terrain_mesh_response(body: WorkflowTerrainMeshRequest) -> WorkflowTerrainMeshResponse:
+    polygons = _lonlat_polys(body.boundary, body.boundaries)
+    if not polygons:
+        raise ValueError("A site boundary is required for terrain mesh.")
+    data = build_terrain_mesh(
+        polygons,
+        grid_m=body.grid_m,
+        max_vertices=body.max_vertices,
+        mask_geojson=body.mask_geojson,
+    )
+    return WorkflowTerrainMeshResponse(**data)
 
 
 def _limit_detail(user: AuthUser) -> str:
@@ -465,21 +480,12 @@ async def workflow_terrain_mesh(
     _user: AuthUser = Depends(get_current_user),
 ):
     """Coarse TerrainIQ terrain mesh for browser-side 3D rendering."""
-    polygons = _lonlat_polys(body.boundary, body.boundaries)
-    if not polygons:
-        raise HTTPException(status_code=400, detail="A site boundary is required for terrain mesh.")
     loop = asyncio.get_running_loop()
     try:
         data = await asyncio.wait_for(
             loop.run_in_executor(
                 None,
-                partial(
-                    build_terrain_mesh,
-                    polygons,
-                    grid_m=body.grid_m,
-                    max_vertices=body.max_vertices,
-                    mask_geojson=body.mask_geojson,
-                ),
+                partial(_build_terrain_mesh_response, body),
             ),
             timeout=LAYOUT_TIMEOUT_SEC,
         )
@@ -492,7 +498,35 @@ async def workflow_terrain_mesh(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Terrain mesh failed: {exc}") from exc
-    return WorkflowTerrainMeshResponse(**data)
+    return data
+
+
+@router.post("/workflow/terrain-mesh-job", response_model=JobStartResponse)
+async def start_workflow_terrain_mesh_job(
+    body: WorkflowTerrainMeshRequest,
+    user: AuthUser = Depends(get_current_user),
+):
+    """Start terrain mesh generation as a background job for large sites."""
+    try:
+        job = submit_heavy_job(
+            user.user_id,
+            "workflow.terrain_mesh",
+            partial(_build_terrain_mesh_response, body),
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
+    return JobStartResponse(job_id=job.id, kind=job.kind, status=job.status)
+
+
+@router.get("/workflow/terrain-mesh-job/{job_id}", response_model=JobStatusResponse)
+async def get_workflow_terrain_mesh_job(
+    job_id: str,
+    user: AuthUser = Depends(get_current_user),
+):
+    job = get_heavy_job(user.user_id, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return JobStatusResponse(**job.public())
 
 
 @router.post("/workflow/pvmath-report-pdf")

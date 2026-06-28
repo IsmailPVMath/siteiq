@@ -1736,6 +1736,25 @@ body.sb-resizing .results-resizer::before {
   min-width: 0;
 }
 
+.slope-map-placeholder {
+  display: flex;
+  min-height: 220px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  padding: 1.2rem;
+  text-align: center;
+  border: 1px dashed #b9caba;
+  border-radius: 8px;
+  background: #f5faf6;
+}
+
+.slope-map-placeholder .hint {
+  max-width: 34rem;
+  margin: 0;
+}
+
 /* Interactive Leaflet slope map (satellite + slope overlay) */
 .slope-top-map {
   position: relative;
