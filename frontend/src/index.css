@@ -15,6 +15,10 @@
   background: var(--bg);
 }
 
+html {
+  font-size: 17px; /* was browser default 16px — scales all rem-based text app-wide */
+}
+
 * {
   box-sizing: border-box;
 }
