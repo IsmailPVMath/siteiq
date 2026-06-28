@@ -272,7 +272,7 @@ def config_guidance(
     )
     rec_pitch = (
         round(float(custom_pitch_m), 2)
-        if mode == "custom" and custom_pitch_m and custom_pitch_m > row_ns_m
+        if custom_pitch_m and custom_pitch_m > row_ns_m
         else pitch_from_gcr(row_ns_m, rec_gcr)
     )
     rec_gcr = gcr_from_pitch(row_ns_m, rec_pitch)
@@ -325,13 +325,12 @@ def pitch_sweep_values(
     )
     rec_pitch = guidance["recommended_pitch_m"]
 
+    if custom_pitch_m and custom_pitch_m > row_ns_m:
+        return [round(float(custom_pitch_m), 2)], guidance
+
     candidates: List[float] = []
 
-    if mode == "custom" and custom_pitch_m and custom_pitch_m > row_ns_m:
-        base = round(float(custom_pitch_m), 2)
-        for delta in (-1.0, -0.5, 0.0, 0.5, 1.0, 2.0):
-            candidates.append(round(base + delta, 2))
-    elif mode == "custom" and custom_gcr and custom_gcr > 0:
+    if mode == "custom" and custom_gcr and custom_gcr > 0:
         base = pitch_from_gcr(row_ns_m, float(custom_gcr))
         for scale in (0.92, 0.96, 1.0, 1.04, 1.08):
             candidates.append(round(base * scale, 2))

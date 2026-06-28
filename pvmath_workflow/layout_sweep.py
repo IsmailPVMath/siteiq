@@ -111,9 +111,10 @@ def run_layout_sweep(
     """
     Iterate mount/portrait × pitch across one or more site parcels.
 
-    Pitch steps follow industry GCR bands (see gcr_strategy) for the selected
-    optimization mode. Returns comparison rows, max-DC best per config, and
-    strategy-recommended pitch per config.
+    When ``custom_pitch_m`` is set, each configuration runs at that pitch only.
+    Otherwise pitch steps follow industry GCR bands (see gcr_strategy) for the
+    selected optimization mode. Returns comparison rows, max-DC best per config,
+    and strategy-recommended pitch per config.
     """
     polys = _normalize_polys(boundary, boundaries)
     restrictions = _normalize_polys(None, restriction_polygons)

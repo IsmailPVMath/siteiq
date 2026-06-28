@@ -43,3 +43,27 @@ def test_pitch_sweep_within_practical_band():
     assert pitches
     assert guidance["recommended_pitch_m"] >= guidance["pitch_m_min"]
     assert all(p > row_ns for p in pitches)
+
+
+def test_fixed_pitch_runs_single_value():
+    row_ns = 2.094
+    pitches, guidance = pitch_sweep_values(
+        "SAT_1P",
+        row_ns,
+        mode="balanced",
+        custom_pitch_m=6.5,
+    )
+    assert pitches == [6.5]
+    assert guidance["recommended_pitch_m"] == 6.5
+
+
+def test_fixed_pitch_overrides_custom_gcr_sweep():
+    row_ns = 2.094
+    pitches, _ = pitch_sweep_values(
+        "SAT_1P",
+        row_ns,
+        mode="custom",
+        custom_gcr=0.4,
+        custom_pitch_m=7.0,
+    )
+    assert pitches == [7.0]

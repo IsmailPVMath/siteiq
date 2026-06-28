@@ -101,7 +101,12 @@ class WorkflowLayoutSweepRequest(BaseModel):
     lat: Optional[float] = Field(default=None, ge=-90, le=90)
     bifacial: bool = False
     custom_gcr: Optional[float] = Field(default=None, gt=0, le=0.85)
-    custom_pitch_m: Optional[float] = Field(default=None, gt=0, le=30)
+    custom_pitch_m: Optional[float] = Field(
+        default=None,
+        gt=0,
+        le=30,
+        description="When set, layout runs at this pitch only (no sweep). Omit for capacity iteration.",
+    )
     include_bom: bool = False
     modules_per_string: int = Field(default=28, ge=8, le=50)
     inter_string_gap_m: float = Field(default=0.5, ge=0, le=2.0)

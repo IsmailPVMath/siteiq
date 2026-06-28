@@ -957,10 +957,10 @@ export function OutputPage({
       };
       if (layoutOptimization === "custom") {
         const gcr = Number(layoutCustomGcr);
-        const pitch = Number(layoutCustomPitch);
         if (gcr > 0) body.custom_gcr = gcr;
-        if (pitch > 0) body.custom_pitch_m = pitch;
       }
+      const pitch = Number(layoutCustomPitch);
+      if (pitch > 0) body.custom_pitch_m = pitch;
       const res = await workflowLayoutSweep(token, body);
       setLayoutSweep(res);
       setLayoutFilter("all");
@@ -1542,7 +1542,7 @@ export function OutputPage({
                   <option value="balanced">Balanced (industry default)</option>
                   <option value="high_energy">High energy — wider spacing</option>
                   <option value="land_optimized">Land optimized — tighter</option>
-                  <option value="custom">Custom GCR or pitch</option>
+                  <option value="custom">Custom GCR (sweep)</option>
                 </select>
               </div>
               <div className="field">
@@ -1884,34 +1884,40 @@ export function OutputPage({
                   </p>
                 ) : null}
               </details>
-              {layoutOptimization === "custom" ? (
-                <div className="grid-2 layout-custom-row">
-                  <div className="field">
-                    <label htmlFor="layout-custom-gcr">Custom GCR</label>
-                    <input
-                      id="layout-custom-gcr"
-                      type="number"
-                      step="0.01"
-                      min="0.15"
-                      max="0.75"
-                      placeholder="0.45"
-                      value={layoutCustomGcr}
-                      onChange={(e) => setLayoutCustomGcr(e.target.value)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="layout-custom-pitch">Custom pitch m</label>
-                    <input
-                      id="layout-custom-pitch"
-                      type="number"
-                      step="0.1"
-                      min="3"
-                      max="20"
-                      placeholder="6.5"
-                      value={layoutCustomPitch}
-                      onChange={(e) => setLayoutCustomPitch(e.target.value)}
-                    />
-                  </div>
+              <div className="field">
+                <label htmlFor="layout-fixed-pitch">Fixed pitch (m) — optional</label>
+                <input
+                  id="layout-fixed-pitch"
+                  type="number"
+                  step="0.1"
+                  min="3"
+                  max="20"
+                  placeholder="e.g. 6.5"
+                  value={layoutCustomPitch}
+                  onChange={(e) => setLayoutCustomPitch(e.target.value)}
+                />
+                <p className="hint sidebar-hint">
+                  {layoutCustomPitch
+                    ? "Single layout at this pitch — no pitch sweep."
+                    : "Leave empty to compare multiple pitches (capacity sweep)."}
+                </p>
+              </div>
+              {layoutOptimization === "custom" && !layoutCustomPitch ? (
+                <div className="field">
+                  <label htmlFor="layout-custom-gcr">Custom GCR</label>
+                  <input
+                    id="layout-custom-gcr"
+                    type="number"
+                    step="0.01"
+                    min="0.15"
+                    max="0.75"
+                    placeholder="0.45"
+                    value={layoutCustomGcr}
+                    onChange={(e) => setLayoutCustomGcr(e.target.value)}
+                  />
+                  <p className="hint sidebar-hint">
+                    Sweeps pitch around this GCR when no fixed pitch is set.
+                  </p>
                 </div>
               ) : null}
               <label className="checkbox-field layout-bifacial">
@@ -1933,7 +1939,15 @@ export function OutputPage({
                 onClick={() => void handleLayoutSweep()}
                 disabled={layoutBusy || gisBusy}
               >
-                {layoutBusy ? "Running layout sweep…" : gisBusy ? "Preparing buildable area…" : "Run layout sweep"}
+                {layoutBusy
+                  ? layoutCustomPitch
+                    ? "Running layout…"
+                    : "Running layout sweep…"
+                  : gisBusy
+                    ? "Preparing buildable area…"
+                    : layoutCustomPitch
+                      ? "Run layout"
+                      : "Run layout sweep"}
               </button>
             </>
           )}
