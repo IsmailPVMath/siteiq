@@ -13,7 +13,6 @@ from reportlab.lib.units import cm
 from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from pvmath_brand import PRODUCT_NAME
-from pvmath_capacity import format_mwp_range, screening_capacity
 from pvmath_geocode import format_coords, resolve_location_label
 from pvmath_pdf import SITEIQ_DISCLAIMER_BODY, append_siteiq_metrics_annexure
 from pvmath_reports.common import ACCENT, ACCENT_HDR, BORDER, DARK, MUTED, base_styles, lp, module_banner, module_divider, section_hdr
@@ -34,7 +33,6 @@ def _project_summary_flowables(
     land_use: str,
     mount_type: str,
     area_ha: float,
-    capacity_mwp: str,
 ) -> List:
     st = base_styles()
     loc_line = location_label or (
@@ -49,7 +47,6 @@ def _project_summary_flowables(
         [lp("Site area", st["lbl"]), lp(f"{area_ha:,.1f} ha" if area_ha else "—", st["body"])],
         [lp("Land use", st["lbl"]), lp(land_use or "—", st["body"])],
         [lp("Mounting", st["lbl"]), lp(mount_type or "—", st["body"])],
-        [lp("Est. DC capacity", st["lbl"]), lp(capacity_mwp or "—", st["body"])],
         [lp("Generated", st["lbl"]), lp(datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"), st["body"])],
     ]
     tbl = Table(rows, colWidths=[4.2 * cm, 12.8 * cm])
@@ -232,7 +229,6 @@ def build_unified_pvmath_report_pdf(
     """A4 unified report: summary → SiteIQ → TerrainIQ → YieldIQ → PVMath score → disclaimers."""
     scr = screening or {}
     cap = scr.get("capacity") or {}
-    capacity_mwp = str(cap.get("mwp_range") or "—")
     if not area_ha:
         try:
             area_ha = float(cap.get("area_ha") or 0)
@@ -243,13 +239,6 @@ def build_unified_pvmath_report_pdf(
             area_ha = float(topo.get("area_ha") or 0)
         except (TypeError, ValueError):
             pass
-
-    # Recompute the capacity band for the actual mount type selected for the
-    # project. The stored screening string is computed at SiteIQ time with the
-    # default mount (Fixed Tilt); the report must reflect the chosen mounting.
-    if area_ha and area_ha > 0:
-        band = screening_capacity(area_ha, land_use, mount_type)
-        capacity_mwp = format_mwp_range(band.get("mwp_lo"), band.get("mwp_hi"))
 
     final_score = _compute_final_score(score, scr, yield_result, selected_config_key)
 
@@ -273,7 +262,6 @@ def build_unified_pvmath_report_pdf(
         land_use=land_use,
         mount_type=mount_type,
         area_ha=area_ha,
-        capacity_mwp=capacity_mwp,
     )
 
     if lat is not None and lon is not None:

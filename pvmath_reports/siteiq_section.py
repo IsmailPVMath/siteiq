@@ -11,7 +11,7 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.platypus import KeepTogether, Paragraph, Spacer, Table, TableStyle
 
-from pvmath_capacity import screening_capacity
+from pvmath_geocode import pdf_escape
 from pvmath_pdf import strip_pdf_label
 from pvmath_reports.common import (
     ACCENT,
@@ -25,26 +25,57 @@ from pvmath_reports.common import (
     section_hdr,
 )
 from pvmath_reports.siteiq_next_steps import get_next_steps
-from pvmath_reports.siteiq_suitability import compute_site_suitability
 
 _MONTH_COLORS = ["#1d9e52"] * 12
 
 
-def _terrain_from_topo(topo: Optional[Dict[str, Any]], mount_type: str) -> tuple[dict, str]:
-    if not topo:
-        return {"success": False}, "— (TerrainIQ not run)"
-    slope = topo.get("slope") or {}
-    vf = topo.get("verdict_fixed") or {}
-    vt = topo.get("verdict_tracker") or {}
-    label = vt.get("label", "—") if mount_type == "Single-Axis Tracker" else vf.get("label", "—")
-    terrain = {
-        "success": True,
-        "terrainiq_confirmed": True,
-        "topoiq_confirmed": True,
-        "mean_slope_pct": slope.get("mean"),
-        "max_slope_pct": slope.get("max"),
-    }
-    return terrain, str(label or "—")
+def _rating_color(rating: str):
+    """Map a screening rating to the PVMath traffic-light palette."""
+    r = (rating or "").strip().upper()
+    if any(x in r for x in ("EXCELLENT", "VERY GOOD", "GOOD", "LOW")):
+        return ACCENT
+    if any(x in r for x in ("MODERATE", "ACCEPTABLE", "CHALLENGING", "FAIR")):
+        return colors.HexColor("#f59e0b")
+    if any(x in r for x in ("HIGH", "CRITICAL", "POOR", "REMOTE")):
+        return colors.HexColor("#dc2626")
+    return MUTED
+
+
+def _screen_card(st, label: str, rating: str, detail: str, sub: str) -> Table:
+    """One screening metric tile: muted label, coloured rating, detail, sub-line."""
+    color = _rating_color(rating)
+    lbl_s = ParagraphStyle("crd_lbl", fontSize=7, fontName="Helvetica-Bold",
+                           textColor=MUTED, leading=9, spaceAfter=3)
+    rat_s = ParagraphStyle("crd_rat", fontSize=12.5, fontName="Helvetica-Bold",
+                           textColor=color, leading=15, spaceAfter=2)
+    det_s = ParagraphStyle("crd_det", fontSize=8, textColor=DARK, leading=10.5)
+    sub_s = ParagraphStyle("crd_sub", fontSize=7.5, textColor=MUTED, leading=9.5, spaceBefore=2)
+
+    inner = [
+        [Paragraph(pdf_escape(strip_pdf_label(str(label)).upper()), lbl_s)],
+        [Paragraph(f"<b>{pdf_escape(strip_pdf_label(str(rating)) or '—')}</b>", rat_s)],
+    ]
+    det = strip_pdf_label(str(detail or "")).strip()
+    if det:
+        inner.append([Paragraph(pdf_escape(det), det_s)])
+    sub = str(sub or "").strip()
+    if sub:
+        inner.append([Paragraph(pdf_escape(sub), sub_s)])
+
+    card = Table(inner, colWidths=[8.0 * cm])
+    card.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.white),
+        ("BOX", (0, 0), (-1, -1), 0.6, BORDER),
+        ("LINEBEFORE", (0, 0), (0, -1), 2.5, color),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 9),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 9),
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ("TOPPADDING", (0, 0), (0, 0), 9),
+        ("BOTTOMPADDING", (0, -1), (0, -1), 9),
+    ]))
+    return card
 
 
 def _monthly_irradiation_chart(monthly_ghi: List[float]) -> Optional[Drawing]:
@@ -101,81 +132,65 @@ def build_siteiq_flowables(
     solar = scr.get("solar") or {}
     flood = scr.get("flood") or {}
     reg = scr.get("regulatory") or {}
-    cap = scr.get("capacity") or {}
+    grid = scr.get("grid") or {}
 
     solar_lbl = str(solar.get("rating") or "—")
     flood_risk = str(flood.get("risk") or "—")
     eeg_status = str(reg.get("status") or "—")
 
-    terrain, slope_lbl = _terrain_from_topo(topo, mount_type)
-    # Recompute the screening capacity band for the actual land use + mount type so
-    # the "Utility-scale development potential" key driver reports the real range
-    # (the screening dict only stores a formatted string, not mwp_lo/mwp_hi).
-    cap_for_suit = None
-    cap_area = 0.0
-    try:
-        cap_area = float(cap.get("area_ha") or 0)
-    except (TypeError, ValueError):
-        cap_area = 0.0
-    if cap_area > 0:
-        band = screening_capacity(cap_area, land_use, mount_type)
-        cap_for_suit = {"mwp_lo": band.get("mwp_lo"), "mwp_hi": band.get("mwp_hi")}
-
-    suit = compute_site_suitability(
-        solar_lbl, slope_lbl, flood_risk, land_use, solar, terrain,
-        mount_type=mount_type, country=country, eeg_status=eeg_status,
-        project_country=country, cap=cap_for_suit,
-    )
-
-    pvm_score = (score or {}).get("pvmath_score") if score else None
-    verdict_label = (score or {}).get("verdict") or suit["verdict_label"]
-    verdict_txt = (score or {}).get("verdict_detail") or (
-        "Screening verdict across solar, flood, land use and regulatory factors. "
-        "See the PVMath score at the end of this report for the full composite."
-    )
-
     story.extend(module_divider())
     story.append(section_hdr("SiteIQ — Site screening", st))
     story.append(Spacer(1, 0.2 * cm))
 
-    _is_positive = any(x in str(verdict_label).upper() for x in ("EXCELLENT", "VERY GOOD", "GOOD"))
-    _is_acc = "ACCEPTABLE" in str(verdict_label).upper() or "CHALLENGING" in str(verdict_label).upper()
-    v_color = ACCENT if _is_positive else (colors.HexColor("#f59e0b") if _is_acc else colors.HexColor("#dc2626"))
-    v_bg = colors.HexColor("#e8f5ee") if _is_positive else (
-        colors.HexColor("#fef9c3") if _is_acc else colors.HexColor("#fee2e2")
+    # Representative screening snapshot — solar resource, flood, grid proximity
+    # (OpenStreetMap) and regulatory / tariff applicability. Capacity is no longer
+    # estimated here; it is computed per mount type in LayoutIQ.
+    solar_sub = (
+        f"{solar.get('annual_ghi')} kWh/m\u00b2/yr"
+        if solar.get("annual_ghi") not in (None, "")
+        else ""
     )
 
-    story.append(section_hdr("OVERALL VERDICT", st))
-    story.append(Spacer(1, 0.12 * cm))
-    vt = Table([[
-        Paragraph(
-            f"<b>{strip_pdf_label(str(verdict_label))}</b>",
-            ParagraphStyle("V", fontSize=13, fontName="Helvetica-Bold", textColor=v_color, leading=16),
-        ),
-        lp(verdict_txt, st["body"]),
-    ]], colWidths=[6.5 * cm, 10.5 * cm])
-    vt.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), v_bg),
-        ("BOX", (0, 0), (-1, -1), 1.5, v_color),
-        ("TOPPADDING", (0, 0), (-1, -1), 11),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 11),
-        ("LEFTPADDING", (0, 0), (-1, -1), 12),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-    ]))
-    story.append(vt)
-    story.append(Spacer(1, 0.3 * cm))
+    nearest = grid.get("nearest") or {}
+    if grid.get("found") and nearest:
+        grid_sub = f"{nearest.get('name') or 'Substation'} \u00b7 {grid.get('distance_km')} km"
+        if nearest.get("voltage"):
+            grid_sub += f" \u00b7 {nearest['voltage']}"
+    elif grid.get("found") is False:
+        grid_sub = f"No OSM substation within {grid.get('search_radius_km') or '?'} km"
+    else:
+        grid_sub = ""
 
-    story.append(section_hdr("KEY DRIVERS", st))
-    story.append(Spacer(1, 0.1 * cm))
-    for kind, text in suit["drivers"]:
-        icon_col = "#1d9e52" if kind == "positive" else "#e85d04"
-        icon = "+" if kind == "positive" else "!"
-        story.append(Paragraph(
-            f'<font color="{icon_col}"><b>{icon}</b></font>&nbsp;&nbsp;{text}',
-            ParagraphStyle("Kd", fontSize=8.5, textColor=DARK, leading=12),
-        ))
-        story.append(Spacer(1, 0.08 * cm))
-    story.append(Spacer(1, 0.25 * cm))
+    cards = [
+        _screen_card(st, "Solar", solar_lbl, str(solar.get("detail") or ""), solar_sub),
+        _screen_card(st, "Flood", flood_risk, str(flood.get("detail") or ""), ""),
+        _screen_card(st, "Grid proximity", str(grid.get("rating") or "—"),
+                     str(grid.get("detail") or ""), grid_sub),
+        _screen_card(st, "Regulatory", eeg_status, str(reg.get("note") or ""), ""),
+    ]
+    card_grid = Table(
+        [[cards[0], cards[1]], [cards[2], cards[3]]],
+        colWidths=[8.5 * cm, 8.5 * cm],
+    )
+    card_grid.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+        ("BOTTOMPADDING", (0, 1), (-1, 1), 0),
+    ]))
+    story.append(card_grid)
+    story.append(Spacer(1, 0.2 * cm))
+
+    if grid.get("disclaimer"):
+        story.append(lp(str(grid["disclaimer"]), st["muted"]))
+    story.append(lp(
+        "Capacity is computed per mount type in LayoutIQ (portrait orientation, GCR) "
+        "— not estimated at screening.",
+        st["muted"],
+    ))
+    story.append(Spacer(1, 0.3 * cm))
 
     monthly_ghi = solar.get("monthly_ghi") or []
     chart = _monthly_irradiation_chart(monthly_ghi)
