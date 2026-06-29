@@ -1,6 +1,6 @@
 # PVMath / SiteIQ — Project Memory
 
-> **Current state (business + priorities):** read **`PVMath/STATUS.md`** first — updated each milestone.  
+> **Current state (business + priorities):** read **`PVMath/STATUS.md`** first — updated each milestone (30 Jun 2026: LayoutIQ/A1 package, SiteIQ PDF fixes, lean Terrain Data).  
 > **Founder ops (VAT, Stripe, accounting):** **`PVMath/README.md`**
 
 ## Owner
@@ -18,21 +18,23 @@
 **Tagline:** "From site to system."  
 **Focus:** Ground-mount solar ONLY — Fixed Tilt and Single-Axis Tracker, Standard and Agri-PV (dual use). No rooftop, carport, floating, or BIPV.  
 **Target users:** Solar EPCs, project developers, engineering firms worldwide  
-**Monetization:** Freemium — Free (5 analyses/month **per module**), Professional **€149/month** (75 pooled/month), Developer **€499/month** (300 pooled/month, 5 team seats), Enterprise custom. **Stripe not live** — manual Supabase activation (`docs/PVMath_Manual_Billing_Runbook.md`); website Subscribe → contact until Payment Links. **Team invites:** Manage membership → Team (`pvmath_team.py`).
+**Monetization:** Freemium — **per-project analysis** (one SiteIQ screen = one credit; TerrainIQ/LayoutIQ/YieldIQ on same project same month are free): Free **10**/month, Professional **€149/month** (**50**/month), Developer **€499/month** (**250**/month, 5 team seats), Enterprise unlimited. **Stripe not live** — manual Supabase activation (`docs/PVMath_Manual_Billing_Runbook.md`); website Subscribe → contact until Payment Links. **Team invites:** Manage membership → Team (`pvmath_team.py`).
 
 ---
 
 ## Live Assets
 | Asset | URL / target |
 |---|---|
-| **Production app** (SiteIQ + TerrainIQ) | https://siteiq.pvmath.com · https://topoiq.pvmath.com |
-| **Production Railway project** | `exemplary-balance` — deploys **`main`** only |
-| **Staging Railway project** | `cozy-enjoyment` — deploys **`staging`** branch |
+| **Primary app (React)** | https://app.pvmath.com — Cloudflare Pages, `frontend/` |
+| **API** | https://api.pvmath.com — Railway FastAPI, `api/` |
+| **Marketing** | https://pvmath.com — GitHub Pages (`index.html`, `services/index.html`) |
+| **Streamlit legacy** | https://siteiq.pvmath.com · https://topoiq.pvmath.com |
+| **Production Railway** | `exemplary-balance` — deploys **`main`** |
+| **Staging Railway** | `cozy-enjoyment` — deploys **`staging`** |
 | GitHub repo | https://github.com/IsmailPVMath/siteiq |
-| Website (GitHub Pages) | https://pvmath.com → `index.html` on **`main`** |
 | Local dev folder | ~/Desktop/solarscout/ |
 
-**Production is frozen by default.** Only push to `main` when explicitly promoting a tested staging release. Day-to-day TerrainIQ / app fixes go to **`staging`** first.
+**Primary UX is React at app.pvmath.com.** Streamlit subdomains remain deployed; retire when comfortable.
 
 **Railway branch wiring** (Settings → Service → Source → Branch):
 | Railway project | Branch | Role |
@@ -64,9 +66,33 @@ These `siteiq`/`terrainiq` CNAMEs are true reverse-proxy records (Railway termin
 | 2 | **TerrainIQ** | ✅ Live | Terrain/slope analysis, CAD export (DXF/LandXML), PDF |
 | 3 | **YieldIQ** | ✅ Live | Pre-layout yield estimation, PVGIS-based, PDF |
 | 4 | **RevenueIQ** | 🔜 Coming Soon | EEG / feed-in tariff revenue calculator, Agri-PV bonus |
-| 5 | **LayoutIQ** | 🔜 Admin-only | Auto layout + BOM generation — not public yet |
+| 5 | **LayoutIQ** | ✅ Live (React) | Auto layout, GCR sweep, exclusions on map + A1 PDF, BOM, DXF export |
 | 6 | **ProcureIQ** | 📋 Planned | Supplier lead time tracking, trade risk alerts |
 | 7 | **FieldIQ** | 📋 Planned | BIM-based QA, post-install verification, after-sales |
+
+---
+
+## React platform (primary — app.pvmath.com)
+
+**Stack:** Vite + TypeScript (`frontend/`), FastAPI (`api/`), shared Python in repo root.
+
+**Workflow:** Project Setup → SiteIQ → TerrainIQ → LayoutIQ → YieldIQ → Output (unified PDF + project package ZIP).
+
+| Step | Notes |
+|------|--------|
+| Project Setup | Pin/coords/search; draw/upload boundary; **pin + ha → square envelope** (`frontend/src/lib/coords.ts`); mount type **not** here |
+| SiteIQ | Screening only; GIS setbacks; capacity band in `pvmath_capacity.py` |
+| TerrainIQ | Region DEM (`pvmath_terrain_sources.py`); multi-cluster parcels (`pvmath_topo_engine.py`); LandXML + local DXF **on demand** |
+| LayoutIQ | Mount type (FT/SAT) chosen here; `layoutiq/engine.py`; exclusions via `restriction_geojson` |
+| YieldIQ | Auto-runs on step entry |
+
+**Project package ZIP** (`POST /workflow/project-package`, `pvmath_workflow/project_report.py`):
+- `{Project}_PVMath_Report.pdf` — unified SiteIQ + TerrainIQ + YieldIQ
+- `{Project}_Layout_A1.pdf` — layout top view + sidebar BOM (`build_layout_sheet_pdf`)
+- `{Project}_BOM.csv`, layout DXF
+- `Terrain Data/` — `{base}_reference.json`, `{base}_points.csv` (UTM E/N/Z), `{base}_contours_georef.dxf` (if TerrainIQ ran)
+
+**Key React paths:** `frontend/src/pages/OutputPage.tsx`, `ProjectSetupPage.tsx`, `frontend/src/lib/api.ts`, `frontend/src/types/workflow.ts`.
 
 ---
 
@@ -118,11 +144,15 @@ streamlit-folium
 - **Land Use:** Standard | Agri-PV (Dual Use)
 - **Mounting:** Fixed Tilt | Single-Axis Tracker
 
-### Capacity Density (MW/ha)
+### Capacity Density (MW/ha) — screening reference @ GCR 0.30
 | | Fixed Tilt | Tracker |
 |---|---|---|
 | Standard | 0.40 | 0.35 |
 | Agri-PV | 0.20 | 0.18 |
+
+**Screening band:** `pvmath_capacity.py` scales by GCR 0.30–0.42 (`config_mwp_screen`: `area × base × gcr/0.30`). Report **Project Summary** must use **selected mount** from LayoutIQ (`unified_report.py` recomputes). Key driver capacity uses `siteiq_section.py` → `screening_capacity()`.
+
+**Example 99.8 ha Standard SAT:** ~35–49 MWp DC (not 40–56 which is Fixed Tilt).
 
 ### Slope Limits
 - **Fixed Tilt:** ≤5% Excellent / ≤10% Acceptable / ≤15% Challenging / >15% Critical
@@ -158,11 +188,12 @@ reverse_geocode(lat, lon)  # status bar + saved as location_label on Save Projec
 - Multi-word given/family names allowed (`normalize_name_part()`)
 - JS in `render_auth_page()` skips password visibility button in tab order
 
-### Usage limits & membership (`pvmath_auth.py`, `pvmath_team.py`)
-- Free: 5 per module · Professional: 75 pooled/month · Developer: 300 pooled/month (team)
-- Sidebar: **Settings** (name) · **Manage membership** (plan, team, upgrade)
-- Developer seats: 5 total including owner — `team_occupied_seats()`, `_usage_key()` pools usage
-- Stripe: `STRIPE_LINK` placeholder; webhook auto-activation **not built yet**
+### Usage limits & membership (`pvmath_supabase.py`, `pvmath_team.py`)
+- **Per-project analysis:** Free 10 · Professional 50 · Developer 250 pooled/month (team)
+- Counter: `usage_tracking.app = 'platform'`; charged on SiteIQ screen only
+- Sidebar: **Settings** · **Manage membership** (plan, team, upgrade)
+- Developer seats: 5 total including owner
+- Stripe: not live; manual activation — `docs/PVMath_Manual_Billing_Runbook.md`
 
 ### Map search (SiteIQ legacy)
 ```python
@@ -248,6 +279,15 @@ Remote `staging` was ~60 commits behind `main`. Before the next fix, run **`sync
 - Every refresh logged the user out — fix: `pvm_refresh_token` in session + `?s=` re-asserted last line of `app.py`.
 - Auth: multi-word names rejected / Enter didn't login / Tab hit password eye — fix: `st.form` + JS tab order (Jun 2026).
 - Project Setup: double-click for pin, coords-only status bar, Quick vs Full unclear — fix: rerun on pin change, `reverse_geocode` in status bar, copy updates (Jun 2026).
+
+### React / unified platform (Jun 2026)
+- SiteIQ PDF key driver "~0 MWp DC" — `siteiq_section.py` stubbed `mwp_lo/hi` to 0 when `mwp_range` string present; fix: recompute `screening_capacity()`.
+- Project Summary showed Fixed-Tilt capacity on SAT projects — fix: `unified_report.py` recomputes band for `mount_type`.
+- Layout on-screen vs A1 ZIP mismatch — package omitted `row_alignment`, `prune_isolated_blocks`, etc.; fix: param parity through `WorkflowProjectPackageRequest`.
+- BOM ~2× inverters — sized as `ceil(strings/4)` @ 100 kW; fix: power-based sizing DC:AC ~1.2 in `layoutiq/bom.py`.
+- TerrainIQ disconnected parcels — single bbox starved DEM resolution; fix: cluster + per-region analyze (`pvmath_topo_engine.py`).
+- Layout gaps at exclusions — GeoJSON holes flattened; fix: `restriction_geojson` hole-preserving path to `layoutiq/engine.py`.
+- Pin+area input flicker — fix: explicit Create area button (`PinAreaField` in `BoundaryWorkspace.tsx`).
 
 ---
 
