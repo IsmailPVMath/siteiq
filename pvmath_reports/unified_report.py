@@ -105,8 +105,8 @@ def _pvmath_score_flowables(result: Dict[str, Any]) -> List:
         section_hdr("PVMATH SCORE", st),
         Spacer(1, 0.15 * cm),
         lp(
-            "Composite score across SiteIQ, TerrainIQ and YieldIQ. Terrain caps the "
-            "result on challenging sites; energy yield refines it where available.",
+            "Combines SiteIQ screening, TerrainIQ terrain, and YieldIQ energy yield. "
+            "Terrain caps the score on challenging sites. DC capacity is from LayoutIQ.",
             st["muted"],
         ),
         Spacer(1, 0.2 * cm),

@@ -333,10 +333,9 @@ async def workflow_score(
         verdict=scored["verdict"],
         components=scored["components"],
         verdict_detail=(
-            "PVMath score blends the SiteIQ screening ratings (solar, flood, land, regulatory) "
-            f"with the authoritative TerrainIQ terrain score ({body.terrain_score}/100). Terrain "
-            "caps the overall score on challenging sites — strong solar cannot mask poor slope "
-            "distribution. Capacity and yield are reported separately in LayoutIQ and YieldIQ."
+            f"Combines SiteIQ screening with TerrainIQ terrain ({body.terrain_score}/100) "
+            "and YieldIQ energy yield when run. Terrain caps the score — excellent solar "
+            "cannot offset poor slopes. DC capacity comes from LayoutIQ, not screening."
         ),
     )
 
