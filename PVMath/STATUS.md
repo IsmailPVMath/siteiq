@@ -13,18 +13,18 @@
 
 ## Session handoff (30 Jun 2026)
 
-**`main` is clean and pushed.** Latest: `668d999` — *Slim TerrainIQ package bundle; LandXML + local DXF on demand.*
+**`main` is clean and pushed.** Latest: `5fcc202` — *Unified report: SiteIQ screening cards; stale capacity estimate removed.* **`staging` synced with `main`.*
 
 ### Shipped this session (production `main`)
 
 | Area | What |
 |------|------|
+| **Unified report (SiteIQ)** | Removed stale **Est. DC capacity** from Project Summary; removed **OVERALL VERDICT** + **KEY DRIVERS** from page 1; added four-tile screening snapshot (Solar, Flood, Grid proximity from OSM, Regulatory/tariff) matching the React SiteIQ step; GHI chart + next steps unchanged; final **PVMath score** at report end unchanged |
 | **Project Setup** | Pin + area → square envelope (`squareBoundaryFromPin`); explicit **Create area** button (no live typing flicker); area bar below map; reverse-geocode location (no manual country/city fields); **New project** dropdown resets draft; save draft at bottom |
 | **TerrainIQ** | Multi-cluster DEM for disconnected parcels far apart (`pvmath_topo_engine.py` cluster + composite slope map); standalone Terrain PDF/CAD ZIP buttons **removed** from UI |
 | **LayoutIQ** | Exclusions + constraint layers on map preview and A1 PDF (red hatched keep-outs, rivers/transmission lines); hole-preserving `restriction_geojson`; aligned row-packing fills pockets separated by exclusions; `prune_isolated_blocks` threaded through package API; screen vs ZIP layout **param parity** (was mismatching tracker counts) |
 | **A1 layout sheet** | Upgraded from A3 — large top view, north arrow, scale bar, sidebar BOM/metrics; PVMath rounded logo lockup; legend docked outside plot |
 | **BOM** | Inverters sized by power at DC:AC ~1.2 (was ~0.6 / 2× too many); posts/rails mount-aware; BOM from **merged** multi-parcel layout |
-| **SiteIQ PDF bugs** | Key driver “~0 MWp DC” fixed (`siteiq_section.py` was stubbing zeros); Project Summary capacity now recomputed for **selected mount** (was always Fixed-Tilt band on SAT projects) |
 | **Project package ZIP** | `Terrain Data/`: `{base}_reference.json`, `{base}_points.csv` (UTM E/N/Z), `{base}_contours_georef.dxf` only — **no** slope PDF (in PVMath report), no auto LandXML/local DXF |
 | **TerrainIQ on demand** | Sidebar buttons: **LandXML** + **DXF (local origin)** via `POST /terrainiq/export/landxml` and `/export/contours-local` |
 | **Marketing** | `services/index.html` (standalone Services page); website unified-platform copy, per-project pricing, data sources (EEA-10, FABDEM, 3DEP) |
@@ -34,9 +34,9 @@
 
 - [ ] **app.pvmath.com** — full workflow on a ~100 ha DE site: pin+area envelope → SiteIQ → TerrainIQ (multi-parcel if applicable) → LayoutIQ with exclusions visible → project package ZIP
 - [ ] Confirm A1 layout tracker count **matches** on-screen layout; BOM inverters ~DC/1.2/100 kW (not 2× inflated)
-- [ ] SiteIQ PDF: key driver shows real MWp band; SAT project summary shows **~35–49 MWp** not 40–56 for 99.8 ha Standard
+- [ ] Unified PDF page 1: four screening cards (Solar/Flood/Grid/Regulatory), **no** Est. DC capacity row, **no** verdict/key drivers on SiteIQ section
 - [ ] Terrain Data folder has 3 files only; LandXML/local DXF buttons work on demand
-- [ ] **Staging sync** — merge `main` → `staging` before staging-only work (`staging` likely behind `main`)
+- [x] **Staging sync** — `main` merged into `staging` (30 Jun 2026)
 
 ### Known limitations / next engineering
 
@@ -45,7 +45,7 @@
 | **Terrain package cost** | Each package download still **re-runs** `run_topo_analysis` (DEM fetch). Lean bundle is faster but not free. **Cache grid after first TerrainIQ run** = biggest win. |
 | **On-demand CAD** | LandXML / local DXF each re-run full analysis today (~10–60s). Same cache would make them instant. |
 | **Prune islands** | Pockets within ~1 row-pitch of main array count as “connected” by design — only truly separated islands drop. |
-| **Capacity screening** | `pvmath_capacity.py`: base density × GCR/0.30; band GCR 0.30–0.42. CLAUDE.md table is **reference GCR 0.30**; report shows band. Mount chosen in LayoutIQ — report must recompute (fixed). |
+| **Capacity screening** | `pvmath_capacity.py`: base density × GCR/0.30; band GCR 0.30–0.42. Screening no longer shows MWp estimate in unified PDF — capacity is **LayoutIQ only**. |
 
 ### Likely next product tasks
 
@@ -120,9 +120,9 @@ No GLB export. No standalone TerrainIQ PDF/ZIP buttons in UI (terrain in package
 | React app | `main` | Cloudflare Pages — `cd frontend && npm ci && npm run build` → `frontend/dist`, `VITE_API_URL=https://api.pvmath.com` |
 | Marketing | `main` | GitHub Pages |
 
-**Latest production commit:** `668d999`
+**Latest production commit:** `5fcc202`
 
-Recent stack: `501c8a2` LayoutIQ/report/BOM fixes + terrain in package · `7cdf3d8` A1 sheet + GIS overlays · `4ca2a00` exclusions on layout · `2dc9443` multi-cluster terrain + layout pocket fill · `8cd718d` pin+area Create button.
+Recent stack: `5fcc202` SiteIQ screening cards in unified PDF · `668d999` lean Terrain Data + on-demand CAD · `501c8a2` LayoutIQ/report/BOM fixes · `7cdf3d8` A1 sheet + GIS overlays · `2dc9443` multi-cluster terrain.
 
 ---
 
@@ -189,7 +189,7 @@ pvmath.com + services/     app.pvmath.com (React/Vite)
 1. [ ] **Stripe** — Payment Links (Pro €149, Dev €499)
 2. [ ] **Gewerbe** + Steuernummer / USt-IdNr
 3. [ ] **Cache TerrainIQ** grid/exports after first analyze (package + on-demand CAD)
-4. [ ] Sync **`staging`** with `main`
+4. [x] Sync **`staging`** with `main` (30 Jun 2026)
 5. [ ] Retire Streamlit production when comfortable
 6. [ ] Update **this file** after each milestone
 
