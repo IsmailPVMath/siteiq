@@ -408,11 +408,6 @@ export function BoundaryWorkspace({
           </div>
         )}
 
-        {draft.geometry.buildable_area_ha != null ? (
-          <p className="hint setup-buildable">
-            Buildable: <strong>{draft.geometry.buildable_area_ha} ha</strong>
-          </p>
-        ) : null}
       </div>
     </section>
   );
