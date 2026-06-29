@@ -1,8 +1,51 @@
+import { useEffect, useState } from "react";
 import type * as GeoJSON from "geojson";
 import { SiteMap, type OverlayParcel } from "../SiteMap";
 import type { BoundaryPoint } from "../../types/gate";
 import type { InputMethod, ProjectSetupDraft, SetupParcel } from "../../types/projectSetup";
 import { INPUT_METHOD_OPTIONS } from "./InputMethodCards";
+
+interface PinAreaInputProps {
+  valueHa: number;
+  disabled?: boolean;
+  placeholder?: string;
+  onCommit: (ha: number) => void;
+}
+
+/** Free-typing numeric input — local state so re-renders never rewrite mid-edit. */
+function PinAreaInput({ valueHa, disabled, placeholder, onCommit }: PinAreaInputProps) {
+  const [text, setText] = useState(valueHa > 0 ? String(valueHa) : "");
+
+  useEffect(() => {
+    // Sync only when the external value diverges from what's typed (e.g. project load).
+    const typed = Number(text);
+    const external = valueHa > 0 ? valueHa : 0;
+    if (!Number.isFinite(typed) || Math.abs(typed - external) > 0.001) {
+      setText(valueHa > 0 ? String(valueHa) : "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valueHa]);
+
+  return (
+    <input
+      id="pin-area"
+      type="text"
+      inputMode="decimal"
+      autoComplete="off"
+      className="pin-area-input"
+      value={text}
+      placeholder={placeholder}
+      disabled={disabled}
+      onChange={(e) => {
+        const raw = e.target.value.replace(/[^\d.]/g, "");
+        setText(raw);
+        const ha = Number(raw);
+        if (Number.isFinite(ha) && ha > 0) onCommit(ha);
+        else if (raw === "") onCommit(0);
+      }}
+    />
+  );
+}
 
 interface ParcelGroup {
   group: string;
@@ -387,15 +430,7 @@ export function BoundaryWorkspace({
         {assumedBoundary ? (
           <div className="setup-area-pin">
             <label htmlFor="pin-area">Assumed site area around pin (ha)</label>
-            <input
-              id="pin-area"
-              type="number"
-              step="any"
-              min="0.1"
-              value={grossAreaHa > 0 ? grossAreaHa : ""}
-              placeholder="e.g. 100"
-              onChange={(e) => onAreaChange(Number(e.target.value))}
-            />
+            <PinAreaInput valueHa={grossAreaHa} placeholder="e.g. 100" onCommit={onAreaChange} />
             <p className="hint">
               A square envelope is drawn on the map (pin at centre). Not a surveyed parcel —
               buildable area is calculated on SiteIQ.
@@ -416,15 +451,11 @@ export function BoundaryWorkspace({
         ) : (
           <div className={`setup-area-pin${hasUserLocation ? "" : " is-disabled"}`}>
             <label htmlFor="pin-area">Assumed site area around pin (ha)</label>
-            <input
-              id="pin-area"
-              type="number"
-              step="any"
-              min="0.1"
-              value={grossAreaHa > 0 ? grossAreaHa : ""}
-              placeholder={hasUserLocation ? "e.g. 100" : "Drop a pin or enter coordinates first"}
+            <PinAreaInput
+              valueHa={grossAreaHa}
               disabled={!hasUserLocation}
-              onChange={(e) => onAreaChange(Number(e.target.value))}
+              placeholder={hasUserLocation ? "e.g. 100" : "Drop a pin or enter coordinates first"}
+              onCommit={onAreaChange}
             />
             <p className="hint">
               {hasUserLocation

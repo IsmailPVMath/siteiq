@@ -413,8 +413,7 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
 
     const square = squareBoundaryFromPin(lat, lon, areaHa);
     if (square.length < 4) return;
-    const computedHa = Number(polygonAreaHa(square).toFixed(2));
-    dispatch({ type: "set_assumed_envelope", site_boundary: square, gross_area_ha: computedHa });
+    dispatch({ type: "set_assumed_envelope", site_boundary: square, gross_area_ha: areaHa });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     hasUserLocation,
