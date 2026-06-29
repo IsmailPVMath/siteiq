@@ -33,6 +33,7 @@ def _project_summary_flowables(
     land_use: str,
     mount_type: str,
     area_ha: float,
+    layout_dc_kwp: Optional[float] = None,
 ) -> List:
     st = base_styles()
     loc_line = location_label or (
@@ -47,8 +48,16 @@ def _project_summary_flowables(
         [lp("Site area", st["lbl"]), lp(f"{area_ha:,.1f} ha" if area_ha else "—", st["body"])],
         [lp("Land use", st["lbl"]), lp(land_use or "—", st["body"])],
         [lp("Mounting", st["lbl"]), lp(mount_type or "—", st["body"])],
-        [lp("Generated", st["lbl"]), lp(datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"), st["body"])],
     ]
+    try:
+        dc = float(layout_dc_kwp) if layout_dc_kwp is not None else 0.0
+    except (TypeError, ValueError):
+        dc = 0.0
+    if dc > 0:
+        mwp = dc / 1000.0
+        cap_txt = f"~{mwp:.0f} MWp DC" if mwp >= 100 else f"~{mwp:.1f} MWp DC"
+        rows.append([lp("Capacity from LayoutIQ", st["lbl"]), lp(cap_txt, st["body"])])
+    rows.append([lp("Generated", st["lbl"]), lp(datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"), st["body"])])
     tbl = Table(rows, colWidths=[4.2 * cm, 12.8 * cm])
     tbl.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#e8f5ee")),
@@ -171,6 +180,7 @@ def _annex_flowables() -> List:
         muted_color="#5a7a5a",
         border_color="#d4e8d4",
         dark_color="#1a2e1a",
+        exclude=("Est. DC Capacity", "Est. Output"),
     )
     story.append(Spacer(1, 0.25 * cm))
     story.append(Paragraph(
@@ -262,6 +272,7 @@ def build_unified_pvmath_report_pdf(
         land_use=land_use,
         mount_type=mount_type,
         area_ha=area_ha,
+        layout_dc_kwp=selected_dc_kwp,
     )
 
     if lat is not None and lon is not None:
@@ -274,6 +285,7 @@ def build_unified_pvmath_report_pdf(
             mount_type=mount_type,
             lat=lat,
             lon=lon,
+            area_ha=area_ha,
         )
 
     if lat is not None and lon is not None:

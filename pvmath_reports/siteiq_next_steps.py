@@ -13,16 +13,27 @@ def _us_grid_operator(lat, lon):
     return "Regional ISO/RTO"
 
 
-def get_next_steps(project_country, land_use="Standard", lat=None, lon=None):
+def get_next_steps(project_country, land_use="Standard", lat=None, lon=None, area_ha=None):
     c = (project_country or "").lower().strip()
     agri = land_use == "Agri-PV"
+    # German ground-mount above ~1 MWp (≈2.5 ha) must win a BNetzA competitive
+    # tender (EEG-Ausschreibung); the fixed feed-in tariff path is for small arrays.
+    utility_scale = area_ha is not None and area_ha >= 2.5
 
     if any(x in c for x in ["germany", "deutschland", "de"]):
+        if utility_scale:
+            tariff_step = (
+                "EEG 2023: ground-mount >1 MWp must bid in the BNetzA Ausschreibung "
+                "(competitive tender, Solar-Freifläche) — register the project in the "
+                "Marktstammdatenregister and track tender rounds at bundesnetzagentur.de"
+            )
+        else:
+            tariff_step = "EEG 2023 feed-in tariff: register via Bundesnetzagentur (Marktstammdatenregister)"
         steps = [
             "Verify land classification (Nutzungsart) with local Katasteramt",
             "Grid connection: contact local DSO (e.g. Bayernwerk, E.ON, Netze BW)",
             "Planning permission: consult local Bauamt / Gemeindeverwaltung",
-            "EEG 2023 feed-in tariff: register via Bundesnetzagentur (Marktstammdatenregister)",
+            tariff_step,
             "Flood risk: www.hochwasserportal.de — verify HQ100 flood zone",
         ]
         if agri:

@@ -102,6 +102,12 @@ def build_pvmath_report_pdf(
     slope_img_png: Optional[bytes] = None,
 ) -> bytes:
     """A4 unified PVMath report — rich SiteIQ, TerrainIQ, and YieldIQ sections."""
+    dc_kwp = selected_dc_kwp
+    if not dc_kwp and layout_row:
+        try:
+            dc_kwp = float(layout_row.get("dc_kwp") or 0) or None
+        except (TypeError, ValueError):
+            dc_kwp = None
     return build_unified_pvmath_report_pdf(
         project_name=project_name,
         country=country,
@@ -116,7 +122,7 @@ def build_pvmath_report_pdf(
         score=score,
         yield_result=yield_result,
         selected_config_key=selected_config_key,
-        selected_dc_kwp=selected_dc_kwp,
+        selected_dc_kwp=dc_kwp,
         boundaries=boundaries,
         slope_img_png=slope_img_png,
     )
@@ -564,6 +570,8 @@ def build_project_package_zip(
         score=score,
         yield_result=yield_result,
         selected_yield_mwh=selected_yield_mwh,
+        selected_config_key=config_key if layout_row is None else (layout_row.get("config_key") or config_key),
+        selected_dc_kwp=float(layout_row["dc_kwp"]) if layout_row and layout_row.get("dc_kwp") else None,
         boundaries=boundaries,
     )
     a1_pdf = build_layout_sheet_pdf(

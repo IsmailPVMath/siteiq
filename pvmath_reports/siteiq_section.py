@@ -124,6 +124,7 @@ def build_siteiq_flowables(
     mount_type: str,
     lat: float,
     lon: float,
+    area_ha: float = 0.0,
 ) -> List:
     st = base_styles()
     story: List = []
@@ -144,13 +145,8 @@ def build_siteiq_flowables(
 
     # Representative screening snapshot — solar resource, flood, grid proximity
     # (OpenStreetMap) and regulatory / tariff applicability. Capacity is no longer
-    # estimated here; it is computed per mount type in LayoutIQ.
-    solar_sub = (
-        f"{solar.get('annual_ghi')} kWh/m\u00b2/yr"
-        if solar.get("annual_ghi") not in (None, "")
-        else ""
-    )
-
+    # estimated here; it is computed per mount type in LayoutIQ. The solar detail
+    # string already carries the GHI value, so the card needs no extra sub-line.
     nearest = grid.get("nearest") or {}
     if grid.get("found") and nearest:
         grid_sub = f"{nearest.get('name') or 'Substation'} \u00b7 {grid.get('distance_km')} km"
@@ -162,7 +158,7 @@ def build_siteiq_flowables(
         grid_sub = ""
 
     cards = [
-        _screen_card(st, "Solar", solar_lbl, str(solar.get("detail") or ""), solar_sub),
+        _screen_card(st, "Solar", solar_lbl, str(solar.get("detail") or ""), ""),
         _screen_card(st, "Flood", flood_risk, str(flood.get("detail") or ""), ""),
         _screen_card(st, "Grid proximity", str(grid.get("rating") or "—"),
                      str(grid.get("detail") or ""), grid_sub),
@@ -185,11 +181,6 @@ def build_siteiq_flowables(
 
     if grid.get("disclaimer"):
         story.append(lp(str(grid["disclaimer"]), st["muted"]))
-    story.append(lp(
-        "Capacity is computed per mount type in LayoutIQ (portrait orientation, GCR) "
-        "— not estimated at screening.",
-        st["muted"],
-    ))
     story.append(Spacer(1, 0.3 * cm))
 
     monthly_ghi = solar.get("monthly_ghi") or []
@@ -209,7 +200,7 @@ def build_siteiq_flowables(
 
     story.append(section_hdr("RECOMMENDED NEXT STEPS", st))
     story.append(Spacer(1, 0.12 * cm))
-    for step in get_next_steps(country, land_use, lat=lat, lon=lon):
+    for step in get_next_steps(country, land_use, lat=lat, lon=lon, area_ha=area_ha):
         story.append(lp(step, st["body"]))
         story.append(Spacer(1, 0.12 * cm))
 

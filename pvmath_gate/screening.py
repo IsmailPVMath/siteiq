@@ -222,14 +222,16 @@ def assess_slope(pct: float, mount_type: str = "Fixed Tilt") -> tuple[str, str]:
 def get_flood_risk(lat: float, lon: float, elevation: float | None) -> dict:
     if elevation is None:
         risk, detail = "Unknown", "Elevation unavailable — manual flood check required"
-    elif elevation < 10:
-        risk, detail = "High", f"Centre {elevation} m asl — low elevation"
-    elif elevation < 50:
-        risk, detail = "Moderate", f"Centre {elevation} m asl — low-lying"
-    elif elevation < 200:
-        risk, detail = "Low-Moderate", f"Centre {elevation} m asl — moderate elevation"
     else:
-        risk, detail = "Low", f"Centre {elevation} m asl — relatively elevated"
+        elev = round(float(elevation))
+        if elevation < 10:
+            risk, detail = "High", f"Centre {elev} m asl — low elevation"
+        elif elevation < 50:
+            risk, detail = "Moderate", f"Centre {elev} m asl — low-lying"
+        elif elevation < 200:
+            risk, detail = "Low-Moderate", f"Centre {elev} m asl — moderate elevation"
+        else:
+            risk, detail = "Low", f"Centre {elev} m asl — relatively elevated"
     return {
         "risk": risk,
         "detail": detail,

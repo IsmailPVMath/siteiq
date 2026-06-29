@@ -357,6 +357,10 @@ export function YieldResultsPanel({
                   +{(Number(tracker1p.spec_y) - Number(fixed1p.spec_y)).toFixed(0)} kWh/kWp/yr (
                   {(((Number(tracker1p.spec_y) - Number(fixed1p.spec_y)) / Number(fixed1p.spec_y)) * 100).toFixed(1)}%)
                 </span>
+                <span className="hint">
+                  SAT {fmtNum(tracker1p.spec_y, 0)} vs FT {fmtNum(fixed1p.spec_y, 0)}
+                  {fixed1p.gcr != null ? ` @ GCR ${Number(fixed1p.gcr).toFixed(2)}` : ""}
+                </span>
               </div>
             ) : null}
             {fixed2p && tracker2p && configMatchesFilter("2P Tracker", mountFilter) ? (
@@ -366,9 +370,18 @@ export function YieldResultsPanel({
                   +{(Number(tracker2p.spec_y) - Number(fixed2p.spec_y)).toFixed(0)} kWh/kWp/yr (
                   {(((Number(tracker2p.spec_y) - Number(fixed2p.spec_y)) / Number(fixed2p.spec_y)) * 100).toFixed(1)}%)
                 </span>
+                <span className="hint">
+                  SAT {fmtNum(tracker2p.spec_y, 0)} vs FT {fmtNum(fixed2p.spec_y, 0)}
+                  {fixed2p.gcr != null ? ` @ GCR ${Number(fixed2p.gcr).toFixed(2)}` : ""}
+                </span>
               </div>
             ) : null}
           </div>
+          <p className="hint">
+            Gain is each tracker versus the fixed-tilt configuration at the same GCR and
+            losses. This baseline differs from the cross-module reference above (1P at
+            default GCR), so the two fixed-tilt figures need not match.
+          </p>
         </div>
       ) : null}
 

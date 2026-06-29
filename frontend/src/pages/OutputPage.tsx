@@ -2393,7 +2393,6 @@ export function OutputPage({
             "Solar",
             String(result.solar.rating ?? "—"),
             String(result.solar.detail ?? ""),
-            result.solar.annual_ghi ? `${result.solar.annual_ghi} kWh/m²/yr` : undefined,
           )}
           {metric(
             "Flood",

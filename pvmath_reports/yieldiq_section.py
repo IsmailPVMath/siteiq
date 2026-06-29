@@ -307,21 +307,37 @@ def build_yieldiq_flowables(
         story.append(Spacer(1, 0.25 * cm))
 
     # --- Tracker gain ---
+    # Each gain is tracker minus the matched fixed-tilt config at the SAME GCR and
+    # losses (e.g. 2P Tracker vs 2P Fixed). Spell out both endpoints so the baseline
+    # is verifiable — it differs from the cross-module reference above, which uses
+    # the 1P configuration at the default GCR rather than the project GCR.
     tg_pairs = []
     f1, t1 = configs.get("1P Fixed"), configs.get("1P Tracker")
     f2, t2 = configs.get("2P Fixed"), configs.get("2P Tracker")
+
+    def _gain_value(fixed_cfg: Dict[str, Any], tracker_cfg: Dict[str, Any]) -> str:
+        fy = float(fixed_cfg.get("spec_y") or 0)
+        ty = float(tracker_cfg.get("spec_y") or 0)
+        d = ty - fy
+        pct = (d / fy * 100) if fy else 0.0
+        gcr = fixed_cfg.get("gcr")
+        gcr_txt = f" @ GCR {float(gcr):.2f}" if gcr is not None else ""
+        return f"+{d:.0f} kWh/kWp/yr ({pct:.1f}%) \u00b7 SAT {ty:,.0f} vs FT {fy:,.0f}{gcr_txt}"
+
     if f1 and t1 and _matches_filter("1P Tracker", mount_filter):
-        d = float(t1.get("spec_y") or 0) - float(f1.get("spec_y") or 0)
-        pct = (d / float(f1.get("spec_y") or 1)) * 100
-        tg_pairs.append(("Tracker gain (1P)", f"+{d:.0f} kWh/kWp/yr ({pct:.1f}%)"))
+        tg_pairs.append(("Tracker gain (1P)", _gain_value(f1, t1)))
     if f2 and t2 and _matches_filter("2P Tracker", mount_filter):
-        d = float(t2.get("spec_y") or 0) - float(f2.get("spec_y") or 0)
-        pct = (d / float(f2.get("spec_y") or 1)) * 100
-        tg_pairs.append(("Tracker gain (2P)", f"+{d:.0f} kWh/kWp/yr ({pct:.1f}%)"))
+        tg_pairs.append(("Tracker gain (2P)", _gain_value(f2, t2)))
     if tg_pairs:
         story.append(section_hdr("TRACKER GAIN", st))
         story.append(Spacer(1, 0.12 * cm))
-        story.append(_metrics_grid(tg_pairs, st, cols=2))
+        story.append(_metrics_grid(tg_pairs, st, cols=1))
+        story.append(Spacer(1, 0.1 * cm))
+        story.append(lp(
+            "Gain is each tracker versus the fixed-tilt configuration at the same GCR and "
+            "loss assumptions. This baseline differs from the cross-module reference above "
+            "(1P at default GCR), so the two fixed-tilt figures need not match.",
+            st["muted"]))
         story.append(Spacer(1, 0.25 * cm))
 
     if mount_filter == "sat":

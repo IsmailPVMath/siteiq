@@ -187,8 +187,13 @@ def append_siteiq_metrics_annexure(
     muted_color: str = "#5a7a5a",
     border_color: str = "#d4e0d4",
     dark_color: str = "#1a2e1a",
+    exclude: tuple = (),
 ):
-    """Annex explaining KEY METRICS — included at the bottom of every SiteIQ report."""
+    """Annex explaining KEY METRICS — included at the bottom of every SiteIQ report.
+
+    ``exclude`` lists metric labels to omit (e.g. the unified report no longer
+    estimates DC capacity at screening, so it drops those rows to stay in sync).
+    """
     from reportlab.lib.styles import getSampleStyleSheet
 
     styles = getSampleStyleSheet()
@@ -246,6 +251,8 @@ def append_siteiq_metrics_annexure(
 
     rows = [[_cell("Metric", bold=True, color=colors.white), _cell("What it means", bold=True, color=colors.white)]]
     for metric, definition in SITEIQ_METRICS_ANNEXURE:
+        if metric in exclude:
+            continue
         rows.append([_cell(metric, bold=True, size=7.5), _cell(definition, size=7.5, color=muted)])
 
     tbl = Table(rows, colWidths=[4.2 * cm, 12.8 * cm])
