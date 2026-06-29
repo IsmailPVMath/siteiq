@@ -47,6 +47,7 @@ from pvmath_workflow.project_report import build_pvmath_report_pdf, build_projec
 from pvmath_workflow.scoring import unified_pvmath_score
 from pvmath_workflow.screen import WorkflowScreenRequest as ScreenReq, run_workflow_screen
 from pvmath_workflow.slope_restrictions import build_slope_restriction_polygons
+from pvmath_workflow.terrain_bundle import build_terrain_files
 from pvmath_workflow.terrain_mesh import build_terrain_mesh
 
 router = APIRouter(tags=["workflow"])
@@ -54,6 +55,7 @@ router = APIRouter(tags=["workflow"])
 SCREEN_APP = PLATFORM_APP
 SCREEN_TIMEOUT_SEC = int(os.environ.get("PVMATH_GATE_TIMEOUT", "150"))
 LAYOUT_TIMEOUT_SEC = int(os.environ.get("PVMATH_LAYOUT_TIMEOUT", "240"))
+TOPO_TIMEOUT_SEC = int(os.environ.get("PVMATH_TOPO_TIMEOUT", "180"))
 _MAX_DXF_BYTES = 16 * 1024 * 1024
 
 
@@ -742,9 +744,12 @@ async def workflow_project_package(
     polys = _latlon_polys(body.boundary, body.boundaries)
     if not polys:
         raise HTTPException(status_code=400, detail="A site boundary is required for the project package.")
-    manual_restrictions = _latlon_polys(None, body.restriction_polygons)
     loop = asyncio.get_running_loop()
     try:
+        manual_restrictions = await asyncio.wait_for(
+            loop.run_in_executor(None, partial(_resolve_layout_restrictions, body, polys)),
+            timeout=LAYOUT_TIMEOUT_SEC,
+        )
         tracker_restrictions = await asyncio.wait_for(
             loop.run_in_executor(None, partial(_tracker_slope_restrictions, body)),
             timeout=LAYOUT_TIMEOUT_SEC,
@@ -752,6 +757,33 @@ async def workflow_project_package(
         restrictions = manual_restrictions
         if (body.config_key or "").upper().startswith("SAT"):
             restrictions = _merge_latlon_polys(manual_restrictions, tracker_restrictions)
+        terrain_files = None
+        if body.include_terrain:
+            terrain_polys = _lonlat_polys(body.boundary, body.boundaries)
+            if terrain_polys:
+                try:
+                    terrain_files = await asyncio.wait_for(
+                        loop.run_in_executor(
+                            None,
+                            partial(
+                                build_terrain_files,
+                                terrain_polys,
+                                project_name=body.project_name,
+                                country=body.country,
+                                land_use=body.land_use,
+                                grid_m=body.topo_grid_m,
+                                allow_coarsen=body.topo_allow_coarsen,
+                                contour_minor=body.contour_minor,
+                                contour_major=body.contour_major,
+                                mask_geojson=body.mask_geojson,
+                            ),
+                        ),
+                        timeout=TOPO_TIMEOUT_SEC,
+                    )
+                except Exception:
+                    # Terrain data is a best-effort add-on; never fail the whole
+                    # package if the DEM fetch / analysis times out or errors.
+                    terrain_files = None
         zip_bytes = await asyncio.wait_for(
             loop.run_in_executor(
                 None,
@@ -786,6 +818,9 @@ async def workflow_project_package(
                     ew_gap_m=body.ew_gap_m,
                     road_mode=body.road_mode,
                     road_preset=body.road_preset,
+                    allow_partial_strings=body.allow_partial_strings,
+                    row_alignment=body.row_alignment,
+                    prune_isolated_blocks=body.prune_isolated_blocks,
                     screening=body.screening,
                     topo=body.topo,
                     score=body.score,
@@ -795,6 +830,7 @@ async def workflow_project_package(
                     location_label=body.location_label,
                     drawn_by=body.drawn_by,
                     revision=body.revision,
+                    terrain_files=terrain_files,
                 ),
             ),
             timeout=LAYOUT_TIMEOUT_SEC * 2,

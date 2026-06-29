@@ -7,8 +7,6 @@ import {
   createProject,
   updateProject,
   reverseGeocode,
-  topoExportsZip,
-  topoReportPdf,
   workflowGisAnalysis,
   workflowImportLayoutDxf,
   workflowLayoutDetail,
@@ -267,8 +265,6 @@ export function OutputPage({
   const pendingAutoSaveStage = useRef<OutputModuleStage>("screen");
   const AUTO_SAVE_DEBOUNCE_MS = 1200;
   const yieldAutoRan = useRef(false);
-  const [topoPdfBusy, setTopoPdfBusy] = useState(false);
-  const [topoZipBusy, setTopoZipBusy] = useState(false);
   const [topoMesh, setTopoMesh] = useState<WorkflowTerrainMeshResponse | null>(null);
   const [topoMeshBusy, setTopoMeshBusy] = useState(false);
   const [yieldBusy, setYieldBusy] = useState(false);
@@ -977,36 +973,6 @@ export function OutputPage({
     );
   }
 
-  async function handleTopoPdf() {
-    if (!topoPayload) return;
-    setTopoPdfBusy(true);
-    setTopoError("");
-    try {
-      const blob = await topoReportPdf(token, topoPayload);
-      const safe = (topoPayload.project_name || "terrainiq").replace(/\s+/g, "_");
-      saveBlob(blob, `${safe}_terrain_report.pdf`);
-    } catch (err) {
-      setTopoError(err instanceof Error ? err.message : "Terrain PDF failed");
-    } finally {
-      setTopoPdfBusy(false);
-    }
-  }
-
-  async function handleTopoZip() {
-    if (!topoPayload) return;
-    setTopoZipBusy(true);
-    setTopoError("");
-    try {
-      const blob = await topoExportsZip(token, topoPayload);
-      const safe = (topoPayload.project_name || "terrainiq").replace(/\s+/g, "_");
-      saveBlob(blob, `${safe}_terrainiq_exports.zip`);
-    } catch (err) {
-      setTopoError(err instanceof Error ? err.message : "CAD ZIP failed");
-    } finally {
-      setTopoZipBusy(false);
-    }
-  }
-
   async function runYieldAnalysis() {
     setYieldBusy(true);
     setYieldError("");
@@ -1284,6 +1250,11 @@ export function OutputPage({
         config_key: selectedLayoutRow.config_key,
         pitch_m: selectedLayoutRow.pitch_m,
         ...layoutApiParams(),
+        ...layoutSmartExtras(),
+        include_terrain: Boolean(topoResult),
+        topo_grid_m: topoGridM,
+        topo_allow_coarsen: topoAllowCoarsen,
+        ...(buildableMask ? { mask_geojson: buildableMask } : {}),
       });
       const safe = (result.project_name || "PVMath").replace(/\s+/g, "_");
       saveBlob(blob, `${safe}_Project_Package.zip`);
@@ -1666,24 +1637,13 @@ export function OutputPage({
               >
                 {topoBusy ? "Running TerrainIQ…" : topoResult ? "Re-run TerrainIQ" : "Run TerrainIQ"}
               </button>
-              <div className="sidebar-btn-row">
-                <button
-                  className="btn btn-ghost btn-sm"
-                  type="button"
-                  onClick={() => void handleTopoPdf()}
-                  disabled={topoPdfBusy || !topoResult}
-                >
-                  {topoPdfBusy ? "Generating…" : "Terrain PDF"}
-                </button>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  type="button"
-                  onClick={() => void handleTopoZip()}
-                  disabled={topoZipBusy || !topoResult}
-                >
-                  {topoZipBusy ? "Preparing…" : "CAD ZIP"}
-                </button>
-              </div>
+              {topoResult ? (
+                <p className="sidebar-hint" style={{ marginTop: "0.5rem" }}>
+                  Terrain contours, slope PDF, LandXML, DXF and point clouds are
+                  bundled in the <strong>Terrain Data</strong> folder of the
+                  project package (final step).
+                </p>
+              ) : null}
             </>
           )}
           {renderTopoRecovery(true)}

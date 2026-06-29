@@ -11,6 +11,7 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.platypus import KeepTogether, Paragraph, Spacer, Table, TableStyle
 
+from pvmath_capacity import screening_capacity
 from pvmath_pdf import strip_pdf_label
 from pvmath_reports.common import (
     ACCENT,
@@ -107,9 +108,18 @@ def build_siteiq_flowables(
     eeg_status = str(reg.get("status") or "—")
 
     terrain, slope_lbl = _terrain_from_topo(topo, mount_type)
+    # Recompute the screening capacity band for the actual land use + mount type so
+    # the "Utility-scale development potential" key driver reports the real range
+    # (the screening dict only stores a formatted string, not mwp_lo/mwp_hi).
     cap_for_suit = None
-    if cap.get("mwp_range"):
-        cap_for_suit = {"mwp_lo": 0, "mwp_hi": 0}
+    cap_area = 0.0
+    try:
+        cap_area = float(cap.get("area_ha") or 0)
+    except (TypeError, ValueError):
+        cap_area = 0.0
+    if cap_area > 0:
+        band = screening_capacity(cap_area, land_use, mount_type)
+        cap_for_suit = {"mwp_lo": band.get("mwp_lo"), "mwp_hi": band.get("mwp_hi")}
 
     suit = compute_site_suitability(
         solar_lbl, slope_lbl, flood_risk, land_use, solar, terrain,

@@ -13,6 +13,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from pvmath_brand import PRODUCT_NAME
+from pvmath_capacity import format_mwp_range, screening_capacity
 from pvmath_geocode import format_coords, resolve_location_label
 from pvmath_pdf import SITEIQ_DISCLAIMER_BODY, append_siteiq_metrics_annexure
 from pvmath_reports.common import ACCENT, ACCENT_HDR, BORDER, DARK, MUTED, base_styles, lp, module_banner, module_divider, section_hdr
@@ -242,6 +243,13 @@ def build_unified_pvmath_report_pdf(
             area_ha = float(topo.get("area_ha") or 0)
         except (TypeError, ValueError):
             pass
+
+    # Recompute the capacity band for the actual mount type selected for the
+    # project. The stored screening string is computed at SiteIQ time with the
+    # default mount (Fixed Tilt); the report must reflect the chosen mounting.
+    if area_ha and area_ha > 0:
+        band = screening_capacity(area_ha, land_use, mount_type)
+        capacity_mwp = format_mwp_range(band.get("mwp_lo"), band.get("mwp_hi"))
 
     final_score = _compute_final_score(score, scr, yield_result, selected_config_key)
 

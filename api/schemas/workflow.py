@@ -334,6 +334,35 @@ class WorkflowProjectPackageRequest(WorkflowPvmathReportRequest):
         default=None,
         description="SiteIQ OSM constraint layers (rivers, transmission lines, roads…) for the A1 layout drawing.",
     )
+    allow_partial_strings: bool = Field(default=False)
+    row_alignment: Literal["horizontal", "boundary"] = Field(
+        default="horizontal",
+        description="horizontal = uniform rows from south/west fence; boundary = pack along parcel edge pockets.",
+    )
+    prune_isolated_blocks: bool = Field(
+        default=True,
+        description="Drop tiny disconnected tracker/table islands below minimum block size.",
+    )
+    ignore_soft_constraints: bool = Field(
+        default=False,
+        description="Skip forest/vegetation OSM exclusions — assume EPC land clearing for early layout.",
+    )
+    setbacks_m: Optional[Dict[str, float]] = Field(
+        default=None,
+        description="Per-category GIS setbacks (m); paired with constraint_layers.",
+    )
+    include_terrain: bool = Field(
+        default=True,
+        description="Bundle the full TerrainIQ deliverables in a Terrain Data/ folder.",
+    )
+    topo_grid_m: float = Field(default=5.0, gt=0)
+    topo_allow_coarsen: bool = Field(default=True)
+    contour_minor: float = Field(default=0.5, gt=0)
+    contour_major: float = Field(default=1.0, gt=0)
+    mask_geojson: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Buildable-area mask used for the bundled terrain analysis.",
+    )
     config_key: str = Field(..., max_length=16)
     pitch_m: float = Field(..., gt=0)
     module_h: float = Field(default=2.094, gt=0)

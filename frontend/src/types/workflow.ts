@@ -279,6 +279,17 @@ export interface WorkflowProjectPackageRequest extends WorkflowPvmathReportReque
   constraint_layers?: Record<string, GeoJSON.FeatureCollection>;
   config_key: string;
   pitch_m: number;
+  allow_partial_strings?: boolean;
+  row_alignment?: "horizontal" | "boundary";
+  prune_isolated_blocks?: boolean;
+  ignore_soft_constraints?: boolean;
+  setbacks_m?: Record<string, number>;
+  include_terrain?: boolean;
+  topo_grid_m?: number;
+  topo_allow_coarsen?: boolean;
+  contour_minor?: number;
+  contour_major?: number;
+  mask_geojson?: GeoJSON.GeoJSON;
 }
 
 export interface ConstraintSummaryItem {

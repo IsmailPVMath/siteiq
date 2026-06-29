@@ -14,20 +14,35 @@ def compute_bom(
     modules_per_string: int,
     strings_per_inv: int,
     inv_ac_kw: float,
+    target_dc_ac: float = 1.20,
 ) -> dict[str, str]:
     total_mod = layout["total_modules"]
     total_rows = layout["total_rows"]
+    is_tracker = bool(layout.get("is_tracker"))
     dc_kwp = total_mod * module_wp / 1000
 
-    total_strings = math.ceil(total_mod / modules_per_string)
-    total_inv = math.ceil(total_strings / strings_per_inv)
+    total_strings = math.ceil(total_mod / modules_per_string) if total_mod else 0
+
+    # Size inverters by power for a realistic DC:AC ratio (~1.2), not by an
+    # arbitrary strings-per-inverter count. The old code used 4 strings per
+    # 100 kW inverter which gave DC:AC ~0.6 and ~2x too many inverters.
+    if inv_ac_kw and target_dc_ac:
+        total_inv = max(1, round((dc_kwp / target_dc_ac) / inv_ac_kw)) if dc_kwp else 0
+    else:
+        total_inv = math.ceil(total_strings / strings_per_inv) if strings_per_inv else 0
     ac_kw = total_inv * inv_ac_kw
     dc_ac = round(dc_kwp / ac_kw, 3) if ac_kw else 0
+    strings_per_inv_eff = max(1, round(total_strings / total_inv)) if total_inv else strings_per_inv
 
+    # Foundation posts: along the torque tube (trackers) or per table leg line
+    # (fixed). Tracker piles sit ~6 m apart; fixed-tilt posts ~5 m.
+    post_spacing_m = 6.0 if is_tracker else 5.0
     total_posts = sum(
-        max(2, math.ceil(r["length_m"] / 4) + 1) for r in layout["rows_data"]
+        max(2, math.ceil(r["length_m"] / post_spacing_m) + 1) for r in layout["rows_data"]
     )
-    rails_lines = n_portrait + 1
+    # Rail / purlin: a tracker carries modules on the torque tube (n_portrait
+    # mounting lines); fixed-tilt tables need an extra purlin line.
+    rails_lines = n_portrait if is_tracker else n_portrait + 1
     total_rail_m = round(sum(r["length_m"] * rails_lines for r in layout["rows_data"]))
     total_clamps = total_mod * 4
     dc_cable_m = total_mod * 10
@@ -43,7 +58,7 @@ def compute_bom(
         "Total Rows": str(total_rows),
         "Modules per String": str(modules_per_string),
         "Total Strings": f"{total_strings:,}",
-        "Strings per Inverter": str(strings_per_inv),
+        "Strings per Inverter": str(strings_per_inv_eff),
         "Total Inverters": f"{total_inv:,}",
         "Inverter AC (each)": f"{inv_ac_kw} kW",
         "Site Area": f"{layout['area_ha']} ha",

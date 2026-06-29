@@ -244,14 +244,21 @@ def make_layout_drawing(
     )
 
     dc_kwp = layout["total_modules"] * module_wp / 1000
+    is_tracker = bool(layout.get("is_tracker"))
     mount_str = (
         "Single-Axis Tracker (SAT)"
-        if layout.get("is_tracker")
+        if is_tracker
         else f"Fixed Tilt · Az {azimuth}°"
     )
+    if is_tracker:
+        unit_total = len(unit_polys) or layout.get("total_tracker_units") or layout["total_rows"]
+        unit_label = "tracker units"
+    else:
+        unit_total = layout["total_rows"]
+        unit_label = "rows"
     summary = (
         f"{layout['total_modules']:,} modules  |  "
-        f"{layout.get('total_tracker_units', layout['total_rows'])} tracker units  |  "
+        f"{unit_total:,} {unit_label}  |  "
         f"{dc_kwp:,.0f} kWp  |  {layout['area_ha']} ha  |  "
         f"{mount_str}"
     )
@@ -290,13 +297,31 @@ def make_layout_drawing(
         else:
             handles.append(mpatches.Patch(color=color, alpha=0.3, label=label))
 
-    ax.legend(
-        handles=handles,
-        fontsize=9 if big else 8.5,
-        loc="lower right",
-        framealpha=0.93,
-        title="Legend",
-    )
+    if big:
+        # A1 sheet: dock the legend in the right margin (outside the plot) so it
+        # never overlaps the array. bbox_inches="tight" keeps it on the canvas.
+        leg = ax.legend(
+            handles=handles,
+            fontsize=9,
+            loc="upper left",
+            bbox_to_anchor=(1.015, 1.0),
+            borderaxespad=0.0,
+            framealpha=1.0,
+            edgecolor="#d4d4d8",
+            title="Legend",
+            labelspacing=0.7,
+            handlelength=1.6,
+        )
+    else:
+        leg = ax.legend(
+            handles=handles,
+            fontsize=8.5,
+            loc="upper right",
+            framealpha=0.95,
+            edgecolor="#d4d4d8",
+            title="Legend",
+        )
+    leg.get_title().set_fontweight("bold")
 
     plt.tight_layout()
     buf = io.BytesIO()

@@ -9,6 +9,7 @@ from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 
 from pvmath_brand import COMPANY_NAME, PRODUCT_NAME, TAGLINE
+from reportlab.graphics.shapes import Drawing, Rect, String
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A1, A3, A4, landscape
@@ -164,37 +165,41 @@ def _fit_image(png_bytes: bytes, max_w: float, max_h: float) -> RLImage:
     return RLImage(io.BytesIO(png_bytes), width=w, height=h)
 
 
+def _logo_mark(size_mm: float = 11.0) -> Drawing:
+    """Rounded PVMath badge matching the website mark (dark base, light top band)."""
+    s = size_mm * mm
+    band = s * 0.30
+    r = s * 0.22
+    d = Drawing(s, s)
+    # Light top band shows by drawing the whole badge light, then dark below it.
+    d.add(Rect(0, 0, s, s, rx=r, ry=r, fillColor=colors.HexColor("#1d9e52"), strokeColor=None))
+    d.add(Rect(0, 0, s, s - band, rx=r, ry=r, fillColor=colors.HexColor("#145f34"), strokeColor=None))
+    pv = String(s / 2, s * 0.30, "PV", textAnchor="middle",
+                fontName="Helvetica-Bold", fontSize=size_mm * 1.35,
+                fillColor=colors.white)
+    d.add(pv)
+    return d
+
+
 def _logo_block(st) -> Table:
-    """Small PVMath logo mark + wordmark for the title block."""
-    mark = Table(
-        [[_lp("PV", ParagraphStyle(
-            "logomark", parent=st["white"], fontSize=13, alignment=TA_CENTER, leading=15,
-        ))]],
-        colWidths=[10 * mm],
-        rowHeights=[10 * mm],
-    )
-    mark.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#145f34")),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-        ("TOPPADDING", (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-    ]))
+    """PVMath logo lockup (rounded mark + wordmark) for the title block."""
     word = [
         _lp(COMPANY_NAME, ParagraphStyle(
-            "logoword", parent=st["h2"], fontSize=15, leading=17, textColor=colors.HexColor("#1d9e52"),
-            spaceBefore=0, spaceAfter=2,
+            "logoword", parent=st["h2"], fontSize=16, leading=17, textColor=colors.HexColor("#145f34"),
+            spaceBefore=0, spaceAfter=1,
         )),
         _lp(TAGLINE, ParagraphStyle(
             "logotag", parent=st["muted"], fontSize=7, leading=9, textColor=colors.HexColor("#5a7a5a"),
         )),
     ]
-    tbl = Table([[mark, word]], colWidths=[12 * mm, None])
+    tbl = Table([[_logo_mark(11.0), word]], colWidths=[13 * mm, None])
     tbl.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("LEFTPADDING", (0, 0), (0, 0), 0),
         ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-        ("LEFTPADDING", (1, 0), (1, 0), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+        ("LEFTPADDING", (1, 0), (1, 0), 7),
     ]))
     return tbl
 
@@ -393,7 +398,7 @@ def build_layout_sheet_pdf(
 
     logo_row = Table([[_logo_block(st)]], colWidths=[sidebar_w])
     logo_row.setStyle(TableStyle([
-        ("ALIGN", (0, 0), (-1, -1), "RIGHT"),
+        ("ALIGN", (0, 0), (-1, -1), "LEFT"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("TOPPADDING", (0, 0), (-1, -1), 4),
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
@@ -490,6 +495,9 @@ def build_project_package_zip(
     ew_gap_m: float = 0.0,
     road_mode: str = "off",
     road_preset: str = "no_roads",
+    allow_partial_strings: bool = False,
+    row_alignment: str = "horizontal",
+    prune_isolated_blocks: bool = True,
     screening: Optional[Dict[str, Any]] = None,
     topo: Optional[Dict[str, Any]] = None,
     score: Optional[Dict[str, Any]] = None,
@@ -499,8 +507,10 @@ def build_project_package_zip(
     location_label: str = "",
     drawn_by: str = "PVMath LayoutIQ",
     revision: str = "R0",
+    terrain_files: Optional[Dict[str, bytes]] = None,
 ) -> bytes:
-    """ZIP: PVMath report PDF, A1 layout+BOM PDF, BOM CSV, layout DXF."""
+    """ZIP: PVMath report PDF, A1 layout+BOM PDF, BOM CSV, layout DXF, and an
+    optional ``Terrain Data/`` folder with the full TerrainIQ deliverables."""
     detail = build_layout_detail(
         boundaries=boundaries,
         restriction_polygons=restriction_polygons,
@@ -523,25 +533,19 @@ def build_project_package_zip(
         ew_gap_m=ew_gap_m,
         road_mode=road_mode,
         road_preset=road_preset,
+        allow_partial_strings=allow_partial_strings,
+        row_alignment=row_alignment,
+        prune_isolated_blocks=prune_isolated_blocks,
     )
     layouts = detail.get("layouts") or []
-    bom_layout = layouts[0] if layouts else None
-    if not bom_layout:
+    if not layouts:
         raise ValueError("Layout geometry missing for BOM")
+    # Build the BOM from the full site (all parcels merged) so string, inverter,
+    # post, rail and tracker-unit counts match the on-screen / A1 totals exactly.
     merged = _merged_layout_for_drawing(detail)
     lp = detail.get("layout_params") or {}
     mps = int(lp.get("modules_per_string") or modules_per_string)
-    bom = compute_bom(bom_layout, module_wp, detail["n_portrait"], mps, 4, 100.0)
-    # Scale BOM totals if multi-parcel (module count differs from single-parcel BOM)
-    if len(layouts) > 1 and merged:
-        ratio = detail["total_modules"] / max(bom_layout["total_modules"], 1)
-        if ratio > 1.05:
-            bom["DC Capacity"] = f"{detail['dc_kwp']:,.1f} kWp"
-            bom["Total Modules"] = f"{detail['total_modules']:,}"
-            bom["Total Rows"] = str(detail["total_rows"])
-            bom["Site Area"] = f"{detail['area_ha']} ha"
-            mw_ha = round(detail["dc_kwp"] / 1000 / detail["area_ha"], 3) if detail["area_ha"] else 0
-            bom["Land Use (DC)"] = f"{mw_ha} MWp/ha"
+    bom = compute_bom(merged, module_wp, detail["n_portrait"], mps, 4, 100.0)
 
     safe = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in project_name)[:50] or "Project"
 
@@ -586,4 +590,7 @@ def build_project_package_zip(
         zf.writestr(f"{safe}_Layout_A1.pdf", a1_pdf)
         zf.writestr(f"{safe}_BOM.csv", bom_csv)
         zf.writestr(f"{safe}_{config_key}_{pitch_m:g}m_layout.dxf", dxf_bytes)
+        for fname, data in (terrain_files or {}).items():
+            if data:
+                zf.writestr(f"Terrain Data/{fname}", data)
     return zbuf.getvalue()
