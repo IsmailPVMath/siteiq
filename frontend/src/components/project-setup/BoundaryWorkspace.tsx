@@ -44,6 +44,12 @@ interface Props {
   onExpandAllGroups: () => void;
   onCollapseAllGroups: () => void;
   onRemoveOverlayParcels: (ids: string[]) => void;
+  hasBoundary: boolean;
+  hasUserLocation: boolean;
+  boundaryAreaHa: number | null;
+  grossAreaHa: number;
+  locationLabel: string;
+  onAreaChange: (gross_area_ha: number) => void;
 }
 
 export function BoundaryWorkspace({
@@ -78,6 +84,12 @@ export function BoundaryWorkspace({
   onExpandAllGroups,
   onCollapseAllGroups,
   onRemoveOverlayParcels,
+  hasBoundary,
+  hasUserLocation,
+  boundaryAreaHa,
+  grossAreaHa,
+  locationLabel,
+  onAreaChange,
 }: Props) {
   const uploadOpt = INPUT_METHOD_OPTIONS.find((o) => o.id === inputMethod);
   const isUpload = ["kml", "kmz", "geojson"].includes(inputMethod);
@@ -360,6 +372,48 @@ export function BoundaryWorkspace({
         onRestrictionsChange={onRestrictionsChange}
         onRemoveOverlayParcels={onRemoveOverlayParcels}
       />
+
+      <div className="setup-area-panel">
+        {locationLabel ? (
+          <p className="setup-location-label">
+            <span className="setup-location-label-kicker">Location</span>
+            {locationLabel}
+          </p>
+        ) : null}
+
+        {hasBoundary && boundaryAreaHa != null && boundaryAreaHa > 0 ? (
+          <div className="setup-area-calculated">
+            <span className="setup-area-calculated-label">Site area</span>
+            <strong>{boundaryAreaHa.toFixed(2)} ha</strong>
+            <span className="hint">Calculated from boundary</span>
+          </div>
+        ) : (
+          <div className={`setup-area-pin${hasUserLocation ? "" : " is-disabled"}`}>
+            <label htmlFor="pin-area">Assumed site area around pin (ha)</label>
+            <input
+              id="pin-area"
+              type="number"
+              step="any"
+              min="0.1"
+              value={grossAreaHa > 0 ? grossAreaHa : ""}
+              placeholder={hasUserLocation ? "e.g. 25" : "Drop a pin or enter coordinates first"}
+              disabled={!hasUserLocation}
+              onChange={(e) => onAreaChange(Number(e.target.value))}
+            />
+            <p className="hint">
+              {hasUserLocation
+                ? "Used for SiteIQ screening when no boundary is drawn."
+                : "Enable by placing a pin on the map, searching, or pasting coordinates."}
+            </p>
+          </div>
+        )}
+
+        {draft.geometry.buildable_area_ha != null ? (
+          <p className="hint setup-buildable">
+            Buildable: <strong>{draft.geometry.buildable_area_ha} ha</strong>
+          </p>
+        ) : null}
+      </div>
     </section>
   );
 }

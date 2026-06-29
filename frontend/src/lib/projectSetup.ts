@@ -15,13 +15,13 @@ import type { ProjectPayload, ProjectRecord } from "./api";
 export const DEFAULT_DRAFT: ProjectSetupDraft = {
   schema_version: PROJECT_SETUP_SCHEMA_VERSION,
   project_info: { name: "New project", client: "", notes: "" },
-  location: { country: "Germany", state: "", city: "", lat: 48.1351, lon: 11.582 },
+  location: { country: "Germany", state: "", city: "", label: "", lat: 48.1351, lon: 11.582 },
   geometry: {
     parcels: [],
     restrictions: [],
     buildable_area_geojson: null,
     buildable_area_ha: null,
-    gross_area_ha: 25,
+    gross_area_ha: 0,
   },
   design_basis: {
     land_use: "Standard",
@@ -103,7 +103,7 @@ export function validateDraft(draft: ProjectSetupDraft): SetupValidationResult {
     issues.push({
       level: "warning",
       field: "country",
-      message: "Country not set — will infer from location if possible.",
+      message: "Country will be inferred from the map pin when screening runs.",
     });
   }
   const { lat, lon } = draft.location;
@@ -177,6 +177,7 @@ export function draftToProjectPayload(draft: ProjectSetupDraft): ProjectPayload 
       notes: draft.project_info.notes,
       state: draft.location.state,
       city: draft.location.city,
+      location_label: draft.location.label,
       target_capacity_mwp: draft.design_basis.target_capacity_mwp,
       target_cod: draft.design_basis.target_cod,
       currency: draft.design_basis.currency,
@@ -299,6 +300,7 @@ export function projectRecordToDraft(row: ProjectRecord): ProjectSetupDraft {
   d.location.country = p.country || "";
   d.location.state = String(wf.state || "");
   d.location.city = String(wf.city || "");
+  d.location.label = String(wf.location_label || "");
   d.location.lat = p.center?.lat ?? d.location.lat;
   d.location.lon = p.center?.lon ?? d.location.lon;
   d.geometry.gross_area_ha = Number(wf.area_ha ?? d.geometry.gross_area_ha);

@@ -3358,6 +3358,69 @@ textarea {
   box-shadow: 0 -4px 20px rgba(22, 36, 26, 0.06);
 }
 
+.project-setup-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-shrink: 0;
+}
+
+.setup-area-panel {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border);
+}
+
+.setup-location-label {
+  margin: 0 0 0.85rem;
+  font-size: 0.92rem;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.setup-location-label-kicker {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
+
+.setup-area-calculated {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.setup-area-calculated-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.setup-area-calculated strong {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: var(--accent-dark);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.setup-area-pin.is-disabled input {
+  background: #f0f3f0;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.setup-area-pin input {
+  max-width: 12rem;
+  margin-top: 0.35rem;
+}
+
 @media (max-width: 960px) {
   .app-layout {
     grid-template-columns: 1fr;
@@ -3394,6 +3457,16 @@ textarea {
   .project-setup-footer {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .project-setup-footer-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .project-setup-footer-actions .btn-lg {
+    width: 100%;
+    justify-content: center;
   }
 }
 

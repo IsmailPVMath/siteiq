@@ -5,7 +5,7 @@ import { InputMethodCards } from "../components/project-setup/InputMethodCards";
 import { ProjectAssumptionsPanel } from "../components/project-setup/ProjectAssumptionsPanel";
 import { ProjectDetailsCard } from "../components/project-setup/ProjectDetailsCard";
 import { ProjectReadinessPanel } from "../components/project-setup/ProjectReadinessPanel";
-import { parseCoordinates } from "../lib/coords";
+import { parseCoordinates, polygonAreaHa } from "../lib/coords";
 import {
   computeBuildableArea,
   createProject,
@@ -17,6 +17,7 @@ import {
   updateProject,
 } from "../lib/api";
 import {
+  DEFAULT_DRAFT,
   draftReducer,
   draftToGateRequest,
   draftToProjectPayload,
@@ -59,6 +60,7 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showBoundaryModal, setShowBoundaryModal] = useState(false);
+  const [hasUserLocation, setHasUserLocation] = useState(!!initial?.lat && !!initial?.lon);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const lastGeocodedRef = useRef<string>("");
 
@@ -86,6 +88,7 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
       try {
         const row = await getProject(token, initialProjectId);
         dispatch({ type: "replace", draft: projectRecordToDraft(row) });
+        setHasUserLocation(true);
         setHint("Project loaded.");
       } catch (err) {
         setHint(err instanceof Error ? err.message : "Project load failed");
@@ -100,6 +103,25 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
   const validation = useMemo(() => validateDraft(draft), [draft]);
   const rings = useMemo(() => effectiveRings(draft), [draft]);
   const hasBoundary = rings.length > 0;
+
+  const boundaryAreaHa = useMemo(() => {
+    if (!hasBoundary) return null;
+    const enabled = draft.geometry.parcels.filter((p) => p.enabled && p.coords.length >= 3);
+    if (enabled.length) {
+      const total = enabled.reduce(
+        (sum, p) => sum + (p.area_ha > 0 ? p.area_ha : polygonAreaHa(p.coords)),
+        0,
+      );
+      return total > 0 ? Number(total.toFixed(2)) : null;
+    }
+    if (draft.geometry.site_boundary && draft.geometry.site_boundary.length >= 3) {
+      const ha = polygonAreaHa(draft.geometry.site_boundary);
+      return ha > 0 ? ha : null;
+    }
+    const ringAreas = rings.map((ring) => polygonAreaHa(ring)).filter((ha) => ha > 0);
+    if (!ringAreas.length) return null;
+    return Number(ringAreas.reduce((sum, ha) => sum + ha, 0).toFixed(2));
+  }, [draft.geometry.parcels, draft.geometry.site_boundary, hasBoundary, rings]);
 
   const parcelGroups = useMemo(() => {
     const order: string[] = [];
@@ -172,6 +194,7 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
       const row = await getProject(token, id);
       setProjectId(row.id);
       dispatch({ type: "replace", draft: projectRecordToDraft(row) });
+      setHasUserLocation(true);
       setHint("Project loaded.");
     } catch (err) {
       setHint(err instanceof Error ? err.message : "Project load failed");
@@ -180,7 +203,29 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
     }
   }
 
+  function startNewProject() {
+    setProjectId("");
+    lastGeocodedRef.current = "";
+    setHasUserLocation(false);
+    setCoordPaste("");
+    setSearchQ("");
+    setSearchResults([]);
+    dispatch({ type: "replace", draft: structuredClone(DEFAULT_DRAFT) });
+    setCollapsedGroups({});
+    setHint("New project started.");
+    setHintIsError(false);
+  }
+
+  function onProjectSelect(id: string) {
+    if (!id) {
+      startNewProject();
+      return;
+    }
+    void loadSelectedProject(id);
+  }
+
   function applyPick(lat: number, lon: number) {
+    setHasUserLocation(true);
     dispatch({ type: "set_location", location: { lat: Number(lat.toFixed(6)), lon: Number(lon.toFixed(6)) } });
   }
 
@@ -209,6 +254,7 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
   }
 
   function pickSearchResult(r: { lat: number; lon: number; label: string }) {
+    setHasUserLocation(true);
     applyPick(r.lat, r.lon);
     const parts = r.label.split(",").map((s) => s.trim());
     const country = parts.length ? parts[parts.length - 1] : "";
@@ -218,6 +264,7 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
       location: {
         lat: r.lat,
         lon: r.lon,
+        label: r.label,
         city: city || draft.location.city,
         country: draft.location.country || country,
       },
@@ -330,6 +377,7 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
         dispatch({
           type: "set_location",
           location: {
+            label: parts.label || draft.location.label,
             country: parts.country || draft.location.country,
             state: parts.state || draft.location.state,
             city: parts.city || draft.location.city,
@@ -346,10 +394,28 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
   useEffect(() => {
     const enabled = draft.geometry.parcels.filter((p) => p.enabled);
     if (!enabled.length) return;
-    const total = enabled.reduce((sum, p) => sum + (p.area_ha || 0), 0);
+    const total = enabled.reduce(
+      (sum, p) => sum + (p.area_ha > 0 ? p.area_ha : polygonAreaHa(p.coords)),
+      0,
+    );
     if (total > 0) dispatch({ type: "set_gross_area", gross_area_ha: Number(total.toFixed(2)) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft.geometry.parcels]);
+
+  useEffect(() => {
+    if (draft.geometry.parcels.some((p) => p.enabled && p.coords.length >= 3)) return;
+    const boundary = draft.geometry.site_boundary;
+    if (!boundary || boundary.length < 3) return;
+    const ha = polygonAreaHa(boundary);
+    if (ha > 0) dispatch({ type: "set_gross_area", gross_area_ha: ha });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.geometry.site_boundary, draft.geometry.parcels]);
+
+  useEffect(() => {
+    if (boundaryAreaHa == null || boundaryAreaHa <= 0) return;
+    dispatch({ type: "set_gross_area", gross_area_ha: boundaryAreaHa });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boundaryAreaHa]);
 
   useEffect(() => {
     if (!hasBoundary) {
@@ -393,7 +459,7 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
               My projects
             </button>
           ) : null}
-          <select value={projectId} onChange={(e) => void loadSelectedProject(e.target.value)}>
+          <select value={projectId} onChange={(e) => onProjectSelect(e.target.value)}>
             <option value="">New project</option>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
@@ -401,14 +467,6 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
               </option>
             ))}
           </select>
-          <button
-            className="btn btn-ghost"
-            type="button"
-            onClick={() => void saveProjectDraft()}
-            disabled={saving}
-          >
-            {saving ? "Saving…" : "Save draft"}
-          </button>
         </div>
       </div>
 
@@ -419,8 +477,6 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
               draft={draft}
               onChange={(p) => dispatch({ type: "set_info", project_info: p })}
               onDesignChange={(p) => dispatch({ type: "set_design", design_basis: p })}
-              onLocationChange={(p) => dispatch({ type: "set_location", location: p })}
-              onAreaChange={(gross_area_ha) => dispatch({ type: "set_gross_area", gross_area_ha })}
             />
 
             <section className="setup-card">
@@ -444,7 +500,10 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
               onPick={applyPick}
               onSiteBoundaryChange={(b) => {
                 dispatch({ type: "set_site_boundary", site_boundary: b });
-                if (b && b.length >= 3) dispatch({ type: "set_input_method", input_method: "map" });
+                if (b && b.length >= 3) {
+                  setHasUserLocation(true);
+                  dispatch({ type: "set_input_method", input_method: "map" });
+                }
               }}
               onRestrictionsChange={(r) => dispatch({ type: "set_restrictions", restrictions: r })}
               onFileUpload={(f) => void onBoundaryFile(f)}
@@ -453,7 +512,10 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
               onSearchChange={setSearchQ}
               onSearch={() => void runSearch()}
               onPickSearch={pickSearchResult}
-              onLatLonChange={(lat, lon) => dispatch({ type: "set_location", location: { lat, lon } })}
+              onLatLonChange={(lat, lon) => {
+                setHasUserLocation(true);
+                dispatch({ type: "set_location", location: { lat, lon } });
+              }}
               onToggleParcel={(id) => {
                 dispatch({
                   type: "set_parcels",
@@ -513,6 +575,12 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
                     : "All parcels removed.",
                 );
               }}
+              hasBoundary={hasBoundary}
+              hasUserLocation={hasUserLocation}
+              boundaryAreaHa={boundaryAreaHa}
+              grossAreaHa={draft.geometry.gross_area_ha}
+              locationLabel={draft.location.label}
+              onAreaChange={(gross_area_ha) => dispatch({ type: "set_gross_area", gross_area_ha })}
             />
 
           </div>
@@ -537,9 +605,19 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
               ? `Ready — ${validation.modules_to_run.join(" → ")}`
               : "No boundary — SiteIQ screening only unless you add a boundary."}
           </p>
-          <button className="btn btn-primary btn-lg" type="submit" disabled={busy || !validation.valid}>
-            Start preliminary study →
-          </button>
+          <div className="project-setup-footer-actions">
+            <button
+              className="btn btn-ghost"
+              type="button"
+              onClick={() => void saveProjectDraft()}
+              disabled={saving || busy}
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>
+            <button className="btn btn-primary btn-lg" type="submit" disabled={busy || !validation.valid}>
+              Start preliminary study →
+            </button>
+          </div>
         </div>
       </form>
 

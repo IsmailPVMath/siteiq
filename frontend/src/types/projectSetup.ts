@@ -34,6 +34,7 @@ export interface ProjectLocation {
   country: string;
   state: string;
   city: string;
+  label: string;
   lat: number;
   lon: number;
 }
