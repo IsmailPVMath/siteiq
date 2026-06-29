@@ -22,6 +22,7 @@ export const DEFAULT_DRAFT: ProjectSetupDraft = {
     buildable_area_geojson: null,
     buildable_area_ha: null,
     gross_area_ha: 0,
+    assumed_boundary: false,
   },
   design_basis: {
     land_use: "Standard",
@@ -49,6 +50,19 @@ function emptyReadiness(): WorkflowReadiness {
     can_run_layoutiq: false,
     can_run_yieldiq: false,
   };
+}
+
+/** Drawn polygon or uploaded parcel — not a pin+area square. */
+export function hasSurveyedBoundary(draft: ProjectSetupDraft): boolean {
+  if (draft.geometry.parcels.some((p) => p.enabled && p.coords.length >= 3)) return true;
+  if (
+    draft.geometry.site_boundary &&
+    draft.geometry.site_boundary.length >= 3 &&
+    !draft.geometry.assumed_boundary
+  ) {
+    return true;
+  }
+  return false;
 }
 
 export function effectiveRings(draft: ProjectSetupDraft): BoundaryPoint[][] {
@@ -178,6 +192,7 @@ export function draftToProjectPayload(draft: ProjectSetupDraft): ProjectPayload 
       state: draft.location.state,
       city: draft.location.city,
       location_label: draft.location.label,
+      assumed_boundary: draft.geometry.assumed_boundary,
       target_capacity_mwp: draft.design_basis.target_capacity_mwp,
       target_cod: draft.design_basis.target_cod,
       currency: draft.design_basis.currency,
@@ -301,6 +316,7 @@ export function projectRecordToDraft(row: ProjectRecord): ProjectSetupDraft {
   d.location.state = String(wf.state || "");
   d.location.city = String(wf.city || "");
   d.location.label = String(wf.location_label || "");
+  d.geometry.assumed_boundary = Boolean(wf.assumed_boundary);
   d.location.lat = p.center?.lat ?? d.location.lat;
   d.location.lon = p.center?.lon ?? d.location.lon;
   d.geometry.gross_area_ha = Number(wf.area_ha ?? d.geometry.gross_area_ha);
@@ -404,10 +420,11 @@ export type DraftAction =
   | { type: "set_assumptions"; assumptions: Partial<ProjectSetupDraft["assumptions"]> }
   | { type: "set_input_method"; input_method: InputMethod }
   | { type: "set_parcels"; parcels: SetupParcel[] }
-  | { type: "set_site_boundary"; site_boundary?: BoundaryPoint[] }
+  | { type: "set_site_boundary"; site_boundary?: BoundaryPoint[]; assumed_boundary?: boolean }
   | { type: "set_restrictions"; restrictions: BoundaryPoint[][] }
   | { type: "set_buildable"; buildable_area_geojson: GeoJSON.GeoJSON | null; buildable_area_ha: number | null }
-  | { type: "set_gross_area"; gross_area_ha: number };
+  | { type: "set_gross_area"; gross_area_ha: number }
+  | { type: "set_assumed_envelope"; site_boundary: BoundaryPoint[]; gross_area_ha: number };
 
 export function draftReducer(state: ProjectSetupDraft, action: DraftAction): ProjectSetupDraft {
   let next: ProjectSetupDraft;
@@ -434,12 +451,25 @@ export function draftReducer(state: ProjectSetupDraft, action: DraftAction): Pro
       next = { ...state, input_method: action.input_method };
       break;
     case "set_parcels":
-      next = { ...state, geometry: { ...state.geometry, parcels: action.parcels, site_boundary: undefined } };
+      next = {
+        ...state,
+        geometry: {
+          ...state.geometry,
+          parcels: action.parcels,
+          site_boundary: undefined,
+          assumed_boundary: false,
+        },
+      };
       break;
     case "set_site_boundary":
       next = {
         ...state,
-        geometry: { ...state.geometry, site_boundary: action.site_boundary, parcels: [] },
+        geometry: {
+          ...state.geometry,
+          site_boundary: action.site_boundary,
+          parcels: [],
+          assumed_boundary: action.assumed_boundary ?? false,
+        },
       };
       break;
     case "set_restrictions":
@@ -457,6 +487,19 @@ export function draftReducer(state: ProjectSetupDraft, action: DraftAction): Pro
       break;
     case "set_gross_area":
       next = { ...state, geometry: { ...state.geometry, gross_area_ha: action.gross_area_ha } };
+      break;
+    case "set_assumed_envelope":
+      next = {
+        ...state,
+        input_method: "pin_area",
+        geometry: {
+          ...state.geometry,
+          site_boundary: action.site_boundary,
+          parcels: [],
+          assumed_boundary: true,
+          gross_area_ha: action.gross_area_ha,
+        },
+      };
       break;
     default:
       next = state;

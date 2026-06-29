@@ -20,6 +20,51 @@ export function parseCoordinates(text: string): { lat: number; lon: number } | n
   return null;
 }
 
+/** Square site envelope (ha) centered on a pin — geodesic approximation. */
+export function squareBoundaryFromPin(
+  lat: number,
+  lon: number,
+  areaHa: number,
+): { lat: number; lon: number }[] {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || areaHa <= 0) return [];
+  const sideM = Math.sqrt(areaHa * 10_000);
+  const halfM = sideM / 2;
+  const cosLat = Math.cos((lat * Math.PI) / 180);
+  const dLat = halfM / 111_320;
+  const dLon = halfM / (111_320 * Math.max(cosLat, 1e-6));
+  const fix = (n: number) => Number(n.toFixed(7));
+  return [
+    { lat: fix(lat + dLat), lon: fix(lon - dLon) },
+    { lat: fix(lat + dLat), lon: fix(lon + dLon) },
+    { lat: fix(lat - dLat), lon: fix(lon + dLon) },
+    { lat: fix(lat - dLat), lon: fix(lon - dLon) },
+  ];
+}
+
+function ringCenter(ring: { lat: number; lon: number }[]): { lat: number; lon: number } | null {
+  if (!ring.length) return null;
+  const lat = ring.reduce((s, p) => s + p.lat, 0) / ring.length;
+  const lon = ring.reduce((s, p) => s + p.lon, 0) / ring.length;
+  return { lat, lon };
+}
+
+/** True when an assumed envelope already matches pin + target area. */
+export function assumedEnvelopeMatches(
+  ring: { lat: number; lon: number }[] | undefined,
+  lat: number,
+  lon: number,
+  areaHa: number,
+): boolean {
+  if (!ring || ring.length < 4 || areaHa <= 0) return false;
+  const center = ringCenter(ring);
+  if (!center) return false;
+  const moved =
+    Math.abs(center.lat - lat) > 1e-5 || Math.abs(center.lon - lon) > 1e-5;
+  if (moved) return false;
+  const ha = polygonAreaHa(ring);
+  return Math.abs(ha - areaHa) < Math.max(0.05, areaHa * 0.02);
+}
+
 /** Approximate polygon area in hectares (spherical shoelace). */
 export function polygonAreaHa(coords: { lat: number; lon: number }[]): number {
   if (coords.length < 3) return 0;

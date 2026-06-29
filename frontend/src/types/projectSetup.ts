@@ -6,6 +6,7 @@ export const PROJECT_SETUP_SCHEMA_VERSION = 1;
 
 export type InputMethod =
   | "map"
+  | "pin_area"
   | "kml"
   | "kmz"
   | "geojson"
@@ -46,6 +47,8 @@ export interface ProjectGeometry {
   buildable_area_geojson: GeoJSON.GeoJSON | null;
   buildable_area_ha: number | null;
   gross_area_ha: number;
+  /** Square envelope generated from pin + area — not a surveyed parcel. */
+  assumed_boundary: boolean;
 }
 
 export interface DesignBasis {

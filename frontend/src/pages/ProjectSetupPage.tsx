@@ -5,7 +5,7 @@ import { InputMethodCards } from "../components/project-setup/InputMethodCards";
 import { ProjectAssumptionsPanel } from "../components/project-setup/ProjectAssumptionsPanel";
 import { ProjectDetailsCard } from "../components/project-setup/ProjectDetailsCard";
 import { ProjectReadinessPanel } from "../components/project-setup/ProjectReadinessPanel";
-import { parseCoordinates, polygonAreaHa } from "../lib/coords";
+import { assumedEnvelopeMatches, parseCoordinates, polygonAreaHa, squareBoundaryFromPin } from "../lib/coords";
 import {
   computeBuildableArea,
   createProject,
@@ -19,6 +19,7 @@ import {
 import {
   DEFAULT_DRAFT,
   draftReducer,
+  hasSurveyedBoundary,
   draftToGateRequest,
   draftToProjectPayload,
   effectiveRings,
@@ -392,6 +393,40 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
   }, [draft.location.lat, draft.location.lon, token]);
 
   useEffect(() => {
+    if (hasSurveyedBoundary(draft)) return;
+
+    const areaHa = draft.geometry.gross_area_ha;
+    const { lat, lon } = draft.location;
+
+    if (!hasUserLocation || areaHa <= 0) {
+      if (draft.geometry.assumed_boundary) {
+        dispatch({
+          type: "set_site_boundary",
+          site_boundary: undefined,
+          assumed_boundary: false,
+        });
+      }
+      return;
+    }
+
+    if (assumedEnvelopeMatches(draft.geometry.site_boundary, lat, lon, areaHa)) return;
+
+    const square = squareBoundaryFromPin(lat, lon, areaHa);
+    if (square.length < 4) return;
+    const computedHa = Number(polygonAreaHa(square).toFixed(2));
+    dispatch({ type: "set_assumed_envelope", site_boundary: square, gross_area_ha: computedHa });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    hasUserLocation,
+    draft.location.lat,
+    draft.location.lon,
+    draft.geometry.gross_area_ha,
+    draft.geometry.parcels,
+    draft.geometry.assumed_boundary,
+    draft.geometry.site_boundary,
+  ]);
+
+  useEffect(() => {
     const enabled = draft.geometry.parcels.filter((p) => p.enabled);
     if (!enabled.length) return;
     const total = enabled.reduce(
@@ -499,7 +534,11 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
               onDrawModeChange={setDrawMode}
               onPick={applyPick}
               onSiteBoundaryChange={(b) => {
-                dispatch({ type: "set_site_boundary", site_boundary: b });
+                dispatch({
+                  type: "set_site_boundary",
+                  site_boundary: b,
+                  assumed_boundary: false,
+                });
                 if (b && b.length >= 3) {
                   setHasUserLocation(true);
                   dispatch({ type: "set_input_method", input_method: "map" });
@@ -558,6 +597,7 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
                       restrictions: [],
                       buildable_area_geojson: null,
                       buildable_area_ha: null,
+                      assumed_boundary: false,
                     },
                   },
                 });
@@ -577,6 +617,7 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
               }}
               hasBoundary={hasBoundary}
               hasUserLocation={hasUserLocation}
+              assumedBoundary={draft.geometry.assumed_boundary}
               boundaryAreaHa={boundaryAreaHa}
               grossAreaHa={draft.geometry.gross_area_ha}
               locationLabel={draft.location.label}
@@ -601,9 +642,11 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
 
         <div className="project-setup-footer">
           <p className="hint">
-            {hasBoundary
-              ? `Ready — ${validation.modules_to_run.join(" → ")}`
-              : "No boundary — SiteIQ screening only unless you add a boundary."}
+            {draft.geometry.assumed_boundary
+              ? `Assumed square envelope — ${validation.modules_to_run.join(" → ")}`
+              : hasBoundary
+                ? `Ready — ${validation.modules_to_run.join(" → ")}`
+                : "No boundary — enter pin + area for full workflow, or continue with SiteIQ only."}
           </p>
           <div className="project-setup-footer-actions">
             <button

@@ -3416,6 +3416,14 @@ textarea {
   cursor: not-allowed;
 }
 
+.setup-area-calculated-inline {
+  margin-top: 0.75rem;
+}
+
+.setup-area-calculated-inline strong {
+  font-size: 1.35rem;
+}
+
 .setup-area-pin input {
   max-width: 12rem;
   margin-top: 0.35rem;

@@ -46,6 +46,7 @@ interface Props {
   onRemoveOverlayParcels: (ids: string[]) => void;
   hasBoundary: boolean;
   hasUserLocation: boolean;
+  assumedBoundary: boolean;
   boundaryAreaHa: number | null;
   grossAreaHa: number;
   locationLabel: string;
@@ -86,6 +87,7 @@ export function BoundaryWorkspace({
   onRemoveOverlayParcels,
   hasBoundary,
   hasUserLocation,
+  assumedBoundary,
   boundaryAreaHa,
   grossAreaHa,
   locationLabel,
@@ -371,6 +373,7 @@ export function BoundaryWorkspace({
         onSiteBoundaryChange={onSiteBoundaryChange}
         onRestrictionsChange={onRestrictionsChange}
         onRemoveOverlayParcels={onRemoveOverlayParcels}
+        assumedBoundary={assumedBoundary}
       />
 
       <div className="setup-area-panel">
@@ -381,7 +384,30 @@ export function BoundaryWorkspace({
           </p>
         ) : null}
 
-        {hasBoundary && boundaryAreaHa != null && boundaryAreaHa > 0 ? (
+        {assumedBoundary ? (
+          <div className="setup-area-pin">
+            <label htmlFor="pin-area">Assumed site area around pin (ha)</label>
+            <input
+              id="pin-area"
+              type="number"
+              step="any"
+              min="0.1"
+              value={grossAreaHa > 0 ? grossAreaHa : ""}
+              placeholder="e.g. 100"
+              onChange={(e) => onAreaChange(Number(e.target.value))}
+            />
+            <p className="hint">
+              A square envelope is drawn on the map (pin at centre). Not a surveyed parcel —
+              buildable area is calculated on SiteIQ.
+            </p>
+            {boundaryAreaHa != null && boundaryAreaHa > 0 ? (
+              <div className="setup-area-calculated setup-area-calculated-inline">
+                <span className="setup-area-calculated-label">Envelope on map</span>
+                <strong>{boundaryAreaHa.toFixed(2)} ha</strong>
+              </div>
+            ) : null}
+          </div>
+        ) : hasBoundary && boundaryAreaHa != null && boundaryAreaHa > 0 ? (
           <div className="setup-area-calculated">
             <span className="setup-area-calculated-label">Site area</span>
             <strong>{boundaryAreaHa.toFixed(2)} ha</strong>
@@ -396,13 +422,13 @@ export function BoundaryWorkspace({
               step="any"
               min="0.1"
               value={grossAreaHa > 0 ? grossAreaHa : ""}
-              placeholder={hasUserLocation ? "e.g. 25" : "Drop a pin or enter coordinates first"}
+              placeholder={hasUserLocation ? "e.g. 100" : "Drop a pin or enter coordinates first"}
               disabled={!hasUserLocation}
               onChange={(e) => onAreaChange(Number(e.target.value))}
             />
             <p className="hint">
               {hasUserLocation
-                ? "Used for SiteIQ screening when no boundary is drawn."
+                ? "Enter area to draw a square envelope on the map and unlock the full workflow."
                 : "Enable by placing a pin on the map, searching, or pasting coordinates."}
             </p>
           </div>

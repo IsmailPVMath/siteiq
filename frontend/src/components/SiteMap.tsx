@@ -31,6 +31,7 @@ interface Props {
   onSiteBoundaryChange?: (boundary: MapBoundary[] | undefined) => void;
   onRestrictionsChange?: (restrictions: MapBoundary[][]) => void;
   onRemoveOverlayParcels?: (ids: string[]) => void;
+  assumedBoundary?: boolean;
 }
 
 const pinIcon = L.icon({
@@ -53,6 +54,7 @@ export function SiteMap({
   onSiteBoundaryChange,
   onRestrictionsChange,
   onRemoveOverlayParcels,
+  assumedBoundary = false,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -140,15 +142,17 @@ export function SiteMap({
     });
   }
 
-  function addRolePolygon(coords: MapBoundary[], role: DrawMode) {
+  function addRolePolygon(coords: MapBoundary[], role: DrawMode, assumed = false) {
     if (!drawLayerRef.current || coords.length < 3) return;
+    const isAssumedSite = role === "site" && assumed;
     const layer = L.polygon(
       coords.map((p) => [p.lat, p.lon] as [number, number]),
       {
-        color: role === "site" ? "#1d9e52" : "#f59e0b",
-        fillColor: role === "site" ? "#1d9e52" : "#f59e0b",
-        fillOpacity: role === "site" ? 0.2 : 0.18,
-        weight: 2,
+        color: isAssumedSite ? "#1565c0" : role === "site" ? "#1d9e52" : "#f59e0b",
+        fillColor: isAssumedSite ? "#1565c0" : role === "site" ? "#1d9e52" : "#f59e0b",
+        fillOpacity: role === "site" ? 0.14 : 0.18,
+        weight: isAssumedSite ? 2 : 2,
+        dashArray: isAssumedSite ? "10 7" : undefined,
       },
     ) as L.Polygon & { _pvmRole?: DrawMode };
     layer._pvmRole = role;
@@ -280,7 +284,7 @@ export function SiteMap({
     if (!map || !drawLayerRef.current) return;
     clearSiteRestrictionLayers();
     if (siteBoundary && siteBoundary.length >= 3) {
-      addRolePolygon(siteBoundary, "site");
+      addRolePolygon(siteBoundary, "site", assumedBoundary);
     }
     (restrictions || []).forEach((ring) => {
       if (ring.length >= 3) addRolePolygon(ring, "restriction");
@@ -289,7 +293,7 @@ export function SiteMap({
     if (groupBounds.isValid()) {
       map.fitBounds(groupBounds, { padding: [24, 24] });
     }
-  }, [siteBoundary, restrictions]);
+  }, [siteBoundary, restrictions, assumedBoundary]);
 
   useEffect(() => {
     const map = mapRef.current;
