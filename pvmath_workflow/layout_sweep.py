@@ -108,6 +108,7 @@ def run_layout_sweep(
     row_alignment: str = "horizontal",
     allow_partial_strings: bool = False,
     prune_isolated_blocks: bool = True,
+    restriction_geojson: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Iterate mount/portrait × pitch across one or more site parcels.
@@ -203,6 +204,7 @@ def run_layout_sweep(
                 pitch=pitch,
                 azimuth=azimuth,
                 is_tracker=tracker,
+                restriction_geojson=restriction_geojson,
             )
             grid_kwargs: Dict[str, Any] = {}
             if site_grid:
@@ -241,6 +243,7 @@ def run_layout_sweep(
                     cols_per_block=lp["cols_per_block"],
                     ew_gap_m=lp["ew_gap_m"],
                     prune_isolated_blocks=prune_isolated_blocks,
+                    restriction_geojson=restriction_geojson,
                     **grid_kwargs,
                 )
                 if layout:

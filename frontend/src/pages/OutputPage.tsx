@@ -366,6 +366,18 @@ export function OutputPage({
     },
     [useFullBoundary, ignoreSoftConstraints, gisExcludedRings, gisResult?.success, restrictionPolygons],
   );
+  /** Manual no-build zones only — GIS exclusions go via restriction_geojson (holes preserved). */
+  const layoutRestrictionRings = useMemo(
+    () => (useFullBoundary || ignoreSoftConstraints ? layoutRestrictionPolygons : restrictionPolygons),
+    [useFullBoundary, ignoreSoftConstraints, layoutRestrictionPolygons, restrictionPolygons],
+  );
+  const layoutRestrictionGeoJson = useMemo(
+    () =>
+      !useFullBoundary && !ignoreSoftConstraints && gisResult?.success
+        ? (gisResult.excluded_area_geojson ?? null)
+        : null,
+    [useFullBoundary, ignoreSoftConstraints, gisResult?.success, gisResult?.excluded_area_geojson],
+  );
   const layoutUsesGisBuildable = !useFullBoundary && !!(gisResult?.success && gisExcludedRings.length);
   const layoutGisExtras = useMemo(() => {
     if (useFullBoundary || !ignoreSoftConstraints || !gisResult?.constraint_layers) {
@@ -501,6 +513,17 @@ export function OutputPage({
       ...layoutGisExtras,
       prune_isolated_blocks: pruneIsolatedBlocks,
     };
+  }
+
+  function layoutRestrictionPayload() {
+    const payload: {
+      restriction_polygons: typeof layoutRestrictionRings;
+      restriction_geojson?: GeoJSON.GeoJSON;
+    } = { restriction_polygons: layoutRestrictionRings };
+    if (layoutRestrictionGeoJson) {
+      payload.restriction_geojson = layoutRestrictionGeoJson;
+    }
+    return payload;
   }
 
   const buildableMask = useFullBoundary
@@ -1091,7 +1114,7 @@ export function OutputPage({
 
       const body: Parameters<typeof workflowLayoutSweep>[1] = {
         boundaries,
-        restriction_polygons: layoutRestrictionPolygons,
+        ...layoutRestrictionPayload(),
         include_bom: false,
         optimization_mode: layoutOptimization,
         land_cost: layoutLandCost,
@@ -1152,7 +1175,7 @@ export function OutputPage({
     return {
       project_name: result.project_name || "LayoutIQ",
       boundaries,
-      restriction_polygons: layoutRestrictionPolygons,
+      ...layoutRestrictionPayload(),
       config_key: row.config_key,
       pitch_m: row.pitch_m,
       ...layoutApiParams(),
@@ -1254,7 +1277,7 @@ export function OutputPage({
       const blob = await workflowProjectPackage(token, {
         ...reportPayload(),
         boundaries,
-        restriction_polygons: layoutRestrictionPolygons,
+        ...layoutRestrictionPayload(),
         config_key: selectedLayoutRow.config_key,
         pitch_m: selectedLayoutRow.pitch_m,
         ...layoutApiParams(),
@@ -2895,11 +2918,17 @@ export function OutputPage({
                         <LayoutPreviewMap
                           center={{ lat: result.coordinates.lat, lon: result.coordinates.lon }}
                           layoutGeoJson={layoutDetail.geojson}
+                          excludedGeoJson={
+                            useFullBoundary ? null : (gisResult?.excluded_area_geojson ?? null)
+                          }
+                          constraintLayers={
+                            useFullBoundary ? null : (gisResult?.constraint_layers ?? null)
+                          }
                         />
                         <p className="module-note">
                           Preview: {layoutDetail.total_rows.toLocaleString()} rows ·{" "}
-                          {layoutDetail.total_modules.toLocaleString()} modules (blue strings on
-                          buildable parcel outline).
+                          {layoutDetail.total_modules.toLocaleString()} modules. Blue = trackers;
+                          dashed cyan = buildable parcel; red = GIS exclusions (no modules placed).
                         </p>
                       </>
                     ) : layoutDetailBusy ? (

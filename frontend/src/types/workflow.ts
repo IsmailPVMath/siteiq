@@ -116,6 +116,7 @@ export interface WorkflowLayoutSweepRequest extends LayoutElectricalConfig {
   boundary?: { lat: number; lon: number }[];
   boundaries?: { lat: number; lon: number }[][];
   restriction_polygons?: { lat: number; lon: number }[][];
+  restriction_geojson?: GeoJSON.GeoJSON;
   include_bom?: boolean;
   optimization_mode?: LayoutOptimizationMode;
   land_cost?: LayoutLandCost;
@@ -194,6 +195,7 @@ export interface WorkflowLayoutDetailRequest extends LayoutElectricalConfig {
   boundary?: { lat: number; lon: number }[];
   boundaries?: { lat: number; lon: number }[][];
   restriction_polygons?: { lat: number; lon: number }[][];
+  restriction_geojson?: GeoJSON.GeoJSON;
   config_key: string;
   pitch_m: number;
   setback_m?: number;

@@ -119,6 +119,7 @@ def build_layout_detail(
     allow_partial_strings: bool = False,
     row_alignment: str = "horizontal",
     prune_isolated_blocks: bool = True,
+    restriction_geojson: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     n_portrait, tracker, label = _config_from_key(config_key)
     polys = _normalize_polys(boundary, boundaries)
@@ -157,6 +158,7 @@ def build_layout_detail(
         pitch=pitch_m,
         azimuth=azimuth,
         is_tracker=tracker,
+        restriction_geojson=restriction_geojson,
     )
     grid_kwargs: Dict[str, Any] = {}
     if site_grid:
@@ -192,6 +194,7 @@ def build_layout_detail(
             cols_per_block=lp["cols_per_block"],
             ew_gap_m=lp["ew_gap_m"],
             prune_isolated_blocks=prune_isolated_blocks,
+            restriction_geojson=restriction_geojson,
             **grid_kwargs,
         )
         if layout:

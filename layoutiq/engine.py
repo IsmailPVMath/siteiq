@@ -372,12 +372,67 @@ def _string_rects_rotated(
     )
 
 
+def _geojson_rings(geojson):
+    """Yield (exterior, holes) ring coordinate lists ([lon, lat]) from any GeoJSON."""
+    if not isinstance(geojson, dict):
+        return
+    gtype = geojson.get("type")
+    if gtype == "FeatureCollection":
+        for feat in geojson.get("features") or []:
+            yield from _geojson_rings(feat)
+    elif gtype == "Feature":
+        yield from _geojson_rings(geojson.get("geometry"))
+    elif gtype == "GeometryCollection":
+        for geom in geojson.get("geometries") or []:
+            yield from _geojson_rings(geom)
+    elif gtype == "Polygon":
+        coords = geojson.get("coordinates") or []
+        if coords:
+            yield coords[0], coords[1:]
+    elif gtype == "MultiPolygon":
+        for poly in geojson.get("coordinates") or []:
+            if poly:
+                yield poly[0], poly[1:]
+
+
+def _restriction_geom_xy_from_geojson(geojson, ref_lat: float, ref_lon: float):
+    """Convert excluded-area GeoJSON to a local-metre shapely geometry, holes kept.
+
+    Critically preserves interior rings (holes) so buildable land enclosed by
+    exclusions (e.g. a field ringed by roads) is NOT re-excluded — the flat
+    ring-list path treats holes as solid exclusions and fills them back in.
+    """
+    polys = []
+    for ext, holes in _geojson_rings(geojson):
+        if not ext or len(ext) < 3:
+            continue
+        shell = latlon_to_xy([(c[1], c[0]) for c in ext], ref_lat, ref_lon)
+        hole_xy = [
+            latlon_to_xy([(c[1], c[0]) for c in h], ref_lat, ref_lon)
+            for h in holes
+            if h and len(h) >= 3
+        ]
+        try:
+            poly = Polygon(shell, hole_xy)
+            if not poly.is_valid:
+                poly = poly.buffer(0)
+            if not poly.is_empty:
+                polys.append(poly)
+        except Exception:
+            continue
+    if not polys:
+        return None
+    geom = unary_union(polys)
+    return geom if not geom.is_empty else None
+
+
 def _prepare_poly_inset(
     latlons,
     setback: float,
     restriction_latlons,
     ref_lat: float,
     ref_lon: float,
+    restriction_geom=None,
 ):
     xy = latlon_to_xy(latlons, ref_lat, ref_lon)
     poly_m = Polygon(xy)
@@ -398,6 +453,8 @@ def _prepare_poly_inset(
             rpoly = rpoly.buffer(0)
         if not rpoly.is_empty:
             restriction_polys.append(rpoly)
+    if restriction_geom is not None and not restriction_geom.is_empty:
+        restriction_polys.append(restriction_geom)
     if restriction_polys:
         restricted = unary_union(restriction_polys)
         poly_inset = poly_inset.difference(restricted)
@@ -581,6 +638,7 @@ def run_layout(
     prune_isolated_blocks: bool = True,
     min_tracker_units_per_block: int = DEFAULT_MIN_TRACKER_UNITS_PER_BLOCK,
     min_strings_per_block: int = DEFAULT_MIN_STRINGS_PER_BLOCK,
+    restriction_geojson=None,
 ):
     """
     Sweep row bands across a rotated boundary polygon on a shared site grid.
@@ -620,7 +678,14 @@ def run_layout(
     if ref_lon is None:
         ref_lon = sum(lons) / len(lons)
 
-    prepared = _prepare_poly_inset(latlons, setback, restriction_latlons, ref_lat, ref_lon)
+    restriction_geom = (
+        _restriction_geom_xy_from_geojson(restriction_geojson, ref_lat, ref_lon)
+        if restriction_geojson
+        else None
+    )
+    prepared = _prepare_poly_inset(
+        latlons, setback, restriction_latlons, ref_lat, ref_lon, restriction_geom=restriction_geom
+    )
     if not prepared:
         return None
     poly_m = prepared["poly_m"]
@@ -919,11 +984,19 @@ def site_layout_grid(
     pitch: float,
     azimuth: float,
     is_tracker: bool,
+    restriction_geojson=None,
 ) -> dict[str, Any] | None:
     """Compute shared rotation origin and fence lines for coordinated multi-parcel layout."""
+    restriction_geom = (
+        _restriction_geom_xy_from_geojson(restriction_geojson, ref_lat, ref_lon)
+        if restriction_geojson
+        else None
+    )
     insets = []
     for poly in polys_latlon:
-        prepared = _prepare_poly_inset(poly, setback, restriction_latlons, ref_lat, ref_lon)
+        prepared = _prepare_poly_inset(
+            poly, setback, restriction_latlons, ref_lat, ref_lon, restriction_geom=restriction_geom
+        )
         if prepared:
             insets.append(prepared["poly_inset"])
     if not insets:

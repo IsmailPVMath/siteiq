@@ -7,12 +7,15 @@ import { googleHybridLayer } from "../lib/mapTiles";
 interface Props {
   center: { lat: number; lon: number };
   layoutGeoJson: GeoJSON.GeoJSON | null;
+  excludedGeoJson?: GeoJSON.GeoJSON | null;
+  constraintLayers?: Record<string, GeoJSON.GeoJSON | null> | null;
 }
 
-export function LayoutPreviewMap({ center, layoutGeoJson }: Props) {
+export function LayoutPreviewMap({ center, layoutGeoJson, excludedGeoJson, constraintLayers }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layoutLayerRef = useRef<L.GeoJSON | null>(null);
+  const exclusionLayerRef = useRef<L.GeoJSON | null>(null);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -34,8 +37,75 @@ export function LayoutPreviewMap({ center, layoutGeoJson }: Props) {
       map.remove();
       mapRef.current = null;
       layoutLayerRef.current = null;
+      exclusionLayerRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (exclusionLayerRef.current) {
+      exclusionLayerRef.current.remove();
+      exclusionLayerRef.current = null;
+    }
+
+    const features: GeoJSON.Feature[] = [];
+    if (excludedGeoJson) {
+      if (excludedGeoJson.type === "FeatureCollection") {
+        features.push(...excludedGeoJson.features);
+      } else if (excludedGeoJson.type === "Feature") {
+        features.push(excludedGeoJson);
+      } else {
+        features.push({ type: "Feature", properties: { category: "excluded" }, geometry: excludedGeoJson });
+      }
+    }
+    if (constraintLayers) {
+      for (const [key, layer] of Object.entries(constraintLayers)) {
+        if (!layer) continue;
+        if (layer.type === "FeatureCollection") {
+          for (const f of layer.features) {
+            features.push({
+              ...f,
+              properties: { ...f.properties, category: f.properties?.category ?? key },
+            });
+          }
+        }
+      }
+    }
+    if (!features.length) return;
+
+    exclusionLayerRef.current = L.geoJSON(
+      { type: "FeatureCollection", features } as GeoJSON.FeatureCollection,
+      {
+        style: (feature) => {
+          const cat = String(feature?.properties?.category ?? "");
+          if (cat === "water" || cat === "waterway") {
+            return { color: "#1d4ed8", fillColor: "#3b82f6", fillOpacity: 0.35, weight: 1.2 };
+          }
+          if (cat === "building") {
+            return { color: "#7f1d1d", fillColor: "#ef4444", fillOpacity: 0.4, weight: 1 };
+          }
+          if (cat === "forest" || cat === "wood" || cat === "vegetation") {
+            return { color: "#14532d", fillColor: "#22c55e", fillOpacity: 0.3, weight: 1 };
+          }
+          return {
+            color: "#dc2626",
+            fillColor: "#fca5a5",
+            fillOpacity: 0.42,
+            weight: 1.5,
+            dashArray: "5 4",
+          };
+        },
+        onEachFeature: (feature, layer) => {
+          const label =
+            (feature.properties?.label as string) ||
+            (feature.properties?.category as string) ||
+            "Excluded";
+          layer.bindTooltip(label, { sticky: true });
+        },
+      },
+    ).addTo(map);
+  }, [excludedGeoJson, constraintLayers]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -114,6 +184,9 @@ export function LayoutPreviewMap({ center, layoutGeoJson }: Props) {
     }).addTo(map);
 
     const bounds = layoutLayerRef.current.getBounds();
+    if (exclusionLayerRef.current) {
+      bounds.extend(exclusionLayerRef.current.getBounds());
+    }
     if (bounds.isValid()) {
       map.fitBounds(bounds, { padding: [20, 20] });
     }

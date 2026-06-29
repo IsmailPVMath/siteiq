@@ -436,6 +436,7 @@ async def workflow_layout_sweep(
                     row_alignment=body.row_alignment,
                     allow_partial_strings=body.allow_partial_strings,
                     prune_isolated_blocks=body.prune_isolated_blocks,
+                    restriction_geojson=getattr(body, "restriction_geojson", None),
                 ),
             ),
             timeout=LAYOUT_TIMEOUT_SEC,
@@ -494,6 +495,7 @@ def _layout_detail_payload(body: WorkflowLayoutDetailRequest):
         allow_partial_strings=body.allow_partial_strings,
         row_alignment=body.row_alignment,
         prune_isolated_blocks=body.prune_isolated_blocks,
+        restriction_geojson=getattr(body, "restriction_geojson", None),
     )
 
 

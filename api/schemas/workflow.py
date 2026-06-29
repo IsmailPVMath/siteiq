@@ -80,6 +80,10 @@ class WorkflowLayoutSweepRequest(BaseModel):
         default=None,
         description="Manual no-build polygons subtracted from buildable area.",
     )
+    restriction_geojson: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="SiteIQ excluded-area GeoJSON with interior rings (holes) preserved.",
+    )
     module_h: float = Field(default=2.094, gt=0)
     module_w: float = Field(default=1.038, gt=0)
     module_wp: int = Field(default=550, ge=200, le=1000)
@@ -187,6 +191,10 @@ class WorkflowLayoutDetailRequest(BaseModel):
     boundary: Optional[List[BoundaryPoint]] = None
     boundaries: Optional[List[List[BoundaryPoint]]] = None
     restriction_polygons: Optional[List[List[BoundaryPoint]]] = None
+    restriction_geojson: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="SiteIQ excluded-area GeoJSON with interior rings (holes) preserved.",
+    )
     config_key: str = Field(..., max_length=16)
     pitch_m: float = Field(..., gt=0)
     module_h: float = Field(default=2.094, gt=0)
