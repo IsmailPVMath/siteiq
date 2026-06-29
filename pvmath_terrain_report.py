@@ -456,8 +456,14 @@ def render_slope_map_png(
     polygon_list=None,
     terrain_source_used: str = "",
     terrain_disclaimer: str = "",
+    tiles=None,
 ) -> Optional[io.BytesIO]:
-    """Slope map with satellite basemap, north arrow, and scale bar (PDF-ready)."""
+    """Slope map with satellite basemap, north arrow, and scale bar (PDF-ready).
+
+    ``tiles`` (optional) is a list of {"X","Y","Z","grid_m"} sub-grids — used for
+    multi-cluster sites where far-apart parcels are gridded separately. When
+    omitted the single X/Y/Z grid is rendered as before.
+    """
     if not HAS_SCIPY:
         return None
     import matplotlib
@@ -466,19 +472,14 @@ def render_slope_map_png(
     import matplotlib.colors as mcolors
     from matplotlib.patches import Polygon as MplPoly
 
-    dz_dy, dz_dx = np.gradient(
-        gaussian_filter(np.nan_to_num(Z, nan=np.nanmedian(Z[~np.isnan(Z)])), sigma=1),
-        grid_m, grid_m,
-    )
-    slope_pct = np.sqrt(dz_dx ** 2 + dz_dy ** 2) * 100.0
-    slope_pct = np.where(np.isnan(Z), np.nan, slope_pct)
-    Sm = np.ma.masked_invalid(slope_pct)
+    if not tiles:
+        tiles = [{"X": X, "Y": Y, "Z": Z, "grid_m": grid_m}]
 
     fig, ax = plt.subplots(figsize=(10, 6.5))
     fig.patch.set_facecolor("#f5f7f5")
     ax.set_facecolor("#e8e8e8")
 
-    # Basemap
+    # Basemap spans the full site extent (covers all clusters).
     try:
         img, lat_n, lat_s, lon_w, lon_e = _fetch_imagery_mosaic(south, north, west, east)
         ax.imshow(
@@ -495,13 +496,36 @@ def render_slope_map_png(
     cmap_slope = mcolors.LinearSegmentedColormap.from_list(
         "solar_slope", [(p, c) for p, c in _slope_colors], N=512
     )
-    lon_min, lon_max = float(np.nanmin(X)), float(np.nanmax(X))
-    lat_min, lat_max = float(np.nanmin(Y)), float(np.nanmax(Y))
-    im = ax.imshow(
-        Sm, extent=[lon_min, lon_max, lat_min, lat_max],
-        cmap=cmap_slope, vmin=0, vmax=15, alpha=0.55,
-        interpolation="bilinear", aspect="auto", zorder=2,
-    )
+
+    im = None
+    for tile in tiles:
+        tX, tY, tZ = tile["X"], tile["Y"], tile["Z"]
+        t_grid = float(tile.get("grid_m", grid_m))
+        valid = tZ[~np.isnan(tZ)]
+        if valid.size == 0:
+            continue
+        dz_dy, dz_dx = np.gradient(
+            gaussian_filter(np.nan_to_num(tZ, nan=float(np.nanmedian(valid))), sigma=1),
+            t_grid, t_grid,
+        )
+        slope_pct = np.sqrt(dz_dx ** 2 + dz_dy ** 2) * 100.0
+        slope_pct = np.where(np.isnan(tZ), np.nan, slope_pct)
+        Sm = np.ma.masked_invalid(slope_pct)
+        t_lon_min, t_lon_max = float(np.nanmin(tX)), float(np.nanmax(tX))
+        t_lat_min, t_lat_max = float(np.nanmin(tY)), float(np.nanmax(tY))
+        im = ax.imshow(
+            Sm, extent=[t_lon_min, t_lon_max, t_lat_min, t_lat_max],
+            cmap=cmap_slope, vmin=0, vmax=15, alpha=0.55,
+            interpolation="bilinear", aspect="auto", zorder=2,
+        )
+
+    lon_min, lon_max = float(west), float(east)
+    lat_min, lat_max = float(south), float(north)
+    if im is None:
+        import matplotlib.cm as cm
+        im = cm.ScalarMappable(
+            norm=mcolors.Normalize(vmin=0, vmax=15), cmap=cmap_slope
+        )
 
     if polygon_list:
         patches = []

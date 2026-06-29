@@ -671,27 +671,25 @@ def run_layout(
             # capacity, ragged/staggered string ends.
             segments = band_segments
         else:
-            # Aligned: one run per pitch band, snapped to the shared string grid
-            # at the field fence so strings align column-wise across every row
-            # (orderly, best buildability). Strings over interior gaps (ponds,
-            # cut-outs) are dropped later by clipping.
-            if band_segments and string_unit > 0:
-                outer_min = min(s[0] for s in band_segments)
-                outer_max = max(s[1] for s in band_segments)
-                if is_tracker:
-                    k = max(0, math.ceil((grid_anchor_south - outer_max) / string_unit - 1e-9))
-                    snapped_max = grid_anchor_south - k * string_unit
-                    segments = (
-                        [(outer_min, snapped_max)] if snapped_max - outer_min > 1e-3 else []
-                    )
-                else:
-                    k = max(0, math.ceil((outer_min - grid_anchor_west) / string_unit - 1e-9))
-                    snapped_min = grid_anchor_west + k * string_unit
-                    segments = (
-                        [(snapped_min, outer_max)] if outer_max - snapped_min > 1e-3 else []
-                    )
-            else:
-                segments = []
+            # Aligned: snap EACH band pocket to the shared string grid at the
+            # field fence so strings align column-wise across every row (orderly,
+            # best buildability). Snapping each real pocket independently — rather
+            # than collapsing the whole band to one run — means parcels split by
+            # interior exclusions (ponds, restriction zones) or concave outlines
+            # still fill every pocket instead of leaving the far pockets empty.
+            segments = []
+            if string_unit > 0:
+                for s_lo, s_hi in band_segments:
+                    if is_tracker:
+                        k = max(0, math.ceil((grid_anchor_south - s_hi) / string_unit - 1e-9))
+                        snapped_hi = grid_anchor_south - k * string_unit
+                        if snapped_hi - s_lo > 1e-3:
+                            segments.append((s_lo, snapped_hi))
+                    else:
+                        k = max(0, math.ceil((s_lo - grid_anchor_west) / string_unit - 1e-9))
+                        snapped_lo = grid_anchor_west + k * string_unit
+                        if s_hi - snapped_lo > 1e-3:
+                            segments.append((snapped_lo, s_hi))
         if ew_road_bands:
             segments = _split_segments_by_roads(segments, ew_road_bands)
 

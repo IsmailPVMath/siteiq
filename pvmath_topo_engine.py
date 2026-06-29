@@ -362,7 +362,116 @@ def boundaries_union_area_ha(polygon_list: Sequence[Sequence[Tuple[float, float]
     return round(sum(boundary_area_ha(p) for p in polys), 2)
 
 
+# Parcels whose bounding boxes are within this distance of each other are
+# treated as one contiguous site and gridded together. Parcels farther apart
+# than this are analysed on their own tight grid so the empty land between them
+# never inflates the point count / starves the DEM resolution.
+CLUSTER_GAP_M = 400.0
+
+
+def _poly_bbox(poly: Sequence[Tuple[float, float]]) -> Tuple[float, float, float, float]:
+    lons = [c[0] for c in poly]
+    lats = [c[1] for c in poly]
+    return min(lons), min(lats), max(lons), max(lats)  # w, s, e, n
+
+
+def _bbox_gap_m(
+    b1: Tuple[float, float, float, float],
+    b2: Tuple[float, float, float, float],
+    lat_c: float,
+) -> float:
+    m_per_deg_lat = 111320.0
+    m_per_deg_lon = 111320.0 * math.cos(math.radians(lat_c))
+    dx_deg = max(0.0, max(b1[0], b2[0]) - min(b1[2], b2[2]))
+    dy_deg = max(0.0, max(b1[1], b2[1]) - min(b1[3], b2[3]))
+    return math.hypot(dx_deg * m_per_deg_lon, dy_deg * m_per_deg_lat)
+
+
+def _cluster_polys(
+    polys: Sequence[Sequence[Tuple[float, float]]],
+    lat_c: float,
+    gap_m: float = CLUSTER_GAP_M,
+) -> List[List[Sequence[Tuple[float, float]]]]:
+    """Union-find grouping of parcels whose bboxes are within ``gap_m``."""
+    n = len(polys)
+    if n <= 1:
+        return [list(polys)]
+    bboxes = [_poly_bbox(p) for p in polys]
+    parent = list(range(n))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            if _bbox_gap_m(bboxes[i], bboxes[j], lat_c) <= gap_m:
+                parent[find(i)] = find(j)
+
+    groups: Dict[int, List[Sequence[Tuple[float, float]]]] = {}
+    for i in range(n):
+        groups.setdefault(find(i), []).append(polys[i])
+    return list(groups.values())
+
+
 def run_topo_analysis(
+    polygons: Sequence[Sequence[Tuple[float, float]]],
+    grid_m: float = 5.0,
+    allow_coarsen: bool = False,
+    contour_minor: float = 0.5,
+    contour_major: float = 1.0,
+    progress_cb: Optional[Callable[[float, str], None]] = None,
+    mask_geojson: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    enabled_polys = [list(poly) for poly in polygons if poly and len(poly) >= 3]
+    if not enabled_polys:
+        raise ValueError("NO_BOUNDARY")
+
+    lats_all = [c[1] for poly in enabled_polys for c in poly]
+    lat_c0 = (min(lats_all) + max(lats_all)) / 2
+    clusters = _cluster_polys(enabled_polys, lat_c0)
+
+    if len(clusters) > 1:
+        regions: List[Dict[str, Any]] = []
+        for cluster in clusters:
+            try:
+                regions.append(
+                    _analyze_region(
+                        cluster,
+                        grid_m=grid_m,
+                        allow_coarsen=allow_coarsen,
+                        contour_minor=contour_minor,
+                        contour_major=contour_major,
+                        progress_cb=None,
+                        mask_geojson=mask_geojson,
+                    )
+                )
+            except Exception:
+                # A cluster with no usable DEM samples is skipped rather than
+                # failing the whole analysis (the other parcels still report).
+                continue
+        if not regions:
+            raise RuntimeError("NO_DATA_IN_BOUNDARY")
+        if len(regions) == 1:
+            return regions[0]
+        return _composite_regions(
+            regions, enabled_polys, float(grid_m), contour_minor, contour_major
+        )
+
+    return _analyze_region(
+        enabled_polys,
+        grid_m=grid_m,
+        allow_coarsen=allow_coarsen,
+        contour_minor=contour_minor,
+        contour_major=contour_major,
+        progress_cb=progress_cb,
+        mask_geojson=mask_geojson,
+    )
+
+
+def _analyze_region(
     polygons: Sequence[Sequence[Tuple[float, float]]],
     grid_m: float = 5.0,
     allow_coarsen: bool = False,
@@ -501,4 +610,105 @@ def run_topo_analysis(
         "Z": Z,
         "slope_grid": slope,
         "polygons": enabled_polys,
+        "tiles": [{"X": X, "Y": Y, "Z": Z, "grid_m": float(grid_m_used)}],
+    }
+
+
+def _composite_regions(
+    regions: List[Dict[str, Any]],
+    all_polys: Sequence[Sequence[Tuple[float, float]]],
+    grid_m: float,
+    contour_minor: float,
+    contour_major: float,
+) -> Dict[str, Any]:
+    """Merge per-cluster region results into one analysis (stats + slope tiles)."""
+    z_parts: List[np.ndarray] = []
+    s_parts: List[np.ndarray] = []
+    for r in regions:
+        Z = r["Z"]
+        S = r["slope_grid"]
+        z_parts.append(Z[~np.isnan(Z)])
+        s_parts.append(S[~np.isnan(S) & ~np.isnan(Z)])
+    z_valid = np.concatenate(z_parts) if z_parts else np.array([])
+    s_valid = np.concatenate(s_parts) if s_parts else np.array([])
+    if len(z_valid) == 0 or len(s_valid) == 0:
+        raise RuntimeError("NO_DATA_IN_BOUNDARY")
+
+    # Dominant region (most valid samples) supplies single-grid arrays + extras.
+    dominant = max(regions, key=lambda r: int(r.get("grid_points", 0)))
+
+    lons_p = [c[0] for poly in all_polys for c in poly]
+    lats_p = [c[1] for poly in all_polys for c in poly]
+    south, north = min(lats_p) - 0.001, max(lats_p) + 0.001
+    west, east = min(lons_p) - 0.001, max(lons_p) + 0.001
+    lat_c = (south + north) / 2
+    lon_c = (west + east) / 2
+
+    mean_slope = float(s_valid.mean())
+    max_slope = float(s_valid.max())
+    n_slope = len(s_valid)
+    pct_over5 = float((s_valid > 5).sum() / n_slope * 100)
+    pct_over10 = float((s_valid > 10).sum() / n_slope * 100)
+    slope_bins = (
+        float((s_valid <= 2.5).sum() / n_slope * 100),
+        float(((s_valid > 2.5) & (s_valid <= 5)).sum() / n_slope * 100),
+        float(((s_valid > 5) & (s_valid <= 7.5)).sum() / n_slope * 100),
+        float(((s_valid > 7.5) & (s_valid <= 10)).sum() / n_slope * 100),
+        float((s_valid > 10).sum() / n_slope * 100),
+    )
+
+    extras = dominant.get("extras")
+    verdict_fixed = verdict_for_mount(mean_slope, "Fixed Tilt")
+    verdict_tracker = verdict_for_mount(mean_slope, "Single-Axis Tracker", extras=extras)
+    terrain_drivers = compute_terrain_drivers_summary(
+        mean_slope, max_slope, slope_bins, extras, verdict_fixed, verdict_tracker
+    )
+
+    tiles: List[Dict[str, Any]] = []
+    for r in regions:
+        tiles.extend(r.get("tiles") or [])
+
+    return {
+        "bbox": {
+            "south": south,
+            "north": north,
+            "west": west,
+            "east": east,
+            "lat_c": lat_c,
+            "lon_c": lon_c,
+        },
+        "area_ha": boundaries_union_area_ha(list(all_polys)),
+        "grid_m_requested": float(grid_m),
+        "grid_m_used": float(dominant.get("grid_m_used", grid_m)),
+        "grid_points": int(len(z_valid)),
+        "dem_zoom": int(dominant.get("dem_zoom", DEM_ZOOM_MIN)),
+        "tile_count": sum(int(r.get("tile_count", 0)) for r in regions),
+        "terrain_source_used": dominant.get("terrain_source_used", ""),
+        "terrain_source": dominant.get("terrain_source", {}),
+        "elevation": {
+            "z_min": float(z_valid.min()),
+            "z_max": float(z_valid.max()),
+            "z_range": float(z_valid.max() - z_valid.min()),
+            "center_elev": float(z_valid.mean()),
+        },
+        "slope": {
+            "mean": mean_slope,
+            "max": max_slope,
+            "pct_over5": pct_over5,
+            "pct_over10": pct_over10,
+            "bins": slope_bins,
+        },
+        "extras": extras,
+        "verdict_fixed": {"label": verdict_fixed[0], "detail": verdict_fixed[1]},
+        "verdict_tracker": {"label": verdict_tracker[0], "detail": verdict_tracker[1]},
+        "terrain_drivers": terrain_drivers,
+        "contours": {"minor_m": float(contour_minor), "major_m": float(contour_major)},
+        "X": dominant["X"],
+        "Y": dominant["Y"],
+        "Z": dominant["Z"],
+        "slope_grid": dominant["slope_grid"],
+        "polygons": list(all_polys),
+        "multi_cluster": True,
+        "cluster_count": len(regions),
+        "tiles": tiles,
     }

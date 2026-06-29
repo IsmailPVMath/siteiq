@@ -60,6 +60,7 @@ def _try_slope_map_buf(
             polygon_list=analysis["polygons"],
             terrain_source_used=str(analysis.get("terrain_source_used", "")),
             terrain_disclaimer=str((analysis.get("terrain_source") or {}).get("disclaimer", "")),
+            tiles=analysis.get("tiles"),
         )
         if not buf:
             return None
