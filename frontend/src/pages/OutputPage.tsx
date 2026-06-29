@@ -1278,6 +1278,9 @@ export function OutputPage({
         ...reportPayload(),
         boundaries,
         ...layoutRestrictionPayload(),
+        ...(!useFullBoundary && gisResult?.success && gisResult.constraint_layers
+          ? { constraint_layers: gisResult.constraint_layers }
+          : {}),
         config_key: selectedLayoutRow.config_key,
         pitch_m: selectedLayoutRow.pitch_m,
         ...layoutApiParams(),
@@ -2274,7 +2277,7 @@ export function OutputPage({
         <div className="sidebar-group sidebar-deliverables">
           <h3>Project deliverables</h3>
           <p className="hint sidebar-hint">
-            PVMath report combines SiteIQ, TerrainIQ, LayoutIQ, and YieldIQ. Project package adds A3 layout sheet, BOM CSV, and DXF.
+            PVMath report combines SiteIQ, TerrainIQ, LayoutIQ, and YieldIQ. Project package adds A1 layout sheet, BOM CSV, and DXF.
           </p>
           <button
             className="btn btn-primary btn-block"

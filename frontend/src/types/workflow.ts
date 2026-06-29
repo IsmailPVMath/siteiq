@@ -275,6 +275,8 @@ export interface WorkflowProjectPackageRequest extends WorkflowPvmathReportReque
   boundaries?: { lat: number; lon: number }[][];
   boundary?: { lat: number; lon: number }[];
   restriction_polygons?: { lat: number; lon: number }[][];
+  restriction_geojson?: GeoJSON.GeoJSON;
+  constraint_layers?: Record<string, GeoJSON.FeatureCollection>;
   config_key: string;
   pitch_m: number;
 }

@@ -738,7 +738,7 @@ async def workflow_project_package(
     body: WorkflowProjectPackageRequest,
     _user: AuthUser = Depends(get_current_user),
 ):
-    """ZIP deliverables: PVMath report PDF, A3 layout+BOM PDF, BOM CSV, layout DXF."""
+    """ZIP deliverables: PVMath report PDF, A1 layout+BOM PDF, BOM CSV, layout DXF."""
     polys = _latlon_polys(body.boundary, body.boundaries)
     if not polys:
         raise HTTPException(status_code=400, detail="A site boundary is required for the project package.")
@@ -766,6 +766,8 @@ async def workflow_project_package(
                     area_ha=body.area_ha,
                     boundaries=polys,
                     restriction_polygons=restrictions,
+                    restriction_geojson=getattr(body, "restriction_geojson", None),
+                    constraint_layers=getattr(body, "constraint_layers", None),
                     config_key=body.config_key,
                     pitch_m=body.pitch_m,
                     module_h=body.module_h,

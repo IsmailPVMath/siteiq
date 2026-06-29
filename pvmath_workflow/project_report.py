@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 from pvmath_brand import COMPANY_NAME, PRODUCT_NAME, TAGLINE
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
-from reportlab.lib.pagesizes import A3, A4, landscape
+from reportlab.lib.pagesizes import A1, A3, A4, landscape
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm, mm
 from reportlab.platypus import (
@@ -238,7 +238,7 @@ def _sidebar_panel(rows: List[List], header: str, st, *, col_widths) -> Table:
     return tbl
 
 
-def build_layout_a3_pdf(
+def build_layout_sheet_pdf(
     *,
     project_name: str,
     detail: Dict[str, Any],
@@ -253,19 +253,33 @@ def build_layout_a3_pdf(
     drawn_by: str = "PVMath LayoutIQ",
     checked_by: str = "—",
     revision: str = "R0",
+    excluded_geojson: Optional[Dict[str, Any]] = None,
+    constraint_layers: Optional[Dict[str, Any]] = None,
 ) -> bytes:
-    """A3 landscape engineering sheet: centred top-view layout + title block sidebar."""
+    """A1 landscape engineering sheet: large centred top-view layout + title block sidebar.
+
+    The top view shows the array, the buildable parcel, GIS exclusion zones
+    (red hatched) and constraint features (rivers, transmission lines, roads…).
+    """
     layout = _merged_layout_for_drawing(detail)
     if not layout:
-        raise ValueError("No layout geometry for A3 sheet")
+        raise ValueError("No layout geometry for layout sheet")
 
-    chart_bytes = make_layout_drawing(layout, project_name, module_wp, azimuth)
-    page_w, page_h = landscape(A3)
-    margin = 10 * mm
+    chart_bytes = make_layout_drawing(
+        layout,
+        project_name,
+        module_wp,
+        azimuth,
+        excluded_geojson=excluded_geojson,
+        constraint_layers=constraint_layers,
+        big=True,
+    )
+    page_w, page_h = landscape(A1)
+    margin = 14 * mm
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf,
-        pagesize=landscape(A3),
+        pagesize=landscape(A1),
         leftMargin=margin,
         rightMargin=margin,
         topMargin=margin,
@@ -278,8 +292,8 @@ def build_layout_a3_pdf(
     usable_h = page_h - 2 * margin - 12
     row_h = usable_h - 12
 
-    sidebar_w = 122 * mm
-    gap = 4 * mm
+    sidebar_w = 150 * mm
+    gap = 6 * mm
     main_w = usable_w - sidebar_w - gap
 
     layout_img = _fit_image(chart_bytes, main_w - 14, row_h - 4)
@@ -364,7 +378,7 @@ def build_layout_a3_pdf(
         [_lp("Checked", st["lbl"]), _lp(checked_by, st["body"])],
         [_lp("Revision", st["lbl"]), _lp(revision, st["body"])],
         [_lp("Date", st["lbl"]), _lp(date.today().isoformat(), st["body"])],
-        [_lp("Sheet", st["lbl"]), _lp("Layout — A3 top view", st["body"])],
+        [_lp("Sheet", st["lbl"]), _lp("Layout — A1 top view", st["body"])],
         [_lp("Units", st["lbl"]), _lp("Local metric (m) · DXF georeferenced", st["body"])],
     ]
     titleblock = Table(tb_rows, colWidths=[3.0 * cm, sidebar_w - 3.0 * cm - 12])
@@ -427,6 +441,10 @@ def build_layout_a3_pdf(
     return buf.getvalue()
 
 
+# Backwards-compatible alias (sheet upgraded A3 → A1).
+build_layout_a3_pdf = build_layout_sheet_pdf
+
+
 def build_bom_csv(bom: Dict[str, str], project_name: str = "Project") -> bytes:
     """Excel-friendly CSV BOM."""
     out = io.StringIO()
@@ -454,6 +472,8 @@ def build_project_package_zip(
     config_key: str,
     pitch_m: float,
     restriction_polygons: Optional[List[List[List[float]]]] = None,
+    restriction_geojson: Optional[Dict[str, Any]] = None,
+    constraint_layers: Optional[Dict[str, Any]] = None,
     module_h: float = 2.094,
     module_w: float = 1.038,
     module_wp: int = 550,
@@ -480,10 +500,11 @@ def build_project_package_zip(
     drawn_by: str = "PVMath LayoutIQ",
     revision: str = "R0",
 ) -> bytes:
-    """ZIP: PVMath report PDF, A3 layout+BOM PDF, BOM CSV, layout DXF."""
+    """ZIP: PVMath report PDF, A1 layout+BOM PDF, BOM CSV, layout DXF."""
     detail = build_layout_detail(
         boundaries=boundaries,
         restriction_polygons=restriction_polygons,
+        restriction_geojson=restriction_geojson,
         config_key=config_key,
         pitch_m=pitch_m,
         module_h=module_h,
@@ -540,7 +561,7 @@ def build_project_package_zip(
         selected_yield_mwh=selected_yield_mwh,
         boundaries=boundaries,
     )
-    a3_pdf = build_layout_a3_pdf(
+    a1_pdf = build_layout_sheet_pdf(
         project_name=project_name,
         detail=detail,
         bom=bom,
@@ -553,6 +574,8 @@ def build_project_package_zip(
         location_label=location_label,
         drawn_by=drawn_by,
         revision=revision,
+        excluded_geojson=restriction_geojson,
+        constraint_layers=constraint_layers,
     )
     bom_csv = build_bom_csv(bom, project_name)
     dxf_bytes = export_layout_dxf(detail, project_name)
@@ -560,7 +583,7 @@ def build_project_package_zip(
     zbuf = io.BytesIO()
     with zipfile.ZipFile(zbuf, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr(f"{safe}_PVMath_Report.pdf", report_pdf)
-        zf.writestr(f"{safe}_Layout_A3.pdf", a3_pdf)
+        zf.writestr(f"{safe}_Layout_A1.pdf", a1_pdf)
         zf.writestr(f"{safe}_BOM.csv", bom_csv)
         zf.writestr(f"{safe}_{config_key}_{pitch_m:g}m_layout.dxf", dxf_bytes)
     return zbuf.getvalue()

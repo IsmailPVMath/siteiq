@@ -326,6 +326,14 @@ class WorkflowProjectPackageRequest(WorkflowPvmathReportRequest):
     boundary: Optional[List[BoundaryPoint]] = None
     boundaries: Optional[List[List[BoundaryPoint]]] = None
     restriction_polygons: Optional[List[List[BoundaryPoint]]] = None
+    restriction_geojson: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="SiteIQ excluded-area GeoJSON (holes preserved) — drawn as keep-out zones on the A1 sheet.",
+    )
+    constraint_layers: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="SiteIQ OSM constraint layers (rivers, transmission lines, roads…) for the A1 layout drawing.",
+    )
     config_key: str = Field(..., max_length=16)
     pitch_m: float = Field(..., gt=0)
     module_h: float = Field(default=2.094, gt=0)
