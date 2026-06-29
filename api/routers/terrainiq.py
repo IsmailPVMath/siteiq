@@ -41,6 +41,10 @@ from pvmath_topo_export import (
     utm_grids_from_latlon,
 )
 from pvmath_yield import fetch_yield_cross_ref_bundle, yield_cross_ref_terrainiq_text
+from pvmath_workflow.terrain_bundle import (
+    build_terrain_dxf_local_bytes,
+    build_terrain_landxml_bytes,
+)
 
 router = APIRouter(tags=["terrainiq"])
 
@@ -399,6 +403,110 @@ async def terrainiq_report_pdf(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{safe}_terrain_report.pdf"'},
+    )
+
+
+def _topo_http_errors(exc: BaseException) -> HTTPException:
+    if isinstance(exc, asyncio.TimeoutError):
+        return HTTPException(
+            status_code=504,
+            detail=f"TerrainIQ export timed out after {TOPO_TIMEOUT_SEC}s.",
+        )
+    if isinstance(exc, ValueError):
+        detail = str(exc)
+        if detail == "GRID_TOO_LARGE":
+            return HTTPException(status_code=422, detail="Boundary too large for selected grid spacing.")
+        return HTTPException(status_code=422, detail=detail)
+    if isinstance(exc, RuntimeError):
+        detail = str(exc)
+        if detail == "GRID_TOO_SMALL":
+            return HTTPException(status_code=422, detail="Boundary is too small for selected grid spacing.")
+        if detail == "NO_DATA_IN_BOUNDARY":
+            return HTTPException(status_code=422, detail="No elevation data inside boundary.")
+        if detail == "DEM_FETCH_FAILED":
+            return HTTPException(status_code=502, detail="Could not fetch terrain DEM tiles.")
+        return HTTPException(status_code=500, detail=f"TerrainIQ export failed: {detail}")
+    return HTTPException(status_code=500, detail=f"TerrainIQ export failed: {exc}")
+
+
+@router.post("/terrainiq/export/landxml")
+@router.post("/topoiq/export/landxml", include_in_schema=False)
+async def terrainiq_export_landxml(
+    body: TerrainIQAnalyzeRequest,
+    _user: AuthUser = Depends(get_current_user),
+):
+    """On-demand LandXML TIN surface (UTM) — not bundled in the project package."""
+    loop = asyncio.get_running_loop()
+    try:
+        analysis = await asyncio.wait_for(
+            loop.run_in_executor(None, partial(_run_topo, body)),
+            timeout=TOPO_TIMEOUT_SEC,
+        )
+        lxml = await asyncio.wait_for(
+            loop.run_in_executor(
+                None,
+                partial(
+                    build_terrain_landxml_bytes,
+                    analysis,
+                    project_name=body.project_name,
+                    country=body.country,
+                ),
+            ),
+            timeout=TOPO_TIMEOUT_SEC,
+        )
+    except Exception as exc:
+        raise _topo_http_errors(exc) from exc
+
+    if not lxml:
+        raise HTTPException(status_code=503, detail="LandXML generation unavailable for this grid.")
+    base = sanitize_topo_basename(body.project_name)
+    return StreamingResponse(
+        io.BytesIO(lxml),
+        media_type="application/xml",
+        headers={"Content-Disposition": f'attachment; filename="{base}.xml"'},
+    )
+
+
+@router.post("/terrainiq/export/contours-local")
+@router.post("/topoiq/export/contours-local", include_in_schema=False)
+async def terrainiq_export_contours_local(
+    body: TerrainIQAnalyzeRequest,
+    _user: AuthUser = Depends(get_current_user),
+):
+    """On-demand contour DXF at local origin (metres from site reference)."""
+    loop = asyncio.get_running_loop()
+    try:
+        analysis = await asyncio.wait_for(
+            loop.run_in_executor(None, partial(_run_topo, body)),
+            timeout=TOPO_TIMEOUT_SEC,
+        )
+        dxf = await asyncio.wait_for(
+            loop.run_in_executor(
+                None,
+                partial(
+                    build_terrain_dxf_local_bytes,
+                    analysis,
+                    project_name=body.project_name,
+                    country=body.country,
+                    contour_minor=float(body.contour_minor),
+                    contour_major=float(body.contour_major),
+                ),
+            ),
+            timeout=TOPO_TIMEOUT_SEC,
+        )
+    except Exception as exc:
+        raise _topo_http_errors(exc) from exc
+
+    if not dxf:
+        raise HTTPException(
+            status_code=503,
+            detail="Local contour DXF unavailable (ezdxf/scipy missing or empty grid).",
+        )
+    base = sanitize_topo_basename(body.project_name)
+    return StreamingResponse(
+        io.BytesIO(dxf),
+        media_type="application/dxf",
+        headers={"Content-Disposition": f'attachment; filename="{base}_contours_local.dxf"'},
     )
 
 

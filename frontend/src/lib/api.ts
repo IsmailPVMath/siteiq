@@ -527,6 +527,14 @@ export function topoReportPdf(token: string, body: TerrainIQAnalyzeRequest) {
   return downloadBlob("/api/v1/terrainiq/report-pdf", token, body, "application/pdf");
 }
 
+export function topoExportLandxml(token: string, body: TerrainIQAnalyzeRequest) {
+  return downloadBlob("/api/v1/terrainiq/export/landxml", token, body, "application/xml");
+}
+
+export function topoExportContoursLocal(token: string, body: TerrainIQAnalyzeRequest) {
+  return downloadBlob("/api/v1/terrainiq/export/contours-local", token, body, "application/dxf");
+}
+
 export function topoExportsZip(token: string, body: TerrainIQAnalyzeRequest) {
   return downloadBlob("/api/v1/terrainiq/exports", token, body, "application/zip");
 }

@@ -510,7 +510,8 @@ def build_project_package_zip(
     terrain_files: Optional[Dict[str, bytes]] = None,
 ) -> bytes:
     """ZIP: PVMath report PDF, A1 layout+BOM PDF, BOM CSV, layout DXF, and an
-    optional ``Terrain Data/`` folder with the full TerrainIQ deliverables."""
+    optional ``Terrain Data/`` folder (reference JSON, UTM points CSV,
+    georeferenced contour DXF — no slope PDF, LandXML or local DXF)."""
     detail = build_layout_detail(
         boundaries=boundaries,
         restriction_polygons=restriction_polygons,

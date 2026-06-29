@@ -7,6 +7,8 @@ import {
   createProject,
   updateProject,
   reverseGeocode,
+  topoExportContoursLocal,
+  topoExportLandxml,
   workflowGisAnalysis,
   workflowImportLayoutDxf,
   workflowLayoutDetail,
@@ -267,6 +269,8 @@ export function OutputPage({
   const yieldAutoRan = useRef(false);
   const [topoMesh, setTopoMesh] = useState<WorkflowTerrainMeshResponse | null>(null);
   const [topoMeshBusy, setTopoMeshBusy] = useState(false);
+  const [topoLandxmlBusy, setTopoLandxmlBusy] = useState(false);
+  const [topoLocalDxfBusy, setTopoLocalDxfBusy] = useState(false);
   const [yieldBusy, setYieldBusy] = useState(false);
   const [yieldError, setYieldError] = useState("");
   const [yieldResult, setYieldResult] = useState<YieldIQAnalyzeResponse | null>(null);
@@ -691,6 +695,36 @@ export function OutputPage({
       setTopoError(err instanceof Error ? err.message : "TerrainIQ analysis failed");
     } finally {
       setTopoBusy(false);
+    }
+  }
+
+  async function handleTopoLandxml() {
+    if (!topoPayload) return;
+    setTopoLandxmlBusy(true);
+    setTopoError("");
+    try {
+      const blob = await topoExportLandxml(token, topoPayload);
+      const safe = (topoPayload.project_name || "terrain").replace(/\s+/g, "_");
+      saveBlob(blob, `${safe}.xml`);
+    } catch (err) {
+      setTopoError(err instanceof Error ? err.message : "LandXML export failed");
+    } finally {
+      setTopoLandxmlBusy(false);
+    }
+  }
+
+  async function handleTopoLocalDxf() {
+    if (!topoPayload) return;
+    setTopoLocalDxfBusy(true);
+    setTopoError("");
+    try {
+      const blob = await topoExportContoursLocal(token, topoPayload);
+      const safe = (topoPayload.project_name || "terrain").replace(/\s+/g, "_");
+      saveBlob(blob, `${safe}_contours_local.dxf`);
+    } catch (err) {
+      setTopoError(err instanceof Error ? err.message : "Local contour DXF failed");
+    } finally {
+      setTopoLocalDxfBusy(false);
     }
   }
 
@@ -1638,11 +1672,35 @@ export function OutputPage({
                 {topoBusy ? "Running TerrainIQ…" : topoResult ? "Re-run TerrainIQ" : "Run TerrainIQ"}
               </button>
               {topoResult ? (
-                <p className="sidebar-hint" style={{ marginTop: "0.5rem" }}>
-                  Terrain contours, slope PDF, LandXML, DXF and point clouds are
-                  bundled in the <strong>Terrain Data</strong> folder of the
-                  project package (final step).
-                </p>
+                <>
+                  <p className="sidebar-hint" style={{ marginTop: "0.5rem" }}>
+                    Reference JSON, UTM point cloud CSV and georeferenced contour
+                    DXF are bundled in the <strong>Terrain Data</strong> folder of
+                    the project package. Slope detail is in the PVMath report.
+                  </p>
+                  <div className="sidebar-btn-row">
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      type="button"
+                      onClick={() => void handleTopoLandxml()}
+                      disabled={topoLandxmlBusy || topoBusy}
+                    >
+                      {topoLandxmlBusy ? "Generating…" : "LandXML"}
+                    </button>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      type="button"
+                      onClick={() => void handleTopoLocalDxf()}
+                      disabled={topoLocalDxfBusy || topoBusy}
+                    >
+                      {topoLocalDxfBusy ? "Generating…" : "DXF (local origin)"}
+                    </button>
+                  </div>
+                  <p className="hint sidebar-hint">
+                    LandXML and local-origin contour DXF are generated on demand
+                    for CAD workflows — not included in every package download.
+                  </p>
+                </>
               ) : null}
             </>
           )}
