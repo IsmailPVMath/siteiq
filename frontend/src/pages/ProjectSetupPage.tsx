@@ -230,6 +230,17 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
     dispatch({ type: "set_location", location: { lat: Number(lat.toFixed(6)), lon: Number(lon.toFixed(6)) } });
   }
 
+  function createAssumedEnvelope(areaHa: number) {
+    if (!hasUserLocation || areaHa <= 0) return;
+    if (hasSurveyedBoundary(draft)) return;
+    const { lat, lon } = draft.location;
+    const square = squareBoundaryFromPin(lat, lon, areaHa);
+    if (square.length < 4) return;
+    dispatch({ type: "set_assumed_envelope", site_boundary: square, gross_area_ha: areaHa });
+    setHint(`Assumed ${areaHa} ha square envelope created.`);
+    setHintIsError(false);
+  }
+
   function applyPaste() {
     const parsed = parseCoordinates(coordPaste);
     if (!parsed) {
@@ -392,38 +403,19 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft.location.lat, draft.location.lon, token]);
 
+  // Recenter an existing assumed square when the pin moves — keeps the same
+  // area. Never runs while typing (area input is local until "Create area").
   useEffect(() => {
-    if (hasSurveyedBoundary(draft)) return;
-
+    if (!draft.geometry.assumed_boundary) return;
     const areaHa = draft.geometry.gross_area_ha;
     const { lat, lon } = draft.location;
-
-    if (!hasUserLocation || areaHa <= 0) {
-      if (draft.geometry.assumed_boundary) {
-        dispatch({
-          type: "set_site_boundary",
-          site_boundary: undefined,
-          assumed_boundary: false,
-        });
-      }
-      return;
-    }
-
+    if (areaHa <= 0) return;
     if (assumedEnvelopeMatches(draft.geometry.site_boundary, lat, lon, areaHa)) return;
-
     const square = squareBoundaryFromPin(lat, lon, areaHa);
     if (square.length < 4) return;
     dispatch({ type: "set_assumed_envelope", site_boundary: square, gross_area_ha: areaHa });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    hasUserLocation,
-    draft.location.lat,
-    draft.location.lon,
-    draft.geometry.gross_area_ha,
-    draft.geometry.parcels,
-    draft.geometry.assumed_boundary,
-    draft.geometry.site_boundary,
-  ]);
+  }, [draft.location.lat, draft.location.lon]);
 
   useEffect(() => {
     const enabled = draft.geometry.parcels.filter((p) => p.enabled);
@@ -620,7 +612,7 @@ export function ProjectSetupPage({ token, initial, initialProjectId, onOpenProje
               boundaryAreaHa={boundaryAreaHa}
               grossAreaHa={draft.geometry.gross_area_ha}
               locationLabel={draft.location.label}
-              onAreaChange={(gross_area_ha) => dispatch({ type: "set_gross_area", gross_area_ha })}
+              onCreateEnvelope={createAssumedEnvelope}
             />
 
           </div>

@@ -5,45 +5,62 @@ import type { BoundaryPoint } from "../../types/gate";
 import type { InputMethod, ProjectSetupDraft, SetupParcel } from "../../types/projectSetup";
 import { INPUT_METHOD_OPTIONS } from "./InputMethodCards";
 
-interface PinAreaInputProps {
+interface PinAreaFieldProps {
   valueHa: number;
   disabled?: boolean;
   placeholder?: string;
-  onCommit: (ha: number) => void;
+  ctaLabel: string;
+  onCreate: (ha: number) => void;
 }
 
-/** Free-typing numeric input — local state so re-renders never rewrite mid-edit. */
-function PinAreaInput({ valueHa, disabled, placeholder, onCommit }: PinAreaInputProps) {
+/**
+ * Type a number, then press the button to draw the envelope. The field is fully
+ * local — nothing regenerates while typing, so values never fluctuate.
+ */
+function PinAreaField({ valueHa, disabled, placeholder, ctaLabel, onCreate }: PinAreaFieldProps) {
   const [text, setText] = useState(valueHa > 0 ? String(valueHa) : "");
 
   useEffect(() => {
-    // Sync only when the external value diverges from what's typed (e.g. project load).
-    const typed = Number(text);
-    const external = valueHa > 0 ? valueHa : 0;
-    if (!Number.isFinite(typed) || Math.abs(typed - external) > 0.001) {
-      setText(valueHa > 0 ? String(valueHa) : "");
-    }
+    // Resync only on external load (e.g. opening a saved project), not while typing.
+    setText(valueHa > 0 ? String(valueHa) : "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [valueHa]);
 
+  const parsed = Number(text);
+  const canCreate = !disabled && Number.isFinite(parsed) && parsed > 0;
+
+  function commit() {
+    if (canCreate) onCreate(parsed);
+  }
+
   return (
-    <input
-      id="pin-area"
-      type="text"
-      inputMode="decimal"
-      autoComplete="off"
-      className="pin-area-input"
-      value={text}
-      placeholder={placeholder}
-      disabled={disabled}
-      onChange={(e) => {
-        const raw = e.target.value.replace(/[^\d.]/g, "");
-        setText(raw);
-        const ha = Number(raw);
-        if (Number.isFinite(ha) && ha > 0) onCommit(ha);
-        else if (raw === "") onCommit(0);
-      }}
-    />
+    <div className="pin-area-row">
+      <input
+        id="pin-area"
+        type="text"
+        inputMode="decimal"
+        autoComplete="off"
+        className="pin-area-input"
+        value={text}
+        placeholder={placeholder}
+        disabled={disabled}
+        onChange={(e) => setText(e.target.value.replace(/[^\d.]/g, ""))}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            commit();
+          }
+        }}
+      />
+      <button
+        type="button"
+        className="btn btn-primary btn-sm"
+        disabled={!canCreate}
+        onClick={commit}
+      >
+        {ctaLabel}
+      </button>
+    </div>
   );
 }
 
@@ -93,7 +110,7 @@ interface Props {
   boundaryAreaHa: number | null;
   grossAreaHa: number;
   locationLabel: string;
-  onAreaChange: (gross_area_ha: number) => void;
+  onCreateEnvelope: (gross_area_ha: number) => void;
 }
 
 export function BoundaryWorkspace({
@@ -134,7 +151,7 @@ export function BoundaryWorkspace({
   boundaryAreaHa,
   grossAreaHa,
   locationLabel,
-  onAreaChange,
+  onCreateEnvelope,
 }: Props) {
   const uploadOpt = INPUT_METHOD_OPTIONS.find((o) => o.id === inputMethod);
   const isUpload = ["kml", "kmz", "geojson"].includes(inputMethod);
@@ -430,7 +447,12 @@ export function BoundaryWorkspace({
         {assumedBoundary ? (
           <div className="setup-area-pin">
             <label htmlFor="pin-area">Assumed site area around pin (ha)</label>
-            <PinAreaInput valueHa={grossAreaHa} placeholder="e.g. 100" onCommit={onAreaChange} />
+            <PinAreaField
+              valueHa={grossAreaHa}
+              placeholder="e.g. 100"
+              ctaLabel="Update area"
+              onCreate={onCreateEnvelope}
+            />
             <p className="hint">
               A square envelope is drawn on the map (pin at centre). Not a surveyed parcel —
               buildable area is calculated on SiteIQ.
@@ -451,15 +473,16 @@ export function BoundaryWorkspace({
         ) : (
           <div className={`setup-area-pin${hasUserLocation ? "" : " is-disabled"}`}>
             <label htmlFor="pin-area">Assumed site area around pin (ha)</label>
-            <PinAreaInput
+            <PinAreaField
               valueHa={grossAreaHa}
               disabled={!hasUserLocation}
-              placeholder={hasUserLocation ? "e.g. 100" : "Drop a pin or enter coordinates first"}
-              onCommit={onAreaChange}
+              placeholder={hasUserLocation ? "e.g. 100" : "Drop a pin first"}
+              ctaLabel="Create area"
+              onCreate={onCreateEnvelope}
             />
             <p className="hint">
               {hasUserLocation
-                ? "Enter area to draw a square envelope on the map and unlock the full workflow."
+                ? "Type the area, then press Create area to draw a square envelope and unlock the full workflow."
                 : "Enable by placing a pin on the map, searching, or pasting coordinates."}
             </p>
           </div>

@@ -3410,12 +3410,6 @@ textarea {
   line-height: 1.1;
 }
 
-.setup-area-pin.is-disabled input {
-  background: #f0f3f0;
-  color: var(--muted);
-  cursor: not-allowed;
-}
-
 .setup-area-calculated-inline {
   margin-top: 0.75rem;
 }
@@ -3424,9 +3418,21 @@ textarea {
   font-size: 1.35rem;
 }
 
-.setup-area-pin input {
-  max-width: 12rem;
+.pin-area-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin-top: 0.35rem;
+}
+
+.pin-area-input {
+  max-width: 10rem;
+}
+
+.setup-area-pin.is-disabled .pin-area-input {
+  background: #f0f3f0;
+  color: var(--muted);
+  cursor: not-allowed;
 }
 
 @media (max-width: 960px) {
