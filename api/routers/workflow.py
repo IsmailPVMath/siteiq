@@ -114,6 +114,8 @@ def _render_slope_png(polys, topo) -> bytes | None:
             terrain_source_used=str(analysis.get("terrain_source_used", "")),
             terrain_disclaimer=str(meta.get("disclaimer", "")),
             tiles=analysis.get("tiles"),
+            zoom_to_extent=True,
+            basemap=False,
         )
         return buf.getvalue() if buf else None
     except Exception:

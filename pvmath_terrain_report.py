@@ -193,11 +193,25 @@ def _driver_impact_for_mean(mean_pct: float) -> tuple[str, str]:
     return "Significant constraint", "warn"
 
 
+def _cross_row_grading_impact(pct_over_6: float, area_ha: float | None) -> tuple[str, str]:
+    """Grading guidance from cross-row exceedance — area-aware so flat sites stay reassuring.
+
+    Large sites tolerate a higher cross-row exceedance before flagging grading: a
+    few percent of a 1000+ ha site is still a small, localized fraction.
+    """
+    ha = float(area_ha) if area_ha is not None else 0.0
+    threshold = 5.0 if ha > 1000 else 3.0
+    if pct_over_6 < threshold:
+        return "No grading needed", "positive"
+    return "Local grading zones", "warn"
+
+
 def build_terrain_drivers(
     mean_slope: float,
     max_slope: float,
     slope_bins: tuple | list | None,
     extras: dict | None = None,
+    area_ha: float | None = None,
 ) -> list[tuple[str, str, str]]:
     """Driver rows as (driver_text, impact_text, kind) with kind positive|warn|neutral."""
     impact, kind = _driver_impact_for_mean(mean_slope)
@@ -236,11 +250,8 @@ def build_terrain_drivers(
         ))
     if ex.get("pct_cross_over_6") is not None:
         p6 = float(ex["pct_cross_over_6"])
-        drivers.append((
-            f"{p6:.1f}% area >6% cross-row",
-            "Local grading zones" if p6 > 1 else "Within limits",
-            "warn" if p6 > 1 else "positive",
-        ))
+        impact, kind = _cross_row_grading_impact(p6, area_ha)
+        drivers.append((f"{p6:.1f}% area >6% cross-row", impact, kind))
 
     drivers.append((
         f"Maximum slope {max_slope:.1f}%",
@@ -297,6 +308,7 @@ def compute_terrain_drivers_summary(
     extras: dict | None,
     verdict_fixed: tuple[str, str],
     verdict_tracker: tuple[str, str],
+    area_ha: float | None = None,
 ) -> dict:
     """Full Terrain Drivers block for UI and PDF."""
     score = calculate_terrain_score(mean_slope, max_slope, extras)
@@ -304,7 +316,9 @@ def compute_terrain_drivers_summary(
     return {
         "terrain_score": score,
         "terrain_score_label": label,
-        "drivers": build_terrain_drivers(mean_slope, max_slope, slope_bins, extras),
+        "drivers": build_terrain_drivers(
+            mean_slope, max_slope, slope_bins, extras, area_ha=area_ha,
+        ),
         "why_bullets": build_terrain_verdict_why(
             mean_slope, verdict_fixed[0], verdict_tracker[0], extras,
         ),
@@ -450,6 +464,25 @@ def _fetch_imagery_mosaic(south, north, west, east, zoom=14):
     return mosaic, lat_n, lat_s, lon_w, lon_e
 
 
+def _polygon_extent(
+    polygon_list,
+    south: float,
+    north: float,
+    west: float,
+    east: float,
+) -> tuple[float, float, float, float]:
+    """Tight lat/lon bounds from boundary rings with a small margin."""
+    if polygon_list:
+        lons = [c[0] for poly in polygon_list for c in poly if poly and len(poly) >= 3]
+        lats = [c[1] for poly in polygon_list for c in poly if poly and len(poly) >= 3]
+        if lons and lats:
+            west, east = min(lons), max(lons)
+            south, north = min(lats), max(lats)
+    pad_lon = max((east - west) * 0.04, 0.00015)
+    pad_lat = max((north - south) * 0.04, 0.00015)
+    return south - pad_lat, north + pad_lat, west - pad_lon, east + pad_lon
+
+
 def render_slope_map_png(
     X, Y, Z, grid_m: float,
     south, north, west, east,
@@ -457,6 +490,9 @@ def render_slope_map_png(
     terrain_source_used: str = "",
     terrain_disclaimer: str = "",
     tiles=None,
+    *,
+    zoom_to_extent: bool = False,
+    basemap: bool = True,
 ) -> Optional[io.BytesIO]:
     """Slope map with satellite basemap, north arrow, and scale bar (PDF-ready).
 
@@ -475,19 +511,28 @@ def render_slope_map_png(
     if not tiles:
         tiles = [{"X": X, "Y": Y, "Z": Z, "grid_m": grid_m}]
 
+    view_south, view_north, view_west, view_east = (
+        _polygon_extent(polygon_list, south, north, west, east)
+        if zoom_to_extent
+        else (south, north, west, east)
+    )
+
     fig, ax = plt.subplots(figsize=(10, 6.5))
     fig.patch.set_facecolor("#f5f7f5")
     ax.set_facecolor("#e8e8e8")
 
-    # Basemap spans the full site extent (covers all clusters).
-    try:
-        img, lat_n, lat_s, lon_w, lon_e = _fetch_imagery_mosaic(south, north, west, east)
-        ax.imshow(
-            img, extent=[lon_w, lon_e, lat_s, lat_n],
-            aspect="auto", zorder=0, alpha=0.92,
-        )
-    except Exception:
-        pass
+    # Basemap spans the view extent (optional — skipped for tight PDF figures).
+    if basemap:
+        try:
+            img, lat_n, lat_s, lon_w, lon_e = _fetch_imagery_mosaic(
+                view_south, view_north, view_west, view_east,
+            )
+            ax.imshow(
+                img, extent=[lon_w, lon_e, lat_s, lat_n],
+                aspect="auto", zorder=0, alpha=0.92,
+            )
+        except Exception:
+            pass
 
     _slope_colors = [
         (0.000, "#1b5e20"), (0.167, "#388e3c"), (0.200, "#66bb6a"),
@@ -515,12 +560,12 @@ def render_slope_map_png(
         t_lat_min, t_lat_max = float(np.nanmin(tY)), float(np.nanmax(tY))
         im = ax.imshow(
             Sm, extent=[t_lon_min, t_lon_max, t_lat_min, t_lat_max],
-            cmap=cmap_slope, vmin=0, vmax=15, alpha=0.55,
+            cmap=cmap_slope, vmin=0, vmax=15, alpha=0.85 if not basemap else 0.55,
             interpolation="bilinear", aspect="auto", zorder=2,
         )
 
-    lon_min, lon_max = float(west), float(east)
-    lat_min, lat_max = float(south), float(north)
+    lon_min, lon_max = float(view_west), float(view_east)
+    lat_min, lat_max = float(view_south), float(view_north)
     if im is None:
         import matplotlib.cm as cm
         im = cm.ScalarMappable(
@@ -538,6 +583,10 @@ def render_slope_map_png(
         if patches:
             from matplotlib.collections import PatchCollection
             ax.add_collection(PatchCollection(patches, match_original=True, zorder=3))
+
+    ax.set_xlim(lon_min, lon_max)
+    ax.set_ylim(lat_min, lat_max)
+    ax.set_aspect("equal", adjustable="box")
 
     cbar = fig.colorbar(im, ax=ax, fraction=0.035, pad=0.02)
     cbar.set_label("Slope (%)", fontsize=9)
@@ -960,8 +1009,13 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
         map_parts.append(slope_img)
         map_parts.append(Spacer(1, 1.5 * mm))
         map_parts.append(Paragraph(
-            "Figure 1 — Slope (%) over satellite basemap. Green &lt;3%, red &gt;10%. "
-            "North arrow and scale bar shown.",
+            (
+                "Figure 1 — Slope (%) clipped to site boundary (zoom to extents). "
+                "Green &lt;3%, red &gt;10%. North arrow and scale bar shown."
+                if ctx.get("slope_map_zoomed")
+                else "Figure 1 — Slope (%) over satellite basemap. Green &lt;3%, red &gt;10%. "
+                "North arrow and scale bar shown."
+            ),
             cap_style,
         ))
     story.append(KeepTogether(map_parts))
@@ -1104,9 +1158,9 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
     story.append(Spacer(1, 4 * mm))
 
     # Threshold tables
-    story.append(Paragraph("Slope Threshold Reference", hdr_style))
     ft_data = [["Fixed tilt", "Threshold", "Interpretation"]] + list(FIXED_THRESHOLDS)
     tr_data = [["Single-axis tracker", "Threshold", "Interpretation"]] + list(TRACKER_THRESHOLDS)
+    thresh_blocks = [Paragraph("Slope Threshold Reference", hdr_style)]
     for label, rows in (("Fixed Tilt", ft_data), ("Tracker", tr_data)):
         t = Table(rows, colWidths=[usable * 0.28, usable * 0.18, usable * 0.54])
         t.setStyle(TableStyle([
@@ -1117,8 +1171,10 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
             ("TOPPADDING", (0, 0), (-1, -1), 3),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
         ]))
-        story.append(t)
-        story.append(Spacer(1, 2 * mm))
+        thresh_blocks.append(t)
+        thresh_blocks.append(Spacer(1, 2 * mm))
+    # Keep heading + both tables together so a table header never orphans.
+    story.append(KeepTogether(thresh_blocks))
 
     # ── SiteIQ cross-reference ────────────────────────────────────────────
     if ctx.get("siteiq_note"):
@@ -1212,8 +1268,13 @@ def build_terrain_unified_flowables(
         map_parts.append(slope_img)
         map_parts.append(Spacer(1, 1.5 * mm))
         map_parts.append(Paragraph(
-            "Figure 1 — Slope (%) over satellite basemap. Green &lt;3%, red &gt;10%. "
-            "North arrow and scale bar shown.",
+            (
+                "Figure 1 — Slope (%) clipped to site boundary (zoom to extents). "
+                "Green &lt;3%, red &gt;10%. North arrow and scale bar shown."
+                if ctx.get("slope_map_zoomed")
+                else "Figure 1 — Slope (%) over satellite basemap. Green &lt;3%, red &gt;10%. "
+                "North arrow and scale bar shown."
+            ),
             cap_style,
         ))
     story.append(KeepTogether(map_parts))
@@ -1340,9 +1401,9 @@ def build_terrain_unified_flowables(
     )
     story.append(Spacer(1, 4 * mm))
 
-    story.append(Paragraph("Slope Threshold Reference", hdr_style))
     ft_data = [["Fixed tilt", "Threshold", "Interpretation"]] + list(FIXED_THRESHOLDS)
     tr_data = [["Single-axis tracker", "Threshold", "Interpretation"]] + list(TRACKER_THRESHOLDS)
+    thresh_blocks: list = [Paragraph("Slope Threshold Reference", hdr_style)]
     for _label, rows in (("Fixed Tilt", ft_data), ("Tracker", tr_data)):
         t = Table(rows, colWidths=[usable * 0.28, usable * 0.18, usable * 0.54])
         t.setStyle(TableStyle([
@@ -1353,8 +1414,11 @@ def build_terrain_unified_flowables(
             ("TOPPADDING", (0, 0), (-1, -1), 3),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
         ]))
-        story.append(t)
-        story.append(Spacer(1, 2 * mm))
+        thresh_blocks.append(t)
+        thresh_blocks.append(Spacer(1, 2 * mm))
+    # Keep the heading and both reference tables on one page so a table header
+    # never lands at the foot of a page with its rows orphaned overleaf.
+    story.append(KeepTogether(thresh_blocks))
 
     return story
 
@@ -1394,6 +1458,7 @@ def build_report_context(
     terrain_drivers = compute_terrain_drivers_summary(
         mean_slope, max_slope, slope_bins, extras,
         verdict_fixed, verdict_tracker,
+        area_ha=area_ha,
     )
 
     siteiq_note = format_siteiq_companion_note(siteiq_run_cache)

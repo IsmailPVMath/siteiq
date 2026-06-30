@@ -10,6 +10,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm
+from reportlab.pdfgen import canvas as _canvas
 from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from pvmath_brand import PRODUCT_NAME
@@ -21,6 +22,49 @@ from pvmath_reports.terrain_section import build_terrain_section_flowables
 from pvmath_reports.yieldiq_section import build_yieldiq_flowables
 from pvmath_terrain_report import FIXED_THRESHOLDS, TRACKER_THRESHOLDS
 from pvmath_workflow.scoring import unified_pvmath_score, yield_subscore
+
+_FOOTER_GREY = colors.HexColor("#8a9a8a")
+_FOOTER_RULE = colors.HexColor("#d4e8d4")
+
+
+class _NumberedCanvas(_canvas.Canvas):
+    """Two-pass canvas that stamps a clean footer with 'Page X/N' on every page."""
+
+    _footer_date = ""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._saved_states: list = []
+
+    def showPage(self):
+        self._saved_states.append(dict(self.__dict__))
+        self._startPage()
+
+    def save(self):
+        total = len(self._saved_states)
+        for index, state in enumerate(self._saved_states, start=1):
+            self.__dict__.update(state)
+            self._draw_footer(index, total)
+            super().showPage()
+        super().save()
+
+    def _draw_footer(self, page_number: int, total_pages: int):
+        width, _ = A4
+        margin = 1.8 * cm
+        y = 1.05 * cm
+        self.saveState()
+        self.setStrokeColor(_FOOTER_RULE)
+        self.setLineWidth(0.5)
+        self.line(margin, y + 0.32 * cm, width - margin, y + 0.32 * cm)
+        self.setFillColor(_FOOTER_GREY)
+        if self._footer_date:
+            self.setFont("Helvetica", 7.5)
+            self.drawString(margin, y, self._footer_date)
+        self.setFont("Helvetica-Bold", 7.5)
+        self.drawCentredString(width / 2.0, y, PRODUCT_NAME)
+        self.setFont("Helvetica", 7.5)
+        self.drawRightString(width - margin, y, f"Page {page_number}/{total_pages}")
+        self.restoreState()
 
 
 def _project_summary_flowables(
@@ -259,8 +303,15 @@ def build_unified_pvmath_report_pdf(
         leftMargin=1.8 * cm,
         rightMargin=1.8 * cm,
         topMargin=1.6 * cm,
-        bottomMargin=1.6 * cm,
+        bottomMargin=1.9 * cm,
     )
+
+    footer_date = datetime.now().strftime("%d %b %Y")
+
+    def _make_canvas(*args, **kwargs):
+        c = _NumberedCanvas(*args, **kwargs)
+        c._footer_date = footer_date
+        return c
 
     story: List = []
     story += _project_summary_flowables(
@@ -313,7 +364,7 @@ def build_unified_pvmath_report_pdf(
         story += _pvmath_score_flowables(final_score)
     story += _annex_flowables()
 
-    doc.build(story)
+    doc.build(story, canvasmaker=_make_canvas)
     return buf.getvalue()
 
 

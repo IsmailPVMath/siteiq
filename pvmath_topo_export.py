@@ -145,6 +145,8 @@ def build_reference_json(
     analysis_mode: str,
     country: str = "",
     linear_units: str = "metric",
+    contour_minor_m: float | None = None,
+    contour_major_m: float | None = None,
 ) -> bytes:
     unit_label = "US survey feet" if linear_units == "imperial_us_survey" else "meters"
     payload = {
@@ -189,6 +191,14 @@ def build_reference_json(
             "boundary_mode": analysis_mode,
             "enabled_parcels": parcel_count,
             "project_country": country or "Unknown",
+            **(
+                {
+                    "contour_minor_m": round(float(contour_minor_m), 2),
+                    "contour_major_m": round(float(contour_major_m), 2),
+                }
+                if contour_minor_m is not None and contour_major_m is not None
+                else {}
+            ),
         },
         "notes": [
             "Import georef LandXML or georef DXF for map-aligned workflows in CAD.",

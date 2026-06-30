@@ -116,6 +116,8 @@ def build_terrain_package_files(
         analysis_mode="package",
         country=country,
         linear_units=ctx["cad_units"],
+        contour_minor_m=float(contour_minor),
+        contour_major_m=float(contour_major),
     )
 
     xyz_georef = export_xyz_georef(X, Y, Z, lat_c, lon_c, units=ctx["cad_units"])

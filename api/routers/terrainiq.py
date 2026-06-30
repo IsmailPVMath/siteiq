@@ -179,6 +179,8 @@ def _build_topo_pdf(body: TerrainIQAnalyzeRequest, analysis: Dict[str, Any]) -> 
         terrain_source_used=str(analysis.get("terrain_source_used", "")),
         terrain_disclaimer=str(terrain_meta.get("disclaimer", "")),
         tiles=analysis.get("tiles"),
+        zoom_to_extent=True,
+        basemap=False,
     )
     slope_buf = io.BytesIO(slope_img_buf.getvalue()) if slope_img_buf else None
     if slope_buf:
@@ -219,6 +221,8 @@ def _build_topo_pdf(body: TerrainIQAnalyzeRequest, analysis: Dict[str, Any]) -> 
         terrain_source_used=str(analysis["terrain_source_used"]),
         yield_cross_ref=yield_cross_ref_terrainiq_text(yield_ref),
     )
+    if slope_buf:
+        ctx["slope_map_zoomed"] = True
     pdf_bytes = generate_pdf_report(ctx)
     if not pdf_bytes:
         raise RuntimeError("PDF_GENERATION_FAILED")
@@ -317,6 +321,8 @@ def _render_slope_png(analysis: Dict[str, Any]) -> bytes:
         terrain_source_used=str(analysis.get("terrain_source_used", "")),
         terrain_disclaimer=str(terrain_meta.get("disclaimer", "")),
         tiles=analysis.get("tiles"),
+        zoom_to_extent=True,
+        basemap=False,
     )
     if buf is None:
         raise RuntimeError("SLOPE_MAP_UNAVAILABLE")

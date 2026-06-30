@@ -61,6 +61,8 @@ def _try_slope_map_buf(
             terrain_source_used=str(analysis.get("terrain_source_used", "")),
             terrain_disclaimer=str((analysis.get("terrain_source") or {}).get("disclaimer", "")),
             tiles=analysis.get("tiles"),
+            zoom_to_extent=True,
+            basemap=False,
         )
         if not buf:
             return None
@@ -124,6 +126,7 @@ def topo_to_report_context(
         ctx["verdict_tracker"] = (vt.get("label", ""), vt.get("detail", ""))
     if topo.get("terrain_drivers"):
         ctx["terrain_drivers"] = topo["terrain_drivers"]
+    ctx["slope_map_zoomed"] = slope_img_buf is not None
     ctx["siteiq_note"] = ""
     return ctx
 

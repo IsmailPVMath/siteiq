@@ -193,6 +193,17 @@ function defaultTopoGridM(areaHa?: number) {
   return 15;
 }
 
+function defaultContourMajor(areaHa?: number) {
+  if (!areaHa || areaHa < 1000) return 3;
+  if (areaHa <= 5000) return 5;
+  return 10;
+}
+
+function defaultContourMinor(areaHa?: number) {
+  if (!areaHa || areaHa <= 5000) return 0.5;
+  return 1;
+}
+
 export function OutputPage({
   token,
   result,
@@ -257,6 +268,12 @@ export function OutputPage({
   const largeSiteMode = siteAreaHa >= 500;
   const [topoGridM, setTopoGridM] = useState(() => defaultTopoGridM(siteAreaHa));
   const [topoAllowCoarsen, setTopoAllowCoarsen] = useState(true);
+  const [contourMajor, setContourMajor] = useState(
+    () => initialTopo?.contour_major ?? defaultContourMajor(siteAreaHa),
+  );
+  const [contourMinor, setContourMinor] = useState(
+    () => initialTopo?.contour_minor ?? defaultContourMinor(siteAreaHa),
+  );
   const topoAutoRan = useRef(Boolean(initialTopo));
   // Serializes every save (manual + silent autosave) so two never hit the
   // single-worker API at once — e.g. a manual "Save project" landing on top of
@@ -269,6 +286,10 @@ export function OutputPage({
   const yieldAutoRan = useRef(false);
   const [topoMesh, setTopoMesh] = useState<WorkflowTerrainMeshResponse | null>(null);
   const [topoMeshBusy, setTopoMeshBusy] = useState(false);
+  const topoMeshAutoRan = useRef(false);
+  // Auto-render the on-screen slope map for sites up to this size; larger sites
+  // keep the manual "Render slope map" button so we don't kick off a heavy mesh job.
+  const SLOPE_MAP_AUTO_MAX_HA = 5000;
   const [topoLandxmlBusy, setTopoLandxmlBusy] = useState(false);
   const [topoLocalDxfBusy, setTopoLocalDxfBusy] = useState(false);
   const [yieldBusy, setYieldBusy] = useState(false);
@@ -541,11 +562,21 @@ export function OutputPage({
       polygons: boundaries.map((ring) => ring.map((p) => ({ lat: p.lat, lon: p.lon }))),
       grid_m: topoGridM,
       allow_coarsen: topoAllowCoarsen,
-      contour_minor: 0.5,
-      contour_major: 1.0,
+      contour_minor: contourMinor,
+      contour_major: contourMajor,
       mask_geojson: buildableMask,
     };
-  }, [boundaries, hasBoundary, input, result.project_name, topoAllowCoarsen, topoGridM, buildableMask]);
+  }, [
+    boundaries,
+    hasBoundary,
+    input,
+    result.project_name,
+    topoAllowCoarsen,
+    topoGridM,
+    contourMinor,
+    contourMajor,
+    buildableMask,
+  ]);
 
   function updateGisSetback(category: string, raw: string) {
     const value = Math.max(0, Number(raw));
@@ -685,6 +716,7 @@ export function OutputPage({
       const topo = await analyzeTopoJob(token, payload);
       setTopoResult(topo);
       setTopoMesh(null);
+      topoMeshAutoRan.current = false;
       setTerrain3D(null);
       if (overrides?.grid_m != null) setTopoGridM(overrides.grid_m);
       if (overrides?.allow_coarsen != null) setTopoAllowCoarsen(overrides.allow_coarsen);
@@ -732,11 +764,14 @@ export function OutputPage({
     if (!boundaries.length) return;
     setTopoMeshBusy(true);
     try {
+      // Render the slope surface across the FULL site boundary so the map reads as
+      // one clean, complete area. Buildable keep-outs (roads, buildings, water
+      // setbacks) are drawn as red overlays on top instead of being punched out as
+      // gaps — clipping to buildable here is what left holes in the slope map.
       const mesh = await workflowTerrainMeshJob(token, {
         boundaries,
         grid_m: 10,
         max_vertices: 40000,
-        mask_geojson: buildableMask,
       });
       setTopoMesh(mesh);
     } catch {
@@ -948,6 +983,19 @@ export function OutputPage({
     void handleRunTopo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeStage, topoPayload, topoResult, topoBusy, gisBusy]);
+
+  // Auto-render the slope map once TerrainIQ stats are ready, for reasonably
+  // sized sites. Larger sites fall back to the manual "Render slope map" button.
+  useEffect(() => {
+    if (activeStage !== "topo" || !topoResult) return;
+    if (topoMesh || topoMeshBusy || topoMeshAutoRan.current || !boundaries.length) return;
+    const areaHa = topoResult.area_ha || siteAreaHa || 0;
+    if (areaHa > 0 && areaHa <= SLOPE_MAP_AUTO_MAX_HA) {
+      topoMeshAutoRan.current = true;
+      void fetchTopoMesh();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStage, topoResult, topoMesh, topoMeshBusy, boundaries.length, siteAreaHa]);
 
   useEffect(() => {
     if (initialTopo) onWorkflowDepth?.("topo");
@@ -1302,6 +1350,8 @@ export function OutputPage({
         include_terrain: Boolean(topoResult),
         topo_grid_m: topoGridM,
         topo_allow_coarsen: topoAllowCoarsen,
+        contour_minor: contourMinor,
+        contour_major: contourMajor,
         ...(buildableMask ? { mask_geojson: buildableMask } : {}),
       });
       const safe = (result.project_name || "PVMath").replace(/\s+/g, "_");
@@ -1591,8 +1641,9 @@ export function OutputPage({
         {disclaimer ? <p className="module-note slope-source-note">{disclaimer}</p> : null}
         {buildableMask ? (
           <p className="module-note slope-source-note">
-            Slope analysis is clipped to the SiteIQ <strong>buildable area</strong> — building, road
-            and water setback zones (red on SiteIQ) are excluded.
+            The slope map covers the <strong>full site boundary</strong>; building, road and water
+            setback keep-outs are overlaid in <strong>red</strong>. Slope statistics and the PVMath
+            terrain verdict are computed on the SiteIQ <strong>buildable area</strong> only.
           </p>
         ) : null}
         <p className="module-note slope-source-note">
@@ -1665,6 +1716,34 @@ export function OutputPage({
                   />
                   Auto-coarsen if the grid is too large
                 </label>
+                <div className="field">
+                  <label htmlFor="contour-minor-m">
+                    Minor contour (m) — <strong>{contourMinor.toFixed(1)}</strong>
+                  </label>
+                  <input
+                    id="contour-minor-m"
+                    type="range"
+                    min={0.1}
+                    max={2}
+                    step={0.1}
+                    value={contourMinor}
+                    onChange={(e) => setContourMinor(Number(e.target.value))}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="contour-major-m">
+                    Major contour (m) — <strong>{contourMajor.toFixed(1)}</strong>
+                  </label>
+                  <input
+                    id="contour-major-m"
+                    type="range"
+                    min={0.5}
+                    max={10}
+                    step={0.5}
+                    value={contourMajor}
+                    onChange={(e) => setContourMajor(Number(e.target.value))}
+                  />
+                </div>
                 <p className="hint sidebar-hint">
                   Finer grids give more accurate slope but take longer. Change a setting, then
                   re-run.

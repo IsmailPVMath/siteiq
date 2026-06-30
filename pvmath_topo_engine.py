@@ -565,6 +565,7 @@ def _analyze_region(
         extras,
         verdict_fixed,
         verdict_tracker,
+        area_ha=area_ha,
     )
 
     return {
@@ -661,7 +662,13 @@ def _composite_regions(
     verdict_fixed = verdict_for_mount(mean_slope, "Fixed Tilt")
     verdict_tracker = verdict_for_mount(mean_slope, "Single-Axis Tracker", extras=extras)
     terrain_drivers = compute_terrain_drivers_summary(
-        mean_slope, max_slope, slope_bins, extras, verdict_fixed, verdict_tracker
+        mean_slope,
+        max_slope,
+        slope_bins,
+        extras,
+        verdict_fixed,
+        verdict_tracker,
+        area_ha=boundaries_union_area_ha(list(all_polys)),
     )
 
     tiles: List[Dict[str, Any]] = []
