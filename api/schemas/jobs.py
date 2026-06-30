@@ -21,3 +21,5 @@ class JobStatusResponse(BaseModel):
     updated_at: float
     error: Optional[str] = None
     result: Any = None
+    progress: Optional[float] = None
+    stage: Optional[str] = None

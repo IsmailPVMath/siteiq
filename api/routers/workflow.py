@@ -393,6 +393,60 @@ async def workflow_layout_matrix(
     return WorkflowLayoutMatrixResponse(configs=configs)
 
 
+def _build_layout_sweep_response(body: WorkflowLayoutSweepRequest) -> WorkflowLayoutSweepResponse:
+    polys = _latlon_polys(body.boundary, body.boundaries)
+    if not polys:
+        raise ValueError("A site boundary is required for LayoutIQ.")
+    manual_restrictions = _resolve_layout_restrictions(body, polys)
+    tracker_restrictions = _tracker_slope_restrictions(body)
+    data = run_layout_sweep(
+        boundaries=polys,
+        restriction_polygons=manual_restrictions,
+        tracker_restriction_polygons=tracker_restrictions,
+        module_h=body.module_h,
+        module_w=body.module_w,
+        module_wp=body.module_wp,
+        setback_m=body.setback_m,
+        azimuth=_resolved_layout_azimuth(body),
+        pitch_steps_m=body.pitch_steps_m,
+        optimization_mode=body.optimization_mode,
+        land_cost=body.land_cost,
+        country=body.country,
+        lat=body.lat,
+        bifacial=body.bifacial,
+        custom_gcr=body.custom_gcr,
+        custom_pitch_m=body.custom_pitch_m,
+        include_bom=body.include_bom,
+        modules_per_string=body.modules_per_string,
+        inter_string_gap_m=body.inter_string_gap_m,
+        tracker_string_options=body.tracker_string_options,
+        max_tracker_length_m=body.max_tracker_length_m,
+        rows_per_block=body.rows_per_block,
+        block_gap_m=body.block_gap_m,
+        ns_gap_1_m=body.ns_gap_1_m,
+        cols_per_block=body.cols_per_block,
+        ew_gap_m=body.ew_gap_m,
+        road_mode=body.road_mode,
+        road_preset=body.road_preset,
+        mount_filter=body.mount_filter,
+        portrait_filter=body.portrait_filter,
+        row_alignment=body.row_alignment,
+        allow_partial_strings=body.allow_partial_strings,
+        prune_isolated_blocks=body.prune_isolated_blocks,
+        restriction_geojson=getattr(body, "restriction_geojson", None),
+    )
+    return WorkflowLayoutSweepResponse(
+        rows=data.get("rows") or [],
+        best_by_config=data.get("best_by_config") or {},
+        recommended_by_config=data.get("recommended_by_config") or {},
+        gcr_guidance=data.get("gcr_guidance") or {},
+        strategy=data.get("strategy") or {},
+        layout_params=data.get("layout_params") or {},
+        config_count=int(data.get("config_count") or 0),
+        row_count=int(data.get("row_count") or 0),
+    )
+
+
 @router.post("/workflow/layout-sweep", response_model=WorkflowLayoutSweepResponse)
 async def workflow_layout_sweep(
     body: WorkflowLayoutSweepRequest,
@@ -406,54 +460,10 @@ async def workflow_layout_sweep(
     polys = _latlon_polys(body.boundary, body.boundaries)
     if not polys:
         raise HTTPException(status_code=400, detail="A site boundary is required for LayoutIQ.")
-    manual_restrictions = _resolve_layout_restrictions(body, polys)
     loop = asyncio.get_running_loop()
     try:
-        tracker_restrictions = await asyncio.wait_for(
-            loop.run_in_executor(None, partial(_tracker_slope_restrictions, body)),
-            timeout=LAYOUT_TIMEOUT_SEC,
-        )
-        data = await asyncio.wait_for(
-            loop.run_in_executor(
-                None,
-                partial(
-                    run_layout_sweep,
-                    boundaries=polys,
-                    restriction_polygons=manual_restrictions,
-                    tracker_restriction_polygons=tracker_restrictions,
-                    module_h=body.module_h,
-                    module_w=body.module_w,
-                    module_wp=body.module_wp,
-                    setback_m=body.setback_m,
-                    azimuth=_resolved_layout_azimuth(body),
-                    pitch_steps_m=body.pitch_steps_m,
-                    optimization_mode=body.optimization_mode,
-                    land_cost=body.land_cost,
-                    country=body.country,
-                    lat=body.lat,
-                    bifacial=body.bifacial,
-                    custom_gcr=body.custom_gcr,
-                    custom_pitch_m=body.custom_pitch_m,
-                    include_bom=body.include_bom,
-                    modules_per_string=body.modules_per_string,
-                    inter_string_gap_m=body.inter_string_gap_m,
-                    tracker_string_options=body.tracker_string_options,
-                    max_tracker_length_m=body.max_tracker_length_m,
-                    rows_per_block=body.rows_per_block,
-                    block_gap_m=body.block_gap_m,
-                    ns_gap_1_m=body.ns_gap_1_m,
-                    cols_per_block=body.cols_per_block,
-                    ew_gap_m=body.ew_gap_m,
-                    road_mode=body.road_mode,
-                    road_preset=body.road_preset,
-                    mount_filter=body.mount_filter,
-                    portrait_filter=body.portrait_filter,
-                    row_alignment=body.row_alignment,
-                    allow_partial_strings=body.allow_partial_strings,
-                    prune_isolated_blocks=body.prune_isolated_blocks,
-                    restriction_geojson=getattr(body, "restriction_geojson", None),
-                ),
-            ),
+        result = await asyncio.wait_for(
+            loop.run_in_executor(None, partial(_build_layout_sweep_response, body)),
             timeout=LAYOUT_TIMEOUT_SEC,
         )
     except asyncio.TimeoutError:
@@ -461,19 +471,43 @@ async def workflow_layout_sweep(
             status_code=504,
             detail=f"Layout sweep timed out after {LAYOUT_TIMEOUT_SEC}s.",
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Layout sweep failed: {exc}") from exc
 
-    return WorkflowLayoutSweepResponse(
-        rows=data.get("rows") or [],
-        best_by_config=data.get("best_by_config") or {},
-        recommended_by_config=data.get("recommended_by_config") or {},
-        gcr_guidance=data.get("gcr_guidance") or {},
-        strategy=data.get("strategy") or {},
-        layout_params=data.get("layout_params") or {},
-        config_count=int(data.get("config_count") or 0),
-        row_count=int(data.get("row_count") or 0),
-    )
+    return result
+
+
+@router.post("/workflow/layout-sweep-job", response_model=JobStartResponse)
+async def start_workflow_layout_sweep_job(
+    body: WorkflowLayoutSweepRequest,
+    user: AuthUser = Depends(get_current_user),
+):
+    """Start LayoutIQ sweep as a background job for large sites."""
+    polys = _latlon_polys(body.boundary, body.boundaries)
+    if not polys:
+        raise HTTPException(status_code=400, detail="A site boundary is required for LayoutIQ.")
+    try:
+        job = submit_heavy_job(
+            user.user_id,
+            "workflow.layout_sweep",
+            payload=body.model_dump(mode="json"),
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
+    return JobStartResponse(job_id=job.id, kind=job.kind, status=job.status)
+
+
+@router.get("/workflow/layout-sweep-job/{job_id}", response_model=JobStatusResponse)
+async def get_workflow_layout_sweep_job(
+    job_id: str,
+    user: AuthUser = Depends(get_current_user),
+):
+    job = get_heavy_job(user.user_id, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return JobStatusResponse(**job.public())
 
 
 def _layout_detail_payload(body: WorkflowLayoutDetailRequest):
@@ -680,7 +714,7 @@ async def start_workflow_terrain_mesh_job(
         job = submit_heavy_job(
             user.user_id,
             "workflow.terrain_mesh",
-            partial(_build_terrain_mesh_response, body),
+            payload=body.model_dump(mode="json"),
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc

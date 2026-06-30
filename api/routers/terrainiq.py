@@ -287,7 +287,7 @@ async def start_terrainiq_analysis_job(
         job = submit_heavy_job(
             user.user_id,
             "terrainiq.analyze",
-            partial(_run_analysis_response, body),
+            payload=body.model_dump(mode="json"),
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc

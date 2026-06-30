@@ -177,6 +177,18 @@ export function workflowLayoutSweep(token: string, body: WorkflowLayoutSweepRequ
   );
 }
 
+export async function workflowLayoutSweepJob(token: string, body: WorkflowLayoutSweepRequest) {
+  const started = await apiFetch<JobStartResponse>("/api/v1/workflow/layout-sweep-job", token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  return pollJob<WorkflowLayoutSweepResponse>(
+    token,
+    (jobId) => `/api/v1/workflow/layout-sweep-job/${jobId}`,
+    started.job_id,
+  );
+}
+
 export function workflowLayoutDetail(token: string, body: WorkflowLayoutDetailRequest) {
   return apiFetch<WorkflowLayoutDetailResponse>("/api/v1/workflow/layout-detail", token, {
     method: "POST",

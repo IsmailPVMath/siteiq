@@ -1,0 +1,10 @@
+# PVMath heavy-job worker — deploy as a separate Railway service.
+# Attach the same Redis instance as the API (REDIS_URL).
+# Do not set PVMATH_HEAVY_JOB_WORKERS on the API when using this worker.
+
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "python -m api.jobs.worker"
+restartPolicyType = "on_failure"

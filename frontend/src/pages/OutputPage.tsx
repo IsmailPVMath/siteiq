@@ -13,7 +13,7 @@ import {
   workflowImportLayoutDxf,
   workflowLayoutDetail,
   workflowLayoutDxf,
-  workflowLayoutSweep,
+  workflowLayoutSweepJob,
   workflowProjectPackage,
   workflowPvmathReportPdf,
   workflowScore,
@@ -1228,7 +1228,7 @@ export function OutputPage({
       const refineFrom = selectedLayoutRow;
       const isRefineRun = pitch > 0 && !!refineFrom;
 
-      const body: Parameters<typeof workflowLayoutSweep>[1] = {
+      const body: Parameters<typeof workflowLayoutSweepJob>[1] = {
         boundaries,
         ...layoutRestrictionPayload(),
         include_bom: false,
@@ -1258,7 +1258,7 @@ export function OutputPage({
           body.portrait_filter = [refineFrom.n_portrait];
         }
       }
-      const res = await workflowLayoutSweep(token, body);
+      const res = await workflowLayoutSweepJob(token, body);
       setLayoutSweep(res);
       if (isRefineRun && refineFrom) {
         const match = res.rows.find(
