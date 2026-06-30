@@ -89,6 +89,10 @@ class WorkflowLayoutSweepRequest(BaseModel):
     module_wp: int = Field(default=550, ge=200, le=1000)
     setback_m: float = Field(default=5.0, ge=0)
     azimuth: float = Field(default=180.0, ge=90, le=270)
+    alignment_polyline: Optional[List[BoundaryPoint]] = Field(
+        default=None,
+        description="Multi-point alignment guide; derives one constant azimuth for the PV area.",
+    )
     pitch_steps_m: Optional[List[float]] = Field(
         default=None,
         description="Optional extra pitch values (m) added to the mode-specific sweep.",
@@ -202,6 +206,10 @@ class WorkflowLayoutDetailRequest(BaseModel):
     module_wp: int = Field(default=550, ge=200, le=1000)
     setback_m: float = Field(default=5.0, ge=0)
     azimuth: float = Field(default=180.0, ge=90, le=270)
+    alignment_polyline: Optional[List[BoundaryPoint]] = Field(
+        default=None,
+        description="Multi-point alignment guide; derives one constant azimuth for the PV area.",
+    )
     modules_per_string: int = Field(default=28, ge=8, le=50)
     inter_string_gap_m: float = Field(default=0.5, ge=0, le=2.0)
     tracker_string_options: List[int] = Field(default_factory=lambda: [8, 7, 6, 5])
@@ -370,6 +378,10 @@ class WorkflowProjectPackageRequest(WorkflowPvmathReportRequest):
     module_wp: int = Field(default=550, ge=200, le=1000)
     setback_m: float = Field(default=5.0, ge=0)
     azimuth: float = Field(default=180.0, ge=90, le=270)
+    alignment_polyline: Optional[List[BoundaryPoint]] = Field(
+        default=None,
+        description="Multi-point alignment guide; derives one constant azimuth for the PV area.",
+    )
     modules_per_string: int = Field(default=28, ge=8, le=50)
     inter_string_gap_m: float = Field(default=0.5, ge=0, le=2.0)
     tracker_string_options: List[int] = Field(default_factory=lambda: [8, 7, 6, 5])

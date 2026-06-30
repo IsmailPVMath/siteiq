@@ -24,7 +24,12 @@ import {
   persistWorkflowProgress,
   type WorkflowRestore,
 } from "../lib/workflowSave";
-import { mergeLayoutIQSnapshot, type LayoutIQSnapshot } from "../lib/layoutIQSettings";
+import { mergeLayoutIQSnapshot, type AlignmentSource, type LayoutIQSnapshot } from "../lib/layoutIQSettings";
+import {
+  azimuthFromAlignmentGuide,
+  layoutEffectiveAzimuth,
+  type LatLon,
+} from "../lib/alignmentGuide";
 import { ConstraintAnalysisMap } from "../components/ConstraintAnalysisMap";
 import { LayoutPreviewMap } from "../components/LayoutPreviewMap";
 import { NumberField } from "../components/NumberField";
@@ -339,6 +344,11 @@ export function OutputPage({
   const [roadPreset, setRoadPreset] = useState(layoutInit.road_preset);
   const [azimuthDeg, setAzimuthDeg] = useState<number>(layoutInit.azimuth_deg);
   const [azimuthCustom, setAzimuthCustom] = useState<boolean>(layoutInit.azimuth_custom);
+  const [alignmentSource, setAlignmentSource] = useState<AlignmentSource>(layoutInit.alignment_source);
+  const [alignmentGuide, setAlignmentGuide] = useState<LatLon[]>(layoutInit.alignment_guide);
+  const [alignmentDrawing, setAlignmentDrawing] = useState(
+    layoutInit.alignment_source === "guide" && layoutInit.alignment_guide.length < 2,
+  );
   const [rowsPerBlock, setRowsPerBlock] = useState(layoutInit.rows_per_block);
   const [blockGapM, setBlockGapM] = useState(layoutInit.block_gap_m);
   const [nsGap1M, setNsGap1M] = useState(layoutInit.ns_gap_1_m);
@@ -485,11 +495,24 @@ export function OutputPage({
       ew_gap_m: ewGapM,
       azimuth_deg: azimuthDeg,
       azimuth_custom: azimuthCustom,
+      alignment_source: alignmentSource,
+      alignment_guide: alignmentGuide,
       use_full_boundary: useFullBoundary,
       ignore_soft_constraints: ignoreSoftConstraints,
       prune_isolated_blocks: pruneIsolatedBlocks,
       selected_layout_row: selectedLayoutRow,
     };
+  }
+
+  function layoutOrientationPayload(): {
+    azimuth: number;
+    alignment_polyline?: LatLon[];
+  } {
+    const azimuth = layoutEffectiveAzimuth(alignmentSource, alignmentGuide, azimuthDeg);
+    if (alignmentSource === "guide" && alignmentGuide.length >= 2) {
+      return { azimuth, alignment_polyline: alignmentGuide };
+    }
+    return { azimuth };
   }
 
   function layoutApiParams() {
@@ -514,7 +537,7 @@ export function OutputPage({
     if (roadPreset === "custom") {
       return {
         ...base,
-        azimuth: azimuthDeg,
+        ...layoutOrientationPayload(),
         road_mode: "manual" as RoadMode,
         road_preset: "custom",
         rows_per_block: rowsPerBlock,
@@ -526,7 +549,12 @@ export function OutputPage({
         row_alignment: layoutRowAlignment,
       };
     }
-    return { ...base, azimuth: azimuthDeg, allow_partial_strings: allowPartialStrings, row_alignment: layoutRowAlignment };
+    return {
+      ...base,
+      ...layoutOrientationPayload(),
+      allow_partial_strings: allowPartialStrings,
+      row_alignment: layoutRowAlignment,
+    };
   }
 
   function layoutSmartExtras() {
@@ -921,6 +949,8 @@ export function OutputPage({
     ewGapM,
     azimuthDeg,
     azimuthCustom,
+    alignmentSource,
+    alignmentGuide,
     useFullBoundary,
     ignoreSoftConstraints,
     pruneIsolatedBlocks,
@@ -1166,6 +1196,11 @@ export function OutputPage({
       setLayoutError(inputError);
       return;
     }
+    if (alignmentSource === "guide" && alignmentGuide.length < 2) {
+      setActiveStage("layout");
+      setLayoutError("Draw an alignment guide with at least 2 points, or switch to preset azimuth.");
+      return;
+    }
     setActiveStage("layout");
     setLayoutBusy(true);
     setLayoutError("");
@@ -1383,6 +1418,23 @@ export function OutputPage({
       : mountFilter === "fixed" && azimuthDeg === 180
         ? "optimal"
         : String(azimuthDeg);
+
+  const derivedGuideAzimuth = useMemo(
+    () => (alignmentSource === "guide" ? azimuthFromAlignmentGuide(alignmentGuide) : null),
+    [alignmentSource, alignmentGuide],
+  );
+
+  function handleAlignmentMapClick(lat: number, lon: number) {
+    setAlignmentGuide((prev) => [...prev, { lat, lon }]);
+  }
+
+  function clearAlignmentGuide() {
+    setAlignmentGuide([]);
+    setAlignmentDrawing(true);
+  }
+
+  const layoutMapExclusions = useFullBoundary ? null : (gisResult?.excluded_area_geojson ?? null);
+  const layoutMapConstraints = useFullBoundary ? null : (gisResult?.constraint_layers ?? null);
 
   const overallScore = finalScore?.pvmath_score;
   const overallReady = overallScore != null;
@@ -1944,6 +1996,25 @@ export function OutputPage({
                 Bifacial (wider spacing bias)
               </label>
               <div className="field">
+                <label htmlFor="layout-orient-source">PV area orientation</label>
+                <select
+                  id="layout-orient-source"
+                  value={alignmentSource}
+                  onChange={(e) => {
+                    const next = e.target.value as AlignmentSource;
+                    setAlignmentSource(next);
+                    setAlignmentDrawing(next === "guide");
+                  }}
+                >
+                  <option value="default">Preset / custom azimuth</option>
+                  <option value="guide">Draw alignment guide (one azimuth)</option>
+                </select>
+                <p className="hint sidebar-hint">
+                  One constant azimuth applies to the entire PV area — no per-row rotation.
+                </p>
+              </div>
+              {alignmentSource === "default" ? (
+              <div className="field">
                 <label htmlFor="layout-azimuth">
                   {mountFilter === "sat" ? "Tracker axis azimuth" : "Array orientation"}
                 </label>
@@ -1979,14 +2050,14 @@ export function OutputPage({
                   <input
                     type="number"
                     className="layout-azimuth-custom"
-                    min="0"
-                    max="360"
+                    min="90"
+                    max="270"
                     step="1"
                     value={azimuthDeg}
-                    placeholder="0–360°"
+                    placeholder="90–270°"
                     onChange={(e) => {
                       const v = Number(e.target.value);
-                      setAzimuthDeg(Math.min(360, Math.max(0, v || 0)));
+                      setAzimuthDeg(Math.min(270, Math.max(90, v || 180)));
                     }}
                   />
                 ) : null}
@@ -1996,6 +2067,45 @@ export function OutputPage({
                     : "PVGIS optimal tilt, due south (180°). Pick a bearing or custom angle for skewed parcels."}
                 </p>
               </div>
+              ) : (
+              <div className="field layout-guide-controls">
+                <p className="hint sidebar-hint">
+                  Click the map in the LayoutIQ panel to trace a boundary edge (magenta line).
+                  Length-weighted average bearing → one azimuth for the whole site.
+                </p>
+                {derivedGuideAzimuth != null ? (
+                  <p className="module-note">
+                    Guide azimuth: <strong>{derivedGuideAzimuth}°</strong>
+                  </p>
+                ) : (
+                  <p className="hint sidebar-hint">Add at least 2 points on the map.</p>
+                )}
+                <div className="layout-guide-actions">
+                  <button
+                    type="button"
+                    className={`btn btn-ghost btn-sm${alignmentDrawing ? " active" : ""}`}
+                    onClick={() => setAlignmentDrawing(true)}
+                  >
+                    Draw
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    disabled={alignmentGuide.length < 2}
+                    onClick={() => setAlignmentDrawing(false)}
+                  >
+                    Finish
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={clearAlignmentGuide}
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+              )}
               <details className="sidebar-advanced" open>
                 <summary>Module, strings, trackers &amp; roads</summary>
                 <div className="grid-2 layout-custom-row">
@@ -2819,6 +2929,26 @@ export function OutputPage({
             {!topoResult ? (
               <p className="module-note">TerrainIQ should finish first — layout uses your boundary polygon.</p>
             ) : null}
+            {alignmentSource === "guide" ? (
+              <div className="layout-guide-map-panel">
+                <p className="hint">
+                  {alignmentDrawing
+                    ? "Click the map to add alignment points along the parcel edge (crosshair cursor)."
+                    : derivedGuideAzimuth != null
+                      ? `Alignment guide set at ${derivedGuideAzimuth}° — re-run the layout sweep to apply.`
+                      : "Add at least 2 points, then press Finish."}
+                </p>
+                <LayoutPreviewMap
+                  center={{ lat: result.coordinates.lat, lon: result.coordinates.lon }}
+                  siteBoundaries={boundaries}
+                  alignmentGuide={alignmentGuide}
+                  alignmentDrawing={alignmentDrawing}
+                  onAlignmentPoint={handleAlignmentMapClick}
+                  excludedGeoJson={layoutMapExclusions}
+                  constraintLayers={layoutMapConstraints}
+                />
+              </div>
+            ) : null}
             {!layoutSweep && !layoutBusy ? (
               <div className="layout-cta">
                 <strong>Next step:</strong> open the <em>LayoutIQ</em> panel on the left and press{" "}
@@ -3031,12 +3161,14 @@ export function OutputPage({
                         <LayoutPreviewMap
                           center={{ lat: result.coordinates.lat, lon: result.coordinates.lon }}
                           layoutGeoJson={layoutDetail.geojson}
-                          excludedGeoJson={
-                            useFullBoundary ? null : (gisResult?.excluded_area_geojson ?? null)
+                          siteBoundaries={boundaries}
+                          alignmentGuide={alignmentSource === "guide" ? alignmentGuide : null}
+                          alignmentDrawing={alignmentSource === "guide" && alignmentDrawing}
+                          onAlignmentPoint={
+                            alignmentSource === "guide" ? handleAlignmentMapClick : undefined
                           }
-                          constraintLayers={
-                            useFullBoundary ? null : (gisResult?.constraint_layers ?? null)
-                          }
+                          excludedGeoJson={layoutMapExclusions}
+                          constraintLayers={layoutMapConstraints}
                         />
                         <p className="module-note">
                           Preview: {layoutDetail.total_rows.toLocaleString()} rows ·{" "}

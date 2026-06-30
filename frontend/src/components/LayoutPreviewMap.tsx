@@ -3,19 +3,42 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type * as GeoJSON from "geojson";
 import { googleHybridLayer } from "../lib/mapTiles";
+import type { LatLon } from "../lib/alignmentGuide";
 
 interface Props {
   center: { lat: number; lon: number };
-  layoutGeoJson: GeoJSON.GeoJSON | null;
+  layoutGeoJson?: GeoJSON.GeoJSON | null;
   excludedGeoJson?: GeoJSON.GeoJSON | null;
   constraintLayers?: Record<string, GeoJSON.GeoJSON | null> | null;
+  siteBoundaries?: { lat: number; lon: number }[][];
+  alignmentGuide?: LatLon[] | null;
+  alignmentDrawing?: boolean;
+  onAlignmentPoint?: (lat: number, lon: number) => void;
+  mapClassName?: string;
 }
 
-export function LayoutPreviewMap({ center, layoutGeoJson, excludedGeoJson, constraintLayers }: Props) {
+export function LayoutPreviewMap({
+  center,
+  layoutGeoJson = null,
+  excludedGeoJson,
+  constraintLayers,
+  siteBoundaries,
+  alignmentGuide,
+  alignmentDrawing = false,
+  onAlignmentPoint,
+  mapClassName = "layout-preview-map",
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layoutLayerRef = useRef<L.GeoJSON | null>(null);
   const exclusionLayerRef = useRef<L.GeoJSON | null>(null);
+  const boundaryLayerRef = useRef<L.LayerGroup | null>(null);
+  const alignmentLayerRef = useRef<L.LayerGroup | null>(null);
+  const onAlignmentPointRef = useRef(onAlignmentPoint);
+  const alignmentDrawingRef = useRef(alignmentDrawing);
+
+  onAlignmentPointRef.current = onAlignmentPoint;
+  alignmentDrawingRef.current = alignmentDrawing;
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -25,6 +48,12 @@ export function LayoutPreviewMap({ center, layoutGeoJson, excludedGeoJson, const
     );
     googleHybridLayer().addTo(map);
     mapRef.current = map;
+
+    map.on("click", (e: L.LeafletMouseEvent) => {
+      if (!alignmentDrawingRef.current || !onAlignmentPointRef.current) return;
+      onAlignmentPointRef.current(e.latlng.lat, e.latlng.lng);
+    });
+
     let raf = 0;
     const ro = new ResizeObserver(() => {
       window.cancelAnimationFrame(raf);
@@ -38,8 +67,68 @@ export function LayoutPreviewMap({ center, layoutGeoJson, excludedGeoJson, const
       mapRef.current = null;
       layoutLayerRef.current = null;
       exclusionLayerRef.current = null;
+      boundaryLayerRef.current = null;
+      alignmentLayerRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.setView([center.lat, center.lon], map.getZoom());
+  }, [center.lat, center.lon]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (boundaryLayerRef.current) {
+      boundaryLayerRef.current.remove();
+      boundaryLayerRef.current = null;
+    }
+    const rings = siteBoundaries?.filter((r) => r.length >= 3) ?? [];
+    if (!rings.length) return;
+    const group = L.layerGroup();
+    for (const ring of rings) {
+      L.polyline(ring.map((p) => [p.lat, p.lon] as [number, number]), {
+        color: "#7c3aed",
+        weight: 2,
+        opacity: 0.9,
+      }).addTo(group);
+    }
+    group.addTo(map);
+    boundaryLayerRef.current = group;
+  }, [siteBoundaries]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (alignmentLayerRef.current) {
+      alignmentLayerRef.current.remove();
+      alignmentLayerRef.current = null;
+    }
+    const pts = alignmentGuide?.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon)) ?? [];
+    if (pts.length === 0) return;
+    const group = L.layerGroup();
+    const latlngs = pts.map((p) => [p.lat, p.lon] as [number, number]);
+    if (latlngs.length >= 2) {
+      L.polyline(latlngs, {
+        color: "#d946ef",
+        weight: 4,
+        opacity: 0.95,
+      }).addTo(group);
+    }
+    for (const ll of latlngs) {
+      L.circleMarker(ll, {
+        radius: 5,
+        color: "#ffffff",
+        weight: 2,
+        fillColor: "#d946ef",
+        fillOpacity: 1,
+      }).addTo(group);
+    }
+    group.addTo(map);
+    alignmentLayerRef.current = group;
+  }, [alignmentGuide]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -106,12 +195,6 @@ export function LayoutPreviewMap({ center, layoutGeoJson, excludedGeoJson, const
       },
     ).addTo(map);
   }, [excludedGeoJson, constraintLayers]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    map.setView([center.lat, center.lon], map.getZoom());
-  }, [center.lat, center.lon]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -187,10 +270,34 @@ export function LayoutPreviewMap({ center, layoutGeoJson, excludedGeoJson, const
     if (exclusionLayerRef.current) {
       bounds.extend(exclusionLayerRef.current.getBounds());
     }
+    if (boundaryLayerRef.current) {
+      boundaryLayerRef.current.eachLayer((layer) => {
+        if ("getBounds" in layer && typeof layer.getBounds === "function") {
+          bounds.extend((layer as L.Polyline).getBounds());
+        }
+      });
+    }
     if (bounds.isValid()) {
       map.fitBounds(bounds, { padding: [20, 20] });
     }
   }, [layoutGeoJson]);
 
-  return <div ref={containerRef} className="layout-preview-map" aria-label="Layout preview map" />;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const container = map.getContainer();
+    if (alignmentDrawing) {
+      container.style.cursor = "crosshair";
+    } else {
+      container.style.cursor = "";
+    }
+  }, [alignmentDrawing]);
+
+  return (
+    <div
+      ref={containerRef}
+      className={mapClassName}
+      aria-label="Layout preview map"
+    />
+  );
 }

@@ -4,6 +4,7 @@ import {
   type RoadMode,
   type RowAlignment,
 } from "../types/layoutConfig";
+import type { LatLon } from "./alignmentGuide";
 import type { GateAnalyzeRequest } from "../types/gate";
 import type {
   LayoutLandCost,
@@ -12,6 +13,8 @@ import type {
 } from "../types/workflow";
 
 /** Persisted LayoutIQ sidebar + strategy inputs (saved with the project). */
+export type AlignmentSource = "default" | "guide";
+
 export interface LayoutIQSnapshot {
   optimization_mode: LayoutOptimizationMode;
   land_cost: LayoutLandCost;
@@ -40,6 +43,8 @@ export interface LayoutIQSnapshot {
   ew_gap_m: number;
   azimuth_deg: number;
   azimuth_custom: boolean;
+  alignment_source: AlignmentSource;
+  alignment_guide: LatLon[];
   use_full_boundary: boolean;
   ignore_soft_constraints: boolean;
   prune_isolated_blocks: boolean;
@@ -145,6 +150,8 @@ export function mergeLayoutIQSnapshot(
     ew_gap_m: s.ew_gap_m ?? fromInput.ew_gap_m ?? DEFAULT_LAYOUT_CONFIG.ew_gap_m,
     azimuth_deg: s.azimuth_deg ?? 180,
     azimuth_custom: s.azimuth_custom ?? false,
+    alignment_source: s.alignment_source === "guide" ? "guide" : "default",
+    alignment_guide: Array.isArray(s.alignment_guide) ? s.alignment_guide : [],
     use_full_boundary: s.use_full_boundary ?? false,
     ignore_soft_constraints: s.ignore_soft_constraints ?? true,
     prune_isolated_blocks: s.prune_isolated_blocks ?? true,
@@ -226,6 +233,12 @@ export function parseLayoutIQSnapshot(raw: unknown): LayoutIQSnapshot | null {
     ew_gap_m: Number(o.ew_gap_m) || 0,
     azimuth_deg: Number(o.azimuth_deg) || 180,
     azimuth_custom: Boolean(o.azimuth_custom),
+    alignment_source: o.alignment_source === "guide" ? "guide" : "default",
+    alignment_guide: Array.isArray(o.alignment_guide)
+      ? (o.alignment_guide as LatLon[]).filter(
+          (p) => p && Number.isFinite(p.lat) && Number.isFinite(p.lon),
+        )
+      : [],
     use_full_boundary: Boolean(o.use_full_boundary),
     ignore_soft_constraints: o.ignore_soft_constraints !== false,
     prune_isolated_blocks: o.prune_isolated_blocks !== false,

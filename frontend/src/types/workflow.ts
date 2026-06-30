@@ -129,6 +129,7 @@ export interface WorkflowLayoutSweepRequest extends LayoutElectricalConfig {
   portrait_filter?: number[];
   row_alignment?: RowAlignment;
   azimuth?: number;
+  alignment_polyline?: { lat: number; lon: number }[];
   allow_partial_strings?: boolean;
   ignore_soft_constraints?: boolean;
   constraint_layers?: Record<string, GeoJSON.FeatureCollection>;
@@ -200,6 +201,7 @@ export interface WorkflowLayoutDetailRequest extends LayoutElectricalConfig {
   pitch_m: number;
   setback_m?: number;
   azimuth?: number;
+  alignment_polyline?: { lat: number; lon: number }[];
   ignore_soft_constraints?: boolean;
   constraint_layers?: Record<string, GeoJSON.FeatureCollection>;
   setbacks_m?: Record<string, number>;
@@ -279,6 +281,8 @@ export interface WorkflowProjectPackageRequest extends WorkflowPvmathReportReque
   constraint_layers?: Record<string, GeoJSON.FeatureCollection>;
   config_key: string;
   pitch_m: number;
+  azimuth?: number;
+  alignment_polyline?: { lat: number; lon: number }[];
   allow_partial_strings?: boolean;
   row_alignment?: "horizontal" | "boundary";
   prune_isolated_blocks?: boolean;

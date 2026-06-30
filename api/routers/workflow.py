@@ -10,6 +10,7 @@ from functools import partial
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 
+from layoutiq.alignment import resolve_layout_azimuth
 from api.deps import get_current_user
 from api.job_store import get_heavy_job, submit_heavy_job
 from api.schemas.gis import WorkflowGisAnalysisRequest, WorkflowGisAnalysisResponse
@@ -71,6 +72,17 @@ def _latlon_polys(boundary, boundaries):
         if len(pts) >= 3:
             polys.append(pts)
     return polys
+
+
+def _alignment_polyline(body) -> list[tuple[float, float]] | None:
+    points = getattr(body, "alignment_polyline", None)
+    if not points or len(points) < 2:
+        return None
+    return [(float(p.lat), float(p.lon)) for p in points]
+
+
+def _resolved_layout_azimuth(body) -> float:
+    return resolve_layout_azimuth(body.azimuth, _alignment_polyline(body))
 
 
 def _merge_latlon_polys(*groups):
@@ -362,7 +374,7 @@ async def workflow_layout_matrix(
                     module_wp=body.module_wp,
                     pitch_m=body.pitch_m,
                     setback_m=body.setback_m,
-                    azimuth=body.azimuth,
+                    azimuth=_resolved_layout_azimuth(body),
                     modules_per_string=body.modules_per_string,
                     strings_per_inv=body.strings_per_inv,
                     inv_ac_kw=body.inv_ac_kw,
@@ -413,7 +425,7 @@ async def workflow_layout_sweep(
                     module_w=body.module_w,
                     module_wp=body.module_wp,
                     setback_m=body.setback_m,
-                    azimuth=body.azimuth,
+                    azimuth=_resolved_layout_azimuth(body),
                     pitch_steps_m=body.pitch_steps_m,
                     optimization_mode=body.optimization_mode,
                     land_cost=body.land_cost,
@@ -483,7 +495,7 @@ def _layout_detail_payload(body: WorkflowLayoutDetailRequest):
         module_w=body.module_w,
         module_wp=body.module_wp,
         setback_m=body.setback_m,
-        azimuth=body.azimuth,
+        azimuth=_resolved_layout_azimuth(body),
         modules_per_string=body.modules_per_string,
         inter_string_gap_m=body.inter_string_gap_m,
         tracker_string_options=body.tracker_string_options,
@@ -807,7 +819,7 @@ async def workflow_project_package(
                     module_w=body.module_w,
                     module_wp=body.module_wp,
                     setback_m=body.setback_m,
-                    azimuth=body.azimuth,
+                    azimuth=_resolved_layout_azimuth(body),
                     modules_per_string=body.modules_per_string,
                     inter_string_gap_m=body.inter_string_gap_m,
                     tracker_string_options=body.tracker_string_options,

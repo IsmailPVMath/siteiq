@@ -10,6 +10,7 @@ from shapely.geometry import Polygon, box
 from shapely.ops import unary_union
 from shapely.strtree import STRtree
 
+from layoutiq.alignment import layout_rotation_angle
 from layoutiq.coords import latlon_to_xy
 
 # Drop disconnected PV pockets too small to be useful in automated LayoutIQ.
@@ -644,7 +645,8 @@ def run_layout(
     Sweep row bands across a rotated boundary polygon on a shared site grid.
 
     fixed_tilt: rows E-W, pitch N-S, azimuth applies.
-    sat: rows N-S, pitch E-W, azimuth ignored.
+    sat: rows along tracker axis, pitch perpendicular; azimuth sets axis direction
+    (180° = N–S, 90° = E–W). One azimuth for the whole PV area.
 
     When ``grid_y_origin``, ``south_fence_x`` / ``west_fence_x``, and
     ``rotate_origin`` are supplied (multi-parcel coordinated layout), every
@@ -692,12 +694,8 @@ def run_layout(
     poly_inset = prepared["poly_inset"]
     area_m2 = prepared["area_m2"]
 
-    if is_tracker:
-        rot_angle = 90.0
-        row_ns = module_h * n_portrait
-    else:
-        rot_angle = -(azimuth - 180.0)
-        row_ns = module_h * n_portrait
+    rot_angle = layout_rotation_angle(azimuth, is_tracker=is_tracker)
+    row_ns = module_h * n_portrait
 
     origin = rotate_origin if rotate_origin is not None else (poly_inset.centroid.x, poly_inset.centroid.y)
     poly_rot = shp_rotate(poly_inset, rot_angle, origin=origin)
@@ -1007,7 +1005,7 @@ def site_layout_grid(
         return None
     origin_pt = union.centroid
     origin = (origin_pt.x, origin_pt.y)
-    rot_angle = 90.0 if is_tracker else -(azimuth - 180.0)
+    rot_angle = layout_rotation_angle(azimuth, is_tracker=is_tracker)
     rotated = shp_rotate(union, rot_angle, origin=origin)
     minx, miny, maxx, maxy = rotated.bounds
     return {
