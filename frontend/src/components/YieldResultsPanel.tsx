@@ -121,10 +121,6 @@ export function YieldResultsPanel({
       {screeningCfg ? (
         <div className="yield-section yield-screening-card">
           <h3>Screening summary</h3>
-          <p className="hint">
-            Early-stage yield snapshot — comparable to Aurora / DNV / PVsyst headline results, not a
-            bankable loss study.
-          </p>
           <div className="yield-metrics-row">
             <div className="yield-metric">
               <span className="label">Configuration</span>
@@ -238,28 +234,30 @@ export function YieldResultsPanel({
         </div>
       </div>
 
-      {bestCfg && bestKey ? (
+      {(selectedCfg ?? bestCfg) && (selectedConfigKey ?? bestKey) ? (
         <div className="yield-section">
           <h3>
-            Losses breakdown — {bestKey}
-            {bestKey === selectedConfigKey ? " (selected)" : " (best specific yield)"}
+            Losses breakdown — {selectedConfigKey ?? bestKey}
+            {(selectedConfigKey ?? bestKey) === selectedConfigKey ? " (selected)" : " (best specific yield)"}
           </h3>
           <div className="yield-metrics-row">
             <div className="yield-metric">
               <span className="label">Shading</span>
-              <span className="value">{fmtLoss(bestCfg.shading)}</span>
+              <span className="value">{fmtLoss((selectedCfg ?? bestCfg)!.shading)}</span>
             </div>
             <div className="yield-metric">
               <span className="label">Temperature</span>
-              <span className="value">{fmtLoss(bestCfg.l_tg)}</span>
+              <span className="value">{fmtLoss((selectedCfg ?? bestCfg)!.l_tg)}</span>
             </div>
             <div className="yield-metric">
               <span className="label">Soiling</span>
-              <span className="value">{fmtLoss(bestCfg.soiling_loss)}</span>
+              <span className="value">{fmtLoss((selectedCfg ?? bestCfg)!.soiling_loss)}</span>
             </div>
             <div className="yield-metric">
               <span className="label">Total loss</span>
-              <span className="value">{fmtLoss(bestCfg.l_total ?? bestCfg.total_loss)}</span>
+              <span className="value">
+                {fmtLoss((selectedCfg ?? bestCfg)!.l_total ?? (selectedCfg ?? bestCfg)!.total_loss)}
+              </span>
             </div>
           </div>
           <p className="module-note">
@@ -325,7 +323,8 @@ export function YieldResultsPanel({
         </div>
       </div>
 
-      {cross.screening_fixed != null || cross.screening_tracker != null ? (
+      {mountFilter === "all" &&
+      (cross.screening_fixed != null || cross.screening_tracker != null) ? (
         <div className="yield-cross-ref">
           <strong>Cross-module yield reference</strong>
           <p>

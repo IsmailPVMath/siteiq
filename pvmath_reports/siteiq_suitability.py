@@ -5,13 +5,7 @@ from __future__ import annotations
 from pvmath_capacity import format_mwp_range
 from pvmath_screening_library import calculate_pvmath_score, get_verdict_from_score
 
-SUITABILITY_WEIGHTS = (
-    ("Solar Resource", "solar", 35),
-    ("Terrain", "terrain", 25),
-    ("Flood Risk", "flood", 15),
-    ("Land Use", "land", 15),
-    ("Grid / Regulatory", "regulatory", 10),
-)
+from pvmath_workflow.score_config import SUITABILITY_WEIGHTS_PARTIAL as SUITABILITY_WEIGHTS
 
 
 def _slope_quality_tier(pct, mount_type="Fixed Tilt") -> int:

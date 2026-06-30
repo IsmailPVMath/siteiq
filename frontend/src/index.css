@@ -2155,8 +2155,74 @@ body.sb-resizing .results-resizer::before {
   flex: 1;
 }
 
-.sidebar-score .overall-score-body {
+.sidebar-score .overall-score-body,
+.sidebar-score .score-rating-card {
   margin-top: 0;
+}
+
+.score-rating-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #f8fbf9;
+}
+
+.score-rating-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.score-rating-head strong {
+  display: block;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.score-mode-tag {
+  display: inline-block;
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.score-mode-tag.score-mode-full {
+  color: var(--accent);
+}
+
+.score-viability {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.score-viability div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+  align-items: baseline;
+}
+
+.score-viability dt {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.score-viability dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text);
+  text-align: right;
+}
+
+.score-stars {
+  color: #c9a227;
+  letter-spacing: 0.05em;
 }
 
 .sidebar-actions {

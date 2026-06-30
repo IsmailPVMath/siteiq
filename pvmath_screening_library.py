@@ -18,45 +18,10 @@ from pvmath_auth import _db_hdr, _sb_url
 
 _log = logging.getLogger("pvmath.screening_library")
 
-# Deterministic PVMath Score weights (must sum to 1.0)
-_PVMATH_WEIGHTS = {
-    "solar": 0.35,
-    "terrain": 0.25,
-    "flood": 0.15,
-    "land": 0.15,
-    "regulatory": 0.10,
-}
+from pvmath_workflow.score_config import calculate_pvmath_score, get_verdict_from_score
 
-BENCHMARK_MIN_GLOBAL = 50
-BENCHMARK_MIN_COUNTRY = 20
-
-
-def calculate_pvmath_score(scores: dict) -> int:
-    """Weighted PVMath Score from category scores (0–100 each)."""
-    raw = (
-        float(scores.get("solar", 0)) * _PVMATH_WEIGHTS["solar"]
-        + float(scores.get("terrain", 0)) * _PVMATH_WEIGHTS["terrain"]
-        + float(scores.get("flood", 0)) * _PVMATH_WEIGHTS["flood"]
-        + float(scores.get("land", 0)) * _PVMATH_WEIGHTS["land"]
-        + float(scores.get("regulatory", 0)) * _PVMATH_WEIGHTS["regulatory"]
-    )
-    return max(0, min(100, round(raw)))
-
-
-def get_verdict_from_score(score: int) -> str:
-    """PVMath verdict label from overall score."""
-    s = int(score)
-    if s >= 90:
-        return "EXCELLENT"
-    if s >= 80:
-        return "VERY GOOD"
-    if s >= 70:
-        return "GOOD"
-    if s >= 60:
-        return "ACCEPTABLE"
-    if s >= 45:
-        return "CHALLENGING"
-    return "CRITICAL"
+# Re-export for backward compatibility (Streamlit, gate, PDF imports).
+__all__ = ["calculate_pvmath_score", "get_verdict_from_score"]
 
 
 def _slope_confidence_label(terrain: dict) -> str:

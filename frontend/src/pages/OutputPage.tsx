@@ -105,6 +105,35 @@ function formatLayoutMwp(row: LayoutSweepRow) {
   return "—";
 }
 
+function layoutRowIsTracker(row: LayoutSweepRow | null | undefined): boolean {
+  if (!row) return false;
+  return (
+    row.mount_type?.includes("Tracker") === true ||
+    row.config_key?.toUpperCase().startsWith("SAT") === true
+  );
+}
+
+function effectiveMountType(
+  layoutMountType: string,
+  row: LayoutSweepRow | null | undefined,
+  fallback = "Fixed Tilt",
+): string {
+  if (row) return layoutRowIsTracker(row) ? "Single-Axis Tracker" : "Fixed Tilt";
+  if (layoutMountType === "Single-Axis Tracker") return "Single-Axis Tracker";
+  if (layoutMountType === "Fixed Tilt") return "Fixed Tilt";
+  return fallback;
+}
+
+function yieldMountFilterFromRow(
+  layoutMountType: string,
+  row: LayoutSweepRow | null | undefined,
+): "all" | "fixed" | "sat" {
+  if (row) return layoutRowIsTracker(row) ? "sat" : "fixed";
+  if (layoutMountType === "Single-Axis Tracker") return "sat";
+  if (layoutMountType === "Fixed Tilt") return "fixed";
+  return "all";
+}
+
 function saveBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -695,10 +724,12 @@ export function OutputPage({
 
   const selectedYieldConfigKey = useMemo(() => {
     if (!selectedLayoutRow) return null;
-    const tracker = selectedLayoutRow.mount_type === "Single-Axis Tracker";
+    const tracker = layoutRowIsTracker(selectedLayoutRow);
     const portraitGroup = selectedLayoutRow.n_portrait === 1 ? "1P" : "2P";
     return `${portraitGroup} ${tracker ? "Tracker" : "Fixed"}`;
   }, [selectedLayoutRow]);
+
+  const yieldMountFilter = yieldMountFilterFromRow(layoutMountType, selectedLayoutRow);
 
   const yieldPayload = useMemo(() => {
     const selectedGcr = selectedLayoutRow?.gcr;
@@ -706,13 +737,19 @@ export function OutputPage({
     return {
       lat: result.coordinates.lat,
       lon: result.coordinates.lon,
-      mount_type: selectedLayoutRow?.mount_type || layoutMountType,
+      mount_type: effectiveMountType(layoutMountType, selectedLayoutRow, input?.mount_type || "Fixed Tilt"),
       gcr_1p: selectedIs1P && selectedGcr ? selectedGcr : 0.35,
       gcr_2p: !selectedIs1P && selectedGcr ? selectedGcr : 0.42,
       soiling_loss: 2.0,
       other_loss: 6.0,
     };
-  }, [input?.mount_type, result.coordinates.lat, result.coordinates.lon, selectedLayoutRow]);
+  }, [
+    input?.mount_type,
+    layoutMountType,
+    result.coordinates.lat,
+    result.coordinates.lon,
+    selectedLayoutRow,
+  ]);
 
   const selectedYieldConfig = selectedYieldConfigKey
     ? yieldResult?.configs[selectedYieldConfigKey]
@@ -722,13 +759,25 @@ export function OutputPage({
       ? (selectedLayoutRow.dc_kwp * selectedYieldConfig.spec_y) / 1000
       : null;
 
-  async function refreshFinalScore(topo: TerrainIQAnalyzeResponse) {
+  async function refreshFinalScore(
+    topo: TerrainIQAnalyzeResponse,
+    yieldSpec?: { spec_y?: number; cf?: number | null },
+  ) {
     const terrainScore = topo.terrain_drivers.terrain_score as number | undefined;
     if (terrainScore == null) return;
+    const capacityMwp = selectedLayoutRow?.dc_kwp ? selectedLayoutRow.dc_kwp / 1000 : undefined;
     try {
       const scored = await workflowScore(token, {
         score_components: scoreComponents,
         terrain_score: terrainScore,
+        lat: result.coordinates.lat,
+        lon: result.coordinates.lon,
+        country: input?.country || "",
+        terrain_confirmed: true,
+        capacity_mwp: capacityMwp,
+        ...(yieldSpec?.spec_y != null
+          ? { yield_spec_y: yieldSpec.spec_y, yield_cf: yieldSpec.cf ?? undefined }
+          : {}),
       });
       setFinalScore(scored);
     } catch {
@@ -742,6 +791,15 @@ export function OutputPage({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scoreComponents, topoResult]);
+
+  useEffect(() => {
+    if (!topoResult || !selectedYieldConfig?.spec_y) return;
+    void refreshFinalScore(topoResult, {
+      spec_y: selectedYieldConfig.spec_y,
+      cf: selectedYieldConfig.cf,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topoResult, selectedYieldConfigKey, selectedYieldConfig?.spec_y, yieldResult]);
 
   async function handleRunTopo(overrides?: Partial<TerrainIQAnalyzeRequest>) {
     const payload = topoPayload ? { ...topoPayload, ...overrides } : null;
@@ -1133,11 +1191,12 @@ export function OutputPage({
       yieldAutoRan.current = false;
       return;
     }
-    if (yieldAutoRan.current || yieldResult || yieldBusy || !selectedLayoutRow) return;
+    if (yieldAutoRan.current || yieldBusy || !selectedLayoutRow) return;
+    if (yieldResult) return;
     yieldAutoRan.current = true;
     void runYieldAnalysis();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeStage, selectedLayoutRow, yieldResult, yieldBusy]);
+  }, [activeStage, selectedLayoutRow, yieldBusy, yieldResult, yieldPayload]);
 
   function selectLayoutRow(row: LayoutSweepRow, loadPreview = true) {
     setSelectedLayoutRow(row);
@@ -1362,7 +1421,11 @@ export function OutputPage({
       lat: result.coordinates.lat,
       lon: result.coordinates.lon,
       land_use: input?.land_use || "Standard",
-      mount_type: layoutMountType || selectedLayoutRow?.mount_type || input?.mount_type || "Fixed Tilt",
+      mount_type: effectiveMountType(
+        layoutMountType,
+        selectedLayoutRow,
+        input?.mount_type || "Fixed Tilt",
+      ),
       area_ha: input?.area_ha || Number(result.capacity?.area_ha ?? 0) || 0,
       boundaries,
       screening: result as unknown as Record<string, unknown>,
@@ -2543,18 +2606,46 @@ export function OutputPage({
         </div>
 
         <div className="sidebar-group sidebar-score">
-          <h3>Overall PVMath score</h3>
+          <h3>PVMath site rating</h3>
           {overallReady ? (
-            <div className="overall-score-body">
-              <span className="score-pill score-pill-lg">{overallScore}</span>
-              <div>
-                <strong>{finalScore?.verdict}</strong>
-                <p>{finalScore?.verdict_detail}</p>
+            <div className="score-rating-card">
+              <div className="score-rating-head">
+                <span className="score-pill score-pill-lg">{overallScore}</span>
+                <div>
+                  <strong>{finalScore?.verdict}</strong>
+                  {finalScore?.score_mode === "partial" ? (
+                    <span className="score-mode-tag">Partial — run YieldIQ for full score</span>
+                  ) : (
+                    <span className="score-mode-tag score-mode-full">Full composite</span>
+                  )}
+                </div>
               </div>
+              {finalScore?.viability ? (
+                <dl className="score-viability">
+                  <div>
+                    <dt>Engineering confidence</dt>
+                    <dd>
+                      <span className="score-stars" aria-hidden>
+                        {finalScore.viability.engineering_confidence_stars}
+                      </span>{" "}
+                      {finalScore.viability.engineering_confidence}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Investment risk</dt>
+                    <dd>{finalScore.viability.investment_risk}</dd>
+                  </div>
+                  <div>
+                    <dt>Utility-scale PV</dt>
+                    <dd>{finalScore.viability.utility_scale_recommended}</dd>
+                  </div>
+                </dl>
+              ) : null}
+              <p className="hint sidebar-hint">{finalScore?.verdict_detail}</p>
             </div>
           ) : (
             <p className="hint sidebar-hint">
-              Complete TerrainIQ to compute the overall PVMath score.
+              Complete TerrainIQ to compute the PVMath site rating.
             </p>
           )}
         </div>
@@ -3268,7 +3359,7 @@ export function OutputPage({
             result={yieldResult}
             selectedConfigKey={selectedYieldConfigKey}
             selectedDcKwp={selectedLayoutRow?.dc_kwp ?? null}
-            mountFilter={mountFilter}
+            mountFilter={yieldMountFilter}
             layoutGeoJson={layoutDetail?.geojson ?? null}
           />
         ) : yieldBusy ? (

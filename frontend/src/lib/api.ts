@@ -155,7 +155,17 @@ export function workflowGisAnalysis(token: string, body: WorkflowGisAnalysisRequ
 
 export function workflowScore(
   token: string,
-  body: { score_components: Record<string, number>; terrain_score: number },
+  body: {
+    score_components: Record<string, number>;
+    terrain_score: number;
+    yield_spec_y?: number;
+    yield_cf?: number | null;
+    lat?: number;
+    lon?: number;
+    country?: string;
+    terrain_confirmed?: boolean;
+    capacity_mwp?: number;
+  },
 ) {
   return apiFetch<WorkflowScoreResponse>("/api/v1/workflow/score", token, {
     method: "POST",

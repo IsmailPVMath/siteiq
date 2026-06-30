@@ -44,6 +44,36 @@ class WorkflowScoreRequest(BaseModel):
         le=100,
         description="TerrainIQ terrain_score from terrain_drivers — authoritative terrain input.",
     )
+    yield_spec_y: Optional[float] = Field(
+        default=None,
+        description="Selected layout specific yield (kWh/kWp/yr) for energy-yield subscore.",
+    )
+    yield_cf: Optional[float] = Field(
+        default=None,
+        description="Optional capacity factor (%) for energy-yield subscore.",
+    )
+    lat: Optional[float] = Field(default=None, ge=-90, le=90)
+    lon: Optional[float] = Field(default=None, ge=-180, le=180)
+    country: str = Field(default="", max_length=120)
+    terrain_confirmed: bool = Field(
+        default=True,
+        description="True when terrain_score comes from TerrainIQ boundary analysis.",
+    )
+    capacity_mwp: Optional[float] = Field(
+        default=None,
+        ge=0,
+        description="Layout DC capacity (MWp) for utility-scale recommendation.",
+    )
+
+
+class ScoreViability(BaseModel):
+    engineering_confidence: str
+    engineering_confidence_pct: int
+    engineering_confidence_stars: str
+    investment_risk: str
+    utility_scale_recommended: str
+    score_mode: str
+    qualitative_rating: str
 
 
 class WorkflowScoreResponse(BaseModel):
@@ -51,6 +81,8 @@ class WorkflowScoreResponse(BaseModel):
     verdict: str
     components: Dict[str, int]
     verdict_detail: str
+    score_mode: str = "partial"
+    viability: Optional[ScoreViability] = None
 
 
 class WorkflowLayoutMatrixRequest(BaseModel):

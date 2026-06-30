@@ -22,6 +22,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import Image as RLImage, KeepTogether, Paragraph, Spacer, Table, TableStyle
 
 from pvmath_reports.common import ACCENT, BORDER, DARK, LGRAY, MUTED, base_styles, lp, module_divider, section_hdr
+from pvmath_workflow.mount_utils import layout_row_is_tracker, resolve_mount_type, yield_config_key_from_layout_row
 from pvmath_yield import config_display_name
 
 CONFIG_ORDER = ["1P Fixed", "2P Fixed", "1P Tracker", "2P Tracker"]
@@ -130,6 +131,7 @@ def build_yieldiq_flowables(
     mount_type: str = "Fixed Tilt",
     selected_config_key: Optional[str] = None,
     selected_dc_kwp: Optional[float] = None,
+    layout_row: Optional[Dict[str, Any]] = None,
 ) -> List:
     st = base_styles()
     story: List = []
@@ -141,6 +143,10 @@ def build_yieldiq_flowables(
     if not yield_result or not yield_result.get("configs"):
         story.append(lp("YieldIQ not run — select a layout row and run yield analysis.", st["muted"]))
         return story
+
+    mount_type = resolve_mount_type(mount_type, layout_row)
+    if not selected_config_key and layout_row:
+        selected_config_key = yield_config_key_from_layout_row(layout_row)
 
     configs: Dict[str, Any] = yield_result["configs"]
     mount_filter = "sat" if "Tracker" in (mount_type or "") else "fixed"
@@ -197,10 +203,6 @@ def build_yieldiq_flowables(
             pairs.append(("Low month", f"{MONTHS_SHORT[low_i]} ({monthly[low_i]:.0f} kWh/kWp)"))
         story.append(section_hdr("SCREENING SUMMARY", st))
         story.append(Spacer(1, 0.1 * cm))
-        story.append(lp(
-            "Early-stage yield snapshot — comparable to Aurora / DNV / PVsyst headline "
-            "results, not a bankable loss study.", st["muted"]))
-        story.append(Spacer(1, 0.12 * cm))
         story.append(_metrics_grid(pairs, st))
         story.append(Spacer(1, 0.35 * cm))
 
@@ -228,16 +230,16 @@ def build_yieldiq_flowables(
         story.append(_metrics_grid(poa_pairs, st, cols=2))
         story.append(Spacer(1, 0.35 * cm))
 
-    # --- Losses breakdown (best config) ---
-    if best_cfg and best_key:
-        suffix = " (selected)" if best_key == selected_config_key else " (best specific yield)"
-        story.append(section_hdr(f"LOSSES BREAKDOWN — {best_key}{suffix}", st))
+    # --- Losses breakdown (selected layout config) ---
+    if screening_cfg and screening_key:
+        suffix = " (selected)" if sel_cfg else " (best specific yield)"
+        story.append(section_hdr(f"LOSSES BREAKDOWN — {screening_key}{suffix}", st))
         story.append(Spacer(1, 0.12 * cm))
         story.append(_metrics_grid([
-            ("Shading", _fmt_loss(best_cfg.get("shading"))),
-            ("Temperature", _fmt_loss(best_cfg.get("l_tg"))),
-            ("Soiling", _fmt_loss(best_cfg.get("soiling_loss"))),
-            ("Total loss", _fmt_loss(best_cfg.get("l_total", best_cfg.get("total_loss")))),
+            ("Shading", _fmt_loss(screening_cfg.get("shading"))),
+            ("Temperature", _fmt_loss(screening_cfg.get("l_tg"))),
+            ("Soiling", _fmt_loss(screening_cfg.get("soiling_loss"))),
+            ("Total loss", _fmt_loss(screening_cfg.get("l_total", screening_cfg.get("total_loss")))),
         ], st, cols=4))
         story.append(Spacer(1, 0.1 * cm))
         story.append(lp(
@@ -290,8 +292,9 @@ def build_yieldiq_flowables(
     story.append(cmp_tbl)
     story.append(Spacer(1, 0.3 * cm))
 
-    # --- Cross-module yield reference ---
-    if cross.get("screening_fixed") is not None or cross.get("screening_tracker") is not None:
+    # --- Cross-module yield reference (SiteIQ screening baseline — not the active layout) ---
+    show_cross_ref = mount_filter == "all"
+    if show_cross_ref and (cross.get("screening_fixed") is not None or cross.get("screening_tracker") is not None):
         def _delta(a, b):
             try:
                 return f" ({((float(b) - float(a)) / float(a) * 100):.1f}%)" if a and b else ""

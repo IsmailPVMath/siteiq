@@ -45,7 +45,7 @@ from pvmath_workflow.layout_detail import build_layout_detail, export_layout_dxf
 from pvmath_workflow.layout_matrix import run_fixed_tilt_layout_matrix
 from pvmath_workflow.layout_sweep import run_layout_sweep
 from pvmath_workflow.project_report import build_pvmath_report_pdf, build_project_package_zip
-from pvmath_workflow.scoring import unified_pvmath_score
+from pvmath_workflow.scoring import unified_pvmath_score, yield_subscore
 from pvmath_workflow.screen import WorkflowScreenRequest as ScreenReq, run_workflow_screen
 from pvmath_workflow.slope_restrictions import build_slope_restriction_polygons
 from pvmath_workflow.terrain_bundle import build_terrain_files
@@ -335,21 +335,43 @@ async def workflow_score(
 ):
     """Combine screening partial scores with TerrainIQ terrain_score for the final PVMath score."""
     comps = body.score_components
+    y_score = (
+        yield_subscore(
+            body.yield_spec_y,
+            body.yield_cf,
+            lat=body.lat,
+            lon=body.lon,
+            country=body.country,
+        )
+        if body.yield_spec_y is not None
+        else None
+    )
     scored = unified_pvmath_score(
         solar_score=int(comps.get("solar", 55)),
         terrain_score=int(body.terrain_score),
         flood_score=int(comps.get("flood", 55)),
         land_score=int(comps.get("land", 72)),
         regulatory_score=int(comps.get("regulatory", 75)),
+        yield_score=y_score,
+        terrain_confirmed=body.terrain_confirmed,
+        capacity_mwp=body.capacity_mwp,
     )
+    mode = scored.get("score_mode", "partial")
+    mode_note = (
+        "Full score includes YieldIQ energy yield (regional benchmark)."
+        if mode == "full"
+        else "Partial score — run YieldIQ for the full composite."
+    )
+    viability = scored.get("viability") or {}
     return WorkflowScoreResponse(
         pvmath_score=scored["pvmath_score"],
         verdict=scored["verdict"],
         components=scored["components"],
+        score_mode=mode,
+        viability=viability,
         verdict_detail=(
-            f"Combines SiteIQ screening with TerrainIQ terrain ({body.terrain_score}/100) "
-            "and YieldIQ energy yield when run. Terrain caps the score — excellent solar "
-            "cannot offset poor slopes. DC capacity comes from LayoutIQ, not screening."
+            f"{mode_note} Terrain ({body.terrain_score}/100) caps the score on challenging sites. "
+            "DC capacity comes from LayoutIQ, not screening."
         ),
     )
 

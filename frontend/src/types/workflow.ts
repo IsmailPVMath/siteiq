@@ -81,11 +81,23 @@ export interface WorkflowScreenResponse {
   errors: string[];
 }
 
+export interface ScoreViability {
+  engineering_confidence: string;
+  engineering_confidence_pct: number;
+  engineering_confidence_stars: string;
+  investment_risk: string;
+  utility_scale_recommended: string;
+  score_mode: string;
+  qualitative_rating: string;
+}
+
 export interface WorkflowScoreResponse {
   pvmath_score: number;
   verdict: string;
   components: Record<string, number>;
   verdict_detail: string;
+  score_mode?: "full" | "partial";
+  viability?: ScoreViability | null;
 }
 
 export interface LayoutMatrixConfig {
