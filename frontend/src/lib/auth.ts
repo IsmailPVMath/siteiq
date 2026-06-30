@@ -1,9 +1,6 @@
-const STORAGE_KEY = "pvmath_gate_session";
+import { getApiUrl } from "./apiBase";
 
-const API_URL = (import.meta.env.VITE_API_URL || "https://api.pvmath.com").replace(
-  /\/$/,
-  "",
-);
+const STORAGE_KEY = "pvmath_gate_session";
 
 export interface AuthSession {
   access_token: string;
@@ -47,7 +44,7 @@ export async function signUp(
 ): Promise<{ session: AuthSession | null; otpRequired: boolean; email: string }> {
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/api/v1/auth/signup`, {
+    res = await fetch(`${getApiUrl()}/api/v1/auth/signup`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({
@@ -59,7 +56,7 @@ export async function signUp(
     });
   } catch {
     throw new Error(
-      `Could not reach API at ${API_URL}. Check internet and VITE_API_URL in .env.local.`,
+      `Could not reach API at ${getApiUrl()}. Check internet and VITE_API_URL in .env.local.`,
     );
   }
 
@@ -91,7 +88,7 @@ export async function signUp(
 export async function verifySignupOtp(email: string, code: string): Promise<AuthSession> {
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/api/v1/auth/signup/verify`, {
+    res = await fetch(`${getApiUrl()}/api/v1/auth/signup/verify`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({ email: email.trim(), code: code.trim() }),
@@ -120,7 +117,7 @@ export async function verifySignupOtp(email: string, code: string): Promise<Auth
 export async function resendSignupOtp(email: string): Promise<void> {
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/api/v1/auth/signup/resend`, {
+    res = await fetch(`${getApiUrl()}/api/v1/auth/signup/resend`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({ email: email.trim() }),
@@ -140,14 +137,14 @@ export async function signInWithPassword(
 ): Promise<AuthSession> {
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/api/v1/auth/login`, {
+    res = await fetch(`${getApiUrl()}/api/v1/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({ email: email.trim(), password }),
     });
   } catch {
     throw new Error(
-      `Could not reach API at ${API_URL}. Check internet and VITE_API_URL in .env.local.`,
+      `Could not reach API at ${getApiUrl()}. Check internet and VITE_API_URL in .env.local.`,
     );
   }
 
@@ -171,7 +168,7 @@ export async function signInWithPassword(
 export async function requestPasswordReset(email: string): Promise<void> {
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/api/v1/auth/reset-password`, {
+    res = await fetch(`${getApiUrl()}/api/v1/auth/reset-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({ email: email.trim() }),
@@ -192,7 +189,7 @@ export async function refreshSession(session: AuthSession): Promise<AuthSession>
 
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/api/v1/auth/refresh`, {
+    res = await fetch(`${getApiUrl()}/api/v1/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({ refresh_token: session.refresh_token }),

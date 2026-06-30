@@ -24,10 +24,7 @@ import type {
 } from "../types/workflow";
 import type * as GeoJSON from "geojson";
 
-const API_URL = (import.meta.env.VITE_API_URL || "https://api.pvmath.com").replace(
-  /\/$/,
-  "",
-);
+import { getApiUrl } from "./apiBase";
 
 let tokenRefresher: (() => Promise<string | null>) | null = null;
 
@@ -67,7 +64,7 @@ async function apiFetch<T>(
 ): Promise<T> {
   let res: Response;
   try {
-    res = await fetchWithRetry(`${API_URL}${path}`, {
+    res = await fetchWithRetry(`${getApiUrl()}${path}`, {
       ...init,
       headers: {
         Accept: "application/json",
@@ -132,7 +129,7 @@ export function changePassword(token: string, currentPassword: string, newPasswo
 }
 
 export async function downloadEngineeringManual(token: string): Promise<Blob> {
-  const res = await fetch(`${API_URL}/api/v1/me/engineering-manual`, {
+  const res = await fetch(`${getApiUrl()}/api/v1/me/engineering-manual`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
@@ -492,7 +489,7 @@ export async function downloadScreeningPdf(
   token: string,
   result: GateAnalyzeResponse,
 ): Promise<Blob> {
-  const res = await fetch(`${API_URL}/api/v1/reports/screening-pdf`, {
+  const res = await fetch(`${getApiUrl()}/api/v1/reports/screening-pdf`, {
     method: "POST",
     headers: {
       Accept: "application/pdf",
@@ -517,7 +514,7 @@ async function downloadBlob(
 ): Promise<Blob> {
   let res: Response;
   try {
-    res = await fetchWithRetry(`${API_URL}${path}`, {
+    res = await fetchWithRetry(`${getApiUrl()}${path}`, {
       method: "POST",
       headers: {
         Accept: accept,
