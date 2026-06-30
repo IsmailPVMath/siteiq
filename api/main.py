@@ -110,6 +110,12 @@ def create_app() -> FastAPI:
     app.include_router(terrainiq.router, prefix="/api/v1")
     app.include_router(yieldiq.router, prefix="/api/v1")
     app.include_router(workflow.router, prefix="/api/v1")
+
+    if os.environ.get("PVMATH_ENABLE_REVENUEIQ", "").strip().lower() in ("1", "true", "yes"):
+        from api.routers import revenueiq
+
+        app.include_router(revenueiq.router, prefix="/api/v1")
+
     return app
 
 

@@ -1,8 +1,8 @@
 # PVMath Architecture Roadmap
 
-> **Last updated:** 30 Jun 2026  
-> **Status:** Platform foundation (Redis + workers) live on staging and production.  
-> **Resume here:** Next engineering session — continue from **Immediate** section below.
+> **Last updated:** 1 Jul 2026  
+> **Status:** Redis + workers live. Score v2 + economic viability on production. RevenueIQ v0 on staging.  
+> **Resume here:** **Immediate** section — project-package queue first, then R2.
 
 ---
 
@@ -12,38 +12,36 @@
 |------|---------|------------|
 | FastAPI service | `pvmath-api-staging-production.up.railway.app` | `api.pvmath.com` |
 | Redis job queue | Yes | Yes |
-| Dedicated worker | Yes | Yes (`PVMath-Worker-1`, `railway.worker.toml` or `python -m api.jobs.worker`) |
+| Dedicated worker | Yes | Yes |
 | Job kinds queued | `terrainiq.analyze`, `workflow.terrain_mesh`, `workflow.layout_sweep` | Same |
-| React preview → staging API | Cloudflare `*.pages.dev` + CORS fix | — |
-| Merge `staging` → `main` | Done | Done |
+| PVMath score v2 + viability card | Yes | Yes (`f8c5b3f`) |
+| YieldIQ mount / report fixes | Yes | Yes |
+| **RevenueIQ v0 (API only)** | **Yes** (`PVMATH_ENABLE_REVENUEIQ=1`) | **No** |
 
-**Key files:**
-- `api/jobs/` — memory + Redis/RQ backends
-- `railway.api.toml` — API
-- `railway.worker.toml` — worker
-- `frontend/src/lib/apiBase.ts` — preview API URL fallback
+**Key files:** `api/jobs/`, `pvmath_workflow/score_config.py`, `revenueiq/`, `railway.api.toml`, `railway.worker.toml`
 
 ---
 
 ## Immediate (next session — start here)
 
-### 1. Production smoke test
-On **app.pvmath.com**, run one full project end-to-end:
-- SiteIQ → TerrainIQ → LayoutIQ sweep → PDF or ZIP download
+### 1. Project-package job queue ← **#1 architecture task**
+Still synchronous — largest OOM/timeout risk at 1K users.
 
-Confirms prod API + worker + Redis under real use.
-
-### 2. Queue **project-package** (highest remaining engineering risk)
-Still synchronous on API — largest OOM/timeout risk at scale.
-
-**Implementation pattern** (same as layout-sweep):
-- `POST /workflow/project-package-job` + status poll
+- `POST /workflow/project-package-job` + poll
 - Handler in `api/jobs/handlers.py`
 - Frontend: `workflowProjectPackageJob()` in `api.ts`
+- **Branch:** `staging` first
 
-### 3. Optional cleanup
-- Delete Streamlit staging in `cozy-enjoyment` if still present
-- Confirm prod worker uses `/railway.worker.toml` or start command `python -m api.jobs.worker`
+### 2. RevenueIQ staging UI (parallel track)
+- Panel on Output step — `VITE_ENABLE_REVENUEIQ=true` (Cloudflare Preview only)
+- Wire `POST /revenueiq/analyze` with layout row + yield MWh
+- **No website / marketing changes**
+
+### 3. R2 for exports
+PDF/ZIP/DXF off API RAM — presigned downloads.
+
+### 4. Sentry + k6 baseline
+Sentry on API + React; k6 100 VU smoke on staging.
 
 ---
 
@@ -51,61 +49,36 @@ Still synchronous on API — largest OOM/timeout risk at scale.
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 1 | Redis job queue | **Done** | Extend to project-package, GIS, report PDF |
+| 1 | Redis job queue | **Done** | Extend to **project-package**, GIS, report PDF |
 | 2 | Dedicated workers | **Done** | Scale replicas when queue depth grows |
-| 3 | Cloudflare R2 artifacts | Pending | PDF/ZIP/DXF off RAM; presigned downloads |
-| 4 | Async API + JWT cache | Pending | httpx async; Redis JWT cache ~60s |
-| 5 | Monitoring | Pending | Sentry + OTEL + Grafana (start with Sentry) |
-| 6 | k6 load tests | Pending | Staging first; 100→500 VU scenarios |
-| 7 | Rate limiting | Pending | Cloudflare WAF + FastAPI middleware |
-| 8 | Team / multi-tenancy | Later | Org RBAC, audit logs |
-| 9 | AI infrastructure | Later | — |
-| 10 | ECS/Kubernetes | Only if metrics justify | Railway OK for hundreds of concurrent users |
+| 3 | **RevenueIQ v0** | **Staging API done** | UI + PDF next; not public |
+| 4 | Cloudflare R2 artifacts | Pending | PDF/ZIP/DXF off RAM |
+| 5 | Async API + JWT cache | Pending | Redis JWT ~60s |
+| 6 | Monitoring | Pending | Sentry first |
+| 7 | k6 load tests | Pending | 100→500 VU on staging |
+| 8 | Rate limiting | Pending | Cloudflare WAF + FastAPI |
+| 9 | Team / multi-tenancy | Later | Org RBAC |
+| 10 | ECS/Kubernetes | Only if metrics justify | Railway OK to ~1K with queue + R2 |
 
 ---
 
-## Recommended build order (engineering)
+## Readiness targets (1K concurrent users)
 
-1. **Project-package job queue** ← next code task  
-2. **R2 for exports** (ZIP, PDF, DXF, terrain bundle)  
-3. **Sentry** (API + React)  
-4. **JWT cache** (Redis)  
-5. **Async Supabase** (projects, auth deps)  
-6. **k6 smoke** on staging  
-7. **Rate limits** by plan tier  
-
----
-
-## “Platform foundation complete” checklist
-
-- [x] Staging API + worker + Redis  
-- [x] Production API + worker + Redis  
-- [x] React preview → staging  
-- [ ] Project-package queued  
-- [ ] R2 for large downloads  
-- [ ] Basic monitoring (Sentry minimum)  
-- [ ] Load test baseline (k6 100 VU)  
-
----
-
-## Readiness targets (from architecture review)
-
-| Concurrent users | Before queue | After foundation | After R2 + monitoring |
-|------------------|--------------|------------------|------------------------|
-| 500 | ~22/100 | ~65/100 | ~78/100 |
-| 1,000 | ~12/100 | ~55/100 | ~72/100 |
-| 5,000 | ~8/100 | ~40/100 | ~85/100 (needs worker autoscale) |
+| Milestone | Readiness @ 1K |
+|-----------|----------------|
+| Today (queue for 3 job types) | ~55/100 |
+| + project-package queue | ~62/100 |
+| + R2 + Sentry | ~72/100 |
+| + k6 validated + rate limits | ~78/100 |
 
 ---
 
 ## Railway reference
 
-| Project | Branch | API | Worker config |
-|---------|--------|-----|---------------|
-| `cozy-enjoyment` | `staging` | `railway.api.toml` | `railway.worker.toml` |
-| `exemplary-balance` | `main` | `railway.api.toml` | `railway.worker.toml` |
-
-**Worker env (both):** `REDIS_URL`, `PVMATH_JOB_BACKEND=redis`, copy Supabase/compute vars from API.
+| Project | Branch | RevenueIQ |
+|---------|--------|-----------|
+| `cozy-enjoyment` | `staging` | `PVMATH_ENABLE_REVENUEIQ=1` on API |
+| `exemplary-balance` | `main` | **Do not enable** |
 
 **Health checks:**
 ```bash
@@ -115,36 +88,18 @@ curl -s https://pvmath-api-staging-production.up.railway.app/api/health/ready
 
 ---
 
-## Cloudflare reference
+## Session handoff (1 Jul 2026)
 
-| Environment | `VITE_API_URL` |
-|-------------|----------------|
-| Production | `https://api.pvmath.com` |
-| Preview | `https://pvmath-api-staging-production.up.railway.app` |
+1. Read `PVMath/STATUS.md` + this file
+2. Work on **`staging`** branch
+3. Architecture: project-package queue
+4. Product: RevenueIQ UI on staging preview
+5. Promote `staging` → `main` only after verification
 
-Preview builds on `*.pages.dev` auto-use staging API via `frontend/src/lib/apiBase.ts` if `VITE_API_URL` missing at build time.
-
----
-
-## Session handoff
-
-When resuming architecture work:
-1. Read this file + `PVMath/STATUS.md`
-2. Run production smoke test if not done
-3. Implement project-package queue on `staging` first
-4. Promote to `main` after verification
+**Docs:** `docs/PVMath_Cursor_New_Session_Bootstrap.md`, `docs/PVMath_RevenueIQ_Staging.md`
 
 ---
 
-## Urgent fixes (1 Jul 2026) — SAT vs Fixed YieldIQ / score / report
+## Shipped on main (1 Jul 2026)
 
-| # | Issue | Root cause | Fix |
-|---|--------|------------|-----|
-| 1 | YieldIQ/PDF showed Fixed after SAT 1P selected | `Compare FT & SAT` left `mountFilter=all` and report `mount_type=Compare FT & SAT` | Derive mount from **selected layout row** (`yieldMountFilter`, `effectiveMountType`, `pvmath_workflow/mount_utils.py`) |
-| 2 | Score stuck ~58/100 | Terrain cap `min(weighted, terrain+15)`; yield not in live score API | Pass `yield_spec_y` to `/workflow/score` after YieldIQ runs |
-| 3 | Report header missing LayoutIQ | Banner text outdated | `SiteIQ · TerrainIQ · LayoutIQ · YieldIQ` |
-| 4 | Cross-module ref looked “stale” | Always shown; compares SiteIQ screening vs YieldIQ (informational) | Hidden when a single mount is selected (not compare mode) |
-| 5 | Aurora/DNV/PVsyst line in YIQ UI | Copy in `YieldResultsPanel` + PDF | Removed from on-screen screening summary |
-| 6 | Missing tracker row(s) | Often E-W block roads, NS block gaps, restrictions, or `prune_isolated_blocks` | **Investigate per project** — check road preset, `cols_per_block`, `ew_gap_m`, exclusions |
-
-**Re-test Ismaning 7 ha:** Select SAT 1P row → YieldIQ step → Re-run YieldIQ → regenerate PDF.
+SAT vs Fixed YieldIQ, score v2, economic viability card, LayoutIQ in report header — see `PVMath/STATUS.md`.

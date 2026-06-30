@@ -1,26 +1,78 @@
 # Cursor — Fresh Session Bootstrap Prompt
 
-Use this whenever starting a brand-new Cursor chat (old one got slow/bloated). Paste the block below as your first message. It re-orients Cursor from the actual repo state — no old bug lists, no stale context carried forward.
+**Updated:** 1 July 2026  
+Use this at the start of every new Cursor chat. It re-orients from repo state — no stale bug lists from old conversations.
 
 ---
 
 ## Paste this into the new Cursor chat
 
 ```
-Fresh chat — ignore any earlier conversations, re-orient entirely from the repo itself:
+Fresh PVMath session — re-orient entirely from the repo:
 
-1. Read CLAUDE.md at the repo root — authoritative project memory (architecture, deployment, key files, bug history, git workflow).
-2. Read PVMath/STATUS.md for the current business/priority snapshot.
-3. Run `git log --oneline -20` and `git status` to see what's actually landed vs. uncommitted.
+1. Read PVMath/STATUS.md (session handoff at top — authoritative for what's live vs in progress).
+2. Read PVMath/ARCHITECTURE_ROADMAP.md (CTO priority list — start at "Immediate").
+3. Read CLAUDE.md for deployment wiring and git workflow only (some sections are Streamlit-era).
+4. Run: git branch --show-current && git log --oneline -10 && git status
 
-Give me a short summary: what's currently working, what's mid-flight (uncommitted/staged but not on main), and what you'd flag as next priorities based on STATUS.md. Then wait for me to tell you what to work on — don't start changing anything yet.
+Give me a short summary:
+- What's on production main vs staging
+- What's mid-flight (uncommitted)
+- Top 3 engineering priorities from STATUS + ARCHITECTURE_ROADMAP
 
-Standing rules: staging branch first for day-to-day fixes, main is frozen unless I explicitly say promote to production. Confirm you've read the git-workflow section in CLAUDE.md before touching either branch.
+Standing rules:
+- Day-to-day fixes on staging first; main = production only when I say promote.
+- RevenueIQ is STAGING ONLY — never add to pvmath.com, index.html, or production Railway until I say so.
+- RevenueIQ API requires PVMATH_ENABLE_REVENUEIQ=1 (set on cozy-enjoyment, not exemplary-balance).
+
+Then wait for my task — don't change code until I confirm.
+
+Current focus areas (pick up where we left off):
+A) Architecture expansion for ~1K concurrent users (project-package queue → R2 → Sentry → k6)
+B) RevenueIQ v0 → UI on staging preview → PDF section → optional score factor
+C) Production smoke test if not done since f8c5b3f
 ```
 
 ---
 
-## Notes for next time
+## Context cheat sheet (Jul 2026)
 
-- Cursor chat slowness comes from accumulated history (every prior message + file read stays in context). A new chat + pointing at CLAUDE.md/git log instead of re-pasting old conversation fixes it in 3-4 tool calls.
-- Keep this prompt generic and bug-free — it's a reusable reset, not a task brief. If there's a specific fix to hand off, write a separate one-off brief (see docs/PVMath_Cursor_Brief_Unified_Report_Upgrade.md for the pattern) instead of folding it into this file.
+### Production (`main`, latest `f8c5b3f`)
+- React app app.pvmath.com + api.pvmath.com
+- Redis/RQ worker for terrain analyze, terrain mesh, layout sweep
+- PVMath score v2: 22/22/18/15/15/8 weights, regional yield, economic viability card
+- YieldIQ mount fix: selected LayoutIQ row drives yield filter + PDF (SAT vs Fixed)
+
+### Staging (`staging`)
+- Same as main + **RevenueIQ v0** (backend model + gated API)
+- Enable: Railway API env `PVMATH_ENABLE_REVENUEIQ=1`
+- Endpoint: `POST /api/v1/revenueiq/analyze` (404 on prod without flag)
+- **Not on website** — no marketing copy, no public module list
+
+### RevenueIQ inputs/outputs
+- **In:** country, land_use, mount_type, dc_kwp (LayoutIQ), annual_mwh (YieldIQ), terrain_grade
+- **Out:** revenue €/yr band, CAPEX € band, payback yrs, LCOE €/MWh — screening only
+- **Files:** `revenueiq/engine.py`, `revenueiq/tariffs.py`, `revenueiq/capex.py`
+
+### Architecture next (1K users)
+1. Queue project-package ZIP (`api/jobs/handlers.py` pattern from layout-sweep)
+2. Cloudflare R2 for PDF/ZIP artifacts
+3. Sentry + k6 baseline on staging
+
+### Git workflow reminder
+```bash
+cd ~/Desktop/solarscout
+git checkout staging && git pull origin staging
+# … work …
+git add -A && git commit -m "…"
+git push origin staging
+# Test Cloudflare preview → promote: merge staging → main when verified
+```
+
+---
+
+## Notes
+
+- Cursor slowness = long chat history. New chat + this bootstrap = clean context in ~4 tool calls.
+- For one-off tasks, use a separate brief (see `docs/PVMath_Cursor_Brief_*.md` pattern).
+- Update this file when handoff priorities change.
