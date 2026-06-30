@@ -1,11 +1,11 @@
 :root {
-  --bg: #dcebe0;
-  --card: #f6fbf7;
+  --bg: #e8f3ec;
+  --card: #f8fcf9;
   --text: #16241a;
   --muted: #51695a;
-  --accent: #1d9e52;
-  --accent-dark: #157a40;
-  --border: #c2d8c8;
+  --accent: #32b86a;
+  --accent-dark: #249656;
+  --border: #cfe0d4;
   --warn: #b45309;
   --danger: #b91c1c;
   --radius: 12px;
@@ -2087,6 +2087,12 @@ body.sb-resizing .results-resizer::before {
   min-width: 0;
 }
 
+.step-scroll-anchor {
+  height: 0;
+  overflow: hidden;
+  scroll-margin-top: 0.5rem;
+}
+
 .layout-azimuth-custom {
   margin-top: 0.4rem;
 }
@@ -2642,6 +2648,15 @@ body.sb-resizing .results-resizer::before {
   margin-top: 1rem;
   padding-top: 0.85rem;
   border-top: 1px solid var(--border);
+}
+
+.account-resources {
+  margin-top: 0.65rem;
+}
+
+.account-resource-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
 }
 
 .setup-location-group {

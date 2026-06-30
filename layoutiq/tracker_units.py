@@ -80,6 +80,7 @@ def build_tracker_unit_polys(layout: dict[str, Any]) -> list[dict[str, Any]]:
                 {
                     "poly": unit_poly,
                     "unit_strings": n,
+                    "string_indices": chunk,
                     "row_index": r_idx + 1,
                     "unit_index": unit_global + 1,
                     "style": style,

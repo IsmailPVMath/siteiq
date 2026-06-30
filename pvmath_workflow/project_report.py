@@ -123,6 +123,8 @@ def build_pvmath_report_pdf(
         yield_result=yield_result,
         selected_config_key=selected_config_key,
         selected_dc_kwp=dc_kwp,
+        layout_row=layout_row,
+        layout_bom=(layout_row or {}).get("bom") if isinstance(layout_row, dict) else None,
         boundaries=boundaries,
         slope_img_png=slope_img_png,
     )
@@ -390,7 +392,7 @@ def build_layout_sheet_pdf(
         [_lp("Revision", st["lbl"]), _lp(revision, st["body"])],
         [_lp("Date", st["lbl"]), _lp(date.today().isoformat(), st["body"])],
         [_lp("Sheet", st["lbl"]), _lp("Layout — A1 top view", st["body"])],
-        [_lp("Units", st["lbl"]), _lp("Local metric (m) · DXF georeferenced", st["body"])],
+        [_lp("Units", st["lbl"]), _lp("WGS84 UTM (m) · layout DXF georeferenced", st["body"])],
     ]
     titleblock = Table(tb_rows, colWidths=[3.0 * cm, sidebar_w - 3.0 * cm - 12])
     titleblock.setStyle(TableStyle([

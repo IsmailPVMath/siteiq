@@ -19,9 +19,17 @@ try:
 except ImportError:
     HAS_EZDXF = False
 
-_UNIT_LAYER_RE = re.compile(r"^(?:PV|TRACKER)[_-]?(\d)S?$", re.I)
+_UNIT_LAYER_RE = re.compile(r"^(?:PVM_TR_|PVM_T_|PV|TRACKER)[_-]?(\d)S?$", re.I)
 _STRING_LAYERS = frozenset(
-    {"PV_MODULE", "PV_STRING", "PV_ROWS", "MODULES", "STRINGS", "TABLES"}
+    {
+        "PVM_STRINGS",
+        "PV_MODULE",
+        "PV_STRING",
+        "PV_ROWS",
+        "MODULES",
+        "STRINGS",
+        "TABLES",
+    }
 )
 
 
@@ -52,10 +60,8 @@ def _layer_unit_size(layer: str) -> int | None:
     m = _UNIT_LAYER_RE.match(name)
     if m:
         return int(m.group(1))
-    if name in ("PV_8S", "TRACKER_8S"):
-        return 8
     for n in DEFAULT_TRACKER_OPTIONS:
-        if name in (f"PV_{n}S", f"TRACKER_{n}S"):
+        if name in (f"PVM_TR_{n}S", f"PVM_T_{n}S", f"PV_{n}S", f"TRACKER_{n}S"):
             return n
     return None
 
@@ -148,7 +154,15 @@ def parse_layout_dxf(
             unit_entries.append({"poly": poly, "unit_strings": unit_n, "source": "layer"})
             continue
 
-        if layer in ("SITE_BOUNDARY", "BOUNDARY", "SETBACK_INSET", "PARCEL"):
+        if layer in (
+            "PVM_SITEBOUNDARY",
+            "PVM_SITE_BOUNDARY",
+            "SITE_BOUNDARY",
+            "BOUNDARY",
+            "PVM_BUILDABLE",
+            "SETBACK_INSET",
+            "PARCEL",
+        ):
             boundary_polys.append(poly)
             continue
 

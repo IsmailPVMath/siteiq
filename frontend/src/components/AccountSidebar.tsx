@@ -1,10 +1,11 @@
 import { FormEvent, useState } from "react";
-import { changePassword } from "../lib/api";
+import { changePassword, downloadEngineeringManual } from "../lib/api";
 import type { MeResponse } from "../types/gate";
 
 const UPGRADE_MAIL =
   "mailto:contact@pvmath.com?subject=PVMath%20%E2%80%94%20Billing%20or%20upgrade%20inquiry";
 const HELP_MAIL = "mailto:contact@pvmath.com?subject=PVMath%20support";
+const KNOWLEDGE_CENTRE = "https://pvmath.com/guides/";
 const SITE_URL = "https://pvmath.com";
 
 function planLabel(plan: string) {
@@ -41,6 +42,8 @@ export function AccountSidebar({ email, profile, token, onLogout, onCollapse, on
   const [confirmPass, setConfirmPass] = useState("");
   const [passMsg, setPassMsg] = useState("");
   const [passBusy, setPassBusy] = useState(false);
+  const [manualBusy, setManualBusy] = useState(false);
+  const [manualMsg, setManualMsg] = useState("");
 
   const usage = profile?.usage;
   let usageLine = "";
@@ -71,6 +74,24 @@ export function AccountSidebar({ email, profile, token, onLogout, onCollapse, on
       setPassMsg(err instanceof Error ? err.message : "Update failed.");
     } finally {
       setPassBusy(false);
+    }
+  }
+
+  async function handleManualDownload() {
+    setManualMsg("");
+    setManualBusy(true);
+    try {
+      const blob = await downloadEngineeringManual(token);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "PVMath_Engineering_Reference_Manual_PUBLIC.docx";
+      a.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+    } catch (err) {
+      setManualMsg(err instanceof Error ? err.message : "Download failed.");
+    } finally {
+      setManualBusy(false);
     }
   }
 
@@ -144,7 +165,33 @@ export function AccountSidebar({ email, profile, token, onLogout, onCollapse, on
             <a className="account-nav-item" href={SITE_URL} target="_blank" rel="noreferrer">
               pvmath.com
             </a>
+            <a
+              className="account-nav-item"
+              href={profile?.knowledge_centre_url || KNOWLEDGE_CENTRE}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Knowledge Centre
+            </a>
           </nav>
+
+          <div className="account-resources">
+            {profile?.engineering_manual_available ? (
+              <button
+                type="button"
+                className="btn btn-ghost btn-block btn-sm"
+                disabled={manualBusy}
+                onClick={() => void handleManualDownload()}
+              >
+                {manualBusy ? "Preparing…" : "Engineering manual (Word)"}
+              </button>
+            ) : (
+              <p className="hint account-resource-hint">
+                Engineering manual — Professional plan and above.
+              </p>
+            )}
+            {manualMsg ? <p className="hint account-msg">{manualMsg}</p> : null}
+          </div>
 
           {panel === "settings" ? (
             <form className="account-panel account-panel-sm" onSubmit={(e) => void handlePassword(e)}>

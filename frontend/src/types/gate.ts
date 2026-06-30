@@ -60,4 +60,6 @@ export interface MeResponse {
     remaining: number | null;
     at_limit: boolean;
   };
+  knowledge_centre_url?: string;
+  engineering_manual_available?: boolean;
 }

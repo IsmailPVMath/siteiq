@@ -27,8 +27,8 @@ DOCS = ROOT / "docs"
 OUT_INTERNAL = DOCS / "PVMath_Engineering_Reference_Manual_INTERNAL.docx"
 OUT_PUBLIC = DOCS / "PVMath_Engineering_Reference_Manual_PUBLIC.docx"
 
-VERSION = "1.0"
-MANUAL_DATE = "June 2026"
+VERSION = "1.1"
+MANUAL_DATE = "June 2026 (LayoutIQ update)"
 
 PUBLIC_CALC_REDACTION = (
     "Computed inside PVMath using industry-standard solar and terrain methods on region-routed "

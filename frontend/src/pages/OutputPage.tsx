@@ -238,6 +238,14 @@ export function OutputPage({
     return stored ? Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, stored)) : SIDEBAR_DEFAULT;
   });
   const sidebarDraggingRef = useRef(false);
+  const stepAnchorRef = useRef<HTMLDivElement>(null);
+
+  function scrollToStepTop() {
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      stepAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
   useEffect(() => {
     localStorage.setItem("pvm_results_sb_width", String(sidebarWidth));
   }, [sidebarWidth]);
@@ -322,9 +330,9 @@ export function OutputPage({
   const [layoutLandCost, setLayoutLandCost] = useState<LayoutLandCost>(layoutInit.land_cost);
   const [layoutBifacial, setLayoutBifacial] = useState(layoutInit.bifacial);
   const [allowPartialStrings, setAllowPartialStrings] = useState(layoutInit.allow_partial_strings);
-  const [layoutMountType, setLayoutMountType] = useState<"Fixed Tilt" | "Single-Axis Tracker">(
-    layoutInit.mount_type,
-  );
+  const [layoutMountType, setLayoutMountType] = useState<
+    "Fixed Tilt" | "Single-Axis Tracker" | "Compare FT & SAT"
+  >(layoutInit.mount_type);
   const [layoutPortrait, setLayoutPortrait] = useState<"all" | "1" | "2" | "3" | "4">(
     layoutInit.portrait,
   );
@@ -738,6 +746,7 @@ export function OutputPage({
   async function handleRunTopo(overrides?: Partial<TerrainIQAnalyzeRequest>) {
     const payload = topoPayload ? { ...topoPayload, ...overrides } : null;
     if (!payload) return;
+    scrollToStepTop();
     setTopoBusy(true);
     setTopoError("");
     try {
@@ -1028,11 +1037,16 @@ export function OutputPage({
   }, [activeStage, topoResult, topoMesh, topoMeshBusy, boundaries.length, siteAreaHa]);
 
   useEffect(() => {
+    scrollToStepTop();
+  }, [activeStage]);
+
+  useEffect(() => {
     if (initialTopo) onWorkflowDepth?.("topo");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function proceedToTopo() {
+    scrollToStepTop();
     setActiveStage("topo");
     onWorkflowDepth?.("topo");
     onWorkflowPersist?.({ lastStage: "topo", topo: topoResult, finalScore, gisSetbacks: Object.keys(gisSetbacks).length ? gisSetbacks : null });
@@ -1040,6 +1054,7 @@ export function OutputPage({
   }
 
   function proceedToLayout() {
+    scrollToStepTop();
     setActiveStage("layout");
     onWorkflowDepth?.("layout");
     onWorkflowPersist?.({ lastStage: "layout", topo: topoResult, finalScore, gisSetbacks: Object.keys(gisSetbacks).length ? gisSetbacks : null });
@@ -1047,6 +1062,7 @@ export function OutputPage({
   }
 
   function proceedToYield() {
+    scrollToStepTop();
     setActiveStage("yield");
     onWorkflowDepth?.("yield");
     onWorkflowPersist?.({ lastStage: "yield", topo: topoResult, finalScore, gisSetbacks: Object.keys(gisSetbacks).length ? gisSetbacks : null });
@@ -1100,6 +1116,7 @@ export function OutputPage({
   }
 
   async function runYieldAnalysis() {
+    scrollToStepTop();
     setYieldBusy(true);
     setYieldError("");
     try {
@@ -1199,9 +1216,11 @@ export function OutputPage({
     if (alignmentSource === "guide" && alignmentGuide.length < 2) {
       setActiveStage("layout");
       setLayoutError("Draw an alignment guide with at least 2 points, or switch to preset azimuth.");
+      scrollToStepTop();
       return;
     }
     setActiveStage("layout");
+    scrollToStepTop();
     setLayoutBusy(true);
     setLayoutError("");
     try {
@@ -1225,7 +1244,13 @@ export function OutputPage({
       };
       if (layoutOptimization === "custom") {
         const gcr = Number(layoutCustomGcr);
-        if (gcr > 0) body.custom_gcr = gcr;
+        if (!Number.isFinite(gcr) || gcr <= 0 || gcr > 0.85) {
+          setLayoutError("Enter a custom GCR between 0.15 and 0.75.");
+          setLayoutBusy(false);
+          scrollToStepTop();
+          return;
+        }
+        body.custom_gcr = gcr;
       }
       if (pitch > 0) {
         body.custom_pitch_m = pitch;
@@ -1410,7 +1435,11 @@ export function OutputPage({
   }, [layoutSweep]);
 
   const mountFilter: "all" | "fixed" | "sat" =
-    layoutMountType === "Single-Axis Tracker" ? "sat" : "fixed";
+    layoutMountType === "Compare FT & SAT"
+      ? "all"
+      : layoutMountType === "Single-Axis Tracker"
+        ? "sat"
+        : "fixed";
 
   const azimuthSelectValue =
     azimuthCustom
@@ -1877,9 +1906,7 @@ export function OutputPage({
               {layoutImportBusy ? "Importing DXF…" : "Import layout DXF"}
             </button>
             <p className="hint sidebar-hint">
-              Upload a metric DXF with string rectangles (PV_MODULE) or coloured tracker unit
-              layers (PV_8S … PV_1S). PVMath groups strings into rigid tracker boxes, then you can
-              run YieldIQ on the imported DC capacity.
+              Metric DXF: PVM_Strings (module strings) + PVM_Tr_8S…1S (tracker units), overlaid.
             </p>
             {layoutImported && layoutDetail ? (
               <p className="module-note">
@@ -1899,18 +1926,17 @@ export function OutputPage({
                   id="layout-mount-type"
                   value={layoutMountType}
                   onChange={(e) => {
-                    const next = e.target.value as "Fixed Tilt" | "Single-Axis Tracker";
+                    const next = e.target.value as typeof layoutMountType;
                     setLayoutMountType(next);
-                    setLayoutPortrait(next === "Single-Axis Tracker" ? "1" : "2");
+                    if (next === "Single-Axis Tracker") setLayoutPortrait("1");
+                    else if (next === "Fixed Tilt") setLayoutPortrait("2");
                   }}
                 >
                   <option value="Fixed Tilt">Fixed Tilt</option>
                   <option value="Single-Axis Tracker">Single-Axis Tracker</option>
+                  <option value="Compare FT & SAT">Compare Fixed &amp; Tracker</option>
                 </select>
-                <p className="hint sidebar-hint">
-                  Choose here — SiteIQ and TerrainIQ run mount-agnostic; layout and yield use this
-                  selection.
-                </p>
+                <p className="hint sidebar-hint">Used for layout sweep and yield.</p>
               </div>
               <div className="field">
                 <label htmlFor="layout-portrait">Modules in portrait (per table)</label>
@@ -1923,24 +1949,27 @@ export function OutputPage({
                 >
                   {mountFilter === "sat" ? (
                     <>
-                      <option value="1">1P — single row (lighter, faster)</option>
-                      <option value="2">2P — stacked pair</option>
-                      <option value="all">Compare 1P & 2P (slower)</option>
+                      <option value="1">1P</option>
+                      <option value="2">2P</option>
+                      <option value="all">Compare 1P & 2P</option>
+                    </>
+                  ) : mountFilter === "all" ? (
+                    <>
+                      <option value="1">1P</option>
+                      <option value="2">2P</option>
+                      <option value="all">Compare all portraits</option>
                     </>
                   ) : (
                     <>
-                      <option value="1">1P — single row (lighter, faster)</option>
-                      <option value="2">2P — two-high</option>
-                      <option value="3">3P — three-high</option>
-                      <option value="4">4P — four-high</option>
-                      <option value="all">Compare 1P–4P (slower)</option>
+                      <option value="1">1P</option>
+                      <option value="2">2P</option>
+                      <option value="3">3P</option>
+                      <option value="4">4P</option>
+                      <option value="all">Compare 1P–4P</option>
                     </>
                   )}
                 </select>
-                <p className="hint sidebar-hint">
-                  Pick one portrait to keep the sweep fast on large sites. Use Compare only when you
-                  need to weigh portraits side by side.
-                </p>
+                <p className="hint sidebar-hint">One portrait = faster sweep on large sites.</p>
               </div>
               <div className="field">
                 <label htmlFor="layout-row-align">Row alignment</label>
@@ -1949,17 +1978,10 @@ export function OutputPage({
                   value={layoutRowAlignment}
                   onChange={(e) => setLayoutRowAlignment(e.target.value as RowAlignment)}
                 >
-                  <option value="horizontal">
-                    Aligned — string-aligned grid (best buildability)
-                  </option>
-                  <option value="boundary">
-                    Non-aligned — fill to the edge (max capacity)
-                  </option>
+                  <option value="horizontal">Aligned — clean rows</option>
+                  <option value="boundary">Non-aligned — max MWp</option>
                 </select>
-                <p className="hint sidebar-hint">
-                  Aligned: shared string grid, clean rows, slightly lower MWp. Non-aligned: fills
-                  each pocket fully for max capacity, ragged ends.
-                </p>
+                <p className="hint sidebar-hint">Aligned = string grid; non-aligned fills pockets.</p>
               </div>
               <div className="field">
                 <label htmlFor="layout-opt-mode">Optimization mode</label>
@@ -1968,12 +1990,29 @@ export function OutputPage({
                   value={layoutOptimization}
                   onChange={(e) => setLayoutOptimization(e.target.value as LayoutOptimizationMode)}
                 >
-                  <option value="balanced">Balanced (industry default)</option>
-                  <option value="high_energy">High energy — wider spacing</option>
-                  <option value="land_optimized">Land optimized — tighter</option>
-                  <option value="custom">Custom GCR (sweep)</option>
+                  <option value="balanced">Balanced</option>
+                  <option value="high_energy">High energy</option>
+                  <option value="land_optimized">Land optimized</option>
+                  <option value="custom">Custom GCR</option>
                 </select>
+                <p className="hint sidebar-hint">Sets default pitch band before you pick a row from the sweep table.</p>
               </div>
+              {layoutOptimization === "custom" ? (
+                <div className="field">
+                  <label htmlFor="layout-custom-gcr">Custom GCR</label>
+                  <input
+                    id="layout-custom-gcr"
+                    type="number"
+                    step="0.01"
+                    min="0.15"
+                    max="0.75"
+                    placeholder="e.g. 0.38"
+                    value={layoutCustomGcr}
+                    onChange={(e) => setLayoutCustomGcr(e.target.value)}
+                  />
+                  <p className="hint sidebar-hint">Target GCR for the pitch sweep (typical 0.30–0.45).</p>
+                </div>
+              ) : null}
               <div className="field">
                 <label htmlFor="layout-land-cost">Land cost</label>
                 <select
@@ -2010,7 +2049,7 @@ export function OutputPage({
                   <option value="guide">Draw alignment guide (one azimuth)</option>
                 </select>
                 <p className="hint sidebar-hint">
-                  One constant azimuth applies to the entire PV area — no per-row rotation.
+                  One constant azimuth for the whole PV area.
                 </p>
               </div>
               {alignmentSource === "default" ? (
@@ -2063,15 +2102,14 @@ export function OutputPage({
                 ) : null}
                 <p className="hint sidebar-hint">
                   {mountFilter === "sat"
-                    ? "N–S axis (rotates E→W). Pick a preset or custom azimuth to match the parcel."
-                    : "PVGIS optimal tilt, due south (180°). Pick a bearing or custom angle for skewed parcels."}
+                    ? "Tracker axis direction (180° = N–S)."
+                    : "Array facing (180° = south)."}
                 </p>
               </div>
               ) : (
               <div className="field layout-guide-controls">
                 <p className="hint sidebar-hint">
-                  Click the map in the LayoutIQ panel to trace a boundary edge (magenta line).
-                  Length-weighted average bearing → one azimuth for the whole site.
+                  Trace a boundary edge on the map (2+ points).
                 </p>
                 {derivedGuideAzimuth != null ? (
                   <p className="module-note">
@@ -2416,24 +2454,6 @@ export function OutputPage({
                     : "Leave empty to compare multiple pitches (capacity sweep)."}
                 </p>
               </div>
-              {layoutOptimization === "custom" && !layoutCustomPitch ? (
-                <div className="field">
-                  <label htmlFor="layout-custom-gcr">Custom GCR</label>
-                  <input
-                    id="layout-custom-gcr"
-                    type="number"
-                    step="0.01"
-                    min="0.15"
-                    max="0.75"
-                    placeholder="0.45"
-                    value={layoutCustomGcr}
-                    onChange={(e) => setLayoutCustomGcr(e.target.value)}
-                  />
-                  <p className="hint sidebar-hint">
-                    Sweeps pitch around this GCR when no fixed pitch is set.
-                  </p>
-                </div>
-              ) : null}
               <label className="checkbox-field layout-bifacial">
                 <input
                   type="checkbox"
@@ -2566,6 +2586,7 @@ export function OutputPage({
       ) : null}
 
       <div className="results-main">
+      <div ref={stepAnchorRef} className="step-scroll-anchor" aria-hidden="true" />
       {activeStage === "screen" ? (
       <div className="results-stage-header">
         <div>
@@ -2974,6 +2995,9 @@ export function OutputPage({
               : null}
             {layoutSweep && layoutConfigKeys.length > 0 ? (
               <div className="layout-matrix">
+                {layoutMountType === "Compare FT & SAT" ? (
+                  <p className="module-note">Sweep includes Fixed Tilt and Single-Axis Tracker rows.</p>
+                ) : null}
                 {layoutSweep.strategy?.mode_label ? (
                   <p className="module-note layout-strategy-note">
                     <strong>{layoutSweep.strategy.mode_label}</strong>

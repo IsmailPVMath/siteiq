@@ -20,7 +20,7 @@ export interface LayoutIQSnapshot {
   land_cost: LayoutLandCost;
   bifacial: boolean;
   allow_partial_strings: boolean;
-  mount_type: "Fixed Tilt" | "Single-Axis Tracker";
+  mount_type: "Fixed Tilt" | "Single-Axis Tracker" | "Compare FT & SAT";
   portrait: "all" | "1" | "2" | "3" | "4";
   row_alignment: RowAlignment;
   custom_gcr: string;
@@ -53,8 +53,10 @@ export interface LayoutIQSnapshot {
 
 export type LayoutIQSnapshotSource = Partial<LayoutIQSnapshot>;
 
-function mountFromInput(mountType?: string): "Fixed Tilt" | "Single-Axis Tracker" {
-  return mountType === "Single-Axis Tracker" ? "Single-Axis Tracker" : "Fixed Tilt";
+function mountFromInput(mountType?: string): LayoutIQSnapshot["mount_type"] {
+  if (mountType === "Single-Axis Tracker") return "Single-Axis Tracker";
+  if (mountType === "Compare FT & SAT") return "Compare FT & SAT";
+  return "Fixed Tilt";
 }
 
 /** Map legacy presets / road_repeat_m saves to PVCase-style column + band roads. */
@@ -188,7 +190,12 @@ export function layoutIQToWorkflowFields(s: LayoutIQSnapshot): Record<string, un
 export function parseLayoutIQSnapshot(raw: unknown): LayoutIQSnapshot | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
-  const mount = o.mount_type === "Single-Axis Tracker" ? "Single-Axis Tracker" : "Fixed Tilt";
+  const mount =
+    o.mount_type === "Single-Axis Tracker"
+      ? "Single-Axis Tracker"
+      : o.mount_type === "Compare FT & SAT"
+        ? "Compare FT & SAT"
+        : "Fixed Tilt";
   const portrait = String(o.portrait ?? "2");
   const validPortrait = ["all", "1", "2", "3", "4"].includes(portrait)
     ? (portrait as LayoutIQSnapshot["portrait"])

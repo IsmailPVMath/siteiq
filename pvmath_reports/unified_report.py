@@ -17,6 +17,7 @@ from pvmath_brand import PRODUCT_NAME
 from pvmath_geocode import format_coords, resolve_location_label
 from pvmath_pdf import SITEIQ_DISCLAIMER_BODY, append_siteiq_metrics_annexure
 from pvmath_reports.common import ACCENT, ACCENT_HDR, BORDER, DARK, MUTED, base_styles, lp, module_banner, module_divider, section_hdr
+from pvmath_reports.layoutiq_section import build_layoutiq_flowables
 from pvmath_reports.siteiq_section import build_siteiq_flowables
 from pvmath_reports.terrain_section import build_terrain_section_flowables
 from pvmath_reports.yieldiq_section import build_yieldiq_flowables
@@ -276,6 +277,9 @@ def build_unified_pvmath_report_pdf(
     yield_result: Optional[Dict[str, Any]] = None,
     selected_config_key: Optional[str] = None,
     selected_dc_kwp: Optional[float] = None,
+    layout_row: Optional[Dict[str, Any]] = None,
+    layout_bom: Optional[Dict[str, str]] = None,
+    layout_azimuth: float = 180.0,
     boundaries: Optional[Sequence[Sequence[Any]]] = None,
     slope_img_png: Optional[bytes] = None,
     **_kwargs,
@@ -352,6 +356,13 @@ def build_unified_pvmath_report_pdf(
             boundaries=boundaries,
             slope_img_png=slope_img_png,
         )
+
+    story += build_layoutiq_flowables(
+        layout_row,
+        bom=layout_bom,
+        azimuth=layout_azimuth,
+        mount_type=mount_type,
+    )
 
     story += build_yieldiq_flowables(
         yield_result=yield_result,

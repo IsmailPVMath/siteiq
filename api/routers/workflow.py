@@ -613,7 +613,7 @@ async def workflow_layout_dxf(
     body: WorkflowLayoutDetailRequest,
     _user: AuthUser = Depends(get_current_user),
 ):
-    """Download selected LayoutIQ row geometry as a metric local-coordinate DXF."""
+    """Download selected LayoutIQ row geometry as a UTM-georeferenced DXF (WGS84)."""
     loop = asyncio.get_running_loop()
     try:
         detail = await asyncio.wait_for(
@@ -638,7 +638,7 @@ async def workflow_layout_dxf(
     filename = f"{safe_name or 'LayoutIQ'}_{body.config_key}_{body.pitch_m:g}m.dxf"
     return StreamingResponse(
         io.BytesIO(dxf_bytes),
-        media_type="application/dxf",
+        media_type="application/octet-stream",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 

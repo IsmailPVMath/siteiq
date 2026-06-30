@@ -323,64 +323,104 @@ def build_layout_detail(
     }
 
 
-def _add_polyline(msp: Any, poly: Any, layer: str) -> None:
+def _add_polyline(msp: Any, poly: Any, layer: str, *, georef: bool, ref_lat: float, ref_lon: float) -> None:
     if poly.is_empty:
+        return
+    from layoutiq.dxf_layers import iter_poly_rings_utm
+
+    if georef:
+        for ring, _epsg in iter_poly_rings_utm(poly, ref_lat, ref_lon):
+            if len(ring) >= 2:
+                msp.add_lwpolyline(ring, close=True, dxfattribs={"layer": layer})
         return
     if poly.geom_type == "Polygon":
         msp.add_lwpolyline(list(poly.exterior.coords), close=True, dxfattribs={"layer": layer})
     elif poly.geom_type in ("MultiPolygon", "GeometryCollection"):
         for geom in poly.geoms:
             if hasattr(geom, "exterior"):
-                _add_polyline(msp, geom, layer)
+                _add_polyline(msp, geom, layer, georef=False, ref_lat=ref_lat, ref_lon=ref_lon)
 
 
-def export_layout_dxf(detail: Dict[str, Any], project_name: str = "LayoutIQ") -> bytes:
+def export_layout_dxf(detail: Dict[str, Any], project_name: str = "LayoutIQ", *, georef: bool = True) -> bytes:
     if not HAS_EZDXF:
         raise RuntimeError("ezdxf is not installed")
 
     layouts = detail.get("layouts") or ([detail["layout"]] if detail.get("layout") else [])
     if not layouts:
         raise ValueError("No layout geometry to export")
+    ref_lat = float(detail["ref_lat"])
+    ref_lon = float(detail["ref_lon"])
+    n_portrait = int(detail.get("n_portrait") or 1)
+    is_tracker = "Tracker" in str(detail.get("label") or "") or str(detail.get("config_key", "")).startswith("SAT")
+    fixed_layer_name = f"PVM_F_{n_portrait}P"
+
     doc = ezdxf.new("R2010")
     doc.header["$INSUNITS"] = 6  # meters
     msp = doc.modelspace()
-    doc.layers.add("SITE_BOUNDARY", color=5)
-    doc.layers.add("SETBACK_INSET", color=8)
-    doc.layers.add("PV_MODULE", color=140)
-    doc.layers.add("PV_ROWS", color=3)
-    doc.layers.add("LABELS", color=7)
 
+    from layoutiq.dxf_layers import (
+        LAYER_BUILDABLE,
+        LAYER_LABELS,
+        LAYER_SITE,
+        LAYER_STRINGS,
+        tracker_layer,
+    )
     from layoutiq.tracker_styles import TRACKER_UNIT_STYLES
 
-    for n, style in TRACKER_UNIT_STYLES.items():
+    doc.layers.add(LAYER_SITE, color=5)
+    doc.layers.add(LAYER_BUILDABLE, color=8)
+    doc.layers.add(LAYER_STRINGS, color=140)
+    doc.layers.add(fixed_layer_name, color=3)
+    doc.layers.add(LAYER_LABELS, color=7)
+    for style in TRACKER_UNIT_STYLES.values():
         doc.layers.add(style["dxf_layer"], color=style["dxf_color"])
+
+    epsg: int | None = None
+    if georef:
+        try:
+            from layoutiq.dxf_layers import poly_to_utm_coords
+            from pvmath_topo_export import epsg_utm_wgs84
+
+            _ring, epsg = poly_to_utm_coords(layouts[0]["poly_m"], ref_lat, ref_lon)
+        except Exception:
+            georef = False
+            epsg = None
 
     for layout in layouts:
         if not layout.get("tracker_unit_polys"):
             layout["tracker_unit_polys"] = build_tracker_unit_polys(layout)
-        _add_polyline(msp, layout["poly_m"], "SITE_BOUNDARY")
-        _add_polyline(msp, layout["poly_inset"], "SETBACK_INSET")
-        for spoly in layout.get("string_polys") or []:
-            _add_polyline(msp, spoly, "PV_MODULE")
-        for unit in layout.get("tracker_unit_polys") or []:
-            layer = (unit.get("style") or {}).get("dxf_layer", "PV_ROWS")
-            _add_polyline(msp, unit["poly"], layer)
-        if not layout.get("tracker_unit_polys"):
+        _add_polyline(msp, layout["poly_m"], LAYER_SITE, georef=georef, ref_lat=ref_lat, ref_lon=ref_lon)
+        _add_polyline(msp, layout["poly_inset"], LAYER_BUILDABLE, georef=georef, ref_lat=ref_lat, ref_lon=ref_lon)
+        has_units = bool(layout.get("tracker_unit_polys"))
+        if has_units:
+            for spoly in layout.get("string_polys") or []:
+                _add_polyline(msp, spoly, LAYER_STRINGS, georef=georef, ref_lat=ref_lat, ref_lon=ref_lon)
+            for unit in layout["tracker_unit_polys"]:
+                layer = (unit.get("style") or {}).get("dxf_layer") or tracker_layer(unit.get("unit_strings", 1))
+                _add_polyline(msp, unit["poly"], layer, georef=georef, ref_lat=ref_lat, ref_lon=ref_lon)
+        else:
+            for spoly in layout.get("string_polys") or []:
+                _add_polyline(msp, spoly, LAYER_STRINGS, georef=georef, ref_lat=ref_lat, ref_lon=ref_lon)
             for poly in layout.get("rows_polys") or []:
-                _add_polyline(msp, poly, "PV_ROWS")
+                _add_polyline(msp, poly, fixed_layer_name, georef=georef, ref_lat=ref_lat, ref_lon=ref_lon)
 
     summary = (
         f"{project_name} | {detail['label']} | Pitch {detail['pitch_m']} m | "
         f"GCR {detail['gcr']} | {detail['total_modules']} modules | {detail['dc_kwp']} kWp"
     )
-    minx, miny, _maxx, maxy = layouts[0]["poly_m"].bounds
-    msp.add_text(summary, height=2.5, dxfattribs={"layer": "LABELS"}).set_placement((minx, maxy + 5))
-    msp.add_text(
-        f"Local metric coordinates. Reference WGS84 centroid: {detail['ref_lat']:.8f}, {detail['ref_lon']:.8f}",
-        height=2.0,
-        dxfattribs={"layer": "LABELS"},
-    ).set_placement((minx, maxy + 2))
+    if georef and epsg:
+        from layoutiq.dxf_layers import _utm_point
 
-    stream = io.StringIO()
-    doc.write(stream)
-    return stream.getvalue().encode("utf-8")
+        label_x, label_y = _utm_point(0.0, 0.0, ref_lat, ref_lon)
+        crs_note = f"WGS84 UTM EPSG:{epsg} · ref WGS84 {ref_lat:.6f}, {ref_lon:.6f}"
+    else:
+        bounds = layouts[0]["poly_m"].bounds
+        label_x, label_y = bounds[0], bounds[3]
+        crs_note = f"Local metric (m) · ref WGS84 {ref_lat:.8f}, {ref_lon:.8f}"
+
+    msp.add_text(summary, height=2.5, dxfattribs={"layer": LAYER_LABELS}).set_placement((label_x, label_y + 5))
+    msp.add_text(crs_note, height=2.0, dxfattribs={"layer": LAYER_LABELS}).set_placement((label_x, label_y + 2))
+
+    stream = io.BytesIO()
+    doc.write(stream, fmt="bin")
+    return stream.getvalue()

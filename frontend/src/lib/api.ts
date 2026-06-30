@@ -131,6 +131,17 @@ export function changePassword(token: string, currentPassword: string, newPasswo
   });
 }
 
+export async function downloadEngineeringManual(token: string): Promise<Blob> {
+  const res = await fetch(`${API_URL}/api/v1/me/engineering-manual`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail || "Manual download failed");
+  }
+  return res.blob();
+}
+
 export function runWorkflowScreen(token: string, body: WorkflowScreenRequest) {
   return apiFetch<WorkflowScreenResponse>("/api/v1/workflow/screen", token, {
     method: "POST",
