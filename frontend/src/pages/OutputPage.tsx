@@ -834,6 +834,20 @@ export function OutputPage({
   }, []);
 
   async function handleSaveProject() {
+    if (!input) {
+      setSaveMsg("Nothing to save yet — re-run the screening first.");
+      return;
+    }
+    // A debounced silent auto-save may be pending/in-flight when the user clicks
+    // (entering YieldIQ schedules one). Cancel the pending timer and show busy
+    // state immediately so the manual save never looks like a dead click while it
+    // waits its turn in the save chain.
+    if (autoSaveTimer.current) {
+      window.clearTimeout(autoSaveTimer.current);
+      autoSaveTimer.current = null;
+    }
+    setManualSaveBusy(true);
+    setSaveMsg("");
     await persistWorkflow();
   }
 
