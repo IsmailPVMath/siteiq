@@ -1,6 +1,7 @@
 name = "pvmath-website"
 compatibility_date = "2026-06-25"
-pages_build_output_dir = "website-dist"
+# Output dir configured in CF dashboard: website-dist (see runbook).
+# Do not set pages_build_output_dir here — root wrangler.toml is shared with pvmath-react.
 
 # Cloudflare Pages → Create project → Connect to Git → IsmailPVMath/siteiq
 # Production branch: main

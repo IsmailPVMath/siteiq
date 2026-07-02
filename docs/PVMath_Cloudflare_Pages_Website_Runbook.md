@@ -19,6 +19,8 @@ App stays on existing CF Pages project **`pvmath-react`** → `app.pvmath.com`.
 | Framework preset | None |
 | Build command | `bash scripts/build-marketing.sh` |
 | Build output directory | `website-dist` |
+
+**Important (monorepo):** Do **not** rely on root `wrangler.toml` for output dir — it is shared with `pvmath-react`. Set **`website-dist`** explicitly in the CF dashboard Build settings above. If the build log says `frontend/dist not found`, the dashboard output path is wrong or wrangler.toml still has `pages_build_output_dir`.
 | Root directory | `/` (repo root) |
 
 6. **Save and deploy** — first build should finish in ~30–60 s.

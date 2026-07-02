@@ -1,6 +1,8 @@
 name = "pvmath-react"
 compatibility_date = "2026-06-25"
-pages_build_output_dir = "frontend/dist"
+# pages_build_output_dir is set per-project in Cloudflare dashboard (monorepo:
+# pvmath-react → frontend/dist, pvmath-website → website-dist). Do not set here
+# or both Pages projects inherit the same path from wrangler.toml.
 
 # For Cloudflare Pages Git integration:
 # Build command: cd frontend && npm ci && npm run build
