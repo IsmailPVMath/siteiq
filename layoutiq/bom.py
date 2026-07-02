@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import math
+from typing import Any, Dict, Optional
 
 from layoutiq.tracker_units import tracker_unit_bom_lines
+from layoutiq.electrical import electrical_to_bom_lines
 
 
 def compute_bom(
@@ -15,7 +17,8 @@ def compute_bom(
     strings_per_inv: int,
     inv_ac_kw: float,
     target_dc_ac: float = 1.20,
-) -> dict[str, str]:
+    electrical: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     total_mod = layout["total_modules"]
     total_rows = layout["total_rows"]
     is_tracker = bool(layout.get("is_tracker"))
@@ -72,4 +75,16 @@ def compute_bom(
     unit_lines = tracker_unit_bom_lines(layout)
     if unit_lines:
         bom = {**bom, **unit_lines}
+    if electrical:
+        eb = electrical.get("electrical_bom") or {}
+        if eb.get("modules_per_string"):
+            bom["Modules per String"] = str(eb["modules_per_string"])
+        if eb.get("total_strings"):
+            bom["Total Strings"] = f"{int(eb['total_strings']):,}"
+        if eb.get("inverter_count"):
+            bom["Total Inverters"] = f"{int(eb['inverter_count']):,}"
+        if eb.get("dc_ac_ratio"):
+            bom["DC:AC Ratio"] = str(eb["dc_ac_ratio"])
+        bom.update(electrical_to_bom_lines(electrical))
+        bom["electrical"] = eb
     return bom

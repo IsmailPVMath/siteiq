@@ -16,8 +16,13 @@ from api.job_store import get_heavy_job, submit_heavy_job
 from api.schemas.gis import WorkflowGisAnalysisRequest, WorkflowGisAnalysisResponse
 from api.schemas.jobs import JobStartResponse, JobStatusResponse
 from api.schemas.workflow import (
+    EquipmentCuratedResponse,
+    EquipmentListResponse,
+    EquipmentSearchResponse,
     WorkflowLayoutDetailRequest,
     WorkflowLayoutDetailResponse,
+    WorkflowLayoutElectricalRequest,
+    WorkflowLayoutElectricalResponse,
     WorkflowLayoutMatrixRequest,
     WorkflowLayoutMatrixResponse,
     WorkflowLayoutSweepRequest,
@@ -31,6 +36,14 @@ from api.schemas.workflow import (
     WorkflowTerrainMeshRequest,
     WorkflowTerrainMeshResponse,
 )
+from layoutiq.bom import compute_bom
+from layoutiq.equipment_db import (
+    curated_module_layout_specs,
+    list_inverters,
+    list_modules,
+    search_inverters,
+    search_modules,
+)
 from pvmath_supabase import (
     AuthUser,
     PLATFORM_APP,
@@ -42,6 +55,8 @@ from pvmath_workflow.buildable_engine import compute_layout_exclusion_rings
 from pvmath_workflow.gis_analysis import GisAnalysisRequest, run_gis_analysis
 from pvmath_workflow.imported_layout import build_imported_layout_detail
 from pvmath_workflow.layout_detail import build_layout_detail, export_layout_dxf
+from pvmath_workflow.layout_electrical import build_layout_electrical
+from pvmath_workflow.project_report import _merged_layout_for_drawing
 from pvmath_workflow.layout_matrix import run_fixed_tilt_layout_matrix
 from pvmath_workflow.layout_sweep import run_layout_sweep
 from pvmath_workflow.project_report import build_pvmath_report_pdf, build_project_package_zip
@@ -604,6 +619,115 @@ async def workflow_layout_detail(
     return WorkflowLayoutDetailResponse(**data)
 
 
+def _run_layout_electrical(body: WorkflowLayoutElectricalRequest, detail: dict) -> WorkflowLayoutElectricalResponse:
+    from layoutiq.equipment_db import get_module
+
+    merged = _merged_layout_for_drawing(detail)
+    if not merged:
+        raise ValueError("Layout geometry missing for electrical calculation")
+    electrical = build_layout_electrical(
+        detail,
+        module_name=body.electrical_module,
+        inverter_name=body.electrical_inverter,
+        system_voltage_v=body.system_voltage_v,
+        dc_ac_ratio=body.electrical_dc_ac_ratio,
+        strings_per_combiner=body.strings_per_combiner,
+        lat=body.lat if body.lat is not None else detail.get("ref_lat"),
+        pitch_m=body.pitch_m,
+        mount_type=str(detail.get("mount_type") or ""),
+        tmy_t2m=body.tmy_t2m,
+    )
+    try:
+        mod = get_module(body.electrical_module)
+        module_wp = int(mod.get("Wp") or body.module_wp)
+    except KeyError:
+        module_wp = body.module_wp
+    mps = int((electrical.get("electrical_bom") or {}).get("modules_per_string") or body.modules_per_string)
+    bom = compute_bom(
+        merged,
+        module_wp,
+        detail["n_portrait"],
+        mps,
+        4,
+        100.0,
+        target_dc_ac=body.electrical_dc_ac_ratio,
+        electrical=electrical,
+    )
+    warnings = list((electrical.get("string_sizing") or {}).get("warnings") or [])
+    dc_kwp = float(detail.get("dc_kwp") or merged.get("total_modules", 0) * module_wp / 1000)
+    return WorkflowLayoutElectricalResponse(
+        success=True,
+        dc_kwp=dc_kwp,
+        electrical=electrical,
+        bom=bom,
+        warnings=warnings,
+    )
+
+
+@router.get("/workflow/equipment/curated", response_model=EquipmentCuratedResponse)
+async def workflow_equipment_curated(_user: AuthUser = Depends(get_current_user)):
+    """Curated module layout dimensions + equipment name lists for LayoutIQ sidebar."""
+    return EquipmentCuratedResponse(
+        modules=curated_module_layout_specs(),
+        module_names=list_modules(),
+        inverter_names=list_inverters(),
+    )
+
+
+@router.get("/workflow/equipment/modules", response_model=EquipmentListResponse)
+async def workflow_equipment_modules(_user: AuthUser = Depends(get_current_user)):
+    return EquipmentListResponse(modules=list_modules(), inverters=list_inverters())
+
+
+@router.get("/workflow/equipment/inverters", response_model=EquipmentListResponse)
+async def workflow_equipment_inverters(_user: AuthUser = Depends(get_current_user)):
+    return EquipmentListResponse(modules=list_modules(), inverters=list_inverters())
+
+
+@router.get("/workflow/equipment/search", response_model=EquipmentSearchResponse)
+async def workflow_equipment_search(
+    kind: str,
+    q: str,
+    _user: AuthUser = Depends(get_current_user),
+):
+    kind_norm = (kind or "module").lower()
+    query = (q or "").strip()
+    if not query:
+        return EquipmentSearchResponse(query=query, kind=kind_norm, results=[])
+    if kind_norm.startswith("inv"):
+        results = search_inverters(query)
+    else:
+        results = search_modules(query)
+    return EquipmentSearchResponse(query=query, kind=kind_norm, results=results)
+
+
+@router.post("/workflow/layout-electrical", response_model=WorkflowLayoutElectricalResponse)
+async def workflow_layout_electrical(
+    body: WorkflowLayoutElectricalRequest,
+    _user: AuthUser = Depends(get_current_user),
+):
+    """String sizing, cable BOM, and combiner count for a selected layout."""
+    loop = asyncio.get_running_loop()
+    try:
+        detail = await asyncio.wait_for(
+            loop.run_in_executor(None, _layout_detail_payload(body)),
+            timeout=LAYOUT_TIMEOUT_SEC,
+        )
+        result = await asyncio.wait_for(
+            loop.run_in_executor(None, partial(_run_layout_electrical, body, detail)),
+            timeout=LAYOUT_TIMEOUT_SEC,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail=f"Layout electrical timed out after {LAYOUT_TIMEOUT_SEC}s.")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=400, detail=f"Unknown equipment: {exc}") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Layout electrical failed: {exc}") from exc
+    return result
+
+
 @router.post("/workflow/layout-import-dxf", response_model=WorkflowLayoutDetailResponse)
 async def workflow_layout_import_dxf(
     file: UploadFile = File(...),
@@ -909,6 +1033,12 @@ async def workflow_project_package(
                     drawn_by=body.drawn_by,
                     revision=body.revision,
                     terrain_files=terrain_files,
+                    electrical_module=body.electrical_module,
+                    electrical_inverter=body.electrical_inverter,
+                    system_voltage_v=body.system_voltage_v,
+                    electrical_dc_ac_ratio=body.electrical_dc_ac_ratio,
+                    strings_per_combiner=body.strings_per_combiner,
+                    tmy_t2m=body.tmy_t2m,
                 ),
             ),
             timeout=LAYOUT_TIMEOUT_SEC * 2,

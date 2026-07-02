@@ -1,5 +1,6 @@
 import type * as GeoJSON from "geojson";
 import type { LayoutElectricalConfig, RowAlignment } from "./layoutConfig";
+import type { ElectricalScreeningConfig } from "./electrical";
 
 export type WorkflowStep = "input" | "processing" | "output" | "projects";
 
@@ -223,7 +224,7 @@ export interface LayoutSweepRow {
   bom?: Record<string, string>;
 }
 
-export interface WorkflowLayoutDetailRequest extends LayoutElectricalConfig {
+export interface WorkflowLayoutDetailRequest extends LayoutElectricalConfig, ElectricalScreeningConfig {
   project_name?: string;
   boundary?: { lat: number; lon: number }[];
   boundaries?: { lat: number; lon: number }[][];
@@ -258,6 +259,8 @@ export interface WorkflowLayoutDetailResponse {
   ref_lat: number;
   ref_lon: number;
   geojson: GeoJSON.GeoJSON;
+  electrical?: import("./electrical").ElectricalResult | null;
+  bom?: Record<string, unknown> | null;
 }
 
 export interface WorkflowTerrainMeshRequest {
@@ -309,7 +312,7 @@ export interface WorkflowPvmathReportRequest {
   revision?: string;
 }
 
-export interface WorkflowProjectPackageRequest extends WorkflowPvmathReportRequest, LayoutElectricalConfig {
+export interface WorkflowProjectPackageRequest extends WorkflowPvmathReportRequest, LayoutElectricalConfig, ElectricalScreeningConfig {
   boundaries?: { lat: number; lon: number }[][];
   boundary?: { lat: number; lon: number }[];
   restriction_polygons?: { lat: number; lon: number }[][];

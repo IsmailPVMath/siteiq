@@ -22,6 +22,11 @@ import type {
   WorkflowTerrainMeshRequest,
   WorkflowTerrainMeshResponse,
 } from "../types/workflow";
+import type {
+  ElectricalResult,
+  ElectricalScreeningConfig,
+  WorkflowLayoutElectricalResponse,
+} from "../types/electrical";
 import type * as GeoJSON from "geojson";
 
 import { getApiUrl } from "./apiBase";
@@ -236,6 +241,43 @@ export function workflowImportLayoutDxf(token: string, params: LayoutImportDxfPa
 export function workflowLayoutDxf(token: string, body: WorkflowLayoutDetailRequest) {
   return downloadBlob("/api/v1/workflow/layout-dxf", token, body, "application/dxf");
 }
+
+export function workflowEquipmentList(token: string) {
+  return apiFetch<{ modules: string[]; inverters: string[] }>(
+    "/api/v1/workflow/equipment/modules",
+    token,
+  );
+}
+
+export function workflowEquipmentCurated(token: string) {
+  return apiFetch<import("../types/electrical").EquipmentCuratedResponse>(
+    "/api/v1/workflow/equipment/curated",
+    token,
+  );
+}
+
+export function workflowEquipmentSearch(token: string, kind: "module" | "inverter", q: string) {
+  const params = new URLSearchParams({ kind, q });
+  return apiFetch<{ query: string; kind: string; results: Record<string, unknown>[] }>(
+    `/api/v1/workflow/equipment/search?${params}`,
+    token,
+  );
+}
+
+export function workflowLayoutElectrical(
+  token: string,
+  body: WorkflowLayoutDetailRequest &
+    Required<Pick<ElectricalScreeningConfig, "electrical_module" | "electrical_inverter">> & {
+      lat?: number;
+    },
+) {
+  return apiFetch<WorkflowLayoutElectricalResponse>("/api/v1/workflow/layout-electrical", token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export type { ElectricalResult };
 
 export function workflowTerrainMesh(token: string, body: WorkflowTerrainMeshRequest) {
   return apiFetch<WorkflowTerrainMeshResponse>("/api/v1/workflow/terrain-mesh", token, {

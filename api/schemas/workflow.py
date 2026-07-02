@@ -277,6 +277,12 @@ class WorkflowLayoutDetailRequest(BaseModel):
     exclude_tracker_slope: bool = Field(default=False)
     tracker_slope_limit_pct: float = Field(default=6.0, ge=0.5, le=30.0)
     slope_restriction_grid_m: float = Field(default=20.0, ge=5.0, le=100.0)
+    electrical_module: Optional[str] = Field(default=None, max_length=200)
+    electrical_inverter: Optional[str] = Field(default=None, max_length=200)
+    system_voltage_v: int = Field(default=1500, ge=600, le=1500)
+    electrical_dc_ac_ratio: float = Field(default=1.20, ge=1.0, le=1.5)
+    strings_per_combiner: int = Field(default=12, ge=4, le=24)
+    tmy_t2m: Optional[List[float]] = Field(default=None)
     allow_partial_strings: bool = Field(default=False)
     row_alignment: Literal["horizontal", "boundary"] = Field(
         default="horizontal",
@@ -300,6 +306,45 @@ class WorkflowLayoutDetailRequest(BaseModel):
     )
 
 
+class WorkflowLayoutElectricalRequest(WorkflowLayoutDetailRequest):
+    electrical_module: str = Field(..., max_length=200)
+    electrical_inverter: str = Field(..., max_length=200)
+    lat: Optional[float] = Field(default=None, ge=-90, le=90)
+
+
+class WorkflowLayoutElectricalResponse(BaseModel):
+    success: bool
+    dc_kwp: float
+    electrical: Dict[str, Any]
+    bom: Dict[str, Any]
+    warnings: List[str] = Field(default_factory=list)
+
+
+class EquipmentListResponse(BaseModel):
+    modules: List[str]
+    inverters: List[str]
+
+
+class EquipmentSearchResponse(BaseModel):
+    query: str
+    kind: str
+    results: List[Dict[str, Any]]
+
+
+class CuratedModuleLayoutSpec(BaseModel):
+    name: str
+    Wp: int
+    module_h_m: float
+    module_w_m: float
+    bifacial: bool = True
+
+
+class EquipmentCuratedResponse(BaseModel):
+    modules: List[CuratedModuleLayoutSpec]
+    module_names: List[str]
+    inverter_names: List[str]
+
+
 class WorkflowLayoutDetailResponse(BaseModel):
     config_key: str
     label: str
@@ -318,6 +363,8 @@ class WorkflowLayoutDetailResponse(BaseModel):
     ref_lat: float
     ref_lon: float
     geojson: Dict[str, Any]
+    electrical: Optional[Dict[str, Any]] = None
+    bom: Optional[Dict[str, Any]] = None
 
 
 class WorkflowTerrainMeshRequest(BaseModel):
@@ -453,3 +500,9 @@ class WorkflowProjectPackageRequest(WorkflowPvmathReportRequest):
     exclude_tracker_slope: bool = Field(default=False)
     tracker_slope_limit_pct: float = Field(default=6.0, ge=0.5, le=30.0)
     slope_restriction_grid_m: float = Field(default=20.0, ge=5.0, le=100.0)
+    electrical_module: Optional[str] = Field(default=None, max_length=200)
+    electrical_inverter: Optional[str] = Field(default=None, max_length=200)
+    system_voltage_v: int = Field(default=1500, ge=600, le=1500)
+    electrical_dc_ac_ratio: float = Field(default=1.20, ge=1.0, le=1.5)
+    strings_per_combiner: int = Field(default=12, ge=4, le=24)
+    tmy_t2m: Optional[List[float]] = Field(default=None)

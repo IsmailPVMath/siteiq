@@ -27,9 +27,9 @@ export interface LayoutElectricalConfig {
 }
 
 export const DEFAULT_LAYOUT_CONFIG: Required<LayoutElectricalConfig> = {
-  module_h: 2.094,
-  module_w: 1.038,
-  module_wp: 550,
+  module_h: 2.278,
+  module_w: 1.134,
+  module_wp: 620,
   modules_per_string: 28,
   inter_string_gap_m: 0.5,
   tracker_string_options: [8, 7, 6, 5, 4, 3, 2, 1],

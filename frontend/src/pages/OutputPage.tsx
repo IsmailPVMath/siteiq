@@ -26,6 +26,15 @@ import {
   type WorkflowRestore,
 } from "../lib/workflowSave";
 import { mergeLayoutIQSnapshot, type AlignmentSource, type LayoutIQSnapshot } from "../lib/layoutIQSettings";
+import { ElectricalConfigPanel } from "../components/ElectricalConfigPanel";
+import { PvModulePicker } from "../components/PvModulePicker";
+import {
+  DEFAULT_ELECTRICAL_MODULE,
+  defaultInverterForMount,
+  electricalPayloadFrom,
+  type CuratedModuleLayoutSpec,
+  type ElectricalScreeningConfig,
+} from "../types/electrical";
 import {
   azimuthFromAlignmentGuide,
   layoutEffectiveAzimuth,
@@ -57,6 +66,7 @@ import type {
   LayoutSweepRow,
   OutputModuleStage,
   WorkflowGisAnalysisResponse,
+  WorkflowLayoutDetailRequest,
   WorkflowLayoutDetailResponse,
   WorkflowLayoutSweepResponse,
   WorkflowScoreResponse,
@@ -363,6 +373,12 @@ export function OutputPage({
   const dxfInputRef = useRef<HTMLInputElement>(null);
   const [layoutDxfBusy, setLayoutDxfBusy] = useState(false);
   const [layoutDetail, setLayoutDetail] = useState<WorkflowLayoutDetailResponse | null>(null);
+  const [electricalConfig, setElectricalConfig] = useState<ElectricalScreeningConfig>(() => ({
+    ...electricalPayloadFrom(),
+    electrical_module: DEFAULT_ELECTRICAL_MODULE,
+    electrical_inverter: defaultInverterForMount(layoutInit.mount_type),
+  }));
+  const [layoutModuleStale, setLayoutModuleStale] = useState(false);
   const [terrain3DBusy, setTerrain3DBusy] = useState(false);
   const [terrain3D, setTerrain3D] = useState<WorkflowTerrainMeshResponse | null>(null);
   const [layoutOptimization, setLayoutOptimization] = useState<LayoutOptimizationMode>(
@@ -513,6 +529,20 @@ export function OutputPage({
 
   function effectiveNsGap1M(): number {
     return nsGap1M > 0 ? nsGap1M : interStringGap;
+  }
+
+  function handlePvModuleChange(name: string, spec: CuratedModuleLayoutSpec | null) {
+    setElectricalConfig((prev) => ({ ...prev, electrical_module: name }));
+    if (spec) {
+      setModuleWp(spec.Wp);
+      setModuleH(spec.module_h_m);
+      setModuleW(spec.module_w_m);
+    }
+    if (layoutSweep) {
+      setLayoutModuleStale(true);
+      setSelectedLayoutRow(null);
+      setLayoutDetail(null);
+    }
   }
 
   function buildLayoutIQSnapshot(): LayoutIQSnapshot {
@@ -1436,6 +1466,7 @@ export function OutputPage({
       }
       const res = await workflowLayoutSweepJob(token, body);
       setLayoutSweep(res);
+      setLayoutModuleStale(false);
       onUsageChanged?.();
       if (isRefineRun && refineFrom) {
         const match = res.rows.find(
@@ -1595,6 +1626,7 @@ export function OutputPage({
         contour_minor: contourMinor,
         contour_major: contourMajor,
         ...(buildableMask ? { mask_geojson: buildableMask } : {}),
+        ...electricalConfig,
       });
       const safe = (result.project_name || "PVMath").replace(/\s+/g, "_");
       saveBlob(blob, `${safe}_Project_Package.zip`);
@@ -2165,6 +2197,12 @@ export function OutputPage({
             <p className="hint sidebar-hint">Boundary required for layout generation.</p>
           ) : (
             <>
+              <PvModulePicker
+                token={token}
+                value={electricalConfig.electrical_module ?? DEFAULT_ELECTRICAL_MODULE}
+                disabled={!hasBoundary}
+                onChange={handlePvModuleChange}
+              />
               <div className="field">
                 <label htmlFor="layout-mount-type">Mounting system</label>
                 <select
@@ -2390,10 +2428,14 @@ export function OutputPage({
               </div>
               )}
               <details className="sidebar-advanced" open>
-                <summary>Module, strings, trackers &amp; roads</summary>
+                <summary>Strings, trackers &amp; roads</summary>
+                <p className="hint sidebar-hint">
+                  Module Wp and size come from the PV module picker above. Adjust below only for
+                  custom orientation or non-catalog modules.
+                </p>
                 <div className="grid-2 layout-custom-row">
                   <div className="field">
-                    <label htmlFor="out-module-wp">Module Wp</label>
+                    <label htmlFor="out-module-wp">Module Wp (override)</label>
                     <NumberField
                       id="out-module-wp"
                       min={200}
@@ -2712,6 +2754,30 @@ export function OutputPage({
                 edges). When on, places a partial string if at least half a string fits (e.g. 14 of
                 28 modules).
               </p>
+              <ElectricalConfigPanel
+                token={token}
+                mountType={effectiveMountType(
+                  layoutMountType,
+                  selectedLayoutRow,
+                  input?.mount_type || "Fixed Tilt",
+                )}
+                moduleName={electricalConfig.electrical_module ?? DEFAULT_ELECTRICAL_MODULE}
+                lat={result.coordinates.lat}
+                disabled={!hasBoundary}
+                calculateDisabled={!selectedLayoutRow}
+                layoutPayload={selectedLayoutPayload() as WorkflowLayoutDetailRequest | null}
+                value={electricalConfig}
+                onChange={setElectricalConfig}
+                onResult={(r) => {
+                  const mps = r?.electrical_bom?.modules_per_string;
+                  if (mps) setModulesPerString(mps);
+                }}
+              />
+              {layoutModuleStale ? (
+                <p className="field-warning">
+                  Module changed — re-run layout sweep to refresh capacity and kWp.
+                </p>
+              ) : null}
               <button
                 className="btn btn-primary btn-block"
                 type="button"

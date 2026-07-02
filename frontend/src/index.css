@@ -2348,6 +2348,80 @@ body.sb-resizing .results-resizer::before {
   font-size: 0.85rem;
 }
 
+.electrical-panel-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.electrical-panel-toggle h3 {
+  margin: 0;
+}
+
+.electrical-summary {
+  margin-top: 0.5rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.electrical-search-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 40, 24, 0.45);
+  padding: 1rem;
+}
+
+.electrical-search-card {
+  width: min(420px, 100%);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+}
+
+.electrical-search-row {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.6rem 0;
+}
+
+.electrical-search-row input {
+  flex: 1;
+}
+
+.electrical-search-list {
+  list-style: none;
+  margin: 0 0 0.6rem;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.error-text {
+  color: #b42318;
+}
+
+.voc-margin-warn {
+  color: #b45309;
+}
+
+.module-note .voc-margin-warn {
+  background: #fef3c7;
+  padding: 0 0.2em;
+  border-radius: 3px;
+}
+
 .btn-block {
   width: 100%;
   justify-content: center;

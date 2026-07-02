@@ -28,6 +28,11 @@ from reportlab.platypus import (
 
 from layoutiq.bom import compute_bom
 from layoutiq.drawing import make_layout_drawing
+from layoutiq.electrical_pdf import (
+    build_electrical_page2_flowables,
+    build_pvsyst_page_flowables,
+    build_pvsyst_txt,
+)
 from layoutiq.tracker_styles import TRACKER_UNIT_STYLES
 from layoutiq.tracker_units import build_tracker_unit_polys, count_tracker_units_by_size
 from pvmath_geocode import pdf_escape
@@ -270,6 +275,8 @@ def build_layout_sheet_pdf(
     revision: str = "R0",
     excluded_geojson: Optional[Dict[str, Any]] = None,
     constraint_layers: Optional[Dict[str, Any]] = None,
+    electrical: Optional[Dict[str, Any]] = None,
+    elevation_m: Optional[float] = None,
 ) -> bytes:
     """A1 landscape engineering sheet: large centred top-view layout + title block sidebar.
 
@@ -452,7 +459,26 @@ def build_layout_sheet_pdf(
         ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
     ]))
 
-    doc.build([frame])
+    story: List[Any] = [frame]
+    if electrical:
+        st = _styles()
+        story += build_electrical_page2_flowables(
+            project_name=project_name,
+            layout=layout,
+            electrical=electrical,
+            dc_kwp=float(detail.get("dc_kwp") or 0),
+            st=st,
+        )
+        story += build_pvsyst_page_flowables(
+            project_name=project_name,
+            lat=lat,
+            lon=lon,
+            elevation_m=elevation_m,
+            detail=detail,
+            electrical=electrical,
+            st=st,
+        )
+    doc.build(story)
     return buf.getvalue()
 
 
@@ -470,7 +496,11 @@ def build_bom_csv(bom: Dict[str, str], project_name: str = "Project") -> bytes:
     writer.writerow([])
     writer.writerow(["Item", "Value"])
     for key, val in bom.items():
-        writer.writerow([key, val])
+        if key == "electrical" and isinstance(val, dict):
+            for ek, ev in val.items():
+                writer.writerow([f"Electrical — {ek}", ev if ev is not None else "—"])
+            continue
+        writer.writerow([key, val if not isinstance(val, dict) else str(val)])
     return out.getvalue().encode("utf-8-sig")
 
 
@@ -518,6 +548,12 @@ def build_project_package_zip(
     drawn_by: str = "PVMath LayoutIQ",
     revision: str = "R0",
     terrain_files: Optional[Dict[str, bytes]] = None,
+    electrical_module: Optional[str] = None,
+    electrical_inverter: Optional[str] = None,
+    system_voltage_v: int = 1500,
+    electrical_dc_ac_ratio: float = 1.20,
+    strings_per_combiner: int = 12,
+    tmy_t2m: Optional[List[float]] = None,
 ) -> bytes:
     """ZIP: PVMath report PDF, A1 layout+BOM PDF, BOM CSV, layout DXF, and an
     optional ``Terrain Data/`` folder (reference JSON, UTM points CSV,
@@ -556,7 +592,26 @@ def build_project_package_zip(
     merged = _merged_layout_for_drawing(detail)
     lp = detail.get("layout_params") or {}
     mps = int(lp.get("modules_per_string") or modules_per_string)
-    bom = compute_bom(merged, module_wp, detail["n_portrait"], mps, 4, 100.0)
+
+    electrical = None
+    if electrical_module and electrical_inverter:
+        from pvmath_workflow.layout_electrical import build_layout_electrical
+
+        electrical = build_layout_electrical(
+            detail,
+            module_name=electrical_module,
+            inverter_name=electrical_inverter,
+            system_voltage_v=system_voltage_v,
+            dc_ac_ratio=electrical_dc_ac_ratio,
+            strings_per_combiner=strings_per_combiner,
+            lat=lat,
+            pitch_m=pitch_m,
+            mount_type=mount_type,
+            tmy_t2m=tmy_t2m,
+        )
+        mps = int((electrical.get("electrical_bom") or {}).get("modules_per_string") or mps)
+
+    bom = compute_bom(merged, module_wp, detail["n_portrait"], mps, 4, 100.0, electrical=electrical)
 
     safe = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in project_name)[:50] or "Project"
 
@@ -578,6 +633,10 @@ def build_project_package_zip(
         selected_dc_kwp=float(layout_row["dc_kwp"]) if layout_row and layout_row.get("dc_kwp") else None,
         boundaries=boundaries,
     )
+    elevation_m = None
+    if topo and isinstance(topo, dict):
+        elevation_m = topo.get("elevation_m") or topo.get("ref_elevation_m")
+
     a1_pdf = build_layout_sheet_pdf(
         project_name=project_name,
         detail=detail,
@@ -593,6 +652,8 @@ def build_project_package_zip(
         revision=revision,
         excluded_geojson=restriction_geojson,
         constraint_layers=constraint_layers,
+        electrical=electrical,
+        elevation_m=elevation_m,
     )
     bom_csv = build_bom_csv(bom, project_name)
     dxf_bytes = export_layout_dxf(detail, project_name)
@@ -603,6 +664,18 @@ def build_project_package_zip(
         zf.writestr(f"{safe}_Layout_A1.pdf", a1_pdf)
         zf.writestr(f"{safe}_BOM.csv", bom_csv)
         zf.writestr(f"{safe}_{config_key}_{pitch_m:g}m_layout.dxf", dxf_bytes)
+        if electrical:
+            zf.writestr(
+                f"{safe}_PVsyst_Input.txt",
+                build_pvsyst_txt(
+                    electrical,
+                    detail,
+                    lat=lat,
+                    lon=lon,
+                    elevation_m=elevation_m,
+                    project_name=project_name,
+                ),
+            )
         for fname, data in (terrain_files or {}).items():
             if data:
                 zf.writestr(f"Terrain Data/{fname}", data)
