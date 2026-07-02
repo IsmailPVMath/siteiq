@@ -20,5 +20,6 @@ altair
 fastapi
 uvicorn[standard]
 python-multipart
+httpx
 redis
 rq

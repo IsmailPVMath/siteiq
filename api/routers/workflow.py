@@ -695,9 +695,9 @@ async def workflow_equipment_search(
     if not query:
         return EquipmentSearchResponse(query=query, kind=kind_norm, results=[])
     if kind_norm.startswith("inv"):
-        results = search_inverters(query)
+        results = await search_inverters(query)
     else:
-        results = search_modules(query)
+        results = await search_modules(query)
     return EquipmentSearchResponse(query=query, kind=kind_norm, results=results)
 
 

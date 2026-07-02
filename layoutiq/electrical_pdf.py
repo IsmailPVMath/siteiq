@@ -45,6 +45,39 @@ def _world_to_drawing(x: float, y: float, bbox, dw: float, dh: float, margin: fl
     return ox + (x - minx) * scale, oy + (y - miny) * scale
 
 
+def _polys_bounds(polys: List[Any]) -> Optional[Tuple[float, float, float, float]]:
+    xs: List[float] = []
+    ys: List[float] = []
+    for poly in polys:
+        if poly is None or getattr(poly, "is_empty", True):
+            continue
+        bx = poly.bounds
+        xs.extend([bx[0], bx[2]])
+        ys.extend([bx[1], bx[3]])
+    if not xs:
+        return None
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def _draw_row_rect(d: Drawing, poly, bbox, width: float, height: float) -> None:
+    if poly is None or getattr(poly, "is_empty", True):
+        return
+    bx = poly.bounds
+    x1, y1 = _world_to_drawing(bx[0], bx[1], bbox, width, height)
+    x2, y2 = _world_to_drawing(bx[2], bx[3], bbox, width, height)
+    d.add(
+        Rect(
+            min(x1, x2),
+            min(y1, y2),
+            abs(x2 - x1),
+            abs(y2 - y1),
+            fillColor=colors.HexColor("#e8ece8"),
+            strokeColor=colors.HexColor("#b0b8b0"),
+            strokeWidth=0.4,
+        )
+    )
+
+
 def build_spatial_electrical_drawing(
     layout: Dict[str, Any],
     electrical: Dict[str, Any],
@@ -57,17 +90,44 @@ def build_spatial_electrical_drawing(
 
     bbox = _layout_bbox(layout)
     rows = layout.get("rows_data") or []
+    row_polys = layout.get("rows_polys") or []
     n_inv = int((electrical.get("string_sizing") or {}).get("n_inverters") or 1)
-    inv_kw = (electrical.get("string_sizing") or {}).get("inverter_model", "INV")
+    simplify_rows = len(row_polys) > 300
 
-    # PV rows (light grey)
-    for poly in layout.get("rows_polys") or []:
-        if poly is None or getattr(poly, "is_empty", True):
-            continue
-        bx = poly.bounds
-        x1, y1 = _world_to_drawing(bx[0], bx[1], bbox, width, height)
-        x2, y2 = _world_to_drawing(bx[2], bx[3], bbox, width, height)
-        d.add(Rect(min(x1, x2), min(y1, y2), abs(x2 - x1), abs(y2 - y1), fillColor=colors.HexColor("#e8ece8"), strokeColor=colors.HexColor("#b0b8b0"), strokeWidth=0.4))
+    # PV rows — individual rectangles, or block envelopes on very large sites
+    if simplify_rows and rows:
+        block_size = max(1, len(rows) // max(n_inv, 1))
+        for i in range(n_inv):
+            start = i * block_size
+            chunk_polys = row_polys[start : start + block_size]
+            bounds = _polys_bounds(chunk_polys)
+            if not bounds:
+                continue
+            x1, y1 = _world_to_drawing(bounds[0], bounds[1], bbox, width, height)
+            x2, y2 = _world_to_drawing(bounds[2], bounds[3], bbox, width, height)
+            d.add(
+                Rect(
+                    min(x1, x2),
+                    min(y1, y2),
+                    abs(x2 - x1),
+                    abs(y2 - y1),
+                    fillColor=colors.HexColor("#e8ece8"),
+                    strokeColor=colors.HexColor("#9aa89a"),
+                    strokeWidth=0.6,
+                )
+            )
+        d.add(
+            RLString(
+                12,
+                height - 28,
+                f"Row blocks ({len(row_polys)} rows simplified)",
+                fontSize=6,
+                fillColor=colors.HexColor("#666"),
+            )
+        )
+    else:
+        for poly in row_polys:
+            _draw_row_rect(d, poly, bbox, width, height)
 
     # Inverter stations at row-block centroids
     block_size = max(1, len(rows) // max(n_inv, 1))
