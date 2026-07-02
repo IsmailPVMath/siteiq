@@ -1839,6 +1839,88 @@ body.sb-resizing .results-resizer::before {
   font-size: 0.8rem;
 }
 
+.help-tip {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: 0.25rem;
+}
+
+.help-tip-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.05rem;
+  height: 1.05rem;
+  padding: 0;
+  border: 1px solid #b8c9ba;
+  border-radius: 50%;
+  background: #fff;
+  color: #3d6b4a;
+  font-size: 0.62rem;
+  font-weight: 800;
+  font-style: italic;
+  font-family: Georgia, "Times New Roman", serif;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.help-tip-trigger:hover,
+.help-tip-trigger:focus-visible {
+  border-color: var(--green, #1d9e52);
+  color: var(--green-dk, #145f34);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(29, 158, 82, 0.15);
+}
+
+.help-tip-panel {
+  position: absolute;
+  z-index: 40;
+  left: 0;
+  top: calc(100% + 0.35rem);
+  width: min(18rem, 72vw);
+  padding: 0.75rem 0.85rem;
+  border: 1px solid #c8d8cb;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(26, 46, 26, 0.12);
+  text-align: left;
+}
+
+.help-tip-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1a2e1a;
+}
+
+.help-tip-body {
+  margin: 0 0 0.45rem;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: #3a5a3a;
+  font-weight: 400;
+}
+
+.help-tip-body:last-of-type {
+  margin-bottom: 0.55rem;
+}
+
+.help-tip-link {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--green-dk, #145f34);
+  text-decoration: none;
+}
+
+.help-tip-link:hover {
+  text-decoration: underline;
+}
+
+.slope-summary-table th .help-tip {
+  margin-left: 0.15rem;
+}
+
 /* Slope section: interactive top-view map + distribution table */
 .slope-section {
   margin-top: 1rem;

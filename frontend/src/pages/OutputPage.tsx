@@ -38,6 +38,7 @@ import { YieldResultsPanel } from "../components/YieldResultsPanel";
 import { RevenueIQPage } from "./RevenueIQPage";
 import { REVENUEIQ_ENABLED } from "../lib/revenueiqEnabled";
 import { SlopeTopMap } from "../components/SlopeTopMap";
+import { HelpTip } from "../components/HelpTip";
 import { Terrain3DView } from "../components/Terrain3DView";
 import type { GateAnalyzeRequest } from "../types/gate";
 import {
@@ -1754,10 +1755,23 @@ export function OutputPage({
         ) : null}
         {crMean !== null || crP95 !== null ? (
           <p className="module-note terrain-crossrow">
-            <strong>Cross-row slope (tracker screening):</strong>{" "}
-            {crMean !== null ? `mean ${crMean.toFixed(1)}%` : ""}
+            <strong>
+              Cross-row slope (tracker screening)
+              <HelpTip topic="cross_row" />
+            </strong>
+            {": "}
+            {crMean !== null ? (
+              <>
+                mean {crMean.toFixed(1)}%
+              </>
+            ) : null}
             {crMean !== null && crP95 !== null ? " · " : ""}
-            {crP95 !== null ? `95th pctile ${crP95.toFixed(1)}%` : ""}
+            {crP95 !== null ? (
+              <>
+                95th pctile {crP95.toFixed(1)}%
+                <HelpTip topic="cross_row_p95" />
+              </>
+            ) : null}
           </p>
         ) : null}
       </div>
@@ -1830,13 +1844,19 @@ export function OutputPage({
             </tr>
             {crMean !== null ? (
               <tr>
-                <th>Cross-row mean</th>
+                <th>
+                  Cross-row mean
+                  <HelpTip topic="cross_row" />
+                </th>
                 <td>{crMean.toFixed(1)}%</td>
               </tr>
             ) : null}
             {crP95 !== null ? (
               <tr>
-                <th>Cross-row 95th pctile</th>
+                <th>
+                  Cross-row 95th pctile
+                  <HelpTip topic="cross_row_p95" />
+                </th>
                 <td>{crP95.toFixed(1)}%</td>
               </tr>
             ) : null}

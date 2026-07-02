@@ -63,10 +63,24 @@ HELP: dict[str, dict[str, str]] = {
         "slug": "mean-slope-vs-cross-row",
         "tooltip": "Grade perpendicular to tracker rows — clearance driver.",
         "body": (
-            "**Cross-row slope** measures grade **across** tracker row direction. "
-            "Large cross-row changes drive structural clearance, drainage, and grading cost.\n\n"
+            "**Cross-row slope** is terrain grade **perpendicular** to single-axis tracker rows "
+            "(rows run north–south; cross-row is the east–west component).\n\n"
+            "It measures how much the ground rises or falls as you move **across** a row — "
+            "driving structural clearance, drainage, and grading cost.\n\n"
             "PVMath flags tracker sites when cross-row statistics suggest **review zones** "
             "even if mean slope looks excellent."
+        ),
+    },
+    "cross_row_p95": {
+        "title": "Cross-row 95th percentile",
+        "slug": "mean-slope-vs-cross-row",
+        "tooltip": "Grade exceeded on only 5% of the site — rolling-terrain flag.",
+        "body": (
+            "The **95th percentile cross-row slope** is the grade exceeded on only **5%** "
+            "of valid grid points inside your boundary.\n\n"
+            "It highlights **worst typical** cross-row conditions — not a single outlier cell. "
+            "Rolling sites often show a modest **mean** cross-row slope but a high **95th "
+            "percentile**, meaning localized areas still need tracker clearance or grading review."
         ),
     },
     "terrain_score": {

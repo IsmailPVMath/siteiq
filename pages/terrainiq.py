@@ -65,7 +65,7 @@ from pvmath_topo_export import (
     sanitize_topo_basename,
     utm_grids_from_latlon,
 )
-from pvmath_help import help_caption
+from pvmath_help import help_caption, help_popover
 from pvmath_capacity import (
     capacity_band,
     format_mwp_range,
@@ -902,11 +902,16 @@ with right:
             st.markdown(yield_cross_ref_terrainiq_html(_yield_xref), unsafe_allow_html=True)
 
         if _extras.get("cross_row_mean") is not None:
-            st.caption(
-                f"Cross-row slope (tracker screening): mean **{_extras['cross_row_mean']:.1f}%** · "
-                f"95th %ile **{_extras['cross_row_p95']:.1f}%**"
-            )
-            help_caption("cross_row_slope")
+            _cr_col, _cr_i1, _cr_i2 = st.columns([22, 1, 1])
+            with _cr_col:
+                st.caption(
+                    f"Cross-row slope (tracker screening): mean **{_extras['cross_row_mean']:.1f}%** · "
+                    f"95th %ile **{_extras['cross_row_p95']:.1f}%**"
+                )
+            with _cr_i1:
+                help_popover("cross_row_slope", "ⓘ")
+            with _cr_i2:
+                help_popover("cross_row_p95", "p95")
 
         st.markdown(
             f'<div style="font-size:1rem;font-weight:600;color:#1a1a1a;'
