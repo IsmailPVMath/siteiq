@@ -1,0 +1,15 @@
+name = "pvmath-website"
+compatibility_date = "2026-06-25"
+pages_build_output_dir = "website-dist"
+
+# Cloudflare Pages → Create project → Connect to Git → IsmailPVMath/siteiq
+# Production branch: main
+# Build command:    bash scripts/build-marketing.sh
+# Build output dir: website-dist
+# Custom domains:   pvmath.com, www.pvmath.com
+#
+# Build watch paths (Settings → Builds → watch paths):
+#   index.html, impressum.html, privacy.html, terms.html, sitemap.xml,
+#   assets/**, services/**, guides/**, scripts/build-marketing.sh
+#
+# After go-live: GitHub repo Settings → Pages → Source: None (disable GH Pages)

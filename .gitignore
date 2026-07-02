@@ -17,6 +17,9 @@ frontend/node_modules/
 frontend/dist/
 frontend/.env.local
 
+# Marketing site build output (Cloudflare Pages)
+website-dist/
+
 # Marketing drafts (local working copies — regenerate with scripts/pvmath_content_bot.py)
 marketing/drafts/*.md
 !marketing/drafts/.gitkeep
