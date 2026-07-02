@@ -430,6 +430,7 @@
     .preview-metrics li { display: flex; justify-content: space-between; align-items: center; font-size: 0.73rem; gap: 0.4rem; }
     .preview-metrics .metric-label { color: #5a7a5a; font-weight: 500; }
     .preview-metrics .metric-value { margin: 0; font-weight: 700; text-align: right; }
+    .metrics-divider { border-top: 1px solid #e0eae0; margin: 0.35rem 0; list-style: none; }
     .preview-badge { border-radius: 4px; padding: 1px 5px; font-size: 0.6rem; font-weight: 700; white-space: nowrap; }
     .preview-badge.pos { background: #d1fae5; color: #065f46; }
     .preview-badge.warn { background: #fef3c7; color: #92400e; }
@@ -736,7 +737,7 @@
       </div>
       <div class="hero-scan-item">
         <strong class="layoutiq">&#9638; LayoutIQ</strong>
-        <span data-i18n="hero.scan.layoutiq">Auto-pack fixed-tilt or tracker rows with GIS setbacks &amp; 3D preview.</span>
+        <span data-i18n="hero.scan.layoutiq">Auto-pack rows, size strings &amp; cables, get A1 electrical drawing.</span>
       </div>
       <div class="hero-scan-item">
         <strong class="yieldiq">&#9889; YieldIQ</strong>
@@ -941,6 +942,14 @@
               <line x1="32" y1="86" x2="216" y2="90"/>
               <line x1="31" y1="98" x2="150" y2="100"/>
             </g>
+            <rect x="77" y="60" width="6" height="4" fill="#0e9bb0"/>
+            <text x="80" y="63.5" font-size="4.5" fill="#0e9bb0" font-family="Arial,sans-serif" font-weight="700" text-anchor="middle">INV</text>
+            <rect x="172" y="53" width="6" height="4" fill="#0e9bb0"/>
+            <text x="175" y="56.5" font-size="4.5" fill="#0e9bb0" font-family="Arial,sans-serif" font-weight="700" text-anchor="middle">INV</text>
+            <line x1="80" y1="64" x2="230" y2="95" stroke="#e85d04" stroke-width="0.8"/>
+            <line x1="175" y1="57" x2="230" y2="95" stroke="#e85d04" stroke-width="0.8"/>
+            <rect x="230" y="95" width="8" height="8" fill="#d0d0d0" stroke="#888" stroke-width="0.6"/>
+            <text x="234" y="101.5" font-size="4.5" fill="#666" font-family="Arial,sans-serif" font-weight="700" text-anchor="middle">XFMR</text>
             <rect x="150" y="84" width="80" height="22" fill="#fff8e6" stroke="#f0b429" stroke-width="1.2" opacity="0.85"/>
             <text x="190" y="98" font-size="6.5" fill="#7a4f00" font-family="Arial,sans-serif" font-weight="700" text-anchor="middle">setback</text>
           </svg>
@@ -950,13 +959,20 @@
             <li><span class="metric-label">DC capacity</span><span class="metric-value">68.4 MWp</span></li>
             <li><span class="metric-label">Modules</span><span class="metric-value">112,400</span></li>
             <li><span class="metric-label">Pitch / GCR</span><span class="metric-value">6.1 m / 0.34</span></li>
+            <li class="metrics-divider" aria-hidden="true"></li>
+            <li><span class="metric-label">&#9889; String sizing</span><span class="metric-value">35</span></li>
+            <li><span class="metric-label">String Voc max</span><span class="metric-value">1,455 V <span class="preview-badge pos">&lt; 1500 V &#10003;</span></span></li>
+            <li><span class="metric-label">DC string cable</span><span class="metric-value">10 mm&sup2; <span class="preview-metric-sub">0.95% drop</span></span></li>
+            <li><span class="metric-label">Inverters</span><span class="metric-value">4 &times; 3.1 MW</span></li>
           </ul>
           <div class="preview-card-foot">
             <div class="preview-actions teal">
               <div>&#128230; Project ZIP</div>
               <div>&#128208; Layout DXF</div>
+              <div>&#9889; A1 Electrical PDF</div>
+              <div>&#128196; PVsyst Export</div>
             </div>
-            <p class="preview-source">3D terrain preview &middot; GIS setbacks applied</p>
+            <p class="preview-source">3D terrain preview &middot; GIS setbacks &middot; IEC string &amp; cable sizing</p>
           </div>
         </div>
       </article>
@@ -1072,12 +1088,15 @@
         <div class="module-pill pill-live" data-i18n="pill.live">Live Now</div>
         <div class="module-num">Step 4</div>
         <div class="module-name teal">LayoutIQ</div>
-        <p class="module-tagline teal" data-i18n="layoutiq.tagline">Fixed tilt or single-axis tracker — auto-packed rows on your buildable area.</p>
+        <p class="module-tagline teal" data-i18n="layoutiq.tagline">Layout to electrical BOM — rows, strings, cables, and A1 drawing in one step.</p>
         <ul class="module-features">
-          <li data-i18n="layoutiq.f1">Mount type, pitch &amp; GCR</li>
-          <li data-i18n="layoutiq.f2">Row packing with GIS setbacks</li>
-          <li data-i18n="layoutiq.f3">DC capacity &amp; module count</li>
-          <li data-i18n="layoutiq.f4">3D terrain + layout preview</li>
+          <li data-i18n="layoutiq.f1">&#9638; Row packing + GIS setbacks</li>
+          <li data-i18n="layoutiq.f2">&#9889; DC capacity, GCR sweep &amp; BOM</li>
+          <li data-i18n="layoutiq.f3">&#128506; 3D terrain + layout preview</li>
+          <li class="feature-group-label" style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;color:#0e9bb0;margin-top:0.5rem;list-style:none;" data-i18n="layoutiq.groupElectrical">Electrical screening</li>
+          <li data-i18n="layoutiq.f4">&#128268; String &amp; cable sizing (IEC-rated)</li>
+          <li data-i18n="layoutiq.f5">&#128208; A1 electrical layout drawing</li>
+          <li data-i18n="layoutiq.f6">&#128196; PVsyst parameter export</li>
         </ul>
       </div>
 
@@ -1220,10 +1239,10 @@
             </div>
             <div>
               <div class="wf-stage-name teal" data-i18n="how.layoutiq.title">LayoutIQ &mdash; Auto Layout</div>
-              <div class="wf-sub" data-i18n="how.layoutiq.sub">Step 4 &middot; Mount type chosen here &middot; 3D preview</div>
+              <div class="wf-sub" data-i18n="how.layoutiq.sub">Step 4 &middot; Layout + electrical &middot; A1 drawing + PVsyst export</div>
             </div>
           </div>
-          <p class="wf-does" data-i18n="wf.layoutiq.does">Pick Fixed Tilt or Single-Axis Tracker, then auto-pack rows on the buildable polygon with GIS setbacks applied.</p>
+          <p class="wf-does" data-i18n="wf.layoutiq.does">Pick Fixed Tilt or tracker, auto-pack rows with GIS setbacks, then size strings and cables — A1 electrical layout drawing and PVsyst export included.</p>
           <div class="wf-chips" data-i18n-chips="wf.layoutiq.get"></div>
         </div>
       </div>
@@ -1599,7 +1618,7 @@ var T = {
     'hero.btn1':'Try it Free →','hero.btn2':'See Real Outputs',
     'hero.scan.siteiq':'Site screening with solar, flood & regulatory checks. GIS buildable area with auto-detected setbacks from roads, rivers, buildings & more.',
     'hero.scan.terrainiq':'Slope analysis on region-routed DEM. Export surface + contours to CAD.',
-    'hero.scan.layoutiq':'Auto-pack fixed-tilt or tracker rows with GIS setbacks & 3D preview.',
+    'hero.scan.layoutiq':'Auto-pack rows, size strings & cables, get A1 electrical drawing.',
     'hero.scan.yieldiq':'PVGIS yield for your chosen mount and layout — specific yield, PR, and capacity factor.',
     'hero.scan.revenueiq':'CAPEX bands, tariff revenue, LCOE, IRR, and payback from your layout and yield.',
     'stat.modules':'Workflow Steps','stat.speed':'Site Screening Time','stat.time-val':'≤ 10 min',
@@ -1627,9 +1646,11 @@ var T = {
     'yieldiq.f3':'Specific yield, PR & CF','yieldiq.f4':'PVGIS-based feasibility',
     'yieldiq.disclaimer':'Feasibility only. Not a substitute for bankable assessment (PVsyst, DNV).',
     'yieldiq.btn':'Open in App →',
-    'layoutiq.tagline':'Fixed tilt or single-axis tracker — auto-packed rows on your buildable area.',
-    'layoutiq.f1':'Mount type, pitch & GCR','layoutiq.f2':'Row packing with GIS setbacks',
-    'layoutiq.f3':'DC capacity & module count','layoutiq.f4':'3D terrain + layout preview',
+    'layoutiq.tagline':'Layout to electrical BOM — rows, strings, cables, and A1 drawing in one step.',
+    'layoutiq.f1':'▦ Row packing + GIS setbacks','layoutiq.f2':'⚡ DC capacity, GCR sweep & BOM',
+    'layoutiq.f3':'🗺 3D terrain + layout preview','layoutiq.groupElectrical':'Electrical screening',
+    'layoutiq.f4':'🔌 String & cable sizing (IEC-rated)','layoutiq.f5':'📐 A1 electrical layout drawing',
+    'layoutiq.f6':'📄 PVsyst parameter export',
     'layoutiq.btn':'Open in App →',
     'revenueiq.tagline':'Screen CAPEX, revenue, and returns before you open the financial model.',
     'revenueiq.f1':'10-component CAPEX bands (€/Wp or local currency)',
@@ -1647,7 +1668,7 @@ var T = {
     'how.setup.full.title':'Upload KML / KMZ','how.setup.full.p':'Import a parcel polygon — unlocks TerrainIQ, LayoutIQ, YieldIQ & RevenueIQ',
     'how.siteiq.title':'SiteIQ — Site Screening','how.siteiq.sub':'Step 2 · Solar · flood · regulatory · buildable area',
     'how.terrainiq.title':'TerrainIQ — Slope Analysis','how.terrainiq.sub':'Step 3 · Needs a boundary · CAD exports',
-    'how.layoutiq.title':'LayoutIQ — Auto Layout','how.layoutiq.sub':'Step 4 · Mount type chosen here · 3D preview',
+    'how.layoutiq.title':'LayoutIQ — Auto Layout','how.layoutiq.sub':'Step 4 · Layout + electrical · A1 drawing + PVsyst export',
     'how.yieldiq.title':'YieldIQ — Yield Estimation','how.yieldiq.sub':'Step 5 · Auto-runs from your layout · Feasibility only',
     'how.revenueiq.title':'RevenueIQ — Economic Screening','how.revenueiq.sub':'Step 6 · Uses LayoutIQ capacity & YieldIQ energy · Screening only',
     'wf.setup.sub':'One login · one project context',
@@ -1657,15 +1678,15 @@ var T = {
     'wf.siteiq.get':'Monthly GHI chart|Buildable % & land score|OSM constraint map',
     'wf.terrainiq.does':'Region-routed DEM inside your boundary — slope heatmaps, cross-row grades and engineering verdicts before you order a topo survey.',
     'wf.terrainiq.get':'EEA-10 / 3DEP / FABDEM|Terrain PDF|DXF + LandXML',
-    'wf.layoutiq.does':'Pick Fixed Tilt or Single-Axis Tracker, then auto-pack rows on the buildable polygon with GIS setbacks applied.',
-    'wf.layoutiq.get':'Mount type & GCR|DC capacity & modules|3D terrain preview',
+    'wf.layoutiq.does':'Pick Fixed Tilt or tracker, auto-pack rows with GIS setbacks, then size strings and cables — A1 electrical layout drawing and PVsyst export included.',
+    'wf.layoutiq.get':'Mount type & GCR sweep|DC capacity & BOM|⚡ String & cable sizing|📐 A1 electrical drawing|📄 PVsyst export',
     'wf.yieldiq.does':'PVGIS yield for your chosen LayoutIQ mount — Fixed 1P–4P or SAT 1P/2P. Runs automatically when you proceed, no re-entry.',
     'wf.yieldiq.get':'Specific yield & PR|Monthly energy chart|Feasibility only',
     'wf.revenueiq.does':'CAPEX bands, tariff revenue, OPEX, LCOE, IRR, NPV, and payback from your layout and yield — country-aware auction/PPA modes and Agri-PV adjustments.',
     'wf.revenueiq.get':'CAPEX €/Wp bands|IRR & payback range|Economic score factor',
     'wf.report.title':'Combined PVMath report',
     'wf.report.p':'SiteIQ + TerrainIQ + LayoutIQ + YieldIQ + RevenueIQ in one export — project ZIP, layout DXF, terrain LandXML, economic PDF section, and screening report.',
-    'wf.report.get':'One project ZIP|Layout DXF|Terrain LandXML',
+    'wf.report.get':'One project ZIP|Layout DXF|Terrain LandXML|⚡ A1 Electrical PDF|📄 PVsyst Input',
     'wf.report.cta':'Open in App →',
     'why.label':'Why PVMath','why.title':'Engineering-grade screening estimates.<br>Not a bankable study.',
     'why.sub':'Industry-standard datasets. Screening-grade speed. Honest limits built in.',
@@ -1752,7 +1773,7 @@ var T = {
     'hero.btn1':'Kostenlos testen →','hero.btn2':'Echte Ergebnisse ansehen',
     'hero.scan.siteiq':'Standort-Screening mit Solar-, Hochwasser- & Regulierungsprüfung. GIS-Bebaubare Fläche mit automatischen Abständen zu Straßen, Flüssen, Gebäuden u. a.',
     'hero.scan.terrainiq':'Neigungsanalyse auf regionalem DEM. Oberfläche + Höhenlinien nach CAD.',
-    'hero.scan.layoutiq':'Fest- oder Tracker-Reihen automatisch packen, mit GIS-Abständen & 3D-Vorschau.',
+    'hero.scan.layoutiq':'Reihen packen, Strings & Kabel auslegen, A1-Elektroplan erhalten.',
     'hero.scan.yieldiq':'PVGIS-Ertrag für gewählte Aufständerung und Layout — spezifischer Ertrag, PR und Kapazitätsfaktor.',
     'hero.scan.revenueiq':'CAPEX-Bänder, Tariferlöse, LCOE, IRR und Amortisation aus Layout und Ertrag.',
     'stat.modules':'Workflow-Schritte','stat.speed':'Standortprüfungszeit','stat.time-val':'≤ 10 Min',
@@ -1780,9 +1801,11 @@ var T = {
     'yieldiq.f3':'Spez. Ertrag, PR & CF','yieldiq.f4':'PVGIS-basierte Machbarkeit',
     'yieldiq.disclaimer':'Nur Machbarkeit. Kein Ersatz für bankfähiges Gutachten (PVsyst, DNV).',
     'yieldiq.btn':'In der App öffnen →',
-    'layoutiq.tagline':'Festaufständerung oder Einachsen-Tracker — automatisch gepackte Reihen auf der baubaren Fläche.',
-    'layoutiq.f1':'Montageart, Pitch & GCR','layoutiq.f2':'Reihenpackung mit GIS-Abständen',
-    'layoutiq.f3':'DC-Leistung & Modulanzahl','layoutiq.f4':'3D-Gelände- und Layout-Vorschau',
+    'layoutiq.tagline':'Von der Grenze zum Elektro-Stücklisten — Reihen, Strings, Kabel und A1-Plan in einem Schritt.',
+    'layoutiq.f1':'▦ Reihenpackung + GIS-Abstände','layoutiq.f2':'⚡ DC-Leistung, GCR-Sweep & Stückliste',
+    'layoutiq.f3':'🗺 3D-Gelände- und Layout-Vorschau','layoutiq.groupElectrical':'Elektro-Screening',
+    'layoutiq.f4':'🔌 String- & Kabelauslegung (IEC)','layoutiq.f5':'📐 A1-Elektroplan',
+    'layoutiq.f6':'📄 PVsyst-Parameterexport',
     'layoutiq.btn':'In der App öffnen →',
     'revenueiq.tagline':'CAPEX, Erlöse und Rendite screenen — bevor Sie das Finanzmodell öffnen.',
     'revenueiq.f1':'10-Komponenten-CAPEX-Bänder (€/Wp oder Landeswährung)',
@@ -1800,7 +1823,7 @@ var T = {
     'how.setup.full.title':'KML / KMZ hochladen','how.setup.full.p':'Parcel-Polygon importieren — schaltet TerrainIQ, LayoutIQ, YieldIQ & RevenueIQ frei',
     'how.siteiq.title':'SiteIQ — Standort-Screening','how.siteiq.sub':'Schritt 2 · Solar · Hochwasser · Regulierung · Bebaubare Fläche',
     'how.terrainiq.title':'TerrainIQ — Neigungsanalyse','how.terrainiq.sub':'Schritt 3 · Benötigt Grenze · CAD-Exporte',
-    'how.layoutiq.title':'LayoutIQ — Auto-Layout','how.layoutiq.sub':'Schritt 4 · Montageart hier gewählt · 3D-Vorschau',
+    'how.layoutiq.title':'LayoutIQ — Auto-Layout','how.layoutiq.sub':'Schritt 4 · Layout + Elektro · A1-Plan + PVsyst-Export',
     'how.yieldiq.title':'YieldIQ — Ertragsschätzung','how.yieldiq.sub':'Schritt 5 · Läuft automatisch aus dem Layout · Nur Machbarkeit',
     'how.revenueiq.title':'RevenueIQ — Wirtschaftlichkeits-Screening','how.revenueiq.sub':'Schritt 6 · Nutzt LayoutIQ-Leistung & YieldIQ-Energie · Nur Screening',
     'wf.setup.sub':'Ein Login · ein Projektkontext',
@@ -1810,15 +1833,15 @@ var T = {
     'wf.siteiq.get':'Monats-GHI-Diagramm|Bebaubar % & Land-Score|OSM-Constraint-Karte',
     'wf.terrainiq.does':'Regionales DEM innerhalb Ihrer Grenze — Neigungskarten, Querneigung und Engineering-Bewertungen vor der Vermessung.',
     'wf.terrainiq.get':'EEA-10 / 3DEP / FABDEM|Gelände-PDF|DXF + LandXML',
-    'wf.layoutiq.does':'Festaufständerung oder Einachsen-Tracker wählen, dann Reihen auf dem baubaren Polygon mit GIS-Abständen automatisch packen.',
-    'wf.layoutiq.get':'Montageart & GCR|DC-Leistung & Module|3D-Geländevorschau',
+    'wf.layoutiq.does':'Aufständerung wählen, Reihen mit GIS-Abständen packen, dann Strings und Kabel auslegen — A1-Elektroplan und PVsyst-Export inklusive.',
+    'wf.layoutiq.get':'Montageart & GCR|DC-Leistung & Stückliste|⚡ String- & Kabelauslegung|📐 A1-Elektroplan|📄 PVsyst-Export',
     'wf.yieldiq.does':'PVGIS-Ertrag für Ihre gewählte LayoutIQ-Aufständerung — Fest 1P–4P oder SAT 1P/2P. Läuft automatisch bei „Weiter“, keine erneute Eingabe.',
     'wf.yieldiq.get':'Spez. Ertrag & PR|Monats-Energiediagramm|Nur Machbarkeit',
     'wf.revenueiq.does':'CAPEX-Bänder, Tariferlöse, OPEX, LCOE, IRR, NPV und Amortisation aus Layout und Ertrag — länderbezogene Auktions-/PPA-Modi und Agri-PV-Anpassungen.',
     'wf.revenueiq.get':'CAPEX €/Wp-Bänder|IRR- & Amortisationsband|Wirtschaftlichkeits-Score',
     'wf.report.title':'Kombinierter PVMath-Bericht',
     'wf.report.p':'SiteIQ + TerrainIQ + LayoutIQ + YieldIQ + RevenueIQ in einem Export — Projekt-ZIP, Layout-DXF, Gelände-LandXML, Wirtschafts-PDF-Abschnitt und Screening-PDF.',
-    'wf.report.get':'Ein Projekt-ZIP|Layout-DXF|Gelände-LandXML',
+    'wf.report.get':'Ein Projekt-ZIP|Layout-DXF|Gelände-LandXML|⚡ A1-Elektroplan PDF|📄 PVsyst-Eingabe',
     'wf.report.cta':'In der App öffnen →',
     'why.label':'Warum PVMath','why.title':'Screening-Schätzungen auf Ingenieursniveau.<br>Kein bankfähiges Gutachten.',
     'why.sub':'Branchenübliche Datensätze. Screening-Geschwindigkeit. Ehrliche Grenzen.',
