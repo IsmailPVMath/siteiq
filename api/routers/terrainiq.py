@@ -153,6 +153,10 @@ def _analysis_response(body: TerrainIQAnalyzeRequest, analysis: Dict[str, Any]) 
         disclaimer=str(terrain_source.get("disclaimer", "Public DEM routing by region.")),
         bbox=_to_builtin(analysis["bbox"]),
         route_note=str(terrain_source.get("notes", "")) or None,
+        coverage_gaps=_to_builtin(analysis.get("coverage_gaps") or []),
+        polygons_analyzed=list(analysis.get("polygons_analyzed") or []),
+        multi_cluster=bool(analysis.get("multi_cluster")),
+        cluster_count=int(analysis.get("cluster_count") or 1),
     )
 
 

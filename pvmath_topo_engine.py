@@ -388,15 +388,15 @@ def _bbox_gap_m(
     return math.hypot(dx_deg * m_per_deg_lon, dy_deg * m_per_deg_lat)
 
 
-def _cluster_polys(
+def _cluster_poly_indices(
     polys: Sequence[Sequence[Tuple[float, float]]],
     lat_c: float,
     gap_m: float = CLUSTER_GAP_M,
-) -> List[List[Sequence[Tuple[float, float]]]]:
-    """Union-find grouping of parcels whose bboxes are within ``gap_m``."""
+) -> List[List[int]]:
+    """Union-find grouping of parcel indices whose bboxes are within ``gap_m``."""
     n = len(polys)
     if n <= 1:
-        return [list(polys)]
+        return [list(range(n))]
     bboxes = [_poly_bbox(p) for p in polys]
     parent = list(range(n))
 
@@ -411,10 +411,41 @@ def _cluster_polys(
             if _bbox_gap_m(bboxes[i], bboxes[j], lat_c) <= gap_m:
                 parent[find(i)] = find(j)
 
-    groups: Dict[int, List[Sequence[Tuple[float, float]]]] = {}
+    groups: Dict[int, List[int]] = {}
     for i in range(n):
-        groups.setdefault(find(i), []).append(polys[i])
+        groups.setdefault(find(i), []).append(i)
     return list(groups.values())
+
+
+def _terrain_gap_from_exc(exc: BaseException) -> Dict[str, Any]:
+    """Map engine failures to user-facing coverage-gap messages."""
+    code = getattr(exc, "args", ("UNKNOWN",))[0] if exc.args else "UNKNOWN"
+    if not isinstance(code, str):
+        code = "UNKNOWN"
+    messages = {
+        "NO_DATA_IN_BOUNDARY": (
+            "No usable elevation points inside this parcel. The public DEM returned void "
+            "cells here — common for very small parcels, steep cliffs, or dataset edge gaps. "
+            "Order LiDAR or RTK survey before detailed layout."
+        ),
+        "DEM_FETCH_FAILED": (
+            "Elevation tiles could not be downloaded for this parcel. Retry the analysis or "
+            "check network access to the DEM provider."
+        ),
+        "GRID_TOO_SMALL": (
+            "Parcel is too small to build a terrain grid at the requested spacing."
+        ),
+    }
+    if code not in messages and code.startswith("Site exceeds"):
+        code = "SITE_TOO_LARGE"
+        msg = str(exc)
+    else:
+        msg = messages.get(
+            code,
+            "Terrain analysis could not complete for this parcel. Try coarser grid spacing "
+            "or verify the boundary polygon.",
+        )
+    return {"reason_code": code, "message": msg}
 
 
 def run_topo_analysis(
@@ -432,36 +463,50 @@ def run_topo_analysis(
 
     lats_all = [c[1] for poly in enabled_polys for c in poly]
     lat_c0 = (min(lats_all) + max(lats_all)) / 2
-    clusters = _cluster_polys(enabled_polys, lat_c0)
+    cluster_indices = _cluster_poly_indices(enabled_polys, lat_c0)
 
-    if len(clusters) > 1:
+    if len(cluster_indices) > 1:
         regions: List[Dict[str, Any]] = []
-        for cluster in clusters:
+        coverage_gaps: List[Dict[str, Any]] = []
+        for poly_idxs in cluster_indices:
+            cluster = [enabled_polys[i] for i in poly_idxs]
             try:
-                regions.append(
-                    _analyze_region(
-                        cluster,
-                        grid_m=grid_m,
-                        allow_coarsen=allow_coarsen,
-                        contour_minor=contour_minor,
-                        contour_major=contour_major,
-                        progress_cb=None,
-                        mask_geojson=mask_geojson,
-                    )
+                region = _analyze_region(
+                    cluster,
+                    grid_m=grid_m,
+                    allow_coarsen=allow_coarsen,
+                    contour_minor=contour_minor,
+                    contour_major=contour_major,
+                    progress_cb=None,
+                    mask_geojson=mask_geojson,
                 )
-            except Exception:
-                # A cluster with no usable DEM samples is skipped rather than
-                # failing the whole analysis (the other parcels still report).
-                continue
+                region["_polygon_indices"] = poly_idxs
+                regions.append(region)
+            except Exception as exc:
+                gap = _terrain_gap_from_exc(exc)
+                gap["polygon_indices"] = poly_idxs
+                gap["area_ha"] = boundaries_union_area_ha(cluster)
+                coverage_gaps.append(gap)
         if not regions:
             raise RuntimeError("NO_DATA_IN_BOUNDARY")
         if len(regions) == 1:
-            return regions[0]
-        return _composite_regions(
+            out = regions[0]
+            out["coverage_gaps"] = coverage_gaps
+            out["polygons_analyzed"] = list(regions[0].get("_polygon_indices", []))
+            out.pop("_polygon_indices", None)
+            out["multi_cluster"] = len(cluster_indices) > 1
+            out["cluster_count"] = 1
+            return out
+        out = _composite_regions(
             regions, enabled_polys, float(grid_m), contour_minor, contour_major
         )
+        out["coverage_gaps"] = coverage_gaps
+        out["polygons_analyzed"] = sorted(
+            {i for r in regions for i in r.get("_polygon_indices", [])}
+        )
+        return out
 
-    return _analyze_region(
+    out = _analyze_region(
         enabled_polys,
         grid_m=grid_m,
         allow_coarsen=allow_coarsen,
@@ -470,6 +515,11 @@ def run_topo_analysis(
         progress_cb=progress_cb,
         mask_geojson=mask_geojson,
     )
+    out["coverage_gaps"] = []
+    out["polygons_analyzed"] = list(range(len(enabled_polys)))
+    out["multi_cluster"] = False
+    out["cluster_count"] = 1
+    return out
 
 
 def _analyze_region(
@@ -607,7 +657,15 @@ def _analyze_region(
         "Z": Z,
         "slope_grid": slope,
         "polygons": enabled_polys,
-        "tiles": [{"X": X, "Y": Y, "Z": Z, "grid_m": float(grid_m_used)}],
+        "tiles": [
+            {
+                "X": X,
+                "Y": Y,
+                "Z": Z,
+                "slope_grid": slope,
+                "grid_m": float(grid_m_used),
+            }
+        ],
     }
 
 

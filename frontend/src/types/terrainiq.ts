@@ -19,6 +19,13 @@ export interface TerrainDrivers {
   why_bullets: Array<[TerrainDriverKind, string]>;
 }
 
+export interface TerrainCoverageGap {
+  polygon_indices: number[];
+  area_ha: number;
+  reason_code: string;
+  message: string;
+}
+
 export interface TerrainIQAnalyzeResponse {
   project_name: string;
   country: string;
@@ -53,6 +60,10 @@ export interface TerrainIQAnalyzeResponse {
   disclaimer: string;
   bbox: { lat_c: number; lon_c: number };
   route_note?: string | null;
+  coverage_gaps?: TerrainCoverageGap[];
+  polygons_analyzed?: number[];
+  multi_cluster?: boolean;
+  cluster_count?: number;
 }
 
 export interface YieldIQAnalyzeRequest {

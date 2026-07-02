@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Sequence, Tuple
 
 import numpy as np
 
-from pvmath_topo_engine import boundaries_union_area_ha, run_topo_analysis
+from pvmath_topo_engine import boundaries_union_area_ha, compute_slope, run_topo_analysis
 
 
 def _local_xy(lon: float, lat: float, lon_c: float, lat_c: float) -> Tuple[float, float]:
@@ -23,45 +23,27 @@ def _stride_for_shape(shape: Tuple[int, int], max_vertices: int) -> int:
     return max(1, int(math.ceil(math.sqrt((rows * cols) / max_vertices))))
 
 
-def build_terrain_mesh(
-    polygons: Sequence[Sequence[Tuple[float, float]]],
+def _mesh_from_tile(
+    tile: Dict[str, Any],
     *,
-    grid_m: float = 20.0,
-    max_vertices: int = 12_000,
-    mask_geojson: Dict[str, Any] | None = None,
-) -> Dict[str, Any]:
-    """Return a compact triangular mesh from TerrainIQ DEM grids."""
-    enabled_polys = [list(poly) for poly in polygons if poly and len(poly) >= 3]
-    if not enabled_polys:
-        raise ValueError("NO_BOUNDARY")
-    if boundaries_union_area_ha(enabled_polys) > 10_000:
-        raise ValueError("Site is too large for browser terrain mesh")
+    lon_c: float,
+    lat_c: float,
+    z0: float,
+    max_vertices: int,
+) -> Tuple[List[List[float]], List[float], List[float], List[List[int]]]:
+    X = tile["X"]
+    Y = tile["Y"]
+    Z = tile["Z"]
+    slope = tile.get("slope_grid")
+    grid_m = float(tile.get("grid_m", 5.0))
+    if slope is None:
+        slope = compute_slope(Z, grid_m)
 
-    analysis = run_topo_analysis(
-        polygons=enabled_polys,
-        grid_m=grid_m,
-        allow_coarsen=True,
-        contour_minor=1.0,
-        contour_major=5.0,
-        mask_geojson=mask_geojson,
-    )
-    X = analysis["X"]
-    Y = analysis["Y"]
-    Z = analysis["Z"]
-    slope = analysis["slope_grid"]
-    bbox = analysis["bbox"]
-    lat_c = float(bbox["lat_c"])
-    lon_c = float(bbox["lon_c"])
     stride = _stride_for_shape(Z.shape, max_vertices)
-
     Xs = X[::stride, ::stride]
     Ys = Y[::stride, ::stride]
     Zs = Z[::stride, ::stride]
     Ss = slope[::stride, ::stride]
-    valid_z = Zs[~np.isnan(Zs)]
-    if len(valid_z) == 0:
-        raise ValueError("NO_TERRAIN_POINTS")
-    z0 = float(valid_z.min())
 
     vertex_index: Dict[Tuple[int, int], int] = {}
     vertices: List[List[float]] = []
@@ -92,6 +74,80 @@ def build_terrain_mesh(
             if b is not None and d is not None and e is not None:
                 faces.append([b, d, e])
 
+    return vertices, elevations, slopes, faces
+
+
+def build_terrain_mesh(
+    polygons: Sequence[Sequence[Tuple[float, float]]],
+    *,
+    grid_m: float = 20.0,
+    max_vertices: int = 12_000,
+    mask_geojson: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    """Return a compact triangular mesh from TerrainIQ DEM grids."""
+    enabled_polys = [list(poly) for poly in polygons if poly and len(poly) >= 3]
+    if not enabled_polys:
+        raise ValueError("NO_BOUNDARY")
+    if boundaries_union_area_ha(enabled_polys) > 10_000:
+        raise ValueError("Site is too large for browser terrain mesh")
+
+    analysis = run_topo_analysis(
+        polygons=enabled_polys,
+        grid_m=grid_m,
+        allow_coarsen=True,
+        contour_minor=1.0,
+        contour_major=5.0,
+        mask_geojson=mask_geojson,
+    )
+    bbox = analysis["bbox"]
+    lat_c = float(bbox["lat_c"])
+    lon_c = float(bbox["lon_c"])
+
+    tiles = analysis.get("tiles") or [
+        {
+            "X": analysis["X"],
+            "Y": analysis["Y"],
+            "Z": analysis["Z"],
+            "slope_grid": analysis["slope_grid"],
+            "grid_m": analysis["grid_m_used"],
+        }
+    ]
+
+    z_mins: List[float] = []
+    for tile in tiles:
+        Z = tile["Z"]
+        valid = Z[~np.isnan(Z)]
+        if len(valid):
+            z_mins.append(float(valid.min()))
+    if not z_mins:
+        raise ValueError("NO_TERRAIN_POINTS")
+    z0 = min(z_mins)
+
+    per_tile_budget = max(500, int(max_vertices / max(1, len(tiles))))
+    vertices: List[List[float]] = []
+    elevations: List[float] = []
+    slopes: List[float] = []
+    faces: List[List[int]] = []
+    for tile in tiles:
+        t_verts, t_elevs, t_slopes, t_faces = _mesh_from_tile(
+            tile,
+            lon_c=lon_c,
+            lat_c=lat_c,
+            z0=z0,
+            max_vertices=per_tile_budget,
+        )
+        if not t_verts:
+            continue
+        offset = len(vertices)
+        vertices.extend(t_verts)
+        elevations.extend(t_elevs)
+        slopes.extend(t_slopes)
+        faces.extend([[a + offset, b + offset, c + offset] for a, b, c in t_faces])
+
+    if not vertices:
+        raise ValueError("NO_TERRAIN_POINTS")
+
+    valid_z = np.array(elevations, dtype=float)
     return {
         "vertices": vertices,
         "faces": faces,
@@ -99,9 +155,12 @@ def build_terrain_mesh(
         "slopes": slopes,
         "origin": {"lat": lat_c, "lon": lon_c, "elevation_m": z0},
         "bbox": bbox,
-        "grid_m_used": float(analysis["grid_m_used"]) * stride,
+        "grid_m_used": float(analysis["grid_m_used"]),
         "terrain_source_used": analysis["terrain_source_used"],
         "z_min": float(valid_z.min()),
         "z_max": float(valid_z.max()),
         "slope_mean": float(analysis["slope"]["mean"]),
+        "coverage_gaps": analysis.get("coverage_gaps") or [],
+        "multi_cluster": bool(analysis.get("multi_cluster")),
+        "cluster_count": int(analysis.get("cluster_count") or 1),
     }

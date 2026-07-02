@@ -280,6 +280,9 @@ export interface WorkflowTerrainMeshResponse {
   z_min: number;
   z_max: number;
   slope_mean: number;
+  coverage_gaps?: import("./terrainiq").TerrainCoverageGap[];
+  multi_cluster?: boolean;
+  cluster_count?: number;
 }
 
 export interface WorkflowPvmathReportRequest {

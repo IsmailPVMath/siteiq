@@ -1702,6 +1702,49 @@ export function OutputPage({
     );
   }
 
+  function parcelLabels(indices: number[]): string {
+    if (!indices.length) return "Boundary area";
+    if (indices.length === 1) return `Parcel ${indices[0] + 1}`;
+    return `Parcels ${indices.map((i) => i + 1).join(", ")}`;
+  }
+
+  function renderTerrainCoverageNotice(topo: TerrainIQAnalyzeResponse) {
+    const gaps = topo.coverage_gaps ?? [];
+    const analyzed = new Set(topo.polygons_analyzed ?? boundaries.map((_, i) => i));
+    const silentMiss = boundaries
+      .map((_, i) => i)
+      .filter((i) => !analyzed.has(i))
+      .map((i) => ({
+        polygon_indices: [i],
+        area_ha: 0,
+        reason_code: "UNKNOWN",
+        message:
+          "Terrain analysis did not run for this boundary polygon. It may be disconnected from the main site (>400 m apart) with no usable public DEM data.",
+      }));
+    const allGaps = gaps.length ? gaps : silentMiss;
+    if (!allGaps.length) return null;
+
+    return (
+      <div className="terrain-coverage-notice" role="note">
+        <strong>Areas without slope analysis</strong>
+        <p className="hint">
+          Disconnected parcels more than ~400 m apart are analysed on separate terrain grids. Slope
+          statistics and the map include only parcels where elevation data was available.
+        </p>
+        <ul>
+          {allGaps.map((gap, idx) => (
+            <li key={idx}>
+              <span className="terrain-coverage-label">{parcelLabels(gap.polygon_indices)}</span>
+              {gap.area_ha > 0 ? ` (${gap.area_ha.toFixed(1)} ha)` : null}
+              {" — "}
+              {gap.message}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
   function renderTerrainDrivers(topo: TerrainIQAnalyzeResponse) {
     const td = topo.terrain_drivers;
     if (!td || typeof td.terrain_score !== "number") return null;
@@ -1889,6 +1932,7 @@ export function OutputPage({
             {topoMesh ? ` · ${topoMesh.vertices.length.toLocaleString()} points` : ""}
           </span>
         </div>
+        {renderTerrainCoverageNotice(topoResult)}
         <div className="slope-section-grid">
           <div className="slope-section-map">
             {topoMesh ? (

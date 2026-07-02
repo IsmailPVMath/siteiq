@@ -30,6 +30,16 @@ class TerrainIQVerdict(BaseModel):
     detail: str
 
 
+class TerrainCoverageGap(BaseModel):
+    polygon_indices: List[int] = Field(
+        default_factory=list,
+        description="0-based indices into the submitted boundary polygon list.",
+    )
+    area_ha: float = 0.0
+    reason_code: str = "UNKNOWN"
+    message: str = ""
+
+
 class TerrainIQAnalyzeResponse(BaseModel):
     project_name: str
     country: str
@@ -53,3 +63,7 @@ class TerrainIQAnalyzeResponse(BaseModel):
     disclaimer: str
     bbox: Dict[str, float]
     route_note: Optional[str] = None
+    coverage_gaps: List[TerrainCoverageGap] = Field(default_factory=list)
+    polygons_analyzed: List[int] = Field(default_factory=list)
+    multi_cluster: bool = False
+    cluster_count: int = 1

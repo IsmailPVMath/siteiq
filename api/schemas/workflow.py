@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
-from api.schemas.gate import BoundaryPoint
+from api.schemas.terrainiq import TerrainCoverageGap
 
 
 class WorkflowScreenRequest(BaseModel):
@@ -343,6 +343,9 @@ class WorkflowTerrainMeshResponse(BaseModel):
     z_min: float
     z_max: float
     slope_mean: float
+    coverage_gaps: List[TerrainCoverageGap] = Field(default_factory=list)
+    multi_cluster: bool = False
+    cluster_count: int = 1
 
 
 class WorkflowPvmathReportRequest(BaseModel):
