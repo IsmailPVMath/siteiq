@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="PVMath-Solar Site Intelligence Platform. Professional tools for solar site screening, terrain analysis, and yield estimation. Built for EPCs and developers worldwide." />
+  <meta name="description" content="PVMath-Solar Site Intelligence Platform. Site screening, terrain, layout, yield, and revenue economics for ground-mount solar. Built for EPCs and developers worldwide." />
   <meta property="og:title" content="PVMath-Solar Site Intelligence Platform" />
   <meta property="og:description" content="From site to system. Professional solar intelligence tools for EPCs and developers worldwide." />
   <meta property="og:type" content="website" />
@@ -30,6 +30,8 @@
       --teal-dk:  #0b7686;
       --teal-lt:  #e1f6f9;
       --amber:    #f59e0b;
+      --violet:   #6d28d9;
+      --violet-lt:#f5f3ff;
       --coral:    #e85d04;
       --coral-lt: #fff1ee;
       --amber-lt: #fef3c7;
@@ -131,17 +133,20 @@
     }
     .hero-scan {
       margin-top: 2.5rem; max-width: 100%; margin-left: auto; margin-right: auto;
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; text-align: left;
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem; text-align: left;
     }
     .hero-scan-item {
       background: var(--card); border: 1.5px solid var(--border); border-radius: 12px;
       padding: 0.95rem 1rem; display: flex; flex-direction: column; gap: 0.35rem;
     }
     .hero-scan-item strong { font-size: 0.92rem; font-weight: 800; letter-spacing: -0.01em; }
-    .hero-scan-item strong.siteiq { color: var(--coral); }
+    .hero-scan-item strong.siteiq { color: #d97706; }
     .hero-scan-item strong.terrainiq { color: var(--blue); }
+    .hero-scan-item strong.layoutiq { color: var(--teal-dk); }
     .hero-scan-item strong.yieldiq { color: #b36a00; }
+    .hero-scan-item strong.revenueiq { color: var(--violet); }
     .hero-scan-item span { font-size: 0.82rem; color: var(--muted); line-height: 1.5; font-weight: 500; }
+    @media (max-width: 1100px) { .hero-scan { grid-template-columns: repeat(3, 1fr); } }
     @media (max-width: 900px) { .hero-scan { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 700px) { .hero-scan { grid-template-columns: 1fr; } }
 
@@ -170,6 +175,7 @@
     .pipeline-label.blue  { color: var(--blue); }
     .pipeline-label.teal  { color: var(--teal-dk); }
     .pipeline-label.amber { color: #d4840a; }
+    .pipeline-label.violet { color: var(--violet); }
     .pipeline-arrow {
       flex: 0 0 auto; align-self: center; color: #b8c8b8; font-size: 1.1rem; font-weight: 700;
       padding: 0 0.1rem; margin-top: -1.1rem;
@@ -235,13 +241,15 @@
 
     /* ── MODULES ── */
     #modules { background: var(--card); }
-    .modules-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.1rem; align-items: stretch; }
+    .modules-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.1rem; align-items: stretch; }
     .module-card { border: 1.5px solid var(--border); border-radius: 14px; padding: 1.5rem 1.35rem; background: var(--bg); position: relative; transition: transform .25s, box-shadow .25s, border-color .25s; display: flex; flex-direction: column; height: 100%; }
     .module-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,.08); }
     .module-card.live { border-color: rgba(29,158,82,.35); }
     .module-card.live:hover { border-color: var(--green); }
-    .module-card.siteiq { border-color: rgba(232,93,4,.3); }
-    .module-card.siteiq:hover { border-color: var(--coral); }
+    .module-card.siteiq { border-color: rgba(217,119,6,.28); }
+    .module-card.siteiq:hover { border-color: #d97706; }
+    .module-card.revenueiq { border-color: rgba(109,40,217,.28); }
+    .module-card.revenueiq:hover { border-color: var(--violet); }
     .module-card.soon { border-color: rgba(245,158,11,.3); opacity: .9; }
     .module-pill { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.32rem 0.8rem; border-radius: 100px; margin-bottom: 0.9rem; width: fit-content; }
     .pill-live { background: var(--green-lt); color: var(--green-dk); }
@@ -402,15 +410,16 @@
 
     /* ── PRODUCT PREVIEW ── */
     /* Equal height: row follows tallest card (SiteIQ); TerrainIQ/YieldIQ pin footers — no stretch-to-TerrainIQ */
-    .preview-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; align-items: stretch; }
+    .preview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; align-items: stretch; }
     @media (max-width: 1100px) { .preview-grid { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 620px) { .preview-grid { grid-template-columns: 1fr; } }
     .preview-card { border-radius: 14px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,.12); border: 1.5px solid var(--border); display: flex; flex-direction: column; height: 100%; }
     .preview-card-hdr { padding: 0.55rem 0.85rem; display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
-    .preview-card-hdr.siteiq { background: linear-gradient(135deg,#e85d04,#c24a00); }
+    .preview-card-hdr.siteiq { background: linear-gradient(135deg,#f59e0b,#d97706); }
     .preview-card-hdr.terrainiq { background: linear-gradient(135deg,#1565c0,#0d47a1); }
     .preview-card-hdr.layoutiq { background: linear-gradient(135deg,var(--teal),var(--teal-dk)); }
     .preview-card-hdr.yieldiq { background: linear-gradient(135deg,#d4840a,#b36a00); }
+    .preview-card-hdr.revenueiq { background: linear-gradient(135deg,#7c3aed,#6d28d9); }
     .preview-actions.teal div { background: var(--teal-lt); color: var(--teal-dk); }
     .preview-card-hdr strong { font-size: 0.72rem; font-weight: 800; color: #fff; letter-spacing: 0.05em; }
     .preview-card-icon { font-size: 0.82rem; line-height: 1; flex-shrink: 0; }
@@ -515,6 +524,7 @@
     .wf-node.blue  { background: linear-gradient(135deg, var(--blue), #0d47a1); }
     .wf-node.teal  { background: linear-gradient(135deg, var(--teal), var(--teal-dk)); }
     .wf-node.amber { background: linear-gradient(135deg, #d4840a, #b36a00); }
+    .wf-node.violet { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
     .wf-card {
       background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px;
       padding: 1.1rem 1.15rem 1.15rem;
@@ -528,6 +538,7 @@
     .wf-stage-name.blue  { color: var(--blue); }
     .wf-stage-name.teal  { color: var(--teal-dk); }
     .wf-stage-name.amber { color: #d4840a; }
+    .wf-stage-name.violet { color: var(--violet); }
     .wf-sub { font-size: 0.78rem; color: var(--muted); margin-top: 0.2rem; font-weight: 500; }
     .wf-does { font-size: var(--text-sm); color: var(--muted); line-height: 1.55; margin: 0 0 0.65rem 0; }
     .wf-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.65rem; }
@@ -539,6 +550,9 @@
     .wf-stage.blue  .wf-chip { background: var(--blue-lt); border-color: rgba(21,101,192,.2); color: #0d47a1; }
     .wf-stage.teal  .wf-chip { background: var(--teal-lt); border-color: rgba(14,155,176,.25); color: var(--teal-dk); }
     .wf-stage.amber .wf-chip { background: #fef3e2; border-color: rgba(212,132,10,.25); color: #92400e; }
+    .wf-stage.violet .wf-chip { background: var(--violet-lt); border-color: rgba(109,40,217,.22); color: #5b21b6; }
+    .module-name.violet { color: var(--violet); }
+    .module-tagline.violet { color: var(--violet); }
     .wf-stage.green .wf-chip { background: var(--green-lt); border-color: rgba(29,158,82,.2); color: var(--green-dk); }
     .wf-mode-row { display: flex; gap: 0.65rem; flex-wrap: wrap; margin-top: 0.15rem; }
     .wf-report {
@@ -706,18 +720,40 @@
   <div class="hero-inner">
     <div class="hero-badge" data-i18n="hero.badge"><span class="dot"></span> PVMath-Solar Site Intelligence Platform — Early Access</div>
     <h1 data-i18n-html="hero.h1">Solar site intelligence<br>built by <em>industry experts,</em><br>for engineers and developers.</h1>
-    <p data-i18n="hero.p">Drop coordinates or draw a boundary and get site screening, terrain &amp; slope analysis, auto-layout, and yield &mdash; one guided workflow. PDF reports and CAD exports (DXF + LandXML) included.</p>
+    <p data-i18n="hero.p">Draw a boundary on the map or upload KML/KMZ and get site screening, terrain analysis, auto-layout, yield, and revenue economics &mdash; one guided workflow. PDF reports and CAD exports (DXF + LandXML) included.</p>
     <div class="hero-btns">
       <a href="https://app.pvmath.com" target="_blank" class="btn-primary" data-i18n="hero.btn1">Try it Free &rarr;</a>
       <a href="#preview" class="btn-outline" data-i18n="hero.btn2">See Real Outputs</a>
     </div>
+    <div class="hero-scan" aria-label="What each workflow step delivers">
+      <div class="hero-scan-item">
+        <strong class="siteiq">&#9728; SiteIQ</strong>
+        <span data-i18n="hero.scan.siteiq">Site screening with solar, flood &amp; regulatory checks. GIS buildable area with auto-detected setbacks.</span>
+      </div>
+      <div class="hero-scan-item">
+        <strong class="terrainiq">&#9968; TerrainIQ</strong>
+        <span data-i18n="hero.scan.terrainiq">Slope analysis on region-routed DEM. Export surface + contours to CAD.</span>
+      </div>
+      <div class="hero-scan-item">
+        <strong class="layoutiq">&#9638; LayoutIQ</strong>
+        <span data-i18n="hero.scan.layoutiq">Auto-pack fixed-tilt or tracker rows with GIS setbacks &amp; 3D preview.</span>
+      </div>
+      <div class="hero-scan-item">
+        <strong class="yieldiq">&#9889; YieldIQ</strong>
+        <span data-i18n="hero.scan.yieldiq">PVGIS yield for your chosen mount and layout &mdash; specific yield, PR, and capacity factor.</span>
+      </div>
+      <div class="hero-scan-item">
+        <strong class="revenueiq">&#8364; RevenueIQ</strong>
+        <span data-i18n="hero.scan.revenueiq">CAPEX bands, tariff revenue, LCOE, IRR, and payback from your layout and yield.</span>
+      </div>
+    </div>
     <div class="hero-stats">
-      <div class="stat"><div class="stat-num">5</div><div class="stat-lbl" data-i18n="stat.modules">Workflow steps</div></div>
+      <div class="stat"><div class="stat-num">6</div><div class="stat-lbl" data-i18n="stat.modules">Workflow steps</div></div>
       <div class="stat"><div class="stat-num" data-i18n="stat.time-val">&le; 10 min</div><div class="stat-lbl" data-i18n="stat.speed">Site Screening Time</div></div>
       <div class="stat"><div class="stat-num">Global</div><div class="stat-lbl" data-i18n="stat.coverage">Solar Data Coverage</div></div>
       <div class="stat"><div class="stat-num" data-i18n="stat.free-val">Free</div><div class="stat-lbl" data-i18n="stat.start">To Get Started</div></div>
     </div>
-    <div class="pipeline pipeline-hero" aria-label="Unified workflow: five steps to PVMath report">
+    <div class="pipeline pipeline-hero" aria-label="Unified workflow: six steps to PVMath report">
       <div class="pipeline-step">
         <div class="pipeline-node green" aria-hidden="true">1</div>
         <div class="pipeline-label green" data-i18n="pipe.setup">Project Setup</div>
@@ -751,6 +787,13 @@
         <div class="pipeline-label amber">YieldIQ</div>
       </div>
       <div class="pipeline-arrow" aria-hidden="true">→</div>
+      <div class="pipeline-step">
+        <div class="pipeline-icon" aria-hidden="true">
+          <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="24" r="18" fill="#f5f3ff" stroke="#6d28d9" stroke-width="1.5"/><text x="24" y="29" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="16" font-weight="800" fill="#6d28d9">€</text></svg>
+        </div>
+        <div class="pipeline-label violet">RevenueIQ</div>
+      </div>
+      <div class="pipeline-arrow" aria-hidden="true">→</div>
       <div class="pipeline-report">
         <div class="pipeline-icon" aria-hidden="true" style="margin-bottom:0.35rem;">
           <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="6" width="28" height="36" rx="3" fill="#fff" stroke="#1d9e52" stroke-width="2"/><circle cx="33" cy="33" r="8" fill="#1d9e52"/></svg>
@@ -767,7 +810,7 @@
     <div style="text-align:center;margin-bottom:2.5rem;">
       <div class="section-label" style="justify-content:center;display:flex;">See it in action</div>
       <h2 class="section-title">Real outputs. One guided workflow.</h2>
-      <p class="section-sub" style="margin:0 auto 0.75rem;">187 ha site, southern Spain &mdash; SiteIQ &rarr; TerrainIQ &rarr; LayoutIQ &rarr; YieldIQ.</p>
+      <p class="section-sub" style="margin:0 auto 0.75rem;">187 ha site, southern Spain &mdash; SiteIQ &rarr; TerrainIQ &rarr; LayoutIQ &rarr; YieldIQ &rarr; RevenueIQ.</p>
       <p style="margin:0 auto;font-size:0.88rem;">
         <a href="/assets/sample-siteiq-report.pdf" target="_blank" rel="noopener"
            style="color:var(--green-dk);font-weight:700;text-decoration:none;border-bottom:1.5px solid rgba(29,158,82,.35);">
@@ -957,6 +1000,30 @@
         </div>
       </article>
 
+      <!-- RevenueIQ mockup -->
+      <article class="preview-card" itemscope itemtype="https://schema.org/SoftwareApplication" aria-label="RevenueIQ economic screening example output">
+        <meta itemprop="name" content="RevenueIQ">
+        <header class="preview-card-hdr revenueiq">
+          <span class="preview-card-icon" aria-hidden="true">&#8364;</span>
+          <strong>REVENUEIQ — ECONOMIC SCREENING</strong>
+        </header>
+        <div class="preview-card-body">
+          <p class="preview-meta">68.4 MWp DC &middot; Spain &middot; Gov auction / PPA band</p>
+          <ul class="preview-metrics" aria-label="Economic screening metrics">
+            <li><span class="metric-label">CAPEX (DC)</span><span class="metric-value">€78&ndash;126 M</span></li>
+            <li><span class="metric-label">LCOE</span><span class="metric-value">34&ndash;42 €/MWh</span></li>
+            <li><span class="metric-label">IRR (equity)</span><span class="metric-value">8.2&ndash;14.6% <span class="preview-badge pos">Screening</span></span></li>
+            <li><span class="metric-label">Simple payback</span><span class="metric-value">9&ndash;13 yr</span></li>
+          </ul>
+          <p class="preview-chart-label">Viability band</p>
+          <div style="background:var(--violet-lt);border:1.5px solid rgba(109,40,217,.25);border-radius:8px;padding:0.65rem 0.75rem;font-size:0.78rem;font-weight:700;color:#5b21b6;text-align:center;letter-spacing:0.04em;">MARGINAL &mdash; proceed with detailed tender &amp; offtake diligence</div>
+          <div class="preview-card-foot">
+            <div class="preview-disclaimer">Indicative screening only. Not bankable financial modelling or investment advice.</div>
+            <p class="preview-source">Benchmark CAPEX &amp; tariff bands &middot; 2025&ndash;2026</p>
+          </div>
+        </div>
+      </article>
+
     </div>
     <p style="text-align:center;margin-top:2rem;font-size:0.82rem;color:var(--muted);">Representative only. Outputs vary by location and configuration.</p>
   </div>
@@ -967,8 +1034,8 @@
   <div class="container">
     <div class="section-header">
       <div class="section-label" data-i18n="modules.label">PVMath-Solar Site Intelligence Platform</div>
-      <h2 class="section-title" data-i18n-html="modules.title">Five steps.<br>One login.</h2>
-      <p class="section-sub" data-i18n="modules.sub">Project setup &rarr; site screening &rarr; terrain &rarr; layout &rarr; yield — no separate apps.</p>
+      <h2 class="section-title" data-i18n-html="modules.title">Six steps.<br>One login.</h2>
+      <p class="section-sub" data-i18n="modules.sub">Project setup &rarr; site screening &rarr; terrain &rarr; layout &rarr; yield &rarr; revenue &mdash; no separate apps.</p>
     </div>
     <div class="modules-grid">
 
@@ -1032,6 +1099,24 @@
         </div>
       </div>
 
+      <!-- RevenueIQ -->
+      <div class="module-card live revenueiq">
+        <div class="module-pill pill-live" data-i18n="pill.live">Live Now</div>
+        <div class="module-num">Step 6</div>
+        <div class="module-name violet">RevenueIQ</div>
+        <p class="module-tagline violet" data-i18n="revenueiq.tagline">Screen CAPEX, revenue, and returns before you open the financial model.</p>
+        <ul class="module-features">
+          <li data-i18n="revenueiq.f1">10-component CAPEX bands (€/Wp or local currency)</li>
+          <li data-i18n="revenueiq.f2">Gov auction, PPA, or custom tariff modes</li>
+          <li data-i18n="revenueiq.f3">LCOE, IRR, NPV, payback &amp; sensitivity</li>
+          <li data-i18n="revenueiq.f4">Economic viability in unified PVMath score</li>
+        </ul>
+        <div class="module-disclaimer">
+          <span class="module-disclaimer-icon">&#9888;&#65039;</span>
+          <div class="module-disclaimer-text" data-i18n="revenueiq.disclaimer">Indicative screening only. Not investment advice or bankable financial modelling.</div>
+        </div>
+      </div>
+
     </div>
     <div class="modules-cta">
       <a href="https://app.pvmath.com" target="_blank" rel="noopener" class="btn-primary" data-i18n="modules.cta">Open unified app &rarr;</a>
@@ -1047,7 +1132,7 @@
       <h2 class="section-title" data-i18n="how.title">How it works.</h2>
       <p class="section-sub" data-i18n="how.sub">One project setup feeds every step. Each result carries into the next.</p>
     </div>
-    <p class="section-teaser" data-i18n="how.teaser">Five connected steps in one app at app.pvmath.com.</p>
+    <p class="section-teaser" data-i18n="how.teaser">Six connected steps in one app at app.pvmath.com.</p>
 
     <details class="workflow-details">
       <summary data-i18n="how.expand">Step-by-step workflow</summary>
@@ -1072,17 +1157,17 @@
           <div class="wf-chips" data-i18n-chips="wf.setup.get"></div>
           <div class="wf-mode-row">
             <div class="workflow-mode-chip">
-              <span style="font-size:1rem;">&#128205;</span>
+              <span style="font-size:1rem;">&#128506;</span>
               <div>
-                <strong data-i18n="how.setup.quick.title">Coordinates or address</strong>
-                <span data-i18n="how.setup.quick.p">Paste lat/lon, search an address, or drop a pin &mdash; SiteIQ screening runs without a boundary</span>
+                <strong data-i18n="how.setup.quick.title">Interactive map</strong>
+                <span data-i18n="how.setup.quick.p">Draw your site boundary on the map &mdash; search by address or place corner pins</span>
               </div>
             </div>
             <div class="workflow-mode-chip">
-              <span style="font-size:1rem;">&#128506;</span>
+              <span style="font-size:1rem;">&#128194;</span>
               <div>
-                <strong data-i18n="how.setup.full.title">Draw or upload a boundary</strong>
-                <span data-i18n="how.setup.full.p">Draw the polygon or upload KMZ/KML &mdash; unlocks TerrainIQ, LayoutIQ &amp; buildable-area GIS</span>
+                <strong data-i18n="how.setup.full.title">Upload KML / KMZ</strong>
+                <span data-i18n="how.setup.full.p">Import a parcel polygon &mdash; unlocks TerrainIQ, LayoutIQ, YieldIQ &amp; RevenueIQ</span>
               </div>
             </div>
           </div>
@@ -1161,6 +1246,24 @@
         </div>
       </div>
 
+      <!-- Stage 6 — RevenueIQ -->
+      <div class="wf-stage violet">
+        <div class="wf-marker"><div class="wf-node violet" aria-hidden="true">6</div></div>
+        <div class="wf-card">
+          <div class="wf-card-head">
+            <div class="wf-icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="24" r="18" fill="#f5f3ff" stroke="#6d28d9" stroke-width="1.5"/><text x="24" y="29" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="16" font-weight="800" fill="#6d28d9">€</text></svg>
+            </div>
+            <div>
+              <div class="wf-stage-name violet" data-i18n="how.revenueiq.title">RevenueIQ &mdash; Economic Screening</div>
+              <div class="wf-sub" data-i18n="how.revenueiq.sub">Step 6 &middot; Uses LayoutIQ capacity &amp; YieldIQ energy &middot; Screening only</div>
+            </div>
+          </div>
+          <p class="wf-does" data-i18n="wf.revenueiq.does">CAPEX bands, tariff revenue, OPEX, LCOE, IRR, NPV, and payback from your layout and yield &mdash; country-aware auction/PPA modes and Agri-PV adjustments.</p>
+          <div class="wf-chips" data-i18n-chips="wf.revenueiq.get"></div>
+        </div>
+      </div>
+
     </div>
 
     <!-- PVMath report culmination -->
@@ -1171,7 +1274,7 @@
         </div>
         <div>
           <h3 data-i18n="wf.report.title">Combined PVMath report</h3>
-          <p data-i18n="wf.report.p">SiteIQ + TerrainIQ + LayoutIQ + YieldIQ in one export &mdash; project ZIP, layout DXF, terrain LandXML and screening PDF.</p>
+          <p data-i18n="wf.report.p">SiteIQ + TerrainIQ + LayoutIQ + YieldIQ + RevenueIQ in one export &mdash; project ZIP, layout DXF, terrain LandXML, economic PDF section, and screening report.</p>
           <div class="wf-chips" data-i18n-chips="wf.report.get" style="margin-top:0.65rem;margin-bottom:0;"></div>
         </div>
       </div>
@@ -1221,7 +1324,7 @@
     <div class="stats-bar">
       <div class="stats-bar-item"><div class="stats-bar-num">Beta</div><div class="stats-bar-lbl" data-i18n="stats.sites">Early Access</div></div>
       <div class="stats-bar-divider" aria-hidden="true"></div>
-      <div class="stats-bar-item"><div class="stats-bar-num">5</div><div class="stats-bar-lbl" data-i18n="stats.modules">Workflow Steps</div></div>
+      <div class="stats-bar-item"><div class="stats-bar-num">6</div><div class="stats-bar-lbl" data-i18n="stats.modules">Workflow Steps</div></div>
       <div class="stats-bar-divider" aria-hidden="true"></div>
       <div class="stats-bar-item"><div class="stats-bar-num" data-i18n="stats.global-val">Global</div><div class="stats-bar-lbl" data-i18n="stats.coverage">Data Coverage</div></div>
       <div class="stats-bar-divider" aria-hidden="true"></div>
@@ -1258,7 +1361,7 @@
         <ul class="price-features">
           <li class="yes">5 analyses / month</li>
           <li class="yes">Full workflow at app.pvmath.com</li>
-          <li class="yes">SiteIQ &rarr; TerrainIQ &rarr; LayoutIQ &rarr; YieldIQ on one credit</li>
+          <li class="yes">SiteIQ &rarr; TerrainIQ &rarr; LayoutIQ &rarr; YieldIQ &rarr; RevenueIQ on one credit</li>
           <li class="yes">PDF report download</li>
           <li class="yes">DXF &amp; LandXML terrain export</li>
           <li class="no">Engineering Reference Manual</li>
@@ -1315,9 +1418,9 @@
       <a href="#contact" class="enterprise-strip-btn">Contact for Custom Pricing &rarr;</a>
     </div>
 
-    <p style="text-align:center;margin-top:1.5rem;font-size:0.82rem;color:var(--muted);">
-      <strong>One project analysis</strong> = one SiteIQ screening run. TerrainIQ, LayoutIQ, and YieldIQ on the same project in the same month do not use extra credits.
-      Free: 10/month. Professional: 50/month. Developer: 250/month (team pool). Enterprise: unlimited.
+    <p style="text-align:center;margin-top:1.5rem;font-size:0.82rem;color:var(--muted);" data-i18n="pricing.note">
+      <strong>One project analysis</strong> = one LayoutIQ run (credit charged at layout sweep). TerrainIQ, YieldIQ, and RevenueIQ on the same project in the same month do not use extra credits.
+      Free: 5/month. Professional: 50/month. Developer: 250/month (team pool). Enterprise: unlimited.
       Access at <a href="https://app.pvmath.com" target="_blank">app.pvmath.com</a>. No credit card required. Cancel anytime. VAT (19%) added for EU customers.
     </p>
   </div>
@@ -1456,6 +1559,7 @@
       <a href="https://app.pvmath.com" target="_blank">TerrainIQ</a>
       <a href="https://app.pvmath.com" target="_blank">LayoutIQ</a>
       <a href="https://app.pvmath.com" target="_blank">YieldIQ</a>
+      <a href="https://app.pvmath.com" target="_blank">RevenueIQ</a>
     </div>
     <div class="footer-col">
       <h5 data-i18n="footer.company">Company</h5>
@@ -1491,22 +1595,24 @@ var T = {
     'nav.menuOpen':'Open menu','nav.menuClose':'Close menu',
     'hero.badge':'PVMath-Solar Site Intelligence Platform — Early Access',
     'hero.h1':'Solar site intelligence<br>built by <em>industry experts,</em><br>for engineers and developers.',
-    'hero.p':'Drop coordinates or draw a boundary and get site screening, terrain & slope analysis, auto-layout, and yield — one guided workflow. PDF reports and CAD exports (DXF + LandXML) included.',
+    'hero.p':'Draw a boundary on the map or upload KML/KMZ and get site screening, terrain analysis, auto-layout, yield, and revenue economics — one guided workflow. PDF reports and CAD exports (DXF + LandXML) included.',
     'hero.btn1':'Try it Free →','hero.btn2':'See Real Outputs',
     'hero.scan.siteiq':'Site screening with solar, flood & regulatory checks. GIS buildable area with auto-detected setbacks from roads, rivers, buildings & more.',
     'hero.scan.terrainiq':'Slope analysis on region-routed DEM. Export surface + contours to CAD.',
     'hero.scan.layoutiq':'Auto-pack fixed-tilt or tracker rows with GIS setbacks & 3D preview.',
-    'hero.scan.yieldiq':'PVGIS yield for your chosen mount and layout — specific yield, PR, and capacity factor. Runs automatically from LayoutIQ.',
+    'hero.scan.yieldiq':'PVGIS yield for your chosen mount and layout — specific yield, PR, and capacity factor.',
+    'hero.scan.revenueiq':'CAPEX bands, tariff revenue, LCOE, IRR, and payback from your layout and yield.',
     'stat.modules':'Workflow Steps','stat.speed':'Site Screening Time','stat.time-val':'≤ 10 min',
     'stat.coverage':'Solar Data Coverage','stat.start':'To Get Started','stat.free-val':'Free',
     'modules.label':'PVMath-Solar Site Intelligence Platform',
-    'modules.title':'Five steps.<br>One login.',
-    'modules.sub':'Project setup → site screening → terrain → layout → yield — no separate apps.',
-    'pipe.setup':'Project Setup','pipe.setup.sub':'Pin or boundary · project type',
+    'modules.title':'Six steps.<br>One login.',
+    'modules.sub':'Project setup → site screening → terrain → layout → yield → revenue — no separate apps.',
+    'pipe.setup':'Project Setup','pipe.setup.sub':'Map or KML boundary · project type',
     'pipe.siteiq.sub':'Solar, flood & regulatory · GIS buildable area',
     'pipe.terrainiq.sub':'Slope heatmaps · DXF + LandXML',
     'pipe.layoutiq.sub':'Auto-packed rows · 3D preview',
     'pipe.yieldiq.sub':'PVGIS yield · PR & CF',
+    'pipe.revenueiq.sub':'CAPEX · IRR · LCOE · payback',
     'pipe.report':'PVMath Report / ZIP','pipe.report.sub':'PDF + CAD + project package',
     'modules.cta':'Open unified app →',
     'pill.live':'Live Now','pill.soon':'Coming Soon',
@@ -1525,21 +1631,28 @@ var T = {
     'layoutiq.f1':'Mount type, pitch & GCR','layoutiq.f2':'Row packing with GIS setbacks',
     'layoutiq.f3':'DC capacity & module count','layoutiq.f4':'3D terrain + layout preview',
     'layoutiq.btn':'Open in App →',
+    'revenueiq.tagline':'Screen CAPEX, revenue, and returns before you open the financial model.',
+    'revenueiq.f1':'10-component CAPEX bands (€/Wp or local currency)',
+    'revenueiq.f2':'Gov auction, PPA, or custom tariff modes',
+    'revenueiq.f3':'LCOE, IRR, NPV, payback & sensitivity',
+    'revenueiq.f4':'Economic viability in unified PVMath score',
+    'revenueiq.disclaimer':'Indicative screening only. Not investment advice or bankable financial modelling.',
     'how.label':'Workflow','how.title':'How it works.',
     'how.sub':'One project setup feeds every step. Each result carries into the next.',
-    'how.teaser':'Five connected steps in one app at app.pvmath.com.',
+    'how.teaser':'Six connected steps in one app at app.pvmath.com.',
     'how.expand':'Step-by-step workflow',
     'how.setup.title':'Step 1 — Project Setup',
     'how.setup.p':'Name the project, set the country, and place the site once. Every step inherits the same project — no re-entry.',
-    'how.setup.quick.title':'Coordinates or address','how.setup.quick.p':'Paste lat/lon, search an address, or drop a pin — SiteIQ screening runs without a boundary',
-    'how.setup.full.title':'Draw or upload a boundary','how.setup.full.p':'Draw the polygon or upload KMZ/KML — unlocks TerrainIQ, LayoutIQ & buildable-area GIS',
+    'how.setup.quick.title':'Interactive map','how.setup.quick.p':'Draw your site boundary on the map — search by address or place corner pins',
+    'how.setup.full.title':'Upload KML / KMZ','how.setup.full.p':'Import a parcel polygon — unlocks TerrainIQ, LayoutIQ, YieldIQ & RevenueIQ',
     'how.siteiq.title':'SiteIQ — Site Screening','how.siteiq.sub':'Step 2 · Solar · flood · regulatory · buildable area',
     'how.terrainiq.title':'TerrainIQ — Slope Analysis','how.terrainiq.sub':'Step 3 · Needs a boundary · CAD exports',
     'how.layoutiq.title':'LayoutIQ — Auto Layout','how.layoutiq.sub':'Step 4 · Mount type chosen here · 3D preview',
     'how.yieldiq.title':'YieldIQ — Yield Estimation','how.yieldiq.sub':'Step 5 · Auto-runs from your layout · Feasibility only',
+    'how.revenueiq.title':'RevenueIQ — Economic Screening','how.revenueiq.sub':'Step 6 · Uses LayoutIQ capacity & YieldIQ energy · Screening only',
     'wf.setup.sub':'One login · one project context',
-    'wf.setup.does':'Name the project, set the country, and place the site once. Every step inherits the same project — no re-entry.',
-    'wf.setup.get':'Quick Mode (pin)|Full Mode (boundary)|Standard & Agri-PV',
+    'wf.setup.does':'Name the project, set the country, and define the site boundary once. Every step inherits the same project — no re-entry.',
+    'wf.setup.get':'Interactive map|Upload KML/KMZ|Standard & Agri-PV',
     'wf.siteiq.does':'Screen solar resource, flood risk and grid proximity, then map buildable area with automatic GIS setbacks from roads, rivers, buildings and more.',
     'wf.siteiq.get':'Monthly GHI chart|Buildable % & land score|OSM constraint map',
     'wf.terrainiq.does':'Region-routed DEM inside your boundary — slope heatmaps, cross-row grades and engineering verdicts before you order a topo survey.',
@@ -1548,8 +1661,10 @@ var T = {
     'wf.layoutiq.get':'Mount type & GCR|DC capacity & modules|3D terrain preview',
     'wf.yieldiq.does':'PVGIS yield for your chosen LayoutIQ mount — Fixed 1P–4P or SAT 1P/2P. Runs automatically when you proceed, no re-entry.',
     'wf.yieldiq.get':'Specific yield & PR|Monthly energy chart|Feasibility only',
+    'wf.revenueiq.does':'CAPEX bands, tariff revenue, OPEX, LCOE, IRR, NPV, and payback from your layout and yield — country-aware auction/PPA modes and Agri-PV adjustments.',
+    'wf.revenueiq.get':'CAPEX €/Wp bands|IRR & payback range|Economic score factor',
     'wf.report.title':'Combined PVMath report',
-    'wf.report.p':'SiteIQ + TerrainIQ + LayoutIQ + YieldIQ in one export — project ZIP, layout DXF, terrain LandXML and screening PDF.',
+    'wf.report.p':'SiteIQ + TerrainIQ + LayoutIQ + YieldIQ + RevenueIQ in one export — project ZIP, layout DXF, terrain LandXML, economic PDF section, and screening report.',
     'wf.report.get':'One project ZIP|Layout DXF|Terrain LandXML',
     'wf.report.cta':'Open in App →',
     'why.label':'Why PVMath','why.title':'Engineering-grade screening estimates.<br>Not a bankable study.',
@@ -1558,7 +1673,7 @@ var T = {
     'why.c2.h':'Region-Routed Terrain Data','why.c2.p':'Best available public DEM per region — Copernicus EEA-10 (Europe), USGS 3DEP (USA), FABDEM (global), GLO-30 fallback — resampled to a 5 m layout grid.',
     'why.c3.h':'CAD Software Ready','why.c3.p':'LandXML surface and DXF contours with parcel linework — UTM-georeferenced or local-origin. No manual redraw from KMZ.',
     'why.c4.h':'≤ 10 minutes','why.c4.p':'Full pre-check before the client call ends.',
-    'why.c5.h':'Screening Reports','why.c5.p':'PDFs from screening, terrain, and yield — for go/no-go and early client calls.',
+    'why.c5.h':'Screening Reports','why.c5.p':'PDFs from screening, terrain, yield, and economics — for go/no-go and early client calls.',
     'why.c6.h':'Built by a Solar Engineer','why.c6.p':'Utility-scale EPC experience — not a generic GIS startup.',
     'reviews.label':'Early Access','reviews.title':'Help shape what we build next.',
     'reviews.sub':'Early access. Customer stories coming as we grow.',
@@ -1585,16 +1700,16 @@ var T = {
     'pf.t.f3':'Invite teammates by email','pf.t.f4':'Priority support',
     'pf.t.f5':'Custom invoice & billing','pf.t.f6':'YieldIQ — Full Access','pf.t.f7':'Custom invoice & billing',
     'pricing.btn.start':'Get Started →','pricing.btn.sub':'Subscribe →','pricing.btn.contact':'Contact Us →',
-    'pricing.note':'One project analysis = one SiteIQ screening run. TerrainIQ, LayoutIQ, and YieldIQ on the same project do not use extra credits. No credit card required. Cancel anytime. VAT (19%) added for EU customers.',
+    'pricing.note':'One project analysis = one LayoutIQ run (credit charged at layout sweep). TerrainIQ, YieldIQ, and RevenueIQ on the same project do not use extra credits. Free: 5/month. No credit card required. Cancel anytime. VAT (19%) added for EU customers.',
     'pricing.per.monthly':'/ month','pricing.per.annual':'/ year','pricing.year':'year',
     'pricing.save.pro':'Save €298 vs monthly — 2 months free',
     'pricing.save.dev':'Save €649 vs monthly — 1 month free',
     'faq.label':'FAQ','faq.title':'Common questions from engineers.',
     'faq.sub':'What PVMath is — and isn\'t — in a ground-mount workflow.',
     'faq.q1':'How is PVMath different from running PVGIS and QGIS yourself?',
-    'faq.a1':'Same datasets — one workflow. Screening, terrain PDFs, CAD export, and four-config yield comparison in ≤ 10 minutes.',
+    'faq.a1':'Same datasets — one workflow. Screening, terrain PDFs, CAD export, yield comparison, and economic screening in ≤ 10 minutes.',
     'faq.q2':'Is this a bankable study or a substitute for PVsyst / DNV / Aurora?',
-    'faq.a2':'No. Pre-feasibility screening for go/no-go. YieldIQ: ±8–15% vs. bankable. TerrainIQ: region-routed public DEM, not LiDAR.',
+    'faq.a2':'No. Pre-feasibility screening for go/no-go. YieldIQ: ±8–15% vs. bankable. RevenueIQ: indicative CAPEX/tariff bands — not investment advice. TerrainIQ: region-routed public DEM, not LiDAR.',
     'faq.q3':'What does Early Access mean?',
     'faq.a3':'The full platform is live today. Features and pricing may evolve. Free tier includes PDF and CAD export.',
     'faq.q5':'Can I use TerrainIQ exports in CAD for layout?',
@@ -1621,7 +1736,7 @@ var T = {
     'form.message':'Anything else we should know? (optional)','form.submit':'Send Message →',
     'footer.tagline':'Solar site intelligence for EPCs and developers. By engineers, for engineers.',
     'footer.platform':'Platform','footer.company':'Company','footer.legal':'Legal',
-    'footer.yieldiq':'YieldIQ','footer.about':'About','footer.pricing':'Pricing',
+    'footer.yieldiq':'YieldIQ','footer.revenueiq':'RevenueIQ','footer.about':'About','footer.pricing':'Pricing',
     'footer.contact':'Contact','footer.presskit':'Download Logo','footer.impressum':'Impressum','footer.privacy':'Privacy Policy','footer.terms':'Terms & Conditions',
     'footer.copy':'© 2026 PVMath. All rights reserved.',
     'footer.sources':'Data sources: PVGIS (EC JRC) · Copernicus EEA-10 / GLO-30 · USGS 3DEP · FABDEM · OpenStreetMap'
@@ -1633,22 +1748,24 @@ var T = {
     'nav.menuOpen':'Menü öffnen','nav.menuClose':'Menü schließen',
     'hero.badge':'PVMath-Solar Site Intelligence Platform — Early Access',
     'hero.h1':'Solar-Standortintelligenz –<br>entwickelt von <em>Ingenieuren,</em><br>für Solaringenieure und Entwickler.',
-    'hero.p':'Koordinaten eingeben oder Grenze zeichnen und Standort-Screening, Gelände- & Neigungsanalyse, Auto-Layout und Ertrag erhalten — ein geführter Workflow. PDF-Berichte und CAD-Exporte (DXF + LandXML) inklusive.',
+    'hero.p':'Grenze auf der Karte zeichnen oder KML/KMZ hochladen — Standort-Screening, Gelände, Auto-Layout, Ertrag und Wirtschaftlichkeit in einem Workflow. PDF-Berichte und CAD-Exporte (DXF + LandXML) inklusive.',
     'hero.btn1':'Kostenlos testen →','hero.btn2':'Echte Ergebnisse ansehen',
     'hero.scan.siteiq':'Standort-Screening mit Solar-, Hochwasser- & Regulierungsprüfung. GIS-Bebaubare Fläche mit automatischen Abständen zu Straßen, Flüssen, Gebäuden u. a.',
     'hero.scan.terrainiq':'Neigungsanalyse auf regionalem DEM. Oberfläche + Höhenlinien nach CAD.',
     'hero.scan.layoutiq':'Fest- oder Tracker-Reihen automatisch packen, mit GIS-Abständen & 3D-Vorschau.',
-    'hero.scan.yieldiq':'PVGIS-Ertrag für gewählte Aufständerung und Layout — spezifischer Ertrag, PR und Kapazitätsfaktor. Läuft automatisch aus LayoutIQ.',
+    'hero.scan.yieldiq':'PVGIS-Ertrag für gewählte Aufständerung und Layout — spezifischer Ertrag, PR und Kapazitätsfaktor.',
+    'hero.scan.revenueiq':'CAPEX-Bänder, Tariferlöse, LCOE, IRR und Amortisation aus Layout und Ertrag.',
     'stat.modules':'Workflow-Schritte','stat.speed':'Standortprüfungszeit','stat.time-val':'≤ 10 Min',
     'stat.coverage':'Solare Datenabdeckung','stat.start':'Zum Starten','stat.free-val':'Gratis',
     'modules.label':'PVMath-Solar Site Intelligence Platform',
-    'modules.title':'Fünf Schritte.<br>Ein Login.',
-    'modules.sub':'Projekteinrichtung → Screening → Gelände → Layout → Ertrag — keine separaten Apps.',
-    'pipe.setup':'Projekteinrichtung','pipe.setup.sub':'Pin oder Grenze · Projekttyp',
+    'modules.title':'Sechs Schritte.<br>Ein Login.',
+    'modules.sub':'Projekteinrichtung → Screening → Gelände → Layout → Ertrag → Wirtschaftlichkeit — keine separaten Apps.',
+    'pipe.setup':'Projekteinrichtung','pipe.setup.sub':'Karte oder KML-Grenze · Projekttyp',
     'pipe.siteiq.sub':'Solar, Hochwasser & Regulierung · GIS-Bebaubare Fläche',
     'pipe.terrainiq.sub':'Neigungskarten · DXF + LandXML',
     'pipe.layoutiq.sub':'Automatisch gepackte Reihen · 3D-Vorschau',
     'pipe.yieldiq.sub':'PVGIS-Ertrag · PR & CF',
+    'pipe.revenueiq.sub':'CAPEX · IRR · LCOE · Amortisation',
     'pipe.report':'PVMath-Bericht / ZIP','pipe.report.sub':'PDF + CAD + Projektpaket',
     'modules.cta':'Einheitliche App öffnen →',
     'pill.live':'Jetzt Live','pill.soon':'Demnächst',
@@ -1667,21 +1784,28 @@ var T = {
     'layoutiq.f1':'Montageart, Pitch & GCR','layoutiq.f2':'Reihenpackung mit GIS-Abständen',
     'layoutiq.f3':'DC-Leistung & Modulanzahl','layoutiq.f4':'3D-Gelände- und Layout-Vorschau',
     'layoutiq.btn':'In der App öffnen →',
+    'revenueiq.tagline':'CAPEX, Erlöse und Rendite screenen — bevor Sie das Finanzmodell öffnen.',
+    'revenueiq.f1':'10-Komponenten-CAPEX-Bänder (€/Wp oder Landeswährung)',
+    'revenueiq.f2':'Auktion, PPA oder individueller Tarifmodus',
+    'revenueiq.f3':'LCOE, IRR, NPV, Amortisation & Sensitivität',
+    'revenueiq.f4':'Wirtschaftlichkeit im einheitlichen PVMath-Score',
+    'revenueiq.disclaimer':'Nur indikatives Screening. Keine Anlageberatung oder bankfähiges Finanzmodell.',
     'how.label':'Arbeitsablauf','how.title':'So funktioniert es.',
     'how.sub':'Eine Projekteinrichtung speist jeden Schritt. Jedes Ergebnis fließt in den nächsten.',
-    'how.teaser':'Fünf verbundene Schritte in einer App unter app.pvmath.com.',
+    'how.teaser':'Sechs verbundene Schritte in einer App unter app.pvmath.com.',
     'how.expand':'Schritt-für-Schritt-Workflow',
     'how.setup.title':'Schritt 1 — Projekteinrichtung',
     'how.setup.p':'Projekt benennen, Land festlegen, Standort einmal platzieren. Jeder Schritt übernimmt dasselbe Projekt — keine erneute Eingabe.',
-    'how.setup.quick.title':'Koordinaten oder Adresse','how.setup.quick.p':'Lat/Lon einfügen, Adresse suchen oder Pin setzen — SiteIQ-Screening läuft ohne Grenze',
-    'how.setup.full.title':'Grenze zeichnen oder hochladen','how.setup.full.p':'Polygon zeichnen oder KMZ/KML hochladen — schaltet TerrainIQ, LayoutIQ & baubare-Fläche-GIS frei',
+    'how.setup.quick.title':'Interaktive Karte','how.setup.quick.p':'Standortgrenze auf der Karte zeichnen — Adresse suchen oder Eckpunkte setzen',
+    'how.setup.full.title':'KML / KMZ hochladen','how.setup.full.p':'Parcel-Polygon importieren — schaltet TerrainIQ, LayoutIQ, YieldIQ & RevenueIQ frei',
     'how.siteiq.title':'SiteIQ — Standort-Screening','how.siteiq.sub':'Schritt 2 · Solar · Hochwasser · Regulierung · Bebaubare Fläche',
     'how.terrainiq.title':'TerrainIQ — Neigungsanalyse','how.terrainiq.sub':'Schritt 3 · Benötigt Grenze · CAD-Exporte',
     'how.layoutiq.title':'LayoutIQ — Auto-Layout','how.layoutiq.sub':'Schritt 4 · Montageart hier gewählt · 3D-Vorschau',
     'how.yieldiq.title':'YieldIQ — Ertragsschätzung','how.yieldiq.sub':'Schritt 5 · Läuft automatisch aus dem Layout · Nur Machbarkeit',
+    'how.revenueiq.title':'RevenueIQ — Wirtschaftlichkeits-Screening','how.revenueiq.sub':'Schritt 6 · Nutzt LayoutIQ-Leistung & YieldIQ-Energie · Nur Screening',
     'wf.setup.sub':'Ein Login · ein Projektkontext',
-    'wf.setup.does':'Projekt benennen, Land festlegen, Standort einmal platzieren. Jeder Schritt übernimmt dasselbe Projekt — keine erneute Eingabe.',
-    'wf.setup.get':'Quick Mode (Pin)|Full Mode (Grenze)|Standard & Agri-PV',
+    'wf.setup.does':'Projekt benennen, Land festlegen und Standortgrenze einmal definieren. Jeder Schritt übernimmt dasselbe Projekt — keine erneute Eingabe.',
+    'wf.setup.get':'Interaktive Karte|KML/KMZ hochladen|Standard & Agri-PV',
     'wf.siteiq.does':'Solarressource, Hochwasserrisiko und Netznähe screenen, dann bebaubare Fläche mit automatischen GIS-Abständen zu Straßen, Flüssen, Gebäuden u. a. ermitteln.',
     'wf.siteiq.get':'Monats-GHI-Diagramm|Bebaubar % & Land-Score|OSM-Constraint-Karte',
     'wf.terrainiq.does':'Regionales DEM innerhalb Ihrer Grenze — Neigungskarten, Querneigung und Engineering-Bewertungen vor der Vermessung.',
@@ -1690,8 +1814,10 @@ var T = {
     'wf.layoutiq.get':'Montageart & GCR|DC-Leistung & Module|3D-Geländevorschau',
     'wf.yieldiq.does':'PVGIS-Ertrag für Ihre gewählte LayoutIQ-Aufständerung — Fest 1P–4P oder SAT 1P/2P. Läuft automatisch bei „Weiter“, keine erneute Eingabe.',
     'wf.yieldiq.get':'Spez. Ertrag & PR|Monats-Energiediagramm|Nur Machbarkeit',
+    'wf.revenueiq.does':'CAPEX-Bänder, Tariferlöse, OPEX, LCOE, IRR, NPV und Amortisation aus Layout und Ertrag — länderbezogene Auktions-/PPA-Modi und Agri-PV-Anpassungen.',
+    'wf.revenueiq.get':'CAPEX €/Wp-Bänder|IRR- & Amortisationsband|Wirtschaftlichkeits-Score',
     'wf.report.title':'Kombinierter PVMath-Bericht',
-    'wf.report.p':'SiteIQ + TerrainIQ + LayoutIQ + YieldIQ in einem Export — Projekt-ZIP, Layout-DXF, Gelände-LandXML und Screening-PDF.',
+    'wf.report.p':'SiteIQ + TerrainIQ + LayoutIQ + YieldIQ + RevenueIQ in einem Export — Projekt-ZIP, Layout-DXF, Gelände-LandXML, Wirtschafts-PDF-Abschnitt und Screening-PDF.',
     'wf.report.get':'Ein Projekt-ZIP|Layout-DXF|Gelände-LandXML',
     'wf.report.cta':'In der App öffnen →',
     'why.label':'Warum PVMath','why.title':'Screening-Schätzungen auf Ingenieursniveau.<br>Kein bankfähiges Gutachten.',
@@ -1700,7 +1826,7 @@ var T = {
     'why.c2.h':'Regional geroutete Geländedaten','why.c2.p':'Bestes öffentliches DEM je Region — Copernicus EEA-10 (Europa), USGS 3DEP (USA), FABDEM (global), GLO-30-Fallback — auf 5 m Layout-Raster resampled.',
     'why.c3.h':'CAD-Software-kompatibel','why.c3.p':'LandXML-Oberfläche und DXF-Höhenlinien mit Parcel-Linework — UTM-georeferenziert oder lokaler Ursprung. Kein manuelles Nachzeichnen aus KMZ.',
     'why.c4.h':'≤ 10 Minuten','why.c4.p':'Vollständige Vorprüfung noch im Kundengespräch.',
-    'why.c5.h':'Screening-Berichte','why.c5.p':'PDFs aus Screening, Gelände und Ertrag — für Go/No-Go und frühe Kundengespräche.',
+    'why.c5.h':'Screening-Berichte','why.c5.p':'PDFs aus Screening, Gelände, Ertrag und Wirtschaftlichkeit — für Go/No-Go und frühe Kundengespräche.',
     'why.c6.h':'Von einem Solaringenieur entwickelt','why.c6.p':'Utility-Scale-EPC-Erfahrung — kein generisches GIS-Startup.',
     'reviews.label':'Early Access','reviews.title':'Gestalten Sie mit, was als Nächstes kommt.',
     'reviews.sub':'Early Access. Kundenstimmen folgen, sobald wir wachsen.',
@@ -1710,7 +1836,7 @@ var T = {
     'stats.sites':'Standorte geprüft','stats.modules':'Live-Module','stats.global-val':'Global',
     'stats.coverage':'Datenabdeckung','stats.speed':'Pro Standortprüfung','stats.start':'Zum Starten',
     'pricing.label':'Preise','pricing.title':'Einfache, transparente Preise.',
-    'pricing.sub':'10 vollständige Projektanalysen im Free-Tarif. Ein Workflow-Lauf = eine Analyse.',
+    'pricing.sub':'5 vollständige Analysen im Free-Tarif. Ein Workflow-Lauf = eine Analyse.',
     'pricing.monthly':'Monatlich','pricing.annual':'Jährlich','pricing.popular':'Beliebteste Wahl',
     'tier.starter':'Starter','tier.pro':'Professional','tier.team':'Team',
     'plan.starter.desc':'Für einzelne Ingenieure mit gelegentlicher Standortprüfung.',
@@ -1727,16 +1853,16 @@ var T = {
     'pf.t.f3':'Team per E-Mail einladen','pf.t.f4':'Prioritäts-Support',
     'pf.t.f5':'Individuelle Rechnung & Abrechnung','pf.t.f6':'YieldIQ — Vollzugang','pf.t.f7':'Individuelle Rechnung & Abrechnung',
     'pricing.btn.start':'Jetzt starten →','pricing.btn.sub':'Abonnieren →','pricing.btn.contact':'Kontakt →',
-    'pricing.note':'Free-Tarif: 5 Versuche pro Modul und Monat. Keine Kreditkarte erforderlich. Jederzeit kündbar. Zzgl. MwSt. 19% für EU-Kunden.',
+    'pricing.note':'Eine Projektanalyse = ein LayoutIQ-Lauf (Gutschrift bei Layout-Sweep). TerrainIQ, YieldIQ und RevenueIQ auf demselben Projekt verbrauchen keine weiteren Credits. Free: 5/Monat. Keine Kreditkarte. Jederzeit kündbar. MwSt. 19% für EU-Kunden.',
     'pricing.per.monthly':'/ Monat','pricing.per.annual':'/ Jahr','pricing.year':'Jahr',
     'pricing.save.pro':'€298 gegenüber Monatlich sparen — 2 Monate gratis',
     'pricing.save.dev':'€649 gegenüber Monatlich sparen — 1 Monat gratis',
     'faq.label':'FAQ','faq.title':'Häufige Fragen von Ingenieuren.',
     'faq.sub':'Was PVMath ist — und nicht ist — im Freiflächen-Workflow.',
     'faq.q1':'Worin unterscheidet sich PVMath von PVGIS und QGIS?',
-    'faq.a1':'Dieselben Datensätze — ein Workflow. Screening, Gelände-PDFs, CAD-Export und Vier-Konfig-Vergleich in ≤ 10 Minuten.',
+    'faq.a1':'Dieselben Datensätze — ein Workflow. Screening, Gelände-PDFs, CAD-Export, Ertragsvergleich und Wirtschafts-Screening in ≤ 10 Minuten.',
+    'faq.a2':'Nein. Vorprüfung für Go/No-Go. YieldIQ: ±8–15% vs. bankfähig. RevenueIQ: indikative CAPEX-/Tarif-Bänder — keine Anlageberatung. TerrainIQ: öffentliches DEM, kein LiDAR.',
     'faq.q2':'Ist das ein bankfähiges Gutachten oder Ersatz für PVsyst / DNV / Aurora?',
-    'faq.a2':'Nein. Vor-Machbarkeits-Screening für Go/No-Go. YieldIQ: ±8–15% vs. bankfähig. TerrainIQ: regionales öffentliches DEM, kein LiDAR.',
     'faq.q3':'Was bedeutet Early Access?',
     'faq.a3':'Die gesamte Plattform ist live. Funktionen und Preise können sich weiterentwickeln. Gratis-Tarif inkl. PDF und CAD-Export.',
     'faq.q5':'Kann ich TerrainIQ-Exporte in CAD für Layout nutzen?',
