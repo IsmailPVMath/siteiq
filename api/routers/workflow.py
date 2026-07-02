@@ -238,9 +238,6 @@ async def workflow_gis_analysis(
   Automatically queries roads, railways, buildings, water, forests, and transmission
   lines inside the site boundary. No user input required beyond the boundary polygon.
     """
-    if user.access_token and is_over_limit(user.user_id, SCREEN_APP, user.access_token):
-        raise HTTPException(status_code=429, detail=_limit_detail(user))
-
     rings = []
     for ring in body.boundaries or []:
         rings.append([(p.lat, p.lon) for p in ring])
@@ -284,9 +281,6 @@ async def workflow_screen(
 
     No terrain slope here; TerrainIQ is the only terrain source in the React workflow.
     """
-    if user.access_token and is_over_limit(user.user_id, SCREEN_APP, user.access_token):
-        raise HTTPException(status_code=429, detail=_limit_detail(user))
-
     req = ScreenReq(
         project_name=body.project_name,
         lat=body.lat,
@@ -309,9 +303,6 @@ async def workflow_screen(
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Screening failed: {exc}") from exc
-
-    if user.access_token:
-        increment_usage(user.user_id, SCREEN_APP, user.access_token)
 
     return WorkflowScreenResponse(
         success=result.success,
@@ -479,6 +470,9 @@ async def workflow_layout_sweep(
 
     Returns a comparison table (capacity vs pitch) plus best DC per configuration.
     """
+    if user.access_token and is_over_limit(user.user_id, SCREEN_APP, user.access_token):
+        raise HTTPException(status_code=429, detail=_limit_detail(user))
+
     polys = _latlon_polys(body.boundary, body.boundaries)
     if not polys:
         raise HTTPException(status_code=400, detail="A site boundary is required for LayoutIQ.")
@@ -498,6 +492,9 @@ async def workflow_layout_sweep(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Layout sweep failed: {exc}") from exc
 
+    if user.access_token:
+        increment_usage(user.user_id, SCREEN_APP, user.access_token)
+
     return result
 
 
@@ -507,6 +504,9 @@ async def start_workflow_layout_sweep_job(
     user: AuthUser = Depends(get_current_user),
 ):
     """Start LayoutIQ sweep as a background job for large sites."""
+    if user.access_token and is_over_limit(user.user_id, SCREEN_APP, user.access_token):
+        raise HTTPException(status_code=429, detail=_limit_detail(user))
+
     polys = _latlon_polys(body.boundary, body.boundaries)
     if not polys:
         raise HTTPException(status_code=400, detail="A site boundary is required for LayoutIQ.")
@@ -518,6 +518,10 @@ async def start_workflow_layout_sweep_job(
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc
+
+    if user.access_token:
+        increment_usage(user.user_id, SCREEN_APP, user.access_token)
+
     return JobStartResponse(job_id=job.id, kind=job.kind, status=job.status)
 
 

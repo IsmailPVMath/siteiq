@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css";
 import type * as GeoJSON from "geojson";
 import type { WorkflowTerrainMeshResponse } from "../types/workflow";
 import { googleSatelliteLayer } from "../lib/mapTiles";
+import { SLOPE_DEG_BANDS, slopeColorFromPct, slopePctToDeg } from "../lib/slopeDegrees";
 
 interface Props {
   mesh: WorkflowTerrainMeshResponse;
@@ -13,18 +14,14 @@ interface Props {
   height?: number;
 }
 
-const SLOPE_STOPS: { max: number; color: string; label: string }[] = [
-  { max: 3, color: "#1b8a3a", label: "0–3%" },
-  { max: 6, color: "#8bc34a", label: "3–6%" },
-  { max: 10, color: "#f5a623", label: "6–10%" },
-  { max: Infinity, color: "#d0021b", label: ">10%" },
-];
+const SLOPE_STOPS = SLOPE_DEG_BANDS.map((b) => ({
+  max: b.hi,
+  color: b.color,
+  label: b.label,
+}));
 
-function slopeColor(slope: number): string {
-  for (const stop of SLOPE_STOPS) {
-    if (slope <= stop.max) return stop.color;
-  }
-  return SLOPE_STOPS[SLOPE_STOPS.length - 1].color;
+function slopeColor(slopePct: number): string {
+  return slopeColorFromPct(slopePct);
 }
 
 export function SlopeTopMap({ mesh, boundaries, excludedGeoJson, height = 440 }: Props) {
@@ -243,7 +240,7 @@ export function SlopeTopMap({ mesh, boundaries, excludedGeoJson, height = 440 }:
       </div>
       {hover ? (
         <div className="slope-top-tooltip" style={{ left: hover.x + 12, top: hover.y + 12 }}>
-          {hover.slope.toFixed(1)}% slope
+          {slopePctToDeg(hover.slope).toFixed(1)}° slope
         </div>
       ) : null}
     </div>

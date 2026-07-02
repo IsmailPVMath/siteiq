@@ -35,7 +35,7 @@ MODULE_CONFIDENCE = {
 PLATFORM_APP = "platform"
 
 PLAN_LIMITS = {
-    "free":         10,    # project analyses / month (one full workflow = one credit)
+    "free":         5,     # analyses / month (charged at LayoutIQ)
     "professional": 50,
     "developer":    250,   # team shares one monthly pool (usage_key)
     "enterprise":   None,
@@ -73,7 +73,7 @@ PAID_PLANS = frozenset({"professional", "developer", "enterprise"})
 
 STRIPE_LINK  = "https://buy.stripe.com/YOUR_LINK_HERE"
 UPGRADE_CONTACT = "mailto:contact@pvmath.com?subject=PVMath%20%E2%80%94%20Billing%20or%20upgrade%20inquiry"
-PRICE_LABEL  = "€149 / month"
+PRICE_LABEL  = "€179 / month"
 
 LAYOUTIQ_ADMIN_EMAILS = frozenset({
     "ismailpasha747@gmail.com",
@@ -701,7 +701,7 @@ def sidebar_plan_usage_html(user_id: str) -> str:
         return (
             f'<div style="font-size:0.72rem;color:#b8f5c8;line-height:1.45;margin:0.35rem 0 0.5rem;">'
             f'<span style="color:#4ade80;font-weight:700;">{plan}</span> · '
-            f'{used} / {lim} project analyses this month</div>'
+            f'{used} / {lim} analyses this month</div>'
         )
     if u["limit"] is not None and u.get("remaining_per_app"):
         rem = u["remaining_per_app"]
@@ -724,19 +724,19 @@ def limit_reached_message(user_id: str, app_label: str) -> tuple[str, str]:
     if plan == "free":
         return (
             "Free trial complete",
-            f"You've used your {limit} free project analyses this month. "
-            f"Upgrade to Professional for {PLAN_LIMITS['professional']} project analyses/month.",
+            f"You've used your {limit} free analyses this month. "
+            f"Upgrade to Professional for {PLAN_LIMITS['professional']} analyses/month.",
         )
     if mode == "pooled":
         return (
             "Monthly limit reached",
-            f"You've used all <b>{limit} {plan_label(plan)} project analyses</b> this month.<br>"
+            f"You've used all <b>{limit} {plan_label(plan)} analyses</b> this month.<br>"
             f"One full workflow (SiteIQ through YieldIQ) counts as one analysis. "
             f"Your limit resets at the start of next month.",
         )
     return (
         "Monthly limit reached",
-        f"You've used all <b>{limit} {plan_label(plan)} project analyses</b> for this month.<br>"
+        f"You've used all <b>{limit} {plan_label(plan)} analyses</b> for this month.<br>"
         f"Your limit resets at the start of next month.",
     )
 
@@ -1494,7 +1494,7 @@ def render_auth_page(app_name: str | None = None):
         <span style="font-family:Inter,sans-serif;font-size:1.7rem;font-weight:800;color:#1a2e1a;letter-spacing:-0.04em;">PVMath</span>
       </a>
       <div class="auth-logo-sub">Solar Site Intelligence &nbsp;·&nbsp; SiteIQ · TerrainIQ · YieldIQ</div>
-      <div class="auth-free-note">Free tier: 10 project analyses/month · No credit card</div>
+      <div class="auth-free-note">Free tier: 5 analyses/month · No credit card</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -1508,7 +1508,7 @@ def render_auth_page(app_name: str | None = None):
         with tab_register:
             st.markdown("""
             <div class="free-badge">
-              ✦ &nbsp;10 free project analyses/month — no credit card required
+              ✦ &nbsp;5 free analyses/month — no credit card required
             </div>
             """, unsafe_allow_html=True)
 

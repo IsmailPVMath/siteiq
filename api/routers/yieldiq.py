@@ -63,9 +63,6 @@ async def analyze_yieldiq(
     body: YieldIQAnalyzeRequest,
     user: AuthUser = Depends(get_current_user),
 ):
-    if user.access_token and is_over_limit(user.user_id, YIELD_APP, user.access_token):
-        raise HTTPException(status_code=429, detail=_limit_detail(user))
-
     loop = asyncio.get_running_loop()
     try:
         data = await asyncio.wait_for(

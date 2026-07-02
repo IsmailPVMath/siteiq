@@ -28,7 +28,7 @@ update profiles set plan = 'developer', team_id = '<owner-uuid>' where id = '<te
 ## How limits work
 
 - **One project analysis** = SiteIQ screening run for a project. TerrainIQ, LayoutIQ, and YieldIQ on the same project in the same month do **not** use extra credits.
-- **Free:** 10 project analyses/month.
+- **Free:** 5 analyses/month.
 - **Professional:** 50 project analyses/month.
 - **Developer:** 250 project analyses/month — **entire team shares one pool** (up to 5 seats).
 - **Enterprise:** unlimited.

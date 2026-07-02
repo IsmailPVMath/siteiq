@@ -59,6 +59,7 @@ import type {
   WorkflowTerrainMeshResponse,
 } from "../types/workflow";
 import type * as GeoJSON from "geojson";
+import { SLOPE_DEG_BANDS, slopePctToDeg } from "../lib/slopeDegrees";
 
 // Realistic global PV module / slope bounds (utility-scale, 2026 market survey).
 // Largest mass-production modules are ~2.4-2.5 m long and ~1.3-1.34 m wide
@@ -86,6 +87,7 @@ interface Props {
   onProjectIdChange?: (id: string) => void;
   onWorkflowDepth?: (stage: OutputModuleStage) => void;
   onWorkflowPersist?: (patch: Partial<WorkflowRestore>) => void;
+  onUsageChanged?: () => void;
 }
 
 function metric(label: string, rating?: string, detail?: string, extra?: string) {
@@ -254,6 +256,7 @@ export function OutputPage({
   onProjectIdChange,
   onWorkflowDepth,
   onWorkflowPersist,
+  onUsageChanged,
 }: Props) {
   const activeStage = activeModule;
   const setActiveStage = onModuleChange;
@@ -1319,6 +1322,7 @@ export function OutputPage({
       }
       const res = await workflowLayoutSweepJob(token, body);
       setLayoutSweep(res);
+      onUsageChanged?.();
       if (isRefineRun && refineFrom) {
         const match = res.rows.find(
           (r) =>
@@ -1651,13 +1655,13 @@ export function OutputPage({
     const ex = (topo.extras ?? {}) as Record<string, unknown>;
     const crMean = typeof ex.cross_row_mean === "number" ? ex.cross_row_mean : null;
     const crP95 = typeof ex.cross_row_p95 === "number" ? ex.cross_row_p95 : null;
-    const classes: { label: string; color: string; pct: number | null }[] = [
-      { label: "0 – 2.5% (excellent)", color: "#1b8a3a", pct: bins?.[0] ?? null },
-      { label: "2.5 – 5% (very good)", color: "#5fae3a", pct: bins?.[1] ?? null },
-      { label: "5 – 7.5% (acceptable)", color: "#8bc34a", pct: bins?.[2] ?? null },
-      { label: "7.5 – 10% (challenging)", color: "#f5a623", pct: bins?.[3] ?? null },
-      { label: "> 10% (critical)", color: "#d0021b", pct: bins?.[4] ?? null },
-    ];
+    const classes: { label: string; color: string; pct: number | null }[] = SLOPE_DEG_BANDS.map(
+      (band, i) => ({
+        label: band.label,
+        color: band.color,
+        pct: bins?.[i] ?? null,
+      }),
+    );
     return (
       <div className="slope-analysis-table">
         <div className="terrain-drivers-head">
@@ -1696,18 +1700,18 @@ export function OutputPage({
           <tbody>
             <tr>
               <th>Mean slope</th>
-              <td>{topo.slope.mean.toFixed(1)}%</td>
+              <td>{slopePctToDeg(topo.slope.mean).toFixed(1)}°</td>
             </tr>
             <tr>
               <th>Max slope</th>
-              <td>{topo.slope.max.toFixed(1)}%</td>
+              <td>{slopePctToDeg(topo.slope.max).toFixed(1)}°</td>
             </tr>
             <tr>
-              <th>Area &gt; 5%</th>
+              <th>Area &gt; 5°</th>
               <td>{topo.slope.pct_over5.toFixed(1)}%</td>
             </tr>
             <tr>
-              <th>Area &gt; 10%</th>
+              <th>Area &gt; 10°</th>
               <td>{topo.slope.pct_over10.toFixed(1)}%</td>
             </tr>
             {crMean !== null ? (

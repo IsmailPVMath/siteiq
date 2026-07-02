@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 import requests
 
 from pvmath_auth import sign_in
-from pvmath_otp import resend_signup_otp, start_signup_otp, verify_signup_otp
+from pvmath_otp import resend_signup_otp, verify_signup_otp
 from pvmath_supabase import auth_hdr, sb_url
 
 router = APIRouter(tags=["auth"])
@@ -56,7 +56,7 @@ def _session_response(data: dict, email: str) -> dict:
 
 @router.post("/auth/signup")
 def signup(body: SignupRequest):
-    """Create a SiteIQ account and email a one-time verification code."""
+    """Create a SiteIQ account and return a session immediately (no email OTP)."""
     payload: dict = {"email": body.email.strip(), "password": body.password}
     fn = _normalize_name_part(body.first_name)
     ln = _normalize_name_part(body.last_name)
@@ -87,27 +87,36 @@ def signup(body: SignupRequest):
         raise HTTPException(status_code=400, detail=str(msg))
 
     user = data.get("user") or {}
-    user_id = user.get("id") or data.get("id") or ""
     email = user.get("email") or data.get("email") or body.email.strip()
-    otp_result = start_signup_otp(
-        email,
-        access_token=data.get("access_token", ""),
-        refresh_token=data.get("refresh_token", ""),
-        expires_at=data.get("expires_at", 0),
-        user_id=user_id,
-        password=body.password,
-    )
-    if not otp_result.get("success"):
-        raise HTTPException(
-            status_code=503,
-            detail=otp_result.get("error", "Could not send verification email"),
+    if not data.get("access_token"):
+        login = sign_in(email, body.password)
+        if not login.get("success"):
+            raise HTTPException(
+                status_code=400,
+                detail="Account created — please log in with your email and password.",
+            )
+        user = login.get("user", {})
+        return _session_response(
+            {
+                "access_token": login.get("access_token", ""),
+                "refresh_token": login.get("refresh_token", ""),
+                "expires_at": 0,
+                "user": user,
+                "user_id": user.get("id", ""),
+            },
+            email,
         )
 
-    return {
-        "otp_required": True,
-        "email": email,
-        "email_confirmation_required": True,
-    }
+    return _session_response(
+        {
+            "access_token": data["access_token"],
+            "refresh_token": data.get("refresh_token", ""),
+            "expires_at": data.get("expires_at", 0),
+            "user": user,
+            "user_id": user.get("id", ""),
+        },
+        email,
+    )
 
 
 @router.post("/auth/signup/verify")

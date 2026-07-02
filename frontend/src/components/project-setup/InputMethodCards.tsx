@@ -11,28 +11,15 @@ export const INPUT_METHOD_OPTIONS: {
   {
     id: "map",
     title: "Interactive map",
-    description: "Draw the project boundary directly on satellite imagery.",
-    accuracy: "Best for quick site selection",
+    description: "Draw the project boundary on satellite imagery — recommended for all studies.",
+    accuracy: "Full SiteIQ → TerrainIQ → LayoutIQ workflow",
   },
   {
     id: "kml",
     title: "Upload KML / KMZ",
-    description: "Import parcel boundaries from Google Earth or CAD exports.",
+    description: "Import parcel boundaries from Google Earth, QGIS, or CAD exports.",
     accuracy: "Survey-grade polygons",
     accept: ".kml,.kmz",
-  },
-  {
-    id: "paste",
-    title: "Paste coordinates",
-    description: "Enter lat/lon or paste a Google Maps link.",
-    accuracy: "Pin-only or manual boundary",
-  },
-  {
-    id: "import",
-    title: "Import project",
-    description: "Load an existing PVMath project as a template.",
-    accuracy: "Future",
-    disabled: true,
   },
 ];
 
@@ -43,12 +30,12 @@ interface Props {
 
 export function InputMethodCards({ selected, onSelect }: Props) {
   return (
-    <div className="input-method-grid">
+    <div className="input-method-grid input-method-grid-two">
       {INPUT_METHOD_OPTIONS.map((opt) => (
         <button
           key={opt.id}
           type="button"
-          className={`input-method-card${selected === opt.id ? " active" : ""}${
+          className={`input-method-card input-method-card-lg${selected === opt.id ? " active" : ""}${
             opt.disabled ? " disabled" : ""
           }`}
           disabled={opt.disabled}

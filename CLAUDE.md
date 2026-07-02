@@ -18,7 +18,7 @@
 **Tagline:** "From site to system."  
 **Focus:** Ground-mount solar ONLY — Fixed Tilt and Single-Axis Tracker, Standard and Agri-PV (dual use). No rooftop, carport, floating, or BIPV.  
 **Target users:** Solar EPCs, project developers, engineering firms worldwide  
-**Monetization:** Freemium — **per-project analysis** (one SiteIQ screen = one credit; TerrainIQ/LayoutIQ/YieldIQ on same project same month are free): Free **10**/month, Professional **€149/month** (**50**/month), Developer **€499/month** (**250**/month, 5 team seats), Enterprise unlimited. **Stripe not live** — manual Supabase activation (`docs/PVMath_Manual_Billing_Runbook.md`); website Subscribe → contact until Payment Links. **Team invites:** Manage membership → Team (`pvmath_team.py`).
+**Monetization:** Freemium — **per-site analysis** (one LayoutIQ run = one credit; SiteIQ/TerrainIQ/YieldIQ on same workflow same month are free): Free **5**/month, Professional **€179/month** (**50**/month), Developer **€649/month** (**250**/month, 5 team seats), Enterprise unlimited. **Stripe not live** — manual Supabase activation (`docs/PVMath_Manual_Billing_Runbook.md`); website Subscribe → contact until Payment Links. **Team invites:** Manage membership → Team (`pvmath_team.py`).
 
 ---
 

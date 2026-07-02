@@ -12,6 +12,7 @@ import numpy as np
 import requests
 from PIL import Image
 
+from pvmath_slope_degrees import pct_area_over_deg, slope_deg_bins, slope_pct_to_deg
 from pvmath_terrain_report import (
     compute_terrain_drivers_summary,
     compute_terrain_extras,
@@ -542,18 +543,13 @@ def _analyze_region(
 
     mean_slope = float(s_valid.mean())
     max_slope = float(s_valid.max())
-    pct_over5 = float((s_valid > 5).sum() / len(s_valid) * 100)
-    pct_over10 = float((s_valid > 10).sum() / len(s_valid) * 100)
+    pct_over5 = pct_area_over_deg(s_valid, 5.0)
+    pct_over10 = pct_area_over_deg(s_valid, 10.0)
     n_slope = len(s_valid)
     slope_bins: Optional[Tuple[float, float, float, float, float]] = None
     if n_slope:
-        slope_bins = (
-            float((s_valid <= 2.5).sum() / n_slope * 100),
-            float(((s_valid > 2.5) & (s_valid <= 5)).sum() / n_slope * 100),
-            float(((s_valid > 5) & (s_valid <= 7.5)).sum() / n_slope * 100),
-            float(((s_valid > 7.5) & (s_valid <= 10)).sum() / n_slope * 100),
-            float((s_valid > 10).sum() / n_slope * 100),
-        )
+        b = slope_deg_bins(s_valid.tolist())
+        slope_bins = (b[0], b[1], b[2], b[3], b[4])
 
     extras = compute_terrain_extras(X, Y, Z, grid_m_used)
     verdict_fixed = verdict_for_mount(mean_slope, "Fixed Tilt")
@@ -648,15 +644,10 @@ def _composite_regions(
     mean_slope = float(s_valid.mean())
     max_slope = float(s_valid.max())
     n_slope = len(s_valid)
-    pct_over5 = float((s_valid > 5).sum() / n_slope * 100)
-    pct_over10 = float((s_valid > 10).sum() / n_slope * 100)
-    slope_bins = (
-        float((s_valid <= 2.5).sum() / n_slope * 100),
-        float(((s_valid > 2.5) & (s_valid <= 5)).sum() / n_slope * 100),
-        float(((s_valid > 5) & (s_valid <= 7.5)).sum() / n_slope * 100),
-        float(((s_valid > 7.5) & (s_valid <= 10)).sum() / n_slope * 100),
-        float((s_valid > 10).sum() / n_slope * 100),
-    )
+    pct_over5 = pct_area_over_deg(s_valid, 5.0)
+    pct_over10 = pct_area_over_deg(s_valid, 10.0)
+    b = slope_deg_bins(s_valid.tolist())
+    slope_bins = (b[0], b[1], b[2], b[3], b[4])
 
     extras = dominant.get("extras")
     verdict_fixed = verdict_for_mount(mean_slope, "Fixed Tilt")

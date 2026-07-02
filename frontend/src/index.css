@@ -3123,13 +3123,27 @@ body.sb-resizing {
 
 .input-method-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.65rem;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.input-method-grid-two {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.input-method-card-lg {
+  min-height: 148px;
+  padding: 1.35rem 1.2rem;
+}
+
+.input-method-card-lg .input-method-card-title {
+  font-size: 1.05rem;
 }
 
 @media (max-width: 720px) {
-  .input-method-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .input-method-grid,
+  .input-method-grid-two {
+    grid-template-columns: 1fr;
   }
 }
 

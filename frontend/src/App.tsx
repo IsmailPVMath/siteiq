@@ -419,6 +419,7 @@ export default function App() {
           }}
           onWorkflowDepth={noteWorkflowDepth}
           onWorkflowPersist={mergeWorkflowRestore}
+          onUsageChanged={() => void loadProfile(session.access_token)}
         />
       ) : null}
     </AppShell>

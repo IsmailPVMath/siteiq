@@ -87,11 +87,8 @@ async def analyze_gate(
     """
     Unified gate analysis — one call, full screening payload.
 
-    Requires Supabase Bearer token. Counts against SiteIQ monthly usage.
+    Requires Supabase Bearer token.
     """
-    if user.access_token and is_over_limit(user.user_id, GATE_APP, user.access_token):
-        raise HTTPException(status_code=429, detail=_limit_detail(user))
-
     req = _build_gate_request(body)
     loop = asyncio.get_running_loop()
     try:
@@ -112,8 +109,5 @@ async def analyze_gate(
             status_code=500,
             detail=f"Gate analysis failed: {exc}",
         ) from exc
-
-    if user.access_token:
-        increment_usage(user.user_id, GATE_APP, user.access_token)
 
     return _to_response(result)

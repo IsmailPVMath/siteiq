@@ -12,7 +12,7 @@ import requests
 PLATFORM_APP = "platform"
 
 PLAN_LIMITS = {
-    "free": 10,
+    "free": 5,
     "professional": 50,
     "developer": 250,
     "enterprise": None,
@@ -35,14 +35,15 @@ PLAN_LABELS = {
 
 
 def usage_limit_detail(plan: str) -> str:
-    """User-facing 429 message — one project workflow = one analysis credit."""
+    """User-facing 429 message — one workflow through LayoutIQ = one analysis credit."""
     limit = plan_limit(plan)
     label = PLAN_LABELS.get(plan, "Free")
     if limit is None:
         return "Monthly analysis limit reached. Contact contact@pvmath.com"
     return (
-        f"Monthly project analysis limit reached ({label}: {limit}/month). "
-        "One full workflow run (SiteIQ through YieldIQ on the same project) counts as one analysis. "
+        f"Monthly analysis limit reached ({label}: {limit}/month). "
+        "One analysis is counted when you run LayoutIQ for a site. "
+        "SiteIQ and TerrainIQ on the same workflow do not use an extra credit. "
         "Upgrade at contact@pvmath.com"
     )
 
@@ -172,12 +173,12 @@ def get_total_usage(user_id: str, token: str) -> int:
 
 def increment_usage(user_id: str, app: str, token: str) -> int:
     key, period = _usage_key(user_id, token), _current_period()
+    current = get_usage(user_id, app, token)
+    new_count = current + 1
+    base = f"{sb_url()}/rest/v1/usage_tracking"
     try:
-        current = get_usage(user_id, app, token)
-        new_count = current + 1
-        base = f"{sb_url()}/rest/v1/usage_tracking"
         if current == 0:
-            requests.post(
+            r = requests.post(
                 base,
                 json={
                     "user_id": user_id,
@@ -189,8 +190,10 @@ def increment_usage(user_id: str, app: str, token: str) -> int:
                 headers=db_hdr(token),
                 timeout=10,
             )
+            if r.status_code not in (200, 201):
+                raise RuntimeError(r.text[:200])
         else:
-            requests.patch(
+            r = requests.patch(
                 base,
                 json={"count": new_count},
                 params={
@@ -201,9 +204,13 @@ def increment_usage(user_id: str, app: str, token: str) -> int:
                 headers=db_hdr(token),
                 timeout=10,
             )
+            if r.status_code not in (200, 204):
+                raise RuntimeError(r.text[:200])
         return new_count
-    except Exception:
-        return 0
+    except Exception as exc:
+        import logging
+        logging.getLogger("pvmath.supabase").warning("increment_usage failed: %s", exc)
+        return current
 
 
 def is_over_limit(user_id: str, app: str, token: str) -> bool:

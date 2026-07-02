@@ -1,9 +1,7 @@
 """TerrainIQ terrain analytics, map rendering, and PDF report generation."""
 from __future__ import annotations
 
-import io
-import math
-from datetime import datetime, timezone
+from pvmath_slope_degrees import slope_pct_to_deg
 from typing import Optional
 
 import numpy as np
@@ -1025,8 +1023,8 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
     z_min = round(ctx["z_min"])
     z_max = round(ctx["z_max"])
     z_rng = round(ctx["z_range"])
-    mean_s = round(ctx["mean_slope"], 1)
-    max_s = round(ctx["max_slope"], 1)
+    mean_s = round(slope_pct_to_deg(ctx["mean_slope"]) or 0, 1)
+    max_s = round(slope_pct_to_deg(ctx["max_slope"]) or 0, 1)
     p5 = round(ctx["pct_over5"], 1)
     p10 = round(ctx["pct_over10"], 1)
     ha5 = ctx.get("ha_over5", 0)
@@ -1037,10 +1035,10 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
         ["Min elevation", f"{z_min} m", "Lowest grid point in boundary"],
         ["Max elevation", f"{z_max} m", "Highest grid point in boundary"],
         ["Elevation range", f"{z_rng} m", "Relief across site (DEM accuracy ±1–3 m)"],
-        ["Mean slope", f"{mean_s}%", "Average gradient magnitude"],
-        ["Max slope (point)", f"{max_s}%", "Steepest single grid cell"],
-        ["Area > 5% slope", f"{p5}%", f"≈{ha5:.1f} ha · cumulative footprint above threshold"],
-        ["Area > 10% slope", f"{p10}%", (
+        ["Mean slope", f"{mean_s}°", "Average gradient (degrees)"],
+        ["Max slope (point)", f"{max_s}°", "Steepest single grid cell"],
+        ["Area > 5° slope", f"{p5}%", f"≈{ha5:.1f} ha · cumulative footprint above threshold"],
+        ["Area > 10° slope", f"{p10}%", (
             f"≈{ha10:.1f} ha · max point {max_s}% may be a small sliver"
         )],
     ]
@@ -1100,7 +1098,7 @@ def generate_pdf_report(ctx: dict) -> Optional[bytes]:
     # ── Slope distribution ────────────────────────────────────────────────
     slope_bins = ctx.get("slope_bins")
     if slope_bins:
-        bin_labels = ["0% – 2.5%", "2.5% – 5%", "5% – 7.5%", "7.5% – 10%", "&gt; 10%"]
+        bin_labels = ["0° – 2.5°", "2.5° – 5°", "5° – 7.5°", "7.5° – 10°", "10° – 20°"]
         bin_colors = [
             (colors.HexColor("#1b5e20"), colors.white),
             (colors.HexColor("#66bb6a"), colors.white),
@@ -1283,7 +1281,7 @@ def build_terrain_unified_flowables(
     # Slope Distribution sits directly under the slope map (user request).
     slope_bins = ctx.get("slope_bins")
     if slope_bins:
-        bin_labels = ["0% – 2.5%", "2.5% – 5%", "5% – 7.5%", "7.5% – 10%", "&gt; 10%"]
+        bin_labels = ["0° – 2.5°", "2.5° – 5°", "5° – 7.5°", "7.5° – 10°", "10° – 20°"]
         bin_colors = [
             (colors.HexColor("#1b5e20"), colors.white),
             (colors.HexColor("#66bb6a"), colors.white),
@@ -1316,8 +1314,8 @@ def build_terrain_unified_flowables(
     z_min = round(ctx["z_min"])
     z_max = round(ctx["z_max"])
     z_rng = round(ctx["z_range"])
-    mean_s = round(ctx["mean_slope"], 1)
-    max_s = round(ctx["max_slope"], 1)
+    mean_s = round(slope_pct_to_deg(ctx["mean_slope"]) or 0, 1)
+    max_s = round(slope_pct_to_deg(ctx["max_slope"]) or 0, 1)
     p5 = round(ctx["pct_over5"], 1)
     p10 = round(ctx["pct_over10"], 1)
     ha5 = ctx.get("ha_over5", 0)
@@ -1328,10 +1326,10 @@ def build_terrain_unified_flowables(
         ["Min elevation", f"{z_min} m", "Lowest grid point in boundary"],
         ["Max elevation", f"{z_max} m", "Highest grid point in boundary"],
         ["Elevation range", f"{z_rng} m", "Relief across site (DEM accuracy ±1–3 m)"],
-        ["Mean slope", f"{mean_s}%", "Average gradient magnitude"],
-        ["Max slope (point)", f"{max_s}%", "Steepest single grid cell"],
-        ["Area > 5% slope", f"{p5}%", f"≈{ha5:.1f} ha · cumulative footprint above threshold"],
-        ["Area > 10% slope", f"{p10}%", f"≈{ha10:.1f} ha · max point {max_s}% may be a small sliver"],
+        ["Mean slope", f"{mean_s}°", "Average gradient (degrees)"],
+        ["Max slope (point)", f"{max_s}°", "Steepest single grid cell"],
+        ["Area > 5° slope", f"{p5}%", f"≈{ha5:.1f} ha · cumulative footprint above threshold"],
+        ["Area > 10° slope", f"{p10}%", f"≈{ha10:.1f} ha · max point {max_s}° may be a small sliver"],
     ]
     m_tbl = Table(metrics, colWidths=[48 * mm, 28 * mm, usable - 76 * mm])
     m_tbl.setStyle(TableStyle([

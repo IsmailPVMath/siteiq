@@ -235,9 +235,6 @@ async def analyze_terrainiq(
     body: TerrainIQAnalyzeRequest,
     user: AuthUser = Depends(get_current_user),
 ):
-    if user.access_token and is_over_limit(user.user_id, TOPO_APP, user.access_token):
-        raise HTTPException(status_code=429, detail=_limit_detail(user))
-
     loop = asyncio.get_running_loop()
     try:
         analysis = await asyncio.wait_for(
@@ -281,8 +278,6 @@ async def start_terrainiq_analysis_job(
     user: AuthUser = Depends(get_current_user),
 ):
     """Start TerrainIQ as a background job so huge sites don't tie up HTTP requests."""
-    if user.access_token and is_over_limit(user.user_id, TOPO_APP, user.access_token):
-        raise HTTPException(status_code=429, detail=_limit_detail(user))
     try:
         job = submit_heavy_job(
             user.user_id,
