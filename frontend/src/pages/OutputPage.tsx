@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import {
   analyzeTopoJob,
   analyzeYield,
+  analyzeRevenue,
   createProject,
   updateProject,
   reverseGeocode,
@@ -34,6 +35,8 @@ import { ConstraintAnalysisMap } from "../components/ConstraintAnalysisMap";
 import { LayoutPreviewMap } from "../components/LayoutPreviewMap";
 import { NumberField } from "../components/NumberField";
 import { YieldResultsPanel } from "../components/YieldResultsPanel";
+import { RevenueIQPage } from "./RevenueIQPage";
+import { REVENUEIQ_ENABLED } from "../lib/revenueiqEnabled";
 import { SlopeTopMap } from "../components/SlopeTopMap";
 import { Terrain3DView } from "../components/Terrain3DView";
 import type { GateAnalyzeRequest } from "../types/gate";
@@ -46,6 +49,7 @@ import {
   type RowAlignment,
 } from "../types/layoutConfig";
 import type { TerrainIQAnalyzeRequest, TerrainIQAnalyzeResponse, YieldIQAnalyzeResponse } from "../types/terrainiq";
+import type { RevenueIQAnalyzeResponse } from "../types/revenueiq";
 import type {
   LayoutOptimizationMode,
   LayoutLandCost,
@@ -340,6 +344,10 @@ export function OutputPage({
   const [yieldBusy, setYieldBusy] = useState(false);
   const [yieldError, setYieldError] = useState("");
   const [yieldResult, setYieldResult] = useState<YieldIQAnalyzeResponse | null>(null);
+  const [revenueBusy, setRevenueBusy] = useState(false);
+  const [revenueError, setRevenueError] = useState("");
+  const [revenueResult, setRevenueResult] = useState<RevenueIQAnalyzeResponse | null>(null);
+  const revenueAutoRan = useRef(false);
   const [finalScore, setFinalScore] = useState<WorkflowScoreResponse | null>(initialFinalScore);
   const [layoutBusy, setLayoutBusy] = useState(false);
   const [layoutError, setLayoutError] = useState("");
@@ -762,6 +770,48 @@ export function OutputPage({
       ? (selectedLayoutRow.dc_kwp * selectedYieldConfig.spec_y) / 1000
       : null;
 
+  const revenueBaseRequest = useMemo(() => {
+    const grid = result.grid as { distance_km?: number; km?: number } | undefined;
+    const gridKm =
+      typeof grid?.distance_km === "number"
+        ? grid.distance_km
+        : typeof grid?.km === "number"
+          ? grid.km
+          : null;
+    return {
+      project_name: result.project_name || input?.project_name || "Project",
+      country: input?.country || "",
+      land_use: input?.land_use || "Standard",
+      mount_type: effectiveMountType(
+        layoutMountType,
+        selectedLayoutRow,
+        input?.mount_type || "Fixed Tilt",
+      ),
+      dc_kwp: selectedLayoutRow?.dc_kwp ?? 0,
+      annual_mwh: selectedAnnualMwh ?? 0,
+      site_area_ha: input?.area_ha || Number(result.capacity?.area_ha ?? 0) || 0,
+      mean_slope_pct: topoResult?.slope?.mean ?? null,
+      grid_distance_km: gridKm,
+      lat: result.coordinates.lat,
+      lon: result.coordinates.lon,
+    };
+  }, [
+    input?.area_ha,
+    input?.country,
+    input?.land_use,
+    input?.mount_type,
+    input?.project_name,
+    layoutMountType,
+    result.capacity,
+    result.coordinates.lat,
+    result.coordinates.lon,
+    result.grid,
+    result.project_name,
+    selectedAnnualMwh,
+    selectedLayoutRow,
+    topoResult,
+  ]);
+
   async function refreshFinalScore(
     topo: TerrainIQAnalyzeResponse,
     yieldSpec?: { spec_y?: number; cf?: number | null },
@@ -1122,6 +1172,19 @@ export function OutputPage({
     autoSaveWorkflow("layout");
   }
 
+  function proceedToRevenue() {
+    scrollToStepTop();
+    setActiveStage("revenue");
+    onWorkflowDepth?.("revenue");
+    onWorkflowPersist?.({
+      lastStage: "revenue",
+      topo: topoResult,
+      finalScore,
+      gisSetbacks: Object.keys(gisSetbacks).length ? gisSetbacks : null,
+    });
+    autoSaveWorkflow("revenue");
+  }
+
   function proceedToYield() {
     scrollToStepTop();
     setActiveStage("yield");
@@ -1134,6 +1197,7 @@ export function OutputPage({
     if (activeStage === "topo") setActiveStage("screen");
     else if (activeStage === "layout") setActiveStage("topo");
     else if (activeStage === "yield") setActiveStage("layout");
+    else if (activeStage === "revenue") setActiveStage("yield");
     else onEditInput();
   }
 
@@ -1144,7 +1208,9 @@ export function OutputPage({
         ? "← Back to TerrainIQ"
         : activeStage === "yield"
           ? "← Back to LayoutIQ"
-          : "← Edit input";
+          : activeStage === "revenue"
+            ? "← Back to YieldIQ"
+            : "← Edit input";
 
   function renderStageBar(proceed: ReactNode, leftHint?: ReactNode) {
     const saveError =
@@ -1175,6 +1241,53 @@ export function OutputPage({
       </div>
     );
   }
+
+  async function runRevenueAnalysis(overrides: Record<string, unknown> = {}) {
+    if (!selectedLayoutRow?.dc_kwp || !selectedAnnualMwh) return;
+    scrollToStepTop();
+    setRevenueBusy(true);
+    setRevenueError("");
+    try {
+      const payload = { ...revenueBaseRequest, ...overrides };
+      const data = await analyzeRevenue(token, payload);
+      setRevenueResult(data);
+      if (data.success && data.economic_score != null && topoResult) {
+        try {
+          const scored = await workflowScore(token, {
+            score_components: scoreComponents,
+            terrain_score: topoResult.terrain_drivers.terrain_score as number,
+            lat: result.coordinates.lat,
+            lon: result.coordinates.lon,
+            country: input?.country || "",
+            terrain_confirmed: true,
+            capacity_mwp: selectedLayoutRow.dc_kwp / 1000,
+            yield_spec_y: selectedYieldConfig?.spec_y,
+            yield_cf: selectedYieldConfig?.cf ?? undefined,
+            economic_score: data.economic_score,
+          });
+          setFinalScore(scored);
+        } catch {
+          /* score refresh optional */
+        }
+      }
+    } catch (err) {
+      setRevenueError(err instanceof Error ? err.message : "RevenueIQ analysis failed");
+    } finally {
+      setRevenueBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!REVENUEIQ_ENABLED || activeStage !== "revenue") {
+      revenueAutoRan.current = false;
+      return;
+    }
+    if (revenueAutoRan.current || revenueBusy || !selectedLayoutRow?.dc_kwp || !selectedAnnualMwh) return;
+    if (revenueResult) return;
+    revenueAutoRan.current = true;
+    void runRevenueAnalysis();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStage, selectedLayoutRow, selectedAnnualMwh, revenueBusy, revenueResult]);
 
   async function runYieldAnalysis() {
     scrollToStepTop();
@@ -1437,6 +1550,7 @@ export function OutputPage({
       score: finalScore as unknown as Record<string, unknown> | null,
       layout_row: selectedLayoutRow,
       yield_result: yieldResult as unknown as Record<string, unknown> | null,
+      revenueiq_result: revenueResult as unknown as Record<string, unknown> | null,
       selected_yield_mwh: selectedAnnualMwh,
       selected_config_key: selectedYieldConfigKey,
       selected_dc_kwp: selectedLayoutRow?.dc_kwp ?? null,
@@ -3373,8 +3487,36 @@ export function OutputPage({
           )
         ) : null}
         {yieldError ? <div className="error-banner">{yieldError}</div> : null}
-        {renderStageBar(<span />)}
+        {renderStageBar(
+          REVENUEIQ_ENABLED ? (
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={proceedToRevenue}
+              disabled={!yieldResult}
+            >
+              Proceed to RevenueIQ →
+            </button>
+          ) : (
+            <span />
+          ),
+        )}
       </section>
+      ) : null}
+
+      {REVENUEIQ_ENABLED && activeStage === "revenue" ? (
+        <>
+          <RevenueIQPage
+            locked={!selectedLayoutRow?.dc_kwp}
+            busy={revenueBusy}
+            error={revenueError}
+            result={revenueResult}
+            country={input?.country || ""}
+            baseRequest={revenueBaseRequest}
+            onAnalyze={async (overrides) => runRevenueAnalysis(overrides)}
+          />
+          {renderStageBar(<span />)}
+        </>
       ) : null}
 
       <p className="disclaimer footer-note">

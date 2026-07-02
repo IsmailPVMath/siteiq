@@ -3,6 +3,7 @@ import { PIPELINE_MODULES } from "../types/workflow";
 
 interface Props {
   current: PipelineStage;
+  modules?: PipelineModule[];
   interactive?: boolean;
   unlocked?: PipelineStage[];
   completed?: Partial<Record<PipelineStage, boolean>>;
@@ -11,13 +12,15 @@ interface Props {
 
 export function WorkflowPipeline({
   current,
+  modules,
   interactive = false,
   unlocked,
   completed = {},
   onNavigate,
 }: Props) {
-  const currentIdx = PIPELINE_MODULES.findIndex((m) => m.id === current);
-  const unlockedSet = new Set(unlocked ?? PIPELINE_MODULES.filter((m) => !m.future).map((m) => m.id));
+  const steps = modules ?? PIPELINE_MODULES;
+  const currentIdx = steps.findIndex((m) => m.id === current);
+  const unlockedSet = new Set(unlocked ?? steps.filter((m) => !m.future).map((m) => m.id));
 
   return (
     <div className="workflow-pipeline-wrap">
@@ -26,7 +29,7 @@ export function WorkflowPipeline({
         <span className="workflow-pipeline-hint">Automated screening workflow</span>
       </div>
       <nav className="workflow-pipeline" aria-label="PVMath workflow">
-        {PIPELINE_MODULES.map((mod: PipelineModule, i) => {
+        {steps.map((mod: PipelineModule, i) => {
           const done = completed[mod.id] || (i < currentIdx && !mod.future);
           const active = mod.id === current;
           const reachable =
@@ -51,10 +54,10 @@ export function WorkflowPipeline({
                   {mod.future ? <span className="workflow-future-tag">Soon</span> : null}
                 </span>
               </button>
-              {i < PIPELINE_MODULES.length - 1 ? (
+              {i < steps.length - 1 ? (
                 <div
                   className={`workflow-pipeline-connector${
-                    i < currentIdx || completed[PIPELINE_MODULES[i + 1].id] ? " done" : ""
+                    i < currentIdx || completed[steps[i + 1].id] ? " done" : ""
                   }`}
                   aria-hidden
                 />

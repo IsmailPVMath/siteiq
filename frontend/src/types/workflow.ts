@@ -4,7 +4,13 @@ import type { LayoutElectricalConfig, RowAlignment } from "./layoutConfig";
 export type WorkflowStep = "input" | "processing" | "output" | "projects";
 
 /** Connected pipeline visible across the preliminary study workflow. */
-export type PipelineStage = "setup" | "siteiq" | "terrainiq" | "layoutiq" | "yieldiq";
+export type PipelineStage =
+  | "setup"
+  | "siteiq"
+  | "terrainiq"
+  | "layoutiq"
+  | "yieldiq"
+  | "revenueiq";
 
 export interface PipelineModule {
   id: PipelineStage;
@@ -12,7 +18,7 @@ export interface PipelineModule {
   future?: boolean;
 }
 
-export const PIPELINE_MODULES: PipelineModule[] = [
+const _BASE_PIPELINE: PipelineModule[] = [
   { id: "setup", label: "Project setup" },
   { id: "siteiq", label: "SiteIQ" },
   { id: "terrainiq", label: "TerrainIQ" },
@@ -20,7 +26,19 @@ export const PIPELINE_MODULES: PipelineModule[] = [
   { id: "yieldiq", label: "YieldIQ" },
 ];
 
-export type OutputModuleStage = "screen" | "topo" | "layout" | "yield";
+const _REVENUE_PIPELINE: PipelineModule[] = [
+  ..._BASE_PIPELINE,
+  { id: "revenueiq", label: "RevenueIQ" },
+];
+
+export function pipelineModules(revenueEnabled = false): PipelineModule[] {
+  return revenueEnabled ? _REVENUE_PIPELINE : _BASE_PIPELINE;
+}
+
+/** @deprecated Use pipelineModules() — default without RevenueIQ */
+export const PIPELINE_MODULES: PipelineModule[] = _BASE_PIPELINE;
+
+export type OutputModuleStage = "screen" | "topo" | "layout" | "yield" | "revenue";
 
 export function pipelineFromOutputModule(stage: OutputModuleStage): PipelineStage {
   const map: Record<OutputModuleStage, PipelineStage> = {
@@ -28,6 +46,7 @@ export function pipelineFromOutputModule(stage: OutputModuleStage): PipelineStag
     topo: "terrainiq",
     layout: "layoutiq",
     yield: "yieldiq",
+    revenue: "revenueiq",
   };
   return map[stage];
 }
@@ -38,6 +57,7 @@ export function outputModuleFromPipeline(stage: PipelineStage): OutputModuleStag
     terrainiq: "topo",
     layoutiq: "layout",
     yieldiq: "yield",
+    revenueiq: "revenue",
   };
   return map[stage] ?? null;
 }
@@ -277,6 +297,7 @@ export interface WorkflowPvmathReportRequest {
   score?: Record<string, unknown> | null;
   layout_row?: LayoutSweepRow | null;
   yield_result?: Record<string, unknown> | null;
+  revenueiq_result?: Record<string, unknown> | null;
   selected_yield_mwh?: number | null;
   selected_config_key?: string | null;
   selected_dc_kwp?: number | null;

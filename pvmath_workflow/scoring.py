@@ -161,6 +161,7 @@ def unified_pvmath_score(
     land_score: int,
     regulatory_score: int,
     yield_score: int | None = None,
+    economic_score: int | None = None,
     terrain_confirmed: bool = False,
     capacity_mwp: float | None = None,
 ) -> dict:
@@ -175,8 +176,15 @@ def unified_pvmath_score(
     include_yield = yield_score is not None
     if include_yield:
         scores["yield"] = yield_score
+    include_economic = economic_score is not None
+    if include_economic:
+        scores["economic"] = economic_score
 
-    weighted = calculate_pvmath_score(scores, include_yield=include_yield)
+    weighted = calculate_pvmath_score(
+        scores,
+        include_yield=include_yield,
+        include_economic=include_economic,
+    )
     capped = min(weighted, terrain_score + _TERRAIN_CAP_MARGIN)
     overall = max(0, min(100, round(capped)))
     verdict = get_verdict_from_score(overall)

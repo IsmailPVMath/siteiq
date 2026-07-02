@@ -344,6 +344,7 @@ async def workflow_score(
         land_score=int(comps.get("land", 72)),
         regulatory_score=int(comps.get("regulatory", 75)),
         yield_score=y_score,
+        economic_score=body.economic_score,
         terrain_confirmed=body.terrain_confirmed,
         capacity_mwp=body.capacity_mwp,
     )
@@ -353,6 +354,8 @@ async def workflow_score(
         if mode == "full"
         else "Partial score — run YieldIQ for the full composite."
     )
+    if body.economic_score is not None:
+        mode_note += " Includes economic viability from RevenueIQ where available."
     viability = scored.get("viability") or {}
     return WorkflowScoreResponse(
         pvmath_score=scored["pvmath_score"],
@@ -786,6 +789,7 @@ async def workflow_pvmath_report_pdf(
                     score=body.score,
                     layout_row=body.layout_row,
                     yield_result=body.yield_result,
+                    revenueiq_result=body.revenueiq_result,
                     selected_yield_mwh=body.selected_yield_mwh,
                     selected_config_key=body.selected_config_key,
                     selected_dc_kwp=body.selected_dc_kwp,
@@ -899,6 +903,7 @@ async def workflow_project_package(
                     score=body.score,
                     layout_row=body.layout_row,
                     yield_result=body.yield_result,
+                    revenueiq_result=body.revenueiq_result,
                     selected_yield_mwh=body.selected_yield_mwh,
                     location_label=body.location_label,
                     drawn_by=body.drawn_by,

@@ -11,6 +11,7 @@ interface Props {
   profile: MeResponse | null;
   token: string;
   pipelineStage: PipelineStage;
+  pipelineModules?: import("../types/workflow").PipelineModule[];
   pipelineInteractive?: boolean;
   pipelineUnlocked?: PipelineStage[];
   pipelineCompleted?: Partial<Record<PipelineStage, boolean>>;
@@ -34,6 +35,7 @@ export function AppShell({
   profile,
   token,
   pipelineStage,
+  pipelineModules: pipelineModuleList,
   pipelineInteractive,
   pipelineUnlocked,
   pipelineCompleted,
@@ -126,6 +128,7 @@ export function AppShell({
         <div className={`app-content${wide ? " app-content-wide" : ""}`}>
           <WorkflowPipeline
             current={pipelineStage}
+            modules={pipelineModuleList}
             interactive={pipelineInteractive}
             unlocked={pipelineUnlocked}
             completed={pipelineCompleted}

@@ -165,6 +165,7 @@ export function workflowScore(
     country?: string;
     terrain_confirmed?: boolean;
     capacity_mwp?: number;
+    economic_score?: number;
   },
 ) {
   return apiFetch<WorkflowScoreResponse>("/api/v1/workflow/score", token, {
@@ -344,6 +345,17 @@ export function analyzeYield(token: string, body: YieldIQAnalyzeRequest) {
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+export function analyzeRevenue(token: string, body: import("../types/revenueiq").RevenueIQAnalyzeRequest) {
+  return apiFetch<import("../types/revenueiq").RevenueIQAnalyzeResponse>(
+    "/api/v1/revenueiq/analyze",
+    token,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
 }
 
 export interface GeocodeResult {

@@ -64,6 +64,12 @@ class WorkflowScoreRequest(BaseModel):
         ge=0,
         description="Layout DC capacity (MWp) for utility-scale recommendation.",
     )
+    economic_score: Optional[int] = Field(
+        default=None,
+        ge=0,
+        le=100,
+        description="RevenueIQ economic viability subscore (0–100) when available.",
+    )
 
 
 class ScoreViability(BaseModel):
@@ -354,6 +360,7 @@ class WorkflowPvmathReportRequest(BaseModel):
     score: Optional[Dict[str, Any]] = None
     layout_row: Optional[Dict[str, Any]] = None
     yield_result: Optional[Dict[str, Any]] = None
+    revenueiq_result: Optional[Dict[str, Any]] = None
     selected_yield_mwh: Optional[float] = None
     selected_config_key: Optional[str] = Field(default=None, max_length=40)
     selected_dc_kwp: Optional[float] = Field(default=None, ge=0)

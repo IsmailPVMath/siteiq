@@ -29,7 +29,7 @@ async def analyze_revenueiq(
     body: RevenueIQAnalyzeRequest,
     _user: AuthUser = Depends(get_current_user),
 ):
-    """Screening-grade revenue, CAPEX band, payback, and LCOE from LayoutIQ + YieldIQ."""
+    """Screening-grade revenue, CAPEX, OPEX, IRR, NPV, and LCOE from LayoutIQ + YieldIQ."""
     _require_enabled()
     result = run_revenue_analysis(
         RevenueIQRequest(
@@ -39,25 +39,17 @@ async def analyze_revenueiq(
             mount_type=body.mount_type,
             dc_kwp=body.dc_kwp,
             annual_mwh=body.annual_mwh,
+            site_area_ha=body.site_area_ha,
+            mean_slope_pct=body.mean_slope_pct,
+            grid_distance_km=body.grid_distance_km,
             terrain_grade=body.terrain_grade,
+            wacc_pct=body.wacc_pct,
+            project_lifetime_yr=body.project_lifetime_yr,
+            tariff_override_local_mwh=body.tariff_override_local_mwh,
+            capex_override_eur_kwp=body.capex_override_eur_kwp,
+            itc_rate=body.itc_rate,
             lat=body.lat,
             lon=body.lon,
         )
     )
-    d = result.to_dict()
-    return RevenueIQAnalyzeResponse(
-        success=d["success"],
-        currency_display=d["currency_display"],
-        tariff=d["tariff"],
-        annual_revenue_eur_lo=d["annual_revenue_eur_lo"],
-        annual_revenue_eur_hi=d["annual_revenue_eur_hi"],
-        capex=d["capex"],
-        opex_eur_yr_lo=d["opex_eur_yr_lo"],
-        opex_eur_yr_hi=d["opex_eur_yr_hi"],
-        payback_years_lo=d["payback_years_lo"],
-        payback_years_hi=d["payback_years_hi"],
-        lcoe_eur_mwh_lo=d["lcoe_eur_mwh_lo"],
-        lcoe_eur_mwh_hi=d["lcoe_eur_mwh_hi"],
-        screening_disclaimer=d["screening_disclaimer"],
-        errors=d["errors"],
-    )
+    return RevenueIQAnalyzeResponse(**result.to_dict())

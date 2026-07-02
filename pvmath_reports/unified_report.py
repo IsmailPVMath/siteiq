@@ -17,13 +17,18 @@ from pvmath_brand import PRODUCT_NAME
 from pvmath_geocode import format_coords, resolve_location_label
 from pvmath_pdf import SITEIQ_DISCLAIMER_BODY, append_siteiq_metrics_annexure
 from pvmath_reports.common import ACCENT, ACCENT_HDR, BORDER, DARK, MUTED, base_styles, lp, module_banner, module_divider, section_hdr
+from pvmath_reports.revenueiq_section import build_revenueiq_flowables
 from pvmath_reports.layoutiq_section import build_layoutiq_flowables
 from pvmath_reports.siteiq_section import build_siteiq_flowables
 from pvmath_reports.terrain_section import build_terrain_section_flowables
 from pvmath_reports.yieldiq_section import build_yieldiq_flowables
 from pvmath_terrain_report import FIXED_THRESHOLDS, TRACKER_THRESHOLDS
 from pvmath_workflow.mount_utils import resolve_mount_type, yield_config_key_from_layout_row
-from pvmath_workflow.score_config import SUITABILITY_WEIGHTS, SUITABILITY_WEIGHTS_PARTIAL
+from pvmath_workflow.score_config import (
+    SUITABILITY_WEIGHTS,
+    SUITABILITY_WEIGHTS_PARTIAL,
+    SUITABILITY_WEIGHTS_WITH_ECONOMIC,
+)
 from pvmath_workflow.scoring import unified_pvmath_score, yield_subscore
 
 _FOOTER_GREY = colors.HexColor("#8a9a8a")
@@ -153,6 +158,8 @@ def _pvmath_score_flowables(result: Dict[str, Any]) -> List:
         if score_mode == "full"
         else "Partial composite — energy yield pending YieldIQ."
     )
+    if components.get("economic") is not None:
+        mode_note += " Includes economic viability from RevenueIQ where available."
 
     story: List = [
         *module_divider(),
@@ -217,7 +224,13 @@ def _pvmath_score_flowables(result: Dict[str, Any]) -> List:
         story.append(Spacer(1, 0.25 * cm))
 
     rows = [[lp("Factor", st["white"]), lp("Score", st["white"]), lp("Weight", st["white"])]]
-    weight_rows = SUITABILITY_WEIGHTS if score_mode == "full" else SUITABILITY_WEIGHTS_PARTIAL
+    weight_rows = SUITABILITY_WEIGHTS
+    if components.get("economic") is not None:
+        weight_rows = SUITABILITY_WEIGHTS_WITH_ECONOMIC
+    elif score_mode == "full":
+        weight_rows = SUITABILITY_WEIGHTS
+    else:
+        weight_rows = SUITABILITY_WEIGHTS_PARTIAL
     for label, key, weight in weight_rows:
         val = components.get(key)
         if val is None and key == "yield":
@@ -307,6 +320,7 @@ def build_unified_pvmath_report_pdf(
     topo: Optional[Dict[str, Any]] = None,
     score: Optional[Dict[str, Any]] = None,
     yield_result: Optional[Dict[str, Any]] = None,
+    revenueiq_result: Optional[Dict[str, Any]] = None,
     selected_config_key: Optional[str] = None,
     selected_dc_kwp: Optional[float] = None,
     layout_row: Optional[Dict[str, Any]] = None,
@@ -346,6 +360,7 @@ def build_unified_pvmath_report_pdf(
         country=country,
         capacity_mwp=(selected_dc_kwp / 1000.0) if selected_dc_kwp else None,
         terrain_confirmed=bool(topo),
+        revenueiq_result=revenueiq_result,
     )
 
     buf = io.BytesIO()
@@ -420,6 +435,9 @@ def build_unified_pvmath_report_pdf(
         layout_row=layout_row,
     )
 
+    if revenueiq_result and revenueiq_result.get("success"):
+        story += build_revenueiq_flowables(None, revenueiq_result)
+
     if final_score:
         story += _pvmath_score_flowables(final_score)
     story += _annex_flowables()
@@ -478,6 +496,7 @@ def _compute_final_score(
     country: str = "",
     capacity_mwp: float | None = None,
     terrain_confirmed: bool = False,
+    revenueiq_result: Optional[Dict[str, Any]] = None,
 ) -> Optional[Dict[str, Any]]:
     """Aggregate PVMath score that also factors energy yield, computed last."""
     comps = dict((score or {}).get("components") or {})
@@ -511,6 +530,13 @@ def _compute_final_score(
         else None
     )
 
+    econ_score: int | None = None
+    if revenueiq_result and revenueiq_result.get("success"):
+        try:
+            econ_score = int(revenueiq_result.get("economic_score"))
+        except (TypeError, ValueError):
+            econ_score = None
+
     return unified_pvmath_score(
         solar_score=int(comps["solar"]),
         terrain_score=int(comps["terrain"]),
@@ -518,6 +544,7 @@ def _compute_final_score(
         land_score=int(comps["land"]),
         regulatory_score=int(comps["regulatory"]),
         yield_score=y_score,
+        economic_score=econ_score,
         terrain_confirmed=terrain_confirmed,
         capacity_mwp=capacity_mwp,
     )

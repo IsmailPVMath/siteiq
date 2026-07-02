@@ -748,6 +748,94 @@ a {
   border-left: 4px solid var(--accent);
 }
 
+.module-revenueiq {
+  border-left: 4px solid #0d6e3a;
+}
+
+.revenue-viability-card {
+  border-radius: 10px;
+  padding: 1rem 1.15rem;
+  margin: 0.75rem 0 1rem;
+  border: 1px solid var(--border);
+}
+
+.revenue-viability-label {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.35rem;
+}
+
+.revenue-viability-note {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+
+.revenue-viability-strong {
+  background: #e8f5ee;
+  border-color: #1d9e52;
+}
+
+.revenue-viability-strong .revenue-viability-label {
+  color: #1d9e52;
+}
+
+.revenue-viability-marginal {
+  background: #fef9c3;
+  border-color: #f59e0b;
+}
+
+.revenue-viability-marginal .revenue-viability-label {
+  color: #b45309;
+}
+
+.revenue-viability-thin {
+  background: #fee2e2;
+  border-color: #dc2626;
+}
+
+.revenue-viability-thin .revenue-viability-label {
+  color: #dc2626;
+}
+
+.revenue-kpi-grid {
+  margin-bottom: 1rem;
+}
+
+.collapsible-summary {
+  cursor: pointer;
+  font-weight: 600;
+  margin: 0.75rem 0 0.35rem;
+}
+
+.assumptions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+}
+
+.assumptions-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.locked-card {
+  background: #f5f7f5;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+.locked-card p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
 .module-head {
   display: flex;
   align-items: center;

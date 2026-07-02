@@ -30,7 +30,9 @@ import type {
 import {
   outputModuleFromPipeline,
   pipelineFromOutputModule,
+  pipelineModules,
 } from "./types/workflow";
+import { REVENUEIQ_ENABLED } from "./lib/revenueiqEnabled";
 
 export default function App() {
   const [session, setSession] = useState<AuthSession | null>(null);
@@ -159,7 +161,9 @@ export default function App() {
   }
 
   function noteWorkflowDepth(stage: OutputModuleStage) {
-    const order: OutputModuleStage[] = ["screen", "topo", "layout", "yield"];
+    const order: OutputModuleStage[] = REVENUEIQ_ENABLED
+      ? ["screen", "topo", "layout", "yield", "revenue"]
+      : ["screen", "topo", "layout", "yield"];
     setWorkflowDepth((prev) =>
       order.indexOf(stage) > order.indexOf(prev) ? stage : prev,
     );
@@ -235,18 +239,25 @@ export default function App() {
     return pipelineFromOutputModule(outputModule);
   }, [step, outputModule]);
 
+  const pipelineSteps = useMemo(() => pipelineModules(REVENUEIQ_ENABLED), []);
+
   const pipelineUnlocked = useMemo((): PipelineStage[] => {
     if (step === "projects") return ["setup"];
     if (step === "input") {
       if (!result) return ["setup"];
       const stages: PipelineStage[] = ["setup", "siteiq"];
       if (workflowDepth !== "screen" || workflowRestore?.topo) stages.push("terrainiq");
-      if (workflowDepth === "layout" || workflowDepth === "yield") stages.push("layoutiq");
-      if (workflowDepth === "yield") stages.push("yieldiq");
+      if (workflowDepth === "layout" || workflowDepth === "yield" || workflowDepth === "revenue") {
+        stages.push("layoutiq");
+      }
+      if (workflowDepth === "yield" || workflowDepth === "revenue") stages.push("yieldiq");
+      if (REVENUEIQ_ENABLED && workflowDepth === "revenue") stages.push("revenueiq");
       return stages;
     }
     if (step === "processing") return ["setup", "siteiq"];
-    return ["setup", "siteiq", "terrainiq", "layoutiq", "yieldiq"];
+    const stages: PipelineStage[] = ["setup", "siteiq", "terrainiq", "layoutiq", "yieldiq"];
+    if (REVENUEIQ_ENABLED) stages.push("revenueiq");
+    return stages;
   }, [step, result, workflowDepth, workflowRestore?.topo]);
 
   const pipelineCompleted = useMemo((): Partial<Record<PipelineStage, boolean>> => {
@@ -257,8 +268,9 @@ export default function App() {
         setup: true,
         siteiq: true,
         terrainiq: workflowDepth !== "screen" || Boolean(workflowRestore?.topo),
-        layoutiq: workflowDepth === "layout" || workflowDepth === "yield",
-        yieldiq: workflowDepth === "yield",
+        layoutiq: workflowDepth === "layout" || workflowDepth === "yield" || workflowDepth === "revenue",
+        yieldiq: workflowDepth === "yield" || workflowDepth === "revenue",
+        revenueiq: REVENUEIQ_ENABLED && workflowDepth === "revenue",
       };
     }
     if (step === "processing") return { setup: true };
@@ -272,7 +284,12 @@ export default function App() {
         workflowDepth === "yield" ||
         outputModule === "layout" ||
         outputModule === "yield",
-      yieldiq: workflowDepth === "yield" || outputModule === "yield",
+      yieldiq:
+        workflowDepth === "yield" ||
+        workflowDepth === "revenue" ||
+        outputModule === "yield" ||
+        outputModule === "revenue",
+      revenueiq: REVENUEIQ_ENABLED && (workflowDepth === "revenue" || outputModule === "revenue"),
     };
   }, [step, outputModule, workflowDepth, workflowRestore?.topo]);
 
@@ -363,11 +380,12 @@ export default function App() {
   }
 
   return (
-    <AppShell
+      <AppShell
       email={session.email || profile?.email || ""}
       profile={profile}
       token={session.access_token}
       pipelineStage={pipelineStage}
+      pipelineModules={pipelineSteps}
       pipelineInteractive={step === "output" || step === "input"}
       pipelineUnlocked={pipelineUnlocked}
       pipelineCompleted={pipelineCompleted}

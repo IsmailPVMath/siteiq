@@ -14,6 +14,17 @@ PVMATH_WEIGHTS_FULL: Dict[str, float] = {
     "solar": 0.08,
 }
 
+# With RevenueIQ economic factor — existing six scaled ×0.90, economic = 0.10.
+PVMATH_WEIGHTS_WITH_ECONOMIC: Dict[str, float] = {
+    "regulatory": 0.198,
+    "terrain": 0.198,
+    "yield": 0.162,
+    "land": 0.135,
+    "flood": 0.135,
+    "solar": 0.072,
+    "economic": 0.10,
+}
+
 # Partial composite — YieldIQ pending; yield weight redistributed (+8% reg, +10% terrain).
 PVMATH_WEIGHTS_PARTIAL: Dict[str, float] = {
     "regulatory": 0.30,
@@ -31,6 +42,16 @@ SUITABILITY_WEIGHTS: Tuple[Tuple[str, str, int], ...] = (
     ("Land Use", "land", 15),
     ("Flood Risk", "flood", 15),
     ("Solar Resource", "solar", 8),
+)
+
+SUITABILITY_WEIGHTS_WITH_ECONOMIC: Tuple[Tuple[str, str, int], ...] = (
+    ("Grid / Regulatory", "regulatory", 20),
+    ("Terrain", "terrain", 20),
+    ("Energy Yield", "yield", 16),
+    ("Land Use", "land", 14),
+    ("Flood Risk", "flood", 14),
+    ("Solar Resource", "solar", 7),
+    ("Economic viability", "economic", 10),
 )
 
 SUITABILITY_WEIGHTS_PARTIAL: Tuple[Tuple[str, str, int], ...] = (
@@ -92,12 +113,24 @@ def yield_bands_for_region(region: str) -> Tuple[float, float, float, float]:
     return _YIELD_BANDS.get(region, _YIELD_BANDS["global"])
 
 
-def calculate_pvmath_score(scores: dict, *, include_yield: bool = False) -> int:
+def calculate_pvmath_score(
+    scores: dict,
+    *,
+    include_yield: bool = False,
+    include_economic: bool = False,
+) -> int:
     """Weighted composite from factor scores (0–100 each)."""
-    weights = PVMATH_WEIGHTS_FULL if include_yield else PVMATH_WEIGHTS_PARTIAL
+    if include_economic:
+        weights = PVMATH_WEIGHTS_WITH_ECONOMIC
+    elif include_yield:
+        weights = PVMATH_WEIGHTS_FULL
+    else:
+        weights = PVMATH_WEIGHTS_PARTIAL
     raw = 0.0
     for key, weight in weights.items():
-        raw += float(scores.get(key, 0)) * weight
+        if scores.get(key) is None:
+            continue
+        raw += float(scores[key]) * weight
     return max(0, min(100, round(raw)))
 
 
